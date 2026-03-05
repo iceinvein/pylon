@@ -1,0 +1,45 @@
+import { TextBlock } from './TextBlock'
+import { ThinkingBlock } from './ThinkingBlock'
+import { ToolUseBlock } from '../tools/ToolUseBlock'
+
+type ContentBlock = {
+  type: string
+  text?: string
+  thinking?: string
+  name?: string
+  id?: string
+  input?: Record<string, unknown>
+}
+
+type AssistantMessageProps = {
+  content: ContentBlock[]
+  sessionId?: string
+}
+
+export function AssistantMessage({ content }: AssistantMessageProps) {
+  return (
+    <div className="px-4 py-2">
+      <div className="max-w-[85%] space-y-1">
+        {content.map((block, i) => {
+          if (block.type === 'text' && block.text) {
+            return <TextBlock key={i} text={block.text} />
+          }
+          if (block.type === 'thinking' && block.thinking) {
+            return <ThinkingBlock key={i} thinking={block.thinking} />
+          }
+          if (block.type === 'tool_use') {
+            return (
+              <ToolUseBlock
+                key={i}
+                toolName={block.name ?? 'unknown'}
+                input={block.input ?? {}}
+                toolUseId={block.id}
+              />
+            )
+          }
+          return null
+        })}
+      </div>
+    </div>
+  )
+}

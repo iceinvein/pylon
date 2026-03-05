@@ -1,10 +1,30 @@
+import { Layout } from './components/layout/Layout'
+import { HomePage } from './pages/HomePage'
+import { SessionView } from './pages/SessionView'
+import { SubagentDrawer } from './components/SubagentDrawer'
+import { CommandPalette } from './components/CommandPalette'
+import { useTabStore } from './store/tab-store'
+import { useIpcBridge } from './hooks/use-ipc-bridge'
+
 export default function App() {
+  useIpcBridge()
+
+  const { tabs, activeTabId } = useTabStore()
+  const activeTab = tabs.find((t) => t.id === activeTabId)
+
+  // Global keyboard shortcut for command palette is handled inside CommandPalette
+
   return (
-    <div className="flex h-screen items-center justify-center bg-zinc-950 text-zinc-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold tracking-tight">Hello Claude UI</h1>
-        <p className="mt-3 text-zinc-400">Electron + React + TypeScript + Tailwind CSS</p>
-      </div>
-    </div>
+    <>
+      <Layout>
+        {activeTab ? (
+          <SessionView key={activeTab.id} tab={activeTab} />
+        ) : (
+          <HomePage />
+        )}
+      </Layout>
+      <SubagentDrawer />
+      <CommandPalette />
+    </>
   )
 }
