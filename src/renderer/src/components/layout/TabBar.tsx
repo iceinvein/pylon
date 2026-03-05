@@ -5,7 +5,7 @@ import type { SessionStatus } from '../../../../shared/types'
 
 function StatusDot({ status }: { status: SessionStatus | undefined }) {
   if (!status || status === 'empty' || status === 'done') {
-    return <span className="h-2 w-2 rounded-full bg-zinc-600" />
+    return <span className="h-2 w-2 rounded-full bg-stone-600" />
   }
   if (status === 'running' || status === 'starting' || status === 'waiting') {
     return <span className="h-2 w-2 animate-pulse rounded-full bg-green-500" />
@@ -28,7 +28,7 @@ export function TabBar() {
   }
 
   return (
-    <div className="flex h-9 items-center gap-0.5 overflow-x-auto border-b border-zinc-800 bg-zinc-950 px-1 scrollbar-none">
+    <div className="flex h-9 items-center gap-0.5 overflow-x-auto border-b border-stone-800 bg-stone-950 px-1 scrollbar-none" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
       {tabs.map((tab) => {
         const session = tab.sessionId ? sessions.get(tab.sessionId) : undefined
         const isActive = tab.id === activeTabId
@@ -39,8 +39,8 @@ export function TabBar() {
             onClick={() => setActiveTab(tab.id)}
             className={`group flex h-7 min-w-0 max-w-[180px] cursor-pointer items-center gap-1.5 rounded-md px-2 text-xs transition-colors ${
               isActive
-                ? 'bg-zinc-800 text-zinc-100'
-                : 'text-zinc-400 hover:bg-zinc-800/60 hover:text-zinc-300'
+                ? 'bg-stone-800 text-stone-100'
+                : 'text-stone-400 hover:bg-stone-800/60 hover:text-stone-300'
             }`}
           >
             <StatusDot status={session?.status} />
@@ -50,7 +50,7 @@ export function TabBar() {
                 e.stopPropagation()
                 closeTab(tab.id)
               }}
-              className="ml-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded opacity-0 transition-opacity hover:bg-zinc-600 group-hover:opacity-100"
+              className="ml-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded opacity-0 transition-opacity hover:bg-stone-600 group-hover:opacity-100"
             >
               <X size={10} />
             </button>
@@ -61,7 +61,7 @@ export function TabBar() {
       <button
         onClick={handleNewTab}
         title="New Tab"
-        className="ml-1 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-zinc-300"
+        className="ml-1 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md text-stone-500 transition-colors hover:bg-stone-800 hover:text-stone-300"
       >
         <Plus size={14} />
       </button>

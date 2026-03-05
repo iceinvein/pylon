@@ -13,9 +13,9 @@ export function GlobGrepTool({ input, toolName }: GlobGrepToolProps) {
   return (
     <div className="flex items-center gap-2 text-xs">
       <Search size={13} className="flex-shrink-0 text-purple-400" />
-      <span className="font-mono text-zinc-300">{pattern}</span>
-      {path && <span className="text-zinc-500">in {path}</span>}
-      <span className="ml-auto text-zinc-600">{isGrep ? 'grep' : 'glob'}</span>
+      <span className="font-[family-name:var(--font-mono)] text-stone-300">{pattern}</span>
+      {path && <span className="text-stone-500">in {path}</span>}
+      <span className="ml-auto text-stone-600">{isGrep ? 'grep' : 'glob'}</span>
     </div>
   )
 }

@@ -62,7 +62,7 @@ export function SlashCommandMenu({ query, onSelect, onClose }: SlashCommandMenuP
   if (filtered.length === 0) return null
 
   return (
-    <div className="absolute bottom-full left-0 right-0 mb-1 rounded-lg border border-zinc-700 bg-zinc-900 shadow-xl">
+    <div className="absolute bottom-full left-0 right-0 mb-1 rounded-lg border border-stone-700 bg-stone-900 shadow-xl">
       <div className="p-1">
         {filtered.map((cmd, i) => (
           <button
@@ -73,12 +73,12 @@ export function SlashCommandMenu({ query, onSelect, onClose }: SlashCommandMenuP
             }}
             onMouseEnter={() => setSelectedIdx(i)}
             className={`flex w-full items-center gap-3 rounded-md px-3 py-2 text-left transition-colors ${
-              i === selectedIdx ? 'bg-zinc-800' : 'hover:bg-zinc-800/50'
+              i === selectedIdx ? 'bg-stone-800' : 'hover:bg-stone-800/50'
             }`}
           >
-            <Zap size={13} className="flex-shrink-0 text-zinc-500" />
-            <span className="text-sm font-medium text-zinc-300">/{cmd.name}</span>
-            <span className="text-xs text-zinc-500">{cmd.description}</span>
+            <Zap size={13} className="flex-shrink-0 text-stone-500" />
+            <span className="text-sm font-medium text-stone-300">/{cmd.name}</span>
+            <span className="text-xs text-stone-500">{cmd.description}</span>
           </button>
         ))}
       </div>

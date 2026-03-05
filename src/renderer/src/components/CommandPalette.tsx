@@ -100,9 +100,9 @@ export function CommandPalette() {
         className="absolute inset-0 bg-black/60"
         onClick={toggleCommandPalette}
       />
-      <div className="relative w-full max-w-lg overflow-hidden rounded-xl border border-zinc-700 bg-zinc-900 shadow-2xl">
-        <div className="flex items-center gap-2 border-b border-zinc-800 px-4 py-3">
-          <Search size={16} className="flex-shrink-0 text-zinc-500" />
+      <div className="relative w-full max-w-lg overflow-hidden rounded-xl border border-stone-700 bg-stone-900 shadow-2xl">
+        <div className="flex items-center gap-2 border-b border-stone-800 px-4 py-3">
+          <Search size={16} className="flex-shrink-0 text-stone-500" />
           <input
             ref={inputRef}
             type="text"
@@ -110,14 +110,14 @@ export function CommandPalette() {
             onChange={(e) => { setQuery(e.target.value); setSelectedIdx(0) }}
             onKeyDown={handleKeyDown}
             placeholder="Type a command..."
-            className="flex-1 bg-transparent text-sm text-zinc-100 placeholder-zinc-600 outline-none"
+            className="flex-1 bg-transparent text-sm text-stone-100 placeholder-stone-600 outline-none"
           />
-          <kbd className="rounded border border-zinc-700 px-1.5 py-0.5 text-xs text-zinc-600">Esc</kbd>
+          <kbd className="rounded border border-stone-700 px-1.5 py-0.5 text-xs text-stone-600">Esc</kbd>
         </div>
 
         <div className="max-h-64 overflow-y-auto p-1">
           {filtered.length === 0 && (
-            <div className="py-8 text-center text-sm text-zinc-600">No commands found</div>
+            <div className="py-8 text-center text-sm text-stone-600">No commands found</div>
           )}
           {filtered.map((cmd, i) => (
             <button
@@ -125,14 +125,14 @@ export function CommandPalette() {
               onMouseDown={(e) => { e.preventDefault(); cmd.action() }}
               onMouseEnter={() => setSelectedIdx(i)}
               className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors ${
-                i === selectedIdx ? 'bg-zinc-800' : 'hover:bg-zinc-800/50'
+                i === selectedIdx ? 'bg-stone-800' : 'hover:bg-stone-800/50'
               }`}
             >
-              <span className="text-zinc-500">{cmd.icon}</span>
+              <span className="text-stone-500">{cmd.icon}</span>
               <div>
-                <p className="text-sm text-zinc-200">{cmd.label}</p>
+                <p className="text-sm text-stone-200">{cmd.label}</p>
                 {cmd.description && (
-                  <p className="text-xs text-zinc-500">{cmd.description}</p>
+                  <p className="text-xs text-stone-500">{cmd.description}</p>
                 )}
               </div>
             </button>

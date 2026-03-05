@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Brain, ChevronDown, ChevronRight } from 'lucide-react'
+import { ChevronDown, ChevronRight, CircleDot } from 'lucide-react'
 
 type ThinkingBlockProps = {
   thinking: string
@@ -9,19 +9,22 @@ export function ThinkingBlock({ thinking }: ThinkingBlockProps) {
   const [expanded, setExpanded] = useState(false)
 
   return (
-    <div className="mb-2 rounded-lg border border-zinc-800 bg-zinc-900/50">
+    <div>
       <button
         onClick={() => setExpanded((v) => !v)}
-        className="flex w-full items-center gap-2 px-3 py-2 text-xs text-zinc-500 transition-colors hover:text-zinc-400"
+        className="flex w-full items-center gap-2 py-0.5 text-left"
       >
-        <Brain size={12} />
-        <span>Thinking</span>
-        <div className="flex-1" />
-        {expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+        {expanded ? (
+          <ChevronDown size={14} className="flex-shrink-0 text-stone-600" />
+        ) : (
+          <ChevronRight size={14} className="flex-shrink-0 text-stone-600" />
+        )}
+        <CircleDot size={14} className="flex-shrink-0 text-stone-500" />
+        <span className="text-sm font-medium text-stone-300">Thinking</span>
       </button>
       {expanded && (
-        <div className="border-t border-zinc-800 px-3 py-2">
-          <p className="whitespace-pre-wrap text-xs leading-relaxed text-zinc-500">{thinking}</p>
+        <div className="ml-8 mt-1 rounded border border-stone-800 bg-stone-900/50 px-3 py-2">
+          <p className="whitespace-pre-wrap text-xs leading-relaxed text-stone-400">{thinking}</p>
         </div>
       )}
     </div>

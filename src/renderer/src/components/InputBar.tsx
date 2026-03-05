@@ -149,7 +149,7 @@ export function InputBar({ sessionId, isRunning, onSend, onStop }: InputBarProps
   const canSend = (text.trim().length > 0 || attachments.length > 0) && !isRunning
 
   return (
-    <div className="relative border-t border-zinc-800 bg-zinc-950">
+    <div className="relative border-t border-stone-800 bg-stone-950">
       {showSlash && (
         <SlashCommandMenu
           query={text.slice(1)}
@@ -159,11 +159,11 @@ export function InputBar({ sessionId, isRunning, onSend, onStop }: InputBarProps
       )}
 
       {attachments.length > 0 && (
-        <div className="flex flex-wrap gap-2 border-b border-zinc-800 px-3 py-2">
+        <div className="flex flex-wrap gap-2 border-b border-stone-800 px-3 py-2">
           {attachments.map((att, i) => (
             <div
               key={i}
-              className="group relative flex items-center gap-1.5 rounded-lg border border-zinc-700 bg-zinc-800 px-2 py-1.5"
+              className="group relative flex items-center gap-1.5 rounded-lg border border-stone-700 bg-stone-800 px-2 py-1.5"
             >
               {att.type === 'image' ? (
                 <>
@@ -172,20 +172,20 @@ export function InputBar({ sessionId, isRunning, onSend, onStop }: InputBarProps
                     alt={att.name}
                     className="h-8 w-8 rounded object-cover"
                   />
-                  <span className="max-w-[100px] truncate text-xs text-zinc-400">{att.name}</span>
+                  <span className="max-w-[100px] truncate text-xs text-stone-400">{att.name}</span>
                 </>
               ) : (
                 <>
-                  <Image size={14} className="text-zinc-500" />
-                  <span className="max-w-[120px] truncate text-xs text-zinc-400">{att.name}</span>
-                  <span className="text-xs text-zinc-600">
+                  <Image size={14} className="text-stone-500" />
+                  <span className="max-w-[120px] truncate text-xs text-stone-400">{att.name}</span>
+                  <span className="text-xs text-stone-600">
                     {(att.size / 1024).toFixed(0)}KB
                   </span>
                 </>
               )}
               <button
                 onClick={() => removeAttachment(i)}
-                className="ml-1 flex h-4 w-4 items-center justify-center rounded-full bg-zinc-600 text-zinc-300 transition-colors hover:bg-zinc-500"
+                className="ml-1 flex h-4 w-4 items-center justify-center rounded-full bg-stone-600 text-stone-300 transition-colors hover:bg-stone-500"
               >
                 <X size={9} />
               </button>
@@ -199,7 +199,7 @@ export function InputBar({ sessionId, isRunning, onSend, onStop }: InputBarProps
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         className={`flex items-end gap-2 px-3 py-3 transition-colors ${
-          isDragging ? 'bg-blue-950/20' : ''
+          isDragging ? 'bg-amber-950/20' : ''
         }`}
       >
         <input
@@ -214,7 +214,7 @@ export function InputBar({ sessionId, isRunning, onSend, onStop }: InputBarProps
         <button
           onClick={() => fileInputRef.current?.click()}
           title="Attach file"
-          className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-zinc-300"
+          className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-stone-500 transition-colors hover:bg-stone-800 hover:text-stone-300"
         >
           <Paperclip size={16} />
         </button>
@@ -228,7 +228,7 @@ export function InputBar({ sessionId, isRunning, onSend, onStop }: InputBarProps
           placeholder={sessionId ? 'Message Claude... (Enter to send, Shift+Enter for newline)' : 'Open a folder to start'}
           disabled={!sessionId && false}
           rows={1}
-          className="min-h-[36px] flex-1 resize-none rounded-lg bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 outline-none focus:ring-1 focus:ring-zinc-600"
+          className="min-h-[36px] flex-1 resize-none rounded-lg bg-stone-800 px-3 py-2 text-sm text-stone-100 placeholder-stone-600 outline-none focus:ring-1 focus:ring-amber-700/50"
         />
 
         {isRunning ? (
@@ -244,7 +244,7 @@ export function InputBar({ sessionId, isRunning, onSend, onStop }: InputBarProps
             onClick={handleSend}
             disabled={!canSend}
             title="Send"
-            className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-zinc-700 text-zinc-100 transition-colors hover:bg-zinc-600 disabled:opacity-30 disabled:cursor-not-allowed"
+            className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-amber-700 text-stone-100 transition-colors hover:bg-amber-600 disabled:opacity-30 disabled:cursor-not-allowed"
           >
             <Send size={14} />
           </button>

@@ -11,16 +11,16 @@ export function EditTool({ input }: EditToolProps) {
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center gap-2 text-xs text-zinc-400">
+      <div className="flex items-center gap-2 text-xs text-stone-400">
         <FileText size={13} className="flex-shrink-0 text-yellow-400" />
-        <span className="font-mono text-zinc-300">{path}</span>
+        <span className="font-[family-name:var(--font-mono)] text-stone-300">{path}</span>
       </div>
       {oldString && (
-        <div className="overflow-x-auto rounded border border-red-900/40 bg-red-950/20">
-          <pre className="p-2 text-xs text-red-300">
+        <div className="overflow-x-auto rounded border border-red-900/30 bg-red-950/15">
+          <pre className="p-2 text-xs text-red-300/90">
             {oldString.split('\n').map((line, i) => (
               <div key={i} className="flex gap-2">
-                <span className="select-none text-red-700">-</span>
+                <span className="select-none text-red-700/80">-</span>
                 <span>{line}</span>
               </div>
             ))}
@@ -28,11 +28,11 @@ export function EditTool({ input }: EditToolProps) {
         </div>
       )}
       {newString && (
-        <div className="overflow-x-auto rounded border border-green-900/40 bg-green-950/20">
-          <pre className="p-2 text-xs text-green-300">
+        <div className="overflow-x-auto rounded border border-emerald-900/30 bg-emerald-950/15">
+          <pre className="p-2 text-xs text-emerald-300/90">
             {newString.split('\n').map((line, i) => (
               <div key={i} className="flex gap-2">
-                <span className="select-none text-green-700">+</span>
+                <span className="select-none text-emerald-700/80">+</span>
                 <span>{line}</span>
               </div>
             ))}

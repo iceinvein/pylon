@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronDown, ChevronRight, Wrench } from 'lucide-react'
+import { ChevronDown, ChevronRight, Terminal, FileText, Search, Pencil, Wrench } from 'lucide-react'
 import { BashTool } from './BashTool'
 import { ReadTool } from './ReadTool'
 import { EditTool } from './EditTool'
@@ -12,24 +12,78 @@ type ToolUseBlockProps = {
   toolUseId?: string
 }
 
-function getToolSummary(toolName: string, input: Record<string, unknown>): string {
+type ToolInfo = {
+  icon: typeof Terminal
+  label: string
+  summary: string
+  iconColor: string
+}
+
+function getToolInfo(toolName: string, input: Record<string, unknown>): ToolInfo {
   const name = toolName.toLowerCase()
+
   if (name.includes('bash') || name.includes('shell')) {
-    const cmd = String(input.command ?? input.cmd ?? '').slice(0, 60)
-    return cmd
+    const desc = String(input.description ?? '').slice(0, 80)
+    const cmd = String(input.command ?? input.cmd ?? '').slice(0, 80)
+    return {
+      icon: Terminal,
+      label: 'Run',
+      summary: desc || cmd,
+      iconColor: 'text-stone-500',
+    }
   }
+
   if (name.includes('read') || name.includes('view')) {
-    return String(input.file_path ?? input.path ?? '')
+    const path = String(input.file_path ?? input.path ?? '')
+    const shortPath = path.split('/').slice(-2).join('/')
+    return {
+      icon: FileText,
+      label: 'Read',
+      summary: shortPath || path,
+      iconColor: 'text-stone-500',
+    }
   }
-  if (name.includes('edit') || name.includes('write') || name.includes('create')) {
-    return String(input.file_path ?? input.path ?? '')
+
+  if (name.includes('edit')) {
+    const path = String(input.file_path ?? input.path ?? '')
+    const shortPath = path.split('/').slice(-2).join('/')
+    return {
+      icon: Pencil,
+      label: 'Edit',
+      summary: shortPath || path,
+      iconColor: 'text-stone-500',
+    }
   }
+
+  if (name.includes('write') || name.includes('create')) {
+    const path = String(input.file_path ?? input.path ?? '')
+    const shortPath = path.split('/').slice(-2).join('/')
+    return {
+      icon: Pencil,
+      label: 'Write',
+      summary: shortPath || path,
+      iconColor: 'text-stone-500',
+    }
+  }
+
   if (name.includes('glob') || name.includes('grep') || name.includes('search')) {
-    return String(input.pattern ?? input.glob ?? input.query ?? '')
+    return {
+      icon: Search,
+      label: 'Search',
+      summary: String(input.pattern ?? input.glob ?? input.query ?? ''),
+      iconColor: 'text-stone-500',
+    }
   }
+
+  // Generic fallback
   const keys = Object.keys(input)
-  if (keys.length > 0) return String(input[keys[0]]).slice(0, 60)
-  return ''
+  const firstVal = keys.length > 0 ? String(input[keys[0]]).slice(0, 60) : ''
+  return {
+    icon: Wrench,
+    label: toolName.replace(/^mcp__\w+__/, '').replace(/_/g, ' '),
+    summary: firstVal,
+    iconColor: 'text-stone-500',
+  }
 }
 
 function ToolRenderer({ toolName, input }: { toolName: string; input: Record<string, unknown> }) {
@@ -51,29 +105,28 @@ function ToolRenderer({ toolName, input }: { toolName: string; input: Record<str
 
 export function ToolUseBlock({ toolName, input }: ToolUseBlockProps) {
   const [expanded, setExpanded] = useState(false)
-  const summary = getToolSummary(toolName, input)
+  const info = getToolInfo(toolName, input)
+  const Icon = info.icon
 
   return (
-    <div className="mb-2 rounded-lg border border-zinc-800 bg-zinc-900/50">
+    <div>
       <button
         onClick={() => setExpanded((v) => !v)}
-        className="flex w-full items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-zinc-800/50"
+        className="group flex w-full items-center gap-2 py-0.5 text-left"
       >
-        <Wrench size={12} className="flex-shrink-0 text-zinc-500" />
-        <span className="text-xs font-medium text-zinc-400">{toolName}</span>
-        {summary && !expanded && (
-          <span className="min-w-0 flex-1 truncate text-xs text-zinc-600">{summary}</span>
+        {expanded ? (
+          <ChevronDown size={14} className="flex-shrink-0 text-stone-600" />
+        ) : (
+          <ChevronRight size={14} className="flex-shrink-0 text-stone-600" />
         )}
-        <div className="ml-auto">
-          {expanded ? (
-            <ChevronDown size={12} className="text-zinc-600" />
-          ) : (
-            <ChevronRight size={12} className="text-zinc-600" />
-          )}
-        </div>
+        <Icon size={14} className={`flex-shrink-0 ${info.iconColor}`} />
+        <span className="text-sm font-medium text-stone-300">{info.label}</span>
+        {info.summary && !expanded && (
+          <span className="min-w-0 flex-1 truncate text-sm text-stone-500">{info.summary}</span>
+        )}
       </button>
       {expanded && (
-        <div className="border-t border-zinc-800 px-3 py-2">
+        <div className="ml-8 mt-1 rounded border border-stone-800 bg-stone-900/50 px-3 py-2">
           <ToolRenderer toolName={toolName} input={input} />
         </div>
       )}

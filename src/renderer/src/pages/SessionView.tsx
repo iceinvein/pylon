@@ -49,7 +49,7 @@ export function SessionView({ tab }: SessionViewProps) {
       id: newSessionId,
       cwd: tab.cwd,
       status: 'empty',
-      model: 'claude-sonnet-4-6',
+      model: '',
       title: '',
       cost: { inputTokens: 0, outputTokens: 0, totalUsd: 0 },
       createdAt: Date.now(),
@@ -124,7 +124,7 @@ export function SessionView({ tab }: SessionViewProps) {
           <ChatView sessionId={sessionId} />
         ) : (
           <div className="flex h-full items-center justify-center">
-            <p className="text-sm text-zinc-600">Send a message to start</p>
+            <p className="text-sm text-stone-600">Send a message to start</p>
           </div>
         )}
       </div>

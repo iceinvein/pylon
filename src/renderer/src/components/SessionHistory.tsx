@@ -71,7 +71,7 @@ export function SessionHistory() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-8 text-sm text-zinc-600">
+      <div className="flex items-center justify-center py-8 text-sm text-stone-600">
         Loading sessions...
       </div>
     )
@@ -80,34 +80,34 @@ export function SessionHistory() {
   if (storedSessions.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-8 text-center">
-        <p className="text-sm text-zinc-600">No previous sessions</p>
-        <p className="mt-1 text-xs text-zinc-700">Open a folder to get started</p>
+        <p className="text-sm text-stone-600">No previous sessions</p>
+        <p className="mt-1 text-xs text-stone-700">Open a folder to get started</p>
       </div>
     )
   }
 
   return (
     <div className="space-y-1">
-      <p className="mb-2 text-xs font-medium uppercase tracking-wider text-zinc-600">Recent Sessions</p>
+      <p className="mb-2 text-xs font-medium uppercase tracking-wider text-stone-600">Recent Sessions</p>
       {storedSessions.slice(0, 20).map((session) => (
         <button
           key={session.id}
           onClick={() => handleResume(session)}
-          className="group flex w-full items-start gap-3 rounded-lg p-3 text-left transition-colors hover:bg-zinc-800/60"
+          className="group flex w-full items-start gap-3 rounded-lg p-3 text-left transition-colors hover:bg-stone-800/60"
         >
-          <Folder size={14} className="mt-0.5 flex-shrink-0 text-zinc-600" />
+          <Folder size={14} className="mt-0.5 flex-shrink-0 text-stone-600" />
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm text-zinc-300">
+            <p className="truncate text-sm text-stone-300">
               {session.title || session.cwd.split('/').pop() || 'Untitled'}
             </p>
-            <p className="truncate text-xs text-zinc-600">{session.cwd}</p>
+            <p className="truncate text-xs text-stone-600">{session.cwd}</p>
             <div className="mt-1 flex items-center gap-3">
-              <span className="flex items-center gap-1 text-xs text-zinc-700">
+              <span className="flex items-center gap-1 text-xs text-stone-700">
                 <Clock size={10} />
                 {timeAgo(session.updated_at)}
               </span>
               {session.total_cost_usd > 0 && (
-                <span className="flex items-center gap-1 text-xs text-zinc-700">
+                <span className="flex items-center gap-1 text-xs text-stone-700">
                   <DollarSign size={10} />
                   {formatCost(session.total_cost_usd)}
                 </span>
@@ -116,7 +116,7 @@ export function SessionHistory() {
           </div>
           <button
             onClick={(e) => handleDelete(e, session.id)}
-            className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded opacity-0 text-zinc-600 transition-all hover:bg-zinc-700 hover:text-red-400 group-hover:opacity-100"
+            className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded opacity-0 text-stone-600 transition-all hover:bg-stone-700 hover:text-red-400 group-hover:opacity-100"
           >
             <Trash2 size={12} />
           </button>
