@@ -51,7 +51,7 @@ export class SessionManager {
   async sendMessage(
     sessionId: string,
     text: string,
-    attachments?: Array<{ type: string; content: string; mediaType?: string; name?: string }>
+    _attachments?: Array<{ type: string; content: string; mediaType?: string; name?: string }>
   ): Promise<void> {
     const session = this.sessions.get(sessionId)
     if (!session) throw new Error('Session not found: ' + sessionId)
