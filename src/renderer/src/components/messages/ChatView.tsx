@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { memo, useEffect, useMemo, useRef } from 'react'
+import { motion } from 'motion/react'
 import { useSessionStore } from '../../store/session-store'
 import { useAgentGrouping } from '../../hooks/use-agent-grouping'
 import { UserMessage } from './UserMessage'
@@ -6,6 +7,7 @@ import { AssistantMessage } from './AssistantMessage'
 import { SystemMessage } from './SystemMessage'
 import { ResultMessage } from './ResultMessage'
 import { PermissionPrompt } from './PermissionPrompt'
+import { QuestionPrompt } from './QuestionPrompt'
 import { TextBlock } from './TextBlock'
 import { SubagentBlock } from '../tools/SubagentBlock'
 import { ToolUseBlock } from '../tools/ToolUseBlock'
@@ -33,78 +35,96 @@ type AssistantContentBlock = {
   input?: Record<string, unknown>
 }
 
+type ToolResultBlock = {
+  type: string
+  tool_use_id?: string
+  content?: string | Array<{ type: string; text?: string }>
+}
+
+function buildToolResultMap(messages: unknown[]): Map<string, string> {
+  const map = new Map<string, string>()
+  for (const raw of messages) {
+    const msg = raw as SdkMessage
+    if (msg.type !== 'user') continue
+    const rawContent = msg.content ?? (msg.message as Record<string, unknown> | undefined)?.content
+    if (!Array.isArray(rawContent)) continue
+    for (const block of rawContent as ToolResultBlock[]) {
+      if (block.type === 'tool_result' && block.tool_use_id) {
+        const text = typeof block.content === 'string'
+          ? block.content
+          : Array.isArray(block.content)
+            ? block.content.filter((b) => b.type === 'text').map((b) => b.text ?? '').join('\n')
+            : ''
+        if (text) map.set(block.tool_use_id, text)
+      }
+    }
+  }
+  return map
+}
+
+const emptyMessages: unknown[] = []
+
 type ChatViewProps = {
   sessionId: string
 }
 
-const THINKING_PHRASES = [
-  'Thinking...',
-  'Reasoning through this...',
-  'Considering the options...',
-  'Analyzing the codebase...',
-  'Gathering context...',
-  'Connecting the dots...',
-  'Mulling it over...',
-  'Examining the details...',
-  'Piecing things together...',
-  'Working through it...',
-]
-
-function ThinkingIndicator() {
-  const [phraseIdx, setPhraseIdx] = useState(() => Math.floor(Math.random() * THINKING_PHRASES.length))
-  const [charIdx, setCharIdx] = useState(0)
-  const phrase = THINKING_PHRASES[phraseIdx]
-
-  useEffect(() => {
-    if (charIdx < phrase.length) {
-      const id = setTimeout(() => setCharIdx((c) => c + 1), 40)
-      return () => clearTimeout(id)
-    }
-    const id = setTimeout(() => {
-      setPhraseIdx((i) => (i + 1) % THINKING_PHRASES.length)
-      setCharIdx(0)
-    }, 3000)
-    return () => clearTimeout(id)
-  }, [charIdx, phrase.length])
-
-  return (
-    <div className="px-6 py-3">
-      <span className="text-sm text-stone-500">{phrase.slice(0, charIdx)}</span>
-      <span className="inline-block h-3.5 w-0.5 animate-pulse bg-stone-500 align-text-bottom" />
-    </div>
-  )
-}
-
-export function ChatView({ sessionId }: ChatViewProps) {
-  const { messages, pendingPermissions, streamingText, sessions } = useSessionStore()
-  const sessionMessages = messages.get(sessionId) ?? []
-  const streaming = streamingText.get(sessionId)
+export const ChatView = memo(function ChatView({ sessionId }: ChatViewProps) {
+  // Use fine-grained selectors to avoid re-rendering on unrelated store changes
+  const sessionMessages = useSessionStore((s) => s.messages.get(sessionId)) ?? emptyMessages
+  const streaming = useSessionStore((s) => s.streamingText.get(sessionId))
+  const pendingPermissions = useSessionStore((s) => s.pendingPermissions)
+  const pendingQuestions = useSessionStore((s) => s.pendingQuestions)
   const sessionPermissions = pendingPermissions.filter((p) => p.sessionId === sessionId)
-  const session = sessions.get(sessionId)
-  const isProcessing = (session?.status === 'running' || session?.status === 'starting') && !streaming
+  const sessionQuestions = pendingQuestions.filter((q) => q.sessionId === sessionId)
   const bottomRef = useRef<HTMLDivElement>(null)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const isNearBottomRef = useRef(true)
 
   const { agentMap, mainThreadMessages } = useAgentGrouping(sessionMessages)
 
+  const toolResultMap = useMemo(() => buildToolResultMap(sessionMessages), [sessionMessages])
+
+  // Track whether the user has scrolled away from the bottom
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [sessionMessages.length, streaming, isProcessing])
+    const container = scrollContainerRef.current
+    if (!container) return
+    function onScroll() {
+      if (!container) return
+      const threshold = 120
+      isNearBottomRef.current =
+        container.scrollHeight - container.scrollTop - container.clientHeight < threshold
+    }
+    container.addEventListener('scroll', onScroll, { passive: true })
+    return () => container.removeEventListener('scroll', onScroll)
+  }, [])
+
+  // Auto-scroll only when user is already near the bottom
+  useEffect(() => {
+    if (isNearBottomRef.current) {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [sessionMessages.length, streaming, sessionQuestions.length])
 
   async function handlePermissionRespond(requestId: string, behavior: 'allow' | 'deny') {
     await window.api.respondToPermission(requestId, behavior)
     useSessionStore.getState().removePermission(requestId)
   }
 
-  function renderAssistantContent(content: AssistantContentBlock[], idx: number) {
+  async function handleQuestionRespond(requestId: string, answers: Record<string, string>) {
+    await window.api.respondToQuestion(requestId, answers)
+    useSessionStore.getState().removeQuestion(requestId)
+  }
+
+  function renderAssistantContent(content: AssistantContentBlock[]) {
     const hasAgentBlocks = content.some((b) => b.type === 'tool_use' && b.name === 'Agent')
 
     if (!hasAgentBlocks) {
-      return <AssistantMessage key={idx} content={content} sessionId={sessionId} />
+      return <AssistantMessage content={content} sessionId={sessionId} toolResultMap={toolResultMap} />
     }
 
     // Render message normally but replace Agent tool_use blocks with SubagentBlock cards
     return (
-      <div key={idx} className="space-y-1 px-6 py-2">
+      <div className="space-y-1 px-6 py-2">
         {content.map((block, i) => {
           if (block.type === 'tool_use' && block.name === 'Agent' && block.id) {
             const agent = agentMap.get(block.id)
@@ -133,6 +153,7 @@ export function ChatView({ sessionId }: ChatViewProps) {
                 toolName={block.name ?? 'unknown'}
                 input={block.input ?? {}}
                 toolUseId={block.id}
+                result={toolResultMap.get(block.id ?? '')}
               />
             )
           }
@@ -143,30 +164,51 @@ export function ChatView({ sessionId }: ChatViewProps) {
   }
 
   return (
-    <div className="flex h-full flex-col overflow-y-auto">
+    <div ref={scrollContainerRef} className="flex h-full flex-col overflow-y-auto">
       <div className="mx-auto w-full max-w-3xl">
       {mainThreadMessages.map((rawMsg, idx) => {
         const msg = rawMsg as SdkMessage
 
         if (msg.type === 'user') {
+          // Hide tool_result messages — they're SDK internals, not user-typed text
+          if (isToolResultMessage(msg)) return null
+
           const skillName = extractSkillName(msg)
           if (skillName) {
             return (
-              <div key={idx} className="flex items-center gap-2 px-6 py-1">
-                <Zap size={12} className="flex-shrink-0 text-purple-400/70" />
-                <span className="text-xs text-stone-500">
-                  Loaded skill <span className="text-stone-400">{skillName}</span>
-                </span>
-              </div>
+              <motion.div
+                key={idx}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2, ease: 'easeOut' }}
+              >
+                <div className="flex items-center gap-2 px-6 py-1">
+                  <Zap size={12} className="flex-shrink-0 text-purple-400/70" />
+                  <span className="text-xs text-stone-500">
+                    Loaded skill <span className="text-stone-400">{skillName}</span>
+                  </span>
+                </div>
+              </motion.div>
             )
           }
-          return <UserMessage key={idx} message={msg as Record<string, unknown>} />
+          return (
+            <UserMessage key={`user-${idx}`} message={msg as Record<string, unknown>} />
+          )
         }
 
         if (msg.type === 'assistant') {
           const messageObj = msg.message as { content?: AssistantContentBlock[] } | undefined
           const content = (messageObj?.content ?? msg.content ?? []) as AssistantContentBlock[]
-          return renderAssistantContent(content, idx)
+          return (
+            <motion.div
+              key={idx}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+            >
+              {renderAssistantContent(content)}
+            </motion.div>
+          )
         }
 
         if (msg.type === 'system') {
@@ -179,58 +221,112 @@ export function ChatView({ sessionId }: ChatViewProps) {
             sub === 'task_started'
           ) return null
           const content = String(msg.content ?? msg.subtype ?? 'System message')
-          return <SystemMessage key={idx} content={content} subtype={sub} />
+          return (
+            <motion.div
+              key={idx}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+            >
+              <SystemMessage content={content} subtype={sub} />
+            </motion.div>
+          )
         }
 
         if (msg.type === 'result') {
           return (
-            <ResultMessage
+            <motion.div
               key={idx}
-              isError={msg.is_error === true}
-              totalCostUsd={msg.total_cost_usd as number | undefined}
-              durationMs={msg.duration_ms as number | undefined}
-              numTurns={msg.num_turns as number | undefined}
-              inputTokens={(msg.usage as { input_tokens?: number } | undefined)?.input_tokens}
-              outputTokens={(msg.usage as { output_tokens?: number } | undefined)?.output_tokens}
-              errorMessage={msg.error as string | undefined}
-            />
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+            >
+              <ResultMessage
+                isError={msg.is_error === true}
+                model={msg.model as string | undefined}
+                totalCostUsd={msg.total_cost_usd as number | undefined}
+                durationMs={msg.duration_ms as number | undefined}
+                numTurns={msg.num_turns as number | undefined}
+                inputTokens={(msg.usage as { input_tokens?: number } | undefined)?.input_tokens}
+                outputTokens={(msg.usage as { output_tokens?: number } | undefined)?.output_tokens}
+                errorMessage={msg.error as string | undefined}
+              />
+            </motion.div>
           )
         }
 
         if (msg.type === 'error') {
           return (
-            <ResultMessage
+            <motion.div
               key={idx}
-              isError={true}
-              errorMessage={msg.error as string | undefined}
-            />
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+            >
+              <ResultMessage
+                isError={true}
+                errorMessage={msg.error as string | undefined}
+              />
+            </motion.div>
           )
         }
 
         return null
       })}
 
-      {isProcessing && <ThinkingIndicator />}
-
       {streaming && (
-        <div className="px-6 py-2">
+        <motion.div
+          key="streaming"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.15 }}
+          className="px-6 py-2"
+        >
           <TextBlock text={streaming} />
           <span className="inline-block h-4 w-0.5 animate-pulse bg-stone-400 align-text-bottom" />
-        </div>
+        </motion.div>
       )}
 
       {sessionPermissions.map((perm) => (
-        <PermissionPrompt
+        <motion.div
           key={perm.requestId}
-          permission={perm}
-          onRespond={handlePermissionRespond}
-        />
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.25, ease: [0.34, 1.56, 0.64, 1] }}
+        >
+          <PermissionPrompt
+            permission={perm}
+            onRespond={handlePermissionRespond}
+          />
+        </motion.div>
+      ))}
+
+      {sessionQuestions.map((q) => (
+        <motion.div
+          key={q.requestId}
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.25, ease: [0.34, 1.56, 0.64, 1] }}
+        >
+          <QuestionPrompt
+            question={q}
+            onRespond={handleQuestionRespond}
+          />
+        </motion.div>
       ))}
 
       <div ref={bottomRef} />
       </div>
     </div>
   )
+})
+
+/** Detect if a user message is a tool_result (SDK internal, not user-typed) */
+function isToolResultMessage(msg: SdkMessage): boolean {
+  const rawContent = msg.content ?? (msg.message as Record<string, unknown> | undefined)?.content
+  if (!Array.isArray(rawContent)) return false
+  const blocks = rawContent as Array<{ type: string }>
+  return blocks.length > 0 && blocks.every((b) => b.type === 'tool_result')
 }
 
 /** Detect if a user message is synthetic skill content injected by the SDK */

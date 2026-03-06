@@ -1,15 +1,18 @@
 import { useState } from 'react'
-import { ChevronDown, ChevronRight, Terminal, FileText, Search, Pencil, Wrench } from 'lucide-react'
+import { motion, AnimatePresence } from 'motion/react'
+import { ChevronRight, Terminal, FileText, Search, Pencil, Wrench, MessageCircleQuestion } from 'lucide-react'
 import { BashTool } from './BashTool'
 import { ReadTool } from './ReadTool'
 import { EditTool } from './EditTool'
 import { GlobGrepTool } from './GlobGrepTool'
 import { GenericTool } from './GenericTool'
+import { AskUserQuestionTool, getAskUserQuestionSummary } from './AskUserQuestionTool'
 
 type ToolUseBlockProps = {
   toolName: string
   input: Record<string, unknown>
   toolUseId?: string
+  result?: string
 }
 
 type ToolInfo = {
@@ -75,6 +78,15 @@ function getToolInfo(toolName: string, input: Record<string, unknown>): ToolInfo
     }
   }
 
+  if (name === 'askuserquestion') {
+    return {
+      icon: MessageCircleQuestion,
+      label: 'Question',
+      summary: getAskUserQuestionSummary(input),
+      iconColor: 'text-blue-400',
+    }
+  }
+
   // Generic fallback
   const keys = Object.keys(input)
   const firstVal = keys.length > 0 ? String(input[keys[0]]).slice(0, 60) : ''
@@ -100,6 +112,9 @@ function ToolRenderer({ toolName, input }: { toolName: string; input: Record<str
   if (name.includes('glob') || name.includes('grep') || name.includes('search')) {
     return <GlobGrepTool input={input} toolName={toolName} />
   }
+  if (name === 'askuserquestion') {
+    return <AskUserQuestionTool input={input} />
+  }
   return <GenericTool input={input} />
 }
 
@@ -114,22 +129,34 @@ export function ToolUseBlock({ toolName, input }: ToolUseBlockProps) {
         onClick={() => setExpanded((v) => !v)}
         className="group flex w-full items-center gap-2 py-0.5 text-left"
       >
-        {expanded ? (
-          <ChevronDown size={14} className="flex-shrink-0 text-stone-600" />
-        ) : (
-          <ChevronRight size={14} className="flex-shrink-0 text-stone-600" />
-        )}
+        <motion.span
+          animate={{ rotate: expanded ? 90 : 0 }}
+          transition={{ duration: 0.15 }}
+          className="flex-shrink-0 text-stone-600"
+        >
+          <ChevronRight size={14} />
+        </motion.span>
         <Icon size={14} className={`flex-shrink-0 ${info.iconColor}`} />
         <span className="text-sm font-medium text-stone-300">{info.label}</span>
         {info.summary && !expanded && (
           <span className="min-w-0 flex-1 truncate text-sm text-stone-500">{info.summary}</span>
         )}
       </button>
-      {expanded && (
-        <div className="ml-8 mt-1 rounded border border-stone-800 bg-stone-900/50 px-3 py-2">
-          <ToolRenderer toolName={toolName} input={input} />
-        </div>
-      )}
+      <AnimatePresence>
+        {expanded && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+            className="overflow-hidden"
+          >
+            <div className="ml-8 mt-1 rounded border border-stone-800 bg-stone-900/50 px-3 py-2">
+              <ToolRenderer toolName={toolName} input={input} />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

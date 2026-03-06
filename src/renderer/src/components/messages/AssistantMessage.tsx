@@ -14,9 +14,10 @@ type ContentBlock = {
 type AssistantMessageProps = {
   content: ContentBlock[]
   sessionId?: string
+  toolResultMap?: Map<string, string>
 }
 
-export function AssistantMessage({ content }: AssistantMessageProps) {
+export function AssistantMessage({ content, toolResultMap }: AssistantMessageProps) {
   return (
     <div className="space-y-1 px-6 py-2">
       {content.map((block, i) => {
@@ -33,6 +34,7 @@ export function AssistantMessage({ content }: AssistantMessageProps) {
               toolName={block.name ?? 'unknown'}
               input={block.input ?? {}}
               toolUseId={block.id}
+              result={toolResultMap?.get(block.id ?? '')}
             />
           )
         }
