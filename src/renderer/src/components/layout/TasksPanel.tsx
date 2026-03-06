@@ -25,15 +25,13 @@ export function TasksPanel({ sessionId }: TasksPanelProps) {
     <motion.div
       initial={{ opacity: 0, height: 0 }}
       animate={{ opacity: 1, height: 'auto' }}
-      className="border-t border-stone-800 px-2 py-2"
+      className="flex flex-col items-center gap-1 border-t border-stone-800 py-2"
     >
-      <div className="mb-1.5 flex items-center justify-between px-1">
-        <span className="text-[11px] font-medium text-stone-400">
-          Tasks {completed}/{total}
-        </span>
-      </div>
+      <span className="text-[10px] font-medium text-stone-500">
+        {completed}/{total}
+      </span>
 
-      <div className="mb-2 h-0.5 overflow-hidden rounded-full bg-stone-800 mx-1">
+      <div className="h-1 w-6 overflow-hidden rounded-full bg-stone-800">
         <motion.div
           className="h-full rounded-full bg-amber-500"
           initial={{ width: 0 }}
@@ -46,27 +44,13 @@ export function TasksPanel({ sessionId }: TasksPanelProps) {
         {tasks.map((task) => (
           <motion.div
             key={task.id}
-            initial={{ opacity: 0, x: -8 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -8 }}
+            initial={{ opacity: 0, scale: 0.5 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.5 }}
             transition={{ duration: 0.15 }}
-            className="flex items-center gap-1.5 rounded px-1 py-0.5"
-            title={task.subject}
+            title={task.status === 'in_progress' && task.activeForm ? task.activeForm : task.subject}
           >
             <TaskIcon status={task.status} />
-            <span
-              className={`min-w-0 flex-1 truncate text-[11px] ${
-                task.status === 'completed'
-                  ? 'text-stone-600 line-through'
-                  : task.status === 'in_progress'
-                    ? 'text-amber-300'
-                    : 'text-stone-400'
-              }`}
-            >
-              {task.status === 'in_progress' && task.activeForm
-                ? task.activeForm
-                : task.subject}
-            </span>
           </motion.div>
         ))}
       </AnimatePresence>

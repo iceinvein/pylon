@@ -12,7 +12,7 @@ type ParsedLink = {
   domain: string
 }
 
-const URL_REGEX = /https?:\/\/[^\s)<>]+/g
+const URL_REGEX = /https?:\/\/[^\s)<>.,;:!'"]+/g
 
 function parseLinks(text: string): ParsedLink[] {
   const links: ParsedLink[] = []

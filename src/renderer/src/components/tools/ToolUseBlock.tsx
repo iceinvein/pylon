@@ -48,6 +48,16 @@ function getToolInfo(toolName: string, input: Record<string, unknown>): ToolInfo
     }
   }
 
+  if (name.startsWith('task')) {
+    const subject = String(input.subject ?? input.taskId ?? '')
+    return {
+      icon: Wrench,
+      label: toolName.replace(/^Task/, ''),
+      summary: subject,
+      iconColor: 'text-stone-500',
+    }
+  }
+
   if (name.includes('edit')) {
     const path = String(input.file_path ?? input.path ?? '')
     const shortPath = path.split('/').slice(-2).join('/')
@@ -115,6 +125,9 @@ function ToolRenderer({ toolName, input, result }: { toolName: string; input: Re
   }
   if (name.includes('read') || name.includes('view')) {
     return <ReadTool input={input} />
+  }
+  if (name.startsWith('task')) {
+    return <GenericTool input={input} result={result} />
   }
   if (name.includes('edit') || name.includes('write') || name.includes('create')) {
     return <EditTool input={input} />
