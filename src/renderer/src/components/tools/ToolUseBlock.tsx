@@ -7,6 +7,7 @@ import { EditTool } from './EditTool'
 import { GlobGrepTool } from './GlobGrepTool'
 import { GenericTool } from './GenericTool'
 import { AskUserQuestionTool, getAskUserQuestionSummary } from './AskUserQuestionTool'
+import { WebSearchTool } from './WebSearchTool'
 
 type ToolUseBlockProps = {
   toolName: string
@@ -69,6 +70,15 @@ function getToolInfo(toolName: string, input: Record<string, unknown>): ToolInfo
     }
   }
 
+  if (name.includes('websearch') || name.includes('web_search')) {
+    return {
+      icon: Search,
+      label: 'Search',
+      summary: String(input.query ?? input.search ?? input.q ?? ''),
+      iconColor: 'text-blue-400',
+    }
+  }
+
   if (name.includes('glob') || name.includes('grep') || name.includes('search')) {
     return {
       icon: Search,
@@ -108,6 +118,9 @@ function ToolRenderer({ toolName, input, result }: { toolName: string; input: Re
   }
   if (name.includes('edit') || name.includes('write') || name.includes('create')) {
     return <EditTool input={input} />
+  }
+  if (name.includes('websearch') || name.includes('web_search')) {
+    return <WebSearchTool input={input} result={result} />
   }
   if (name.includes('glob') || name.includes('grep') || name.includes('search')) {
     return <GlobGrepTool input={input} toolName={toolName} result={result} />
