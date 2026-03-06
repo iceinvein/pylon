@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { SessionStatus, PermissionRequest } from '../../../shared/types'
+import type { SessionStatus, PermissionRequest, QuestionRequest } from '../../../shared/types'
 
 type SessionState = {
   id: string
@@ -16,11 +16,24 @@ type SessionState = {
   updatedAt: number
 }
 
+type TaskItem = {
+  id: string
+  subject: string
+  status: 'pending' | 'in_progress' | 'completed'
+  activeForm?: string
+}
+
 type SessionStore = {
   sessions: Map<string, SessionState>
   messages: Map<string, unknown[]>
   pendingPermissions: PermissionRequest[]
+  pendingQuestions: QuestionRequest[]
   streamingText: Map<string, string>
+  /** Accumulated streaming text per subagent, keyed by parent_tool_use_id */
+  subagentStreaming: Map<string, string>
+  /** Complete subagent messages, keyed by parent_tool_use_id */
+  subagentMessages: Map<string, unknown[]>
+  tasks: Map<string, TaskItem[]>
 
   setSession: (session: SessionState) => void
   updateSession: (sessionId: string, updates: Partial<SessionState>) => void
@@ -28,15 +41,26 @@ type SessionStore = {
   setMessages: (sessionId: string, messages: unknown[]) => void
   addPermission: (permission: PermissionRequest) => void
   removePermission: (requestId: string) => void
+  addQuestion: (question: QuestionRequest) => void
+  removeQuestion: (requestId: string) => void
   updateStreamingText: (sessionId: string, text: string) => void
   clearStreamingText: (sessionId: string) => void
+  appendSubagentStreamText: (agentToolUseId: string, text: string) => void
+  clearSubagentStream: (agentToolUseId: string) => void
+  appendSubagentMessage: (agentToolUseId: string, message: unknown) => void
+  upsertTask: (sessionId: string, task: TaskItem) => void
+  clearTasks: (sessionId: string) => void
 }
 
 export const useSessionStore = create<SessionStore>((set) => ({
   sessions: new Map(),
   messages: new Map(),
   pendingPermissions: [],
+  pendingQuestions: [],
   streamingText: new Map(),
+  subagentStreaming: new Map(),
+  subagentMessages: new Map(),
+  tasks: new Map(),
 
   setSession: (session) =>
     set((state) => {
@@ -80,6 +104,16 @@ export const useSessionStore = create<SessionStore>((set) => ({
       pendingPermissions: state.pendingPermissions.filter((p) => p.requestId !== requestId),
     })),
 
+  addQuestion: (question) =>
+    set((state) => ({
+      pendingQuestions: [...state.pendingQuestions, question],
+    })),
+
+  removeQuestion: (requestId) =>
+    set((state) => ({
+      pendingQuestions: state.pendingQuestions.filter((q) => q.requestId !== requestId),
+    })),
+
   updateStreamingText: (sessionId, text) =>
     set((state) => {
       const next = new Map(state.streamingText)
@@ -93,6 +127,51 @@ export const useSessionStore = create<SessionStore>((set) => ({
       next.delete(sessionId)
       return { streamingText: next }
     }),
+
+  appendSubagentStreamText: (agentToolUseId, text) =>
+    set((state) => {
+      const next = new Map(state.subagentStreaming)
+      const current = next.get(agentToolUseId) ?? ''
+      next.set(agentToolUseId, current + text)
+      return { subagentStreaming: next }
+    }),
+
+  clearSubagentStream: (agentToolUseId) =>
+    set((state) => {
+      const next = new Map(state.subagentStreaming)
+      next.delete(agentToolUseId)
+      return { subagentStreaming: next }
+    }),
+
+  appendSubagentMessage: (agentToolUseId, message) =>
+    set((state) => {
+      const next = new Map(state.subagentMessages)
+      const existing = next.get(agentToolUseId) ?? []
+      next.set(agentToolUseId, [...existing, message])
+      return { subagentMessages: next }
+    }),
+
+  upsertTask: (sessionId, task) =>
+    set((state) => {
+      const next = new Map(state.tasks)
+      const existing = next.get(sessionId) ?? []
+      const idx = existing.findIndex((t) => t.id === task.id)
+      if (idx >= 0) {
+        const updated = [...existing]
+        updated[idx] = { ...existing[idx], ...task }
+        next.set(sessionId, updated)
+      } else {
+        next.set(sessionId, [...existing, task])
+      }
+      return { tasks: next }
+    }),
+
+  clearTasks: (sessionId) =>
+    set((state) => {
+      const next = new Map(state.tasks)
+      next.delete(sessionId)
+      return { tasks: next }
+    }),
 }))
 
-export type { SessionState }
+export type { SessionState, TaskItem }
