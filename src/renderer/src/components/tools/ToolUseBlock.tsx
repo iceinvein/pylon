@@ -98,10 +98,10 @@ function getToolInfo(toolName: string, input: Record<string, unknown>): ToolInfo
   }
 }
 
-function ToolRenderer({ toolName, input }: { toolName: string; input: Record<string, unknown> }) {
+function ToolRenderer({ toolName, input, result }: { toolName: string; input: Record<string, unknown>; result?: string }) {
   const name = toolName.toLowerCase()
   if (name.includes('bash') || name.includes('shell')) {
-    return <BashTool input={input} />
+    return <BashTool input={input} result={result} />
   }
   if (name.includes('read') || name.includes('view')) {
     return <ReadTool input={input} />
@@ -110,15 +110,15 @@ function ToolRenderer({ toolName, input }: { toolName: string; input: Record<str
     return <EditTool input={input} />
   }
   if (name.includes('glob') || name.includes('grep') || name.includes('search')) {
-    return <GlobGrepTool input={input} toolName={toolName} />
+    return <GlobGrepTool input={input} toolName={toolName} result={result} />
   }
   if (name === 'askuserquestion') {
     return <AskUserQuestionTool input={input} />
   }
-  return <GenericTool input={input} />
+  return <GenericTool input={input} result={result} />
 }
 
-export function ToolUseBlock({ toolName, input }: ToolUseBlockProps) {
+export function ToolUseBlock({ toolName, input, result }: ToolUseBlockProps) {
   const [expanded, setExpanded] = useState(false)
   const info = getToolInfo(toolName, input)
   const Icon = info.icon
@@ -152,7 +152,7 @@ export function ToolUseBlock({ toolName, input }: ToolUseBlockProps) {
             className="overflow-hidden"
           >
             <div className="ml-8 mt-1 rounded border border-stone-800 bg-stone-900/50 px-3 py-2">
-              <ToolRenderer toolName={toolName} input={input} />
+              <ToolRenderer toolName={toolName} input={input} result={result} />
             </div>
           </motion.div>
         )}
