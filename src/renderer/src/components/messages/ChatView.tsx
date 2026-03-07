@@ -392,7 +392,6 @@ export const ChatView = memo(function ChatView({ sessionId }: ChatViewProps) {
           // Render commit turns as a single CommitCard instead of individual tool blocks.
           // Collect all tool blocks from every assistant message in the turn.
           const allToolBlocks: Array<{ name: string; input: Record<string, unknown>; id?: string }> = []
-          const finalTextBlocks: Array<{ text: string }> = []
 
           for (const { msg } of turn.messages) {
             if (msg.type !== 'assistant') continue
@@ -403,37 +402,49 @@ export const ChatView = memo(function ChatView({ sessionId }: ChatViewProps) {
                 allToolBlocks.push({ name: b.name, input: b.input ?? {}, id: b.id })
               }
             }
-            // Collect text blocks from the last assistant message (the commit summary)
-            const texts = blocks.filter((b) => b.type === 'text' && b.text)
-            if (texts.length > 0) {
-              finalTextBlocks.length = 0 // reset — only keep text from the latest message
-              for (const t of texts) finalTextBlocks.push({ text: t.text! })
-            }
           }
 
-          // Render: user message → CommitCard → final text → result
+          // Render: user message → CommitCard → result (skip assistant messages and their text)
           return (
             <div key={turn.userIdx ?? `pre-${turnIdx}`}>
               {turn.messages.map(({ msg, idx }) => {
-                if (msg.type === 'assistant') return null // handled by CommitCard below
+                // Skip assistant messages — handled by CommitCard
+                if (msg.type === 'assistant') return null
+                // Render user message first, then CommitCard, then result
+                if (msg.type === 'result' || msg.type === 'error') {
+                  return (
+                    <div key={idx}>
+                      <motion.div
+                        initial={{ opacity: 0, y: 12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.2, ease: 'easeOut' }}
+                      >
+                        <CommitCard
+                          toolBlocks={allToolBlocks}
+                          toolResultMap={toolResultMap}
+                          isStreaming={!!streaming}
+                        />
+                      </motion.div>
+                      {renderMessage(msg, idx)}
+                    </div>
+                  )
+                }
                 return renderMessage(msg, idx)
               })}
-              <motion.div
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.2, ease: 'easeOut' }}
-              >
-                <CommitCard
-                  toolBlocks={allToolBlocks}
-                  toolResultMap={toolResultMap}
-                  isStreaming={!!streaming}
-                />
-                {finalTextBlocks.map((block, i) => (
-                  <div key={`commit-text-${i}`} className="px-6 py-1">
-                    <TextBlock text={block.text} />
-                  </div>
-                ))}
-              </motion.div>
+              {/* If no result yet (still streaming), show CommitCard at the end */}
+              {!turn.messages.some(({ msg }) => msg.type === 'result' || msg.type === 'error') && (
+                <motion.div
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.2, ease: 'easeOut' }}
+                >
+                  <CommitCard
+                    toolBlocks={allToolBlocks}
+                    toolResultMap={toolResultMap}
+                    isStreaming={!!streaming}
+                  />
+                </motion.div>
+              )}
             </div>
           )
         }

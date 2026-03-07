@@ -1,6 +1,6 @@
-import { useState, useMemo } from 'react'
+import { useMemo } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
-import { GitCommit, ChevronRight, Check, Loader2, XCircle, FileText } from 'lucide-react'
+import { GitCommit, Check, Loader2, FileText } from 'lucide-react'
 
 type CommitCardProps = {
   toolBlocks: Array<{
@@ -12,15 +12,30 @@ type CommitCardProps = {
   isStreaming: boolean
 }
 
-/** Match a bash tool block to a commit workflow phase */
+/** Match a bash tool block to commit workflow phase(s).
+ *  Returns the highest-priority phase found (commit > stage > review > analyze).
+ *  This handles combined commands like `git add X && git commit ...`. */
 function classifyTool(name: string, input: Record<string, unknown>): string | null {
   if (!name.toLowerCase().includes('bash') && !name.toLowerCase().includes('shell')) return null
   const cmd = String(input.command ?? input.cmd ?? '')
-  if (cmd.includes('git status') || cmd.includes('git diff')) return 'analyze'
-  if (cmd.includes('git log')) return 'review'
-  if (cmd.includes('git add')) return 'stage'
+  // Check most specific/latest phase first — commit trumps stage in combined commands
   if (cmd.includes('git commit')) return 'commit'
+  if (cmd.includes('git add')) return 'stage'
+  if (cmd.includes('git log')) return 'review'
+  if (cmd.includes('git status') || cmd.includes('git diff')) return 'analyze'
   return null
+}
+
+/** Return ALL phases present in a combined command (for phase tracking) */
+function classifyToolPhases(name: string, input: Record<string, unknown>): string[] {
+  if (!name.toLowerCase().includes('bash') && !name.toLowerCase().includes('shell')) return []
+  const cmd = String(input.command ?? input.cmd ?? '')
+  const phases: string[] = []
+  if (cmd.includes('git status') || cmd.includes('git diff')) phases.push('analyze')
+  if (cmd.includes('git log')) phases.push('review')
+  if (cmd.includes('git add')) phases.push('stage')
+  if (cmd.includes('git commit')) phases.push('commit')
+  return phases
 }
 
 function parseCommitHash(output: string): string | null {
@@ -66,8 +81,6 @@ type PhaseInfo = {
 }
 
 export function CommitCard({ toolBlocks, toolResultMap, isStreaming }: CommitCardProps) {
-  const [expanded, setExpanded] = useState(false)
-
   const { phases, commitHash, commitMessage, fileStats } = useMemo(() => {
     const phaseResults = new Map<string, { done: boolean; result: string }>()
     let hash: string | null = null
@@ -75,27 +88,30 @@ export function CommitCard({ toolBlocks, toolResultMap, isStreaming }: CommitCar
     let stats: { files: string[]; insertions: number; deletions: number } = { files: [], insertions: 0, deletions: 0 }
 
     for (const block of toolBlocks) {
-      const phase = classifyTool(block.name, block.input)
-      if (!phase) continue
+      // Use classifyToolPhases to track ALL phases in combined commands
+      const blockPhases = classifyToolPhases(block.name, block.input)
+      if (blockPhases.length === 0) continue
       const result = block.id ? toolResultMap.get(block.id) ?? '' : ''
       const done = result.length > 0
 
-      // Extract data from completed phases
-      if (phase === 'commit' && done) {
-        hash = parseCommitHash(result)
-        message = parseCommitMessage(result)
-        const parsed = parseFileStats(result)
-        if (parsed.files.length > 0) stats = parsed
-      }
-      if (phase === 'analyze' && done && stats.files.length === 0) {
-        const parsed = parseFileStats(result)
-        if (parsed.files.length > 0) stats = parsed
-      }
+      for (const phase of blockPhases) {
+        // Extract data from completed phases
+        if (phase === 'commit' && done) {
+          hash = parseCommitHash(result)
+          message = parseCommitMessage(result)
+          const parsed = parseFileStats(result)
+          if (parsed.files.length > 0) stats = parsed
+        }
+        if (phase === 'analyze' && done && stats.files.length === 0) {
+          const parsed = parseFileStats(result)
+          if (parsed.files.length > 0) stats = parsed
+        }
 
-      // Track latest status per phase (some phases have multiple tool calls)
-      const existing = phaseResults.get(phase)
-      if (!existing || done) {
-        phaseResults.set(phase, { done, result })
+        // Track latest status per phase (some phases have multiple tool calls)
+        const existing = phaseResults.get(phase)
+        if (!existing || done) {
+          phaseResults.set(phase, { done, result })
+        }
       }
     }
 
@@ -126,28 +142,25 @@ export function CommitCard({ toolBlocks, toolResultMap, isStreaming }: CommitCar
   }, [toolBlocks, toolResultMap])
 
   const isDone = commitHash !== null
-  const allDone = phases.length > 0 && phases.every((p) => p.status === 'done')
+  const inProgress = !isDone && (isStreaming || phases.some((p) => p.status === 'running'))
+  // Auto-expand while in progress, auto-collapse when done
+  const showDetails = inProgress || (!isDone && phases.length > 0)
 
   return (
     <div className="my-1 px-6 py-2">
       <div className="overflow-hidden rounded-lg border border-stone-800 bg-stone-900/60">
         {/* Header */}
-        <button
-          onClick={() => setExpanded((v) => !v)}
-          className="flex w-full items-center gap-3 px-4 py-3 text-left"
-        >
+        <div className="flex items-center gap-3 px-4 py-3">
           <div
             className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg ${
               isDone
                 ? 'bg-green-900/30 text-green-400'
-                : allDone
-                  ? 'bg-stone-800 text-stone-400'
-                  : 'bg-stone-800 text-stone-400'
+                : 'bg-stone-800 text-stone-400'
             }`}
           >
             {isDone ? (
               <Check size={16} />
-            ) : isStreaming || phases.some((p) => p.status === 'running') ? (
+            ) : inProgress ? (
               <Loader2 size={16} className="animate-spin" />
             ) : (
               <GitCommit size={16} />
@@ -169,7 +182,7 @@ export function CommitCard({ toolBlocks, toolResultMap, isStreaming }: CommitCar
               </>
             ) : (
               <span className="text-sm font-medium text-stone-300">
-                {isStreaming || phases.some((p) => p.status === 'running') ? 'Committing...' : 'Commit'}
+                {inProgress ? 'Committing...' : 'Commit'}
               </span>
             )}
           </div>
@@ -185,19 +198,11 @@ export function CommitCard({ toolBlocks, toolResultMap, isStreaming }: CommitCar
               {fileStats.deletions > 0 && <span className="text-red-400">&minus;{fileStats.deletions}</span>}
             </div>
           )}
+        </div>
 
-          <motion.span
-            animate={{ rotate: expanded ? 90 : 0 }}
-            transition={{ duration: 0.15 }}
-            className="flex-shrink-0 text-stone-600"
-          >
-            <ChevronRight size={14} />
-          </motion.span>
-        </button>
-
-        {/* Expanded detail */}
+        {/* Details — auto-shown during progress, hidden when done */}
         <AnimatePresence>
-          {expanded && (
+          {showDetails && phases.length > 0 && (
             <motion.div
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
