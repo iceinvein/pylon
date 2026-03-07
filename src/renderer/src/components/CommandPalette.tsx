@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
-import { Search, FolderOpen, Eraser, Archive, DollarSign, RotateCcw } from 'lucide-react'
+import { Search, FolderOpen, Plus, Archive, DollarSign, RotateCcw } from 'lucide-react'
 import { useUiStore } from '../store/ui-store'
 import { useTabStore } from '../store/tab-store'
 import { useSessionStore } from '../store/session-store'
@@ -31,7 +31,7 @@ type Command = {
 
 export function CommandPalette() {
   const { commandPaletteOpen, toggleCommandPalette } = useUiStore()
-  const { tabs, activeTabId, addTab } = useTabStore()
+  const { tabs, activeTabId, addTab, updateTab } = useTabStore()
   const { setSession, setMessages } = useSessionStore()
   const [query, setQuery] = useState('')
   const [selectedIdx, setSelectedIdx] = useState(0)
@@ -86,17 +86,20 @@ export function CommandPalette() {
     const cmds: Command[] = []
 
     // Session-specific commands — only show when a session is active
-    if (sessionId) {
+    if (sessionId && activeTabId) {
       cmds.push(
         {
-          id: 'clear',
-          label: 'Clear conversation',
-          description: 'Reset the conversation history',
-          icon: Eraser,
+          id: 'new-session',
+          label: 'New session',
+          description: 'Start a fresh conversation in this folder',
+          icon: Plus,
           section: 'session',
           action: async () => {
             toggleCommandPalette()
-            await window.api.sendMessage(sessionId, '/clear', [])
+            // Stop current session if running
+            try { await window.api.stopSession(sessionId) } catch {}
+            // Clear tab's session — next message triggers ensureSession() for a fresh one
+            updateTab(activeTabId, { sessionId: null })
           },
         },
         {
@@ -152,7 +155,7 @@ export function CommandPalette() {
     }
 
     return cmds
-  }, [sessionId, toggleCommandPalette, addTab, recentSessions])
+  }, [sessionId, activeTabId, toggleCommandPalette, addTab, updateTab, recentSessions])
 
   const filtered = commands.filter(
     (cmd) =>
