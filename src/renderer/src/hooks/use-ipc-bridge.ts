@@ -121,39 +121,37 @@ export function useIpcBridge(): void {
         store().updateSession(sessionId, updates)
       }
 
+      // Track SDK status (e.g. 'compacting')
+      if (msg.type === 'system' && msg.subtype === 'status') {
+        store().setSdkStatus(sessionId, (msg as { status?: string | null }).status ?? null)
+      }
+
       store().appendMessage(sessionId, message)
 
-      // Extract task state from assistant messages containing TaskCreate/TaskUpdate tool calls
+      // Extract task state from assistant messages containing TodoWrite tool calls
       if (msg.type === 'assistant') {
         const messageObj = msg.message as { content?: Array<{ type: string; name?: string; input?: Record<string, unknown> }> } | undefined
         const content = messageObj?.content ?? (msg.content as Array<{ type: string; name?: string; input?: Record<string, unknown> }> | undefined)
         if (Array.isArray(content)) {
           for (const block of content) {
             if (block.type !== 'tool_use' || !block.input) continue
-            if (block.name === 'TaskCreate') {
-              const subject = String(block.input.subject ?? '')
-              if (subject) {
-                const currentTasks = store().tasks.get(sessionId) ?? []
-                const id = String(currentTasks.length + 1)
-                store().upsertTask(sessionId, {
-                  id,
-                  subject,
-                  status: 'pending',
-                  activeForm: block.input.activeForm as string | undefined,
-                })
-              }
-            } else if (block.name === 'TaskUpdate') {
-              const taskId = String(block.input.taskId ?? '')
-              const status = block.input.status as string | undefined
-              if (taskId && (status === 'pending' || status === 'in_progress' || status === 'completed')) {
-                const currentTasks = store().tasks.get(sessionId) ?? []
-                const existing = currentTasks.find((t) => t.id === taskId)
-                store().upsertTask(sessionId, {
-                  id: taskId,
-                  subject: (block.input.subject as string) ?? existing?.subject ?? '',
-                  status,
-                  activeForm: (block.input.activeForm as string) ?? existing?.activeForm,
-                })
+
+            // TodoWrite sends the full todo list as input.todos
+            if (block.name === 'TodoWrite') {
+              const todos = block.input.todos as Array<{ content: string; status: string; activeForm?: string }> | undefined
+              if (Array.isArray(todos)) {
+                for (let i = 0; i < todos.length; i++) {
+                  const todo = todos[i]
+                  const status = todo.status as 'pending' | 'in_progress' | 'completed'
+                  if (['pending', 'in_progress', 'completed'].includes(status)) {
+                    store().upsertTask(sessionId, {
+                      id: String(i + 1),
+                      subject: todo.content,
+                      status,
+                      activeForm: todo.activeForm,
+                    })
+                  }
+                }
               }
             }
           }

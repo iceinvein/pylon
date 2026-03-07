@@ -70,7 +70,7 @@ export function ResultMessage({
           )}
         </div>
       </div>
-      <div className="mx-5 border-b border-stone-800/60 pb-6" />
+      <div className="mx-auto mt-4 mb-2 h-px w-2/3 bg-gradient-to-r from-transparent via-stone-700/40 to-transparent" />
     </div>
   )
 }

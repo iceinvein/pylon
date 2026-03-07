@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
-import { ChevronRight, Terminal, FileText, Search, Pencil, Wrench, MessageCircleQuestion } from 'lucide-react'
+import { ChevronRight, Terminal, FileText, Search, Pencil, FilePlus, ListChecks, Wrench, MessageCircleQuestion } from 'lucide-react'
 import { BashTool } from './BashTool'
 import { ReadTool } from './ReadTool'
 import { EditTool } from './EditTool'
 import { GlobGrepTool } from './GlobGrepTool'
+import { WriteTool } from './WriteTool'
+import { TodoWriteTool } from './TodoWriteTool'
 import { GenericTool } from './GenericTool'
 import { AskUserQuestionTool, getAskUserQuestionSummary } from './AskUserQuestionTool'
 import { WebSearchTool } from './WebSearchTool'
@@ -69,14 +71,28 @@ function getToolInfo(toolName: string, input: Record<string, unknown>): ToolInfo
     }
   }
 
+  if (name === 'todowrite') {
+    const todos = input.todos as Array<{ content: string; status: string }> | undefined
+    if (Array.isArray(todos)) {
+      const done = todos.filter((t) => t.status === 'completed').length
+      return {
+        icon: ListChecks,
+        label: 'Tasks',
+        summary: `${done}/${todos.length} completed`,
+        iconColor: 'text-amber-400',
+      }
+    }
+    return { icon: ListChecks, label: 'Tasks', summary: '', iconColor: 'text-amber-400' }
+  }
+
   if (name.includes('write') || name.includes('create')) {
     const path = String(input.file_path ?? input.path ?? '')
     const shortPath = path.split('/').slice(-2).join('/')
     return {
-      icon: Pencil,
+      icon: FilePlus,
       label: 'Write',
       summary: shortPath || path,
-      iconColor: 'text-stone-500',
+      iconColor: 'text-emerald-400',
     }
   }
 
@@ -129,8 +145,14 @@ function ToolRenderer({ toolName, input, result }: { toolName: string; input: Re
   if (name.startsWith('task')) {
     return <GenericTool input={input} result={result} />
   }
-  if (name.includes('edit') || name.includes('write') || name.includes('create')) {
+  if (name.includes('edit')) {
     return <EditTool input={input} />
+  }
+  if (name === 'todowrite') {
+    return <TodoWriteTool input={input} />
+  }
+  if (name.includes('write') || name.includes('create')) {
+    return <WriteTool input={input} result={result} />
   }
   if (name.includes('websearch') || name.includes('web_search')) {
     return <WebSearchTool input={input} result={result} />
