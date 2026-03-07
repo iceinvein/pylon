@@ -2,6 +2,8 @@ import { useState, useCallback } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { Lightbulb, Copy, Check } from 'lucide-react'
+import { useShiki } from '../../hooks/use-shiki'
+import { hasAnsiCodes, ansiToHtml } from '../../lib/ansi'
 
 type TextBlockProps = {
   text: string
@@ -70,18 +72,24 @@ function CodeBlock({ className, children }: { className?: string; children?: Rea
   const [copied, setCopied] = useState(false)
   const language = className?.replace('language-', '') ?? ''
   const code = String(children).replace(/\n$/, '')
+  const isAnsi = hasAnsiCodes(code)
+  const highlightedHtml = useShiki(isAnsi ? '' : code, isAnsi ? '' : language)
 
   const handleCopy = useCallback(() => {
-    navigator.clipboard.writeText(code)
+    // Strip ANSI codes for clean clipboard text
+    // eslint-disable-next-line no-control-regex
+    navigator.clipboard.writeText(code.replace(/\x1b\[[0-9;]*m/g, ''))
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }, [code])
+
+  const label = isAnsi ? 'output' : language || 'code'
 
   return (
     <div className="group relative my-3 overflow-hidden rounded-lg border border-stone-800 bg-stone-900">
       <div className="flex items-center justify-between border-b border-stone-800/60 bg-stone-900/80 px-3 py-1.5">
         <span className="font-[family-name:var(--font-mono)] text-[11px] text-stone-500">
-          {language || 'code'}
+          {label}
         </span>
         <button
           onClick={handleCopy}
@@ -91,12 +99,41 @@ function CodeBlock({ className, children }: { className?: string; children?: Rea
           {copied ? 'Copied' : 'Copy'}
         </button>
       </div>
-      <pre className="overflow-x-auto p-3">
-        <code className="font-[family-name:var(--font-mono)] text-xs leading-relaxed text-stone-200">
-          {code}
-        </code>
-      </pre>
+      {isAnsi ? (
+        <AnsiOutput code={code} />
+      ) : highlightedHtml ? (
+        <SyntaxOutput html={highlightedHtml} />
+      ) : (
+        <pre className="overflow-x-auto p-3">
+          <code className="font-[family-name:var(--font-mono)] text-xs leading-relaxed text-stone-200">
+            {code}
+          </code>
+        </pre>
+      )}
     </div>
+  )
+}
+
+/** Renders ANSI escape codes as colored HTML. Safe: ansi-to-html is initialized with escapeXML: true. */
+function AnsiOutput({ code }: { code: string }) {
+  const html = ansiToHtml(code)
+  return (
+    <pre
+      className="overflow-x-auto p-3 font-[family-name:var(--font-mono)] text-xs leading-relaxed text-stone-300"
+      // Safe: ansi-to-html escapes XML entities before wrapping in <span> color tags
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  )
+}
+
+/** Renders Shiki's pre-escaped HTML output. Safe: Shiki HTML-escapes all code tokens internally. */
+function SyntaxOutput({ html }: { html: string }) {
+  return (
+    <div
+      className="shiki-wrapper overflow-x-auto p-3 font-[family-name:var(--font-mono)] text-xs leading-relaxed [&_pre]:!bg-transparent [&_code]:!bg-transparent"
+      // Safe: html is produced by Shiki's tokenizer which HTML-escapes all code content
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
   )
 }
 
