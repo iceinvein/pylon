@@ -4,6 +4,7 @@ import { useSessionStore } from '../store/session-store'
 import { ChatView } from '../components/messages/ChatView'
 import { InputBar } from '../components/InputBar'
 import { ThinkingIndicator } from '../components/ThinkingIndicator'
+import { TasksPanel } from '../components/layout/TasksPanel'
 import type { AppSettings, Tab, Attachment, ImageAttachment, PermissionMode } from '../../../shared/types'
 
 type SessionViewProps = {
@@ -28,11 +29,13 @@ export function SessionView({ tab }: SessionViewProps) {
   const session = sessionId ? sessions.get(sessionId) : undefined
   const currentModel = session?.model || pendingModel
   const streaming = useSessionStore((s) => sessionId ? s.streamingText.get(sessionId) : undefined)
+  const sdkStatus = useSessionStore((s) => sessionId ? s.sdkStatus.get(sessionId) : null)
   const isRunning =
     session?.status === 'running' ||
     session?.status === 'starting' ||
     session?.status === 'waiting'
-  const isProcessing = isRunning && !streaming
+  const isCompacting = sdkStatus === 'compacting'
+  const isProcessing = (isRunning && !streaming) || isCompacting
 
   // Load global defaults for new sessions
   useEffect(() => {
@@ -157,9 +160,10 @@ export function SessionView({ tab }: SessionViewProps) {
       </div>
       <div className="overflow-hidden">
         <div className={`transition-opacity duration-150 ${isProcessing ? 'opacity-100' : 'opacity-0'}`}>
-          <ThinkingIndicator />
+          <ThinkingIndicator isCompacting={isCompacting} />
         </div>
       </div>
+      <TasksPanel sessionId={sessionId ?? null} />
       <div>
         <InputBar
           sessionId={sessionId}
