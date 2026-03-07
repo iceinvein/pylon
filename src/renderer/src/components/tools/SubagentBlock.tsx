@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import { Bot, ChevronRight, Loader2, CheckCircle, XCircle } from 'lucide-react'
 import { useSessionStore } from '../../store/session-store'
@@ -12,6 +12,7 @@ type SubagentBlockProps = {
   description?: string
   agentId?: string
   prompt?: string
+  result?: string
 }
 
 type ContentBlock = {
@@ -23,13 +24,14 @@ type ContentBlock = {
   input?: Record<string, unknown>
 }
 
-export function SubagentBlock({ agentType, status, description, agentId, prompt }: SubagentBlockProps) {
+export function SubagentBlock({ agentType, status, description, agentId, prompt, result }: SubagentBlockProps) {
   const [expanded, setExpanded] = useState(false)
   const [userCollapsed, setUserCollapsed] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   const streamingText = useSessionStore((s) => agentId ? s.subagentStreaming.get(agentId) : undefined)
-  const agentMessages = useSessionStore((s) => agentId ? (s.subagentMessages.get(agentId) ?? []) : [])
+  const agentMessagesRaw = useSessionStore((s) => agentId ? s.subagentMessages.get(agentId) : undefined)
+  const agentMessages = useMemo(() => agentMessagesRaw ?? [], [agentMessagesRaw])
 
   // Auto-expand when running, auto-collapse when done (unless user manually toggled)
   useEffect(() => {
@@ -53,7 +55,30 @@ export function SubagentBlock({ agentType, status, description, agentId, prompt 
     setUserCollapsed(true)
   }
 
-  // One-line preview from streaming text
+  // Build tool result map from user messages within the subagent conversation
+  const subagentToolResultMap = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const rawMsg of agentMessages) {
+      const msg = rawMsg as Record<string, unknown>
+      if (msg.type !== 'user') continue
+      const messageObj = msg.message as { content?: Array<{ type: string; tool_use_id?: string; content?: unknown }> } | undefined
+      const content = messageObj?.content ?? msg.content
+      if (!Array.isArray(content)) continue
+      for (const block of content as Array<{ type: string; tool_use_id?: string; content?: unknown }>) {
+        if (block.type === 'tool_result' && block.tool_use_id) {
+          const text = typeof block.content === 'string'
+            ? block.content
+            : Array.isArray(block.content)
+              ? (block.content as Array<{ type: string; text?: string }>).filter((b) => b.type === 'text').map((b) => b.text ?? '').join('\n')
+              : ''
+          if (text) map.set(block.tool_use_id, text)
+        }
+      }
+    }
+    return map
+  }, [agentMessages])
+
+  // One-line preview from streaming text or description
   const preview = streamingText
     ? streamingText.split('\n').filter(Boolean).pop()?.slice(0, 100)
     : description
@@ -66,9 +91,14 @@ export function SubagentBlock({ agentType, status, description, agentId, prompt 
     : status === 'error' ? 'text-red-400'
     : 'text-green-500'
 
+  // Count tool uses for the summary
+  const toolUseCount = agentMessages.filter((m: any) =>
+    m.type === 'assistant' && (m.message?.content ?? m.content ?? []).some((b: any) => b.type === 'tool_use')
+  ).length
+
   return (
     <div className="my-1">
-      {/* Collapsed summary bar */}
+      {/* Summary bar */}
       <button
         onClick={handleToggle}
         className="group flex w-full items-center gap-2 py-0.5 text-left"
@@ -86,10 +116,17 @@ export function SubagentBlock({ agentType, status, description, agentId, prompt 
           size={12}
           className={`flex-shrink-0 ${statusColor} ${status === 'running' ? 'animate-spin' : ''}`}
         />
-        {preview && !expanded && (
-          <span className="min-w-0 flex-1 truncate text-sm italic text-stone-500">
-            {preview}
-          </span>
+        {!expanded && (
+          <>
+            {status === 'done' && toolUseCount > 0 && (
+              <span className="text-xs text-stone-600">{toolUseCount} tool{toolUseCount !== 1 ? 's' : ''}</span>
+            )}
+            {preview && (
+              <span className="min-w-0 flex-1 truncate text-sm italic text-stone-500">
+                {preview}
+              </span>
+            )}
+          </>
         )}
       </button>
 
@@ -112,29 +149,25 @@ export function SubagentBlock({ agentType, status, description, agentId, prompt 
                 </div>
               )}
 
-              {/* Subagent messages */}
-              {agentMessages.map((rawMsg, idx) => {
+              {/* Subagent conversation: tool calls, text responses, streaming */}
+              {agentMessages.filter((m: any) => m.type !== 'user').map((rawMsg, idx) => {
                 const msg = rawMsg as Record<string, unknown>
 
                 if (msg.type === 'subagent_text' && msg.text) {
                   return (
-                    <div key={idx} className="py-1">
+                    <div key={`st-${idx}`} className="py-1">
                       <TextBlock text={msg.text as string} />
                     </div>
                   )
                 }
 
-                if (msg.type === 'user') return null
-
                 if (msg.type === 'assistant') {
                   const messageObj = msg.message as { content?: ContentBlock[] } | undefined
                   const blocks = (messageObj?.content ?? msg.content ?? []) as ContentBlock[]
-                  const hasContent = blocks.some((b) =>
-                    (b.type === 'text' && b.text) || b.type === 'tool_use'
-                  )
-                  if (!hasContent) return null
+                  if (blocks.length === 0) return null
+
                   return (
-                    <div key={idx} className="space-y-1 py-1">
+                    <div key={`a-${idx}`} className="space-y-1.5 py-1">
                       {blocks.map((block, i) => {
                         if (block.type === 'text' && block.text) {
                           return <TextBlock key={i} text={block.text} />
@@ -147,6 +180,7 @@ export function SubagentBlock({ agentType, status, description, agentId, prompt 
                               toolName={block.name ?? 'unknown'}
                               input={block.input ?? {}}
                               toolUseId={block.id}
+                              result={subagentToolResultMap.get(block.id ?? '')}
                             />
                           )
                         }
@@ -164,6 +198,16 @@ export function SubagentBlock({ agentType, status, description, agentId, prompt 
                 <div className="py-1">
                   <TextBlock text={streamingText} />
                   <span className="inline-block h-3.5 w-0.5 animate-pulse bg-blue-400 align-text-bottom" />
+                </div>
+              )}
+
+              {/* Final result (returned to parent as tool_result) */}
+              {result && status !== 'running' && (
+                <div className="mt-1 mb-1 rounded bg-stone-900/40 px-3 py-2">
+                  <p className="mb-1 text-[10px] font-medium uppercase tracking-wider text-stone-600">Result</p>
+                  <div className="text-xs leading-relaxed text-stone-400">
+                    <TextBlock text={result} />
+                  </div>
                 </div>
               )}
 

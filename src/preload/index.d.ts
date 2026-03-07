@@ -12,6 +12,7 @@ type Api = {
   respondToQuestion: (requestId: string, answers: Record<string, string>) => Promise<boolean>
   setModel: (sessionId: string, model: string) => Promise<boolean>
   setPermissionMode: (sessionId: string, mode: string) => Promise<boolean>
+  getSessionInfo: (sessionId: string) => Promise<{ model: string; permissionMode: string } | null>
   getSettings: () => Promise<unknown>
   updateSettings: (key: string, value: unknown) => Promise<boolean>
   onSessionMessage: (callback: (data: unknown) => void) => () => void

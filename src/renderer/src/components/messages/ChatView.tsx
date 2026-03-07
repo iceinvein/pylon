@@ -166,6 +166,7 @@ export const ChatView = memo(function ChatView({ sessionId }: ChatViewProps) {
                 description={agent?.description}
                 agentId={block.id}
                 prompt={agent?.prompt}
+                result={agent?.result}
               />
             )
           }
@@ -330,7 +331,7 @@ export const ChatView = memo(function ChatView({ sessionId }: ChatViewProps) {
           <div className="h-px flex-1 bg-stone-700/50" />
           <div className="flex items-center gap-1.5 text-xs text-stone-500">
             <Minimize2 size={12} />
-            <span>Conversation compacted</span>
+            <span>Conversation {compactMetadata?.trigger === 'auto' ? 'auto-' : ''}compacted</span>
             {compactMetadata?.pre_tokens && (
               <span className="text-stone-600">
                 ({Math.round(compactMetadata.pre_tokens / 1000)}k tokens)

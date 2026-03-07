@@ -231,8 +231,8 @@ export class SessionManager {
     if (this.sessions.has(sessionId)) return true
 
     const db = getDb()
-    const row = db.prepare('SELECT id, cwd, sdk_session_id, model FROM sessions WHERE id = ?').get(sessionId) as
-      | { id: string; cwd: string; sdk_session_id: string | null; model: string }
+    const row = db.prepare('SELECT id, cwd, sdk_session_id, model, permission_mode FROM sessions WHERE id = ?').get(sessionId) as
+      | { id: string; cwd: string; sdk_session_id: string | null; model: string; permission_mode: string }
       | undefined
 
     if (!row) return false
@@ -242,7 +242,7 @@ export class SessionManager {
       sdkSessionId: row.sdk_session_id,
       cwd: row.cwd,
       model: row.model,
-      permissionMode: 'default',
+      permissionMode: (row.permission_mode as PermissionMode) || 'default',
       queryInstance: null,
       abortController: new AbortController(),
       pendingPermissions: new Map(),
@@ -256,6 +256,8 @@ export class SessionManager {
     const session = this.sessions.get(sessionId)
     if (!session) return
     session.permissionMode = mode
+    const db = getDb()
+    db.prepare('UPDATE sessions SET permission_mode = ?, updated_at = ? WHERE id = ?').run(mode, Date.now(), sessionId)
   }
 
   setModel(sessionId: string, model: string): void {
@@ -264,6 +266,12 @@ export class SessionManager {
     session.model = model
     const db = getDb()
     db.prepare('UPDATE sessions SET model = ?, updated_at = ? WHERE id = ?').run(model, Date.now(), sessionId)
+  }
+
+  getSessionInfo(sessionId: string): { model: string; permissionMode: PermissionMode } | null {
+    const session = this.sessions.get(sessionId)
+    if (!session) return null
+    return { model: session.model, permissionMode: session.permissionMode }
   }
 
   getStoredSessions(): unknown[] {

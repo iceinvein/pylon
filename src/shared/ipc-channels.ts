@@ -16,6 +16,7 @@ export const IPC = {
   QUESTION_RESPONSE: 'session:question-response',
   SESSION_SET_MODEL: 'session:set-model',
   SESSION_SET_PERMISSION_MODE: 'session:set-permission-mode',
+  SESSION_GET_INFO: 'session:get-info',
   SESSION_MESSAGE: 'session:message',
   SESSION_STATUS: 'session:status',
   SESSION_PERMISSION: 'session:permission',

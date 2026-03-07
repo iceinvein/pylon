@@ -37,15 +37,25 @@ export function SessionView({ tab }: SessionViewProps) {
   const isCompacting = sdkStatus === 'compacting'
   const isProcessing = (isRunning && !streaming) || isCompacting
 
-  // Load global defaults for new sessions
+  // Load global defaults for new sessions, or sync from backend for existing ones
   useEffect(() => {
-    if (sessionId) return // Already has a session, don't override
-    window.api.getSettings().then((s) => {
-      const settings = s as AppSettings
-      setPendingModel(settings.defaultModel)
-      setPermissionMode(settings.defaultPermissionMode)
-    })
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    if (sessionId) {
+      // Existing session: sync UI state from backend
+      window.api.getSessionInfo(sessionId).then((info) => {
+        if (info) {
+          setPendingModel(info.model)
+          setPermissionMode(info.permissionMode as PermissionMode)
+        }
+      })
+    } else {
+      // New session: load global defaults
+      window.api.getSettings().then((s) => {
+        const settings = s as AppSettings
+        setPendingModel(settings.defaultModel)
+        setPermissionMode(settings.defaultPermissionMode)
+      })
+    }
+  }, [sessionId])
 
   async function ensureSession(): Promise<string> {
     if (sessionId) return sessionId

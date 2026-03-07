@@ -101,6 +101,10 @@ export function registerIpcHandlers(): void {
     return true
   })
 
+  ipcMain.handle(IPC.SESSION_GET_INFO, async (_e, args: { sessionId: string }) => {
+    return sessionManager.getSessionInfo(args.sessionId)
+  })
+
   ipcMain.handle(IPC.SETTINGS_GET, async () => {
     return getSettings()
   })

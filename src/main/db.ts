@@ -42,6 +42,12 @@ export function initDatabase(): Database.Database {
     CREATE INDEX IF NOT EXISTS idx_sessions_updated ON sessions(updated_at DESC);
   `)
 
+  // Migrations
+  const cols = db.prepare("PRAGMA table_info(sessions)").all() as { name: string }[]
+  if (!cols.some((c) => c.name === 'permission_mode')) {
+    db.exec("ALTER TABLE sessions ADD COLUMN permission_mode TEXT NOT NULL DEFAULT 'default'")
+  }
+
   return db
 }
 
