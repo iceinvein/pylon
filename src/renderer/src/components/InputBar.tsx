@@ -1,8 +1,8 @@
-import { useRef, useState, useEffect, useCallback, type KeyboardEvent, type DragEvent, type ClipboardEvent } from 'react'
+import { useRef, useState, useEffect, type KeyboardEvent, type DragEvent, type ClipboardEvent } from 'react'
 import { ArrowUp, Square, Paperclip, X, Image, ChevronDown, ShieldCheck, ShieldAlert, Info } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import type { Attachment, ImageAttachment, PermissionMode } from '../../../shared/types'
-import { SlashCommandMenu } from './SlashCommandMenu'
+import { useUiStore } from '../store/ui-store'
 
 const PERMISSION_MODES = [
   { id: 'default' as const, label: 'Default', icon: ShieldCheck, description: 'Ask before each tool use' },
@@ -30,7 +30,6 @@ export function InputBar({ sessionId, isRunning, model, onModelChange, permissio
   const [text, setText] = useState('')
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const [isDragging, setIsDragging] = useState(false)
-  const [showSlash, setShowSlash] = useState(false)
   const [showModelMenu, setShowModelMenu] = useState(false)
   const [showPermissionMenu, setShowPermissionMenu] = useState(false)
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
@@ -79,20 +78,23 @@ export function InputBar({ sessionId, isRunning, model, onModelChange, permissio
     el.style.height = Math.min(el.scrollHeight, 200) + 'px'
   }
 
+  const { toggleCommandPalette } = useUiStore()
+
   function handleChange(value: string) {
+    // Typing "/" as the first character opens the command palette
+    if (value === '/') {
+      toggleCommandPalette()
+      setText('')
+      return
+    }
     setText(value)
     adjustHeight()
-    setShowSlash(value.startsWith('/'))
   }
 
   function handleKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
-      if (showSlash) return
       handleSend()
-    }
-    if (e.key === 'Escape') {
-      setShowSlash(false)
     }
   }
 
@@ -197,12 +199,6 @@ export function InputBar({ sessionId, isRunning, model, onModelChange, permissio
     })
   }
 
-  const handleSlashSelect = useCallback((command: string) => {
-    setText(command)
-    setShowSlash(false)
-    textareaRef.current?.focus()
-  }, [])
-
   const canSend = (text.trim().length > 0 || attachments.length > 0) && !isRunning
 
   return (
@@ -231,14 +227,6 @@ export function InputBar({ sessionId, isRunning, model, onModelChange, permissio
       </AnimatePresence>
 
       <div className="mx-auto max-w-3xl">
-        {showSlash && (
-          <SlashCommandMenu
-            query={text.slice(1)}
-            onSelect={handleSlashSelect}
-            onClose={() => setShowSlash(false)}
-          />
-        )}
-
         <div
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
