@@ -140,7 +140,7 @@ function SyntaxOutput({ html }: { html: string }) {
 
 const markdownComponents: React.ComponentProps<typeof ReactMarkdown>['components'] = {
   code({ className, children, ...props }) {
-    const isInline = !className
+    const isInline = !className && !String(children).includes('\n')
     if (isInline) {
       return (
         <code className="rounded bg-stone-800 px-1.5 py-0.5 font-[family-name:var(--font-mono)] text-xs text-amber-300" {...props}>

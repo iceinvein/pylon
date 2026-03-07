@@ -10,17 +10,27 @@ import { useIpcBridge } from './hooks/use-ipc-bridge'
 export default function App() {
   useIpcBridge()
 
-  const { tabs, activeTabId, setActiveTab } = useTabStore()
+  const { tabs, activeTabId, setActiveTab, addTab } = useTabStore()
   const activeTab = tabs.find((t) => t.id === activeTabId)
 
-  // Cmd+1..9 to switch tabs
+  // Cmd+1..9 to switch tabs, Cmd+N to open new tab
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (!e.metaKey || e.shiftKey || e.altKey || e.ctrlKey) return
+
+      // Cmd+N — new tab via folder picker
+      if (e.key === 'n') {
+        e.preventDefault()
+        window.api.openFolder().then((path) => {
+          if (path) addTab(path)
+        })
+        return
+      }
+
+      // Cmd+1..9 — switch to tab by index
       const n = parseInt(e.key, 10)
       if (n >= 1 && n <= 9) {
-        const idx = n - 1
-        const tab = tabs[idx]
+        const tab = tabs[n - 1]
         if (tab) {
           e.preventDefault()
           setActiveTab(tab.id)
@@ -29,7 +39,7 @@ export default function App() {
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [tabs, setActiveTab])
+  }, [tabs, setActiveTab, addTab])
 
   return (
     <>
