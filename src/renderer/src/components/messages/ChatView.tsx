@@ -113,6 +113,64 @@ export const ChatView = memo(function ChatView({ sessionId }: ChatViewProps) {
 
   const toolResultMap = useMemo(() => buildToolResultMap(sessionMessages), [sessionMessages])
 
+  // Detect skill content messages injected by the SDK after Skill tool invocations.
+  // Flow: assistant calls Skill tool → tool_result "Launching skill: X" → SDK injects
+  // a separate plain-text user message with skill markdown. We track the tool_use IDs
+  // and mark the next text-only user message after each tool_result as skill content.
+  const skillContentIndices = useMemo(() => {
+    const indices = new Map<number, string>() // visibleMessages index → skill name
+    const skillToolUseIds = new Map<string, string>() // tool_use_id → skill name
+
+    // Pass 1: Find all Skill tool_use blocks in assistant messages
+    for (const raw of visibleMessages) {
+      const msg = raw as SdkMessage
+      if (msg.type !== 'assistant') continue
+      const content = (msg.message?.content ?? msg.content ?? []) as AssistantContentBlock[]
+      for (const block of content) {
+        if (block.type === 'tool_use' && block.name === 'Skill' && block.id) {
+          const input = (block.input ?? {}) as Record<string, string>
+          const skillName = input.skill ?? input.skill_name ?? 'skill'
+          skillToolUseIds.set(block.id, skillName)
+        }
+      }
+    }
+
+    if (skillToolUseIds.size === 0) return indices
+
+    // Pass 2: Find tool_results for Skill tools, then mark the next text-only user message
+    for (let i = 0; i < visibleMessages.length; i++) {
+      const msg = visibleMessages[i] as SdkMessage
+      if (msg.type !== 'user') continue
+      const rawContent = msg.content ?? (msg.message as Record<string, unknown> | undefined)?.content
+      if (!Array.isArray(rawContent)) continue
+
+      // Check if this user message has a tool_result for a Skill tool
+      const blocks = rawContent as Array<{ type: string; tool_use_id?: string }>
+      let skillName: string | null = null
+      for (const block of blocks) {
+        if (block.type === 'tool_result' && block.tool_use_id && skillToolUseIds.has(block.tool_use_id)) {
+          skillName = skillToolUseIds.get(block.tool_use_id)!
+          break
+        }
+      }
+
+      if (!skillName) continue
+
+      // Look ahead for the immediately next user message that is text-only (not tool_result)
+      for (let j = i + 1; j < visibleMessages.length; j++) {
+        const next = visibleMessages[j] as SdkMessage
+        if (next.type === 'assistant' || next.type === 'system') break // stop if assistant/system intervenes
+        if (next.type !== 'user') continue
+        if (isToolResultMessage(next)) continue
+        // This is the injected skill content
+        indices.set(j, skillName)
+        break
+      }
+    }
+
+    return indices
+  }, [visibleMessages])
+
   // Track whether the user has scrolled away from the bottom
   useEffect(() => {
     const container = scrollContainerRef.current
@@ -243,7 +301,7 @@ export const ChatView = memo(function ChatView({ sessionId }: ChatViewProps) {
 
     for (let idx = 0; idx < visibleMessages.length; idx++) {
       const msg = visibleMessages[idx] as SdkMessage
-      const isVisibleUser = msg.type === 'user' && !isToolResultMessage(msg) && !extractSkillName(msg)
+      const isVisibleUser = msg.type === 'user' && !isToolResultMessage(msg) && !skillContentIndices.has(idx) && !extractSkillName(msg)
 
       if (isVisibleUser) {
         // Push current group if it has messages
@@ -300,7 +358,10 @@ export const ChatView = memo(function ChatView({ sessionId }: ChatViewProps) {
   function renderMessage(msg: SdkMessage, idx: number) {
     if (msg.type === 'user') {
       if (isToolResultMessage(msg)) return null
-      const skillName = extractSkillName(msg)
+      // Positional detection (robust): check if this message was injected after a Skill tool call
+      const positionalSkillName = skillContentIndices.get(idx)
+      // Fallback: pattern-based detection for edge cases
+      const skillName = positionalSkillName ?? extractSkillName(msg)
       if (skillName) {
         return (
           <motion.div
