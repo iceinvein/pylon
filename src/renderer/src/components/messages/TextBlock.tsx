@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, memo } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { Lightbulb, Copy, Check } from 'lucide-react'
@@ -7,6 +7,7 @@ import { hasAnsiCodes, ansiToHtml } from '../../lib/ansi'
 
 type TextBlockProps = {
   text: string
+  isStreaming?: boolean
 }
 
 type Segment =
@@ -180,7 +181,37 @@ function InsightCard({ text }: { text: string }) {
   )
 }
 
-export function TextBlock({ text }: TextBlockProps) {
+const SettledMarkdown = memo(function SettledMarkdown({ text }: { text: string }) {
+  const segments = parseSegments(text)
+  return (
+    <>
+      {segments.map((seg, i) =>
+        seg.kind === 'insight' ? (
+          <InsightCard key={i} text={seg.text} />
+        ) : (
+          <MarkdownContent key={i} text={seg.text} />
+        )
+      )}
+    </>
+  )
+})
+
+export function TextBlock({ text, isStreaming }: TextBlockProps) {
+  if (isStreaming) {
+    const splitIdx = text.lastIndexOf('\n\n')
+    const settled = splitIdx > 0 ? text.slice(0, splitIdx) : ''
+    const tail = splitIdx > 0 ? text.slice(splitIdx) : text
+
+    return (
+      <>
+        {settled && <SettledMarkdown text={settled} />}
+        <div className="prose prose-invert prose-sm max-w-none prose-p:text-stone-200">
+          <span className="whitespace-pre-wrap text-stone-200">{tail}</span>
+        </div>
+      </>
+    )
+  }
+
   const segments = parseSegments(text)
 
   return (
