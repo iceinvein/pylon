@@ -1,28 +1,86 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
-import { Search, FolderOpen, Plus, RotateCcw, Eraser, Archive, DollarSign } from 'lucide-react'
+import { Search, FolderOpen, Eraser, Archive, DollarSign, RotateCcw } from 'lucide-react'
 import { useUiStore } from '../store/ui-store'
 import { useTabStore } from '../store/tab-store'
+import { useSessionStore } from '../store/session-store'
+import type { SessionState } from '../store/session-store'
+import { timeAgo } from '../lib/utils'
+
+type StoredSession = {
+  id: string
+  cwd: string
+  status: string
+  model: string
+  title: string
+  total_cost_usd: number
+  input_tokens: number
+  output_tokens: number
+  created_at: number
+  updated_at: number
+}
 
 type Command = {
   id: string
   label: string
   description: string
   icon: typeof Search
-  section: 'session' | 'global'
+  section: 'session' | 'global' | 'recent'
   action: () => void
 }
 
 export function CommandPalette() {
   const { commandPaletteOpen, toggleCommandPalette } = useUiStore()
   const { tabs, activeTabId, addTab } = useTabStore()
+  const { setSession, setMessages } = useSessionStore()
   const [query, setQuery] = useState('')
   const [selectedIdx, setSelectedIdx] = useState(0)
+  const [recentSessions, setRecentSessions] = useState<StoredSession[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
 
   const activeTab = tabs.find((t) => t.id === activeTabId)
   const sessionId = activeTab?.sessionId ?? null
+
+  // Load recent sessions when palette opens
+  useEffect(() => {
+    if (!commandPaletteOpen) return
+    window.api.listSessions().then((sessions) => {
+      // Filter out sessions already open in tabs
+      const openSessionIds = new Set(tabs.map((t) => t.sessionId).filter(Boolean))
+      const available = (sessions as StoredSession[]).filter((s) => !openSessionIds.has(s.id))
+      setRecentSessions(available.slice(0, 5))
+    })
+  }, [commandPaletteOpen, tabs])
+
+  async function handleResumeSession(session: StoredSession) {
+    toggleCommandPalette()
+
+    const sessionState: SessionState = {
+      id: session.id,
+      cwd: session.cwd,
+      status: 'done',
+      model: session.model,
+      title: session.title,
+      cost: {
+        inputTokens: session.input_tokens ?? 0,
+        outputTokens: session.output_tokens ?? 0,
+        totalUsd: session.total_cost_usd ?? 0,
+      },
+      createdAt: session.created_at,
+      updatedAt: session.updated_at,
+    }
+    setSession(sessionState)
+
+    const msgs = await window.api.getMessages(session.id)
+    const parsed = (msgs as { sdk_message: string }[]).map((m) => {
+      try { return JSON.parse(m.sdk_message) } catch { return null }
+    }).filter(Boolean)
+    setMessages(session.id, parsed)
+
+    await window.api.resumeSession(session.id)
+    addTab(session.cwd, session.title || session.cwd.split('/').pop() || session.cwd, session.id)
+  }
 
   const commands = useMemo(() => {
     const cmds: Command[] = []
@@ -66,46 +124,35 @@ export function CommandPalette() {
       )
     }
 
-    // Global commands — always available
-    cmds.push(
-      {
-        id: 'open-folder',
-        label: 'Open folder',
-        description: 'Open a project folder in a new tab',
-        icon: FolderOpen,
-        section: 'global',
-        action: async () => {
-          toggleCommandPalette()
-          const path = await window.api.openFolder()
-          if (path) addTab(path)
-        },
+    // Global commands
+    cmds.push({
+      id: 'open-folder',
+      label: 'Open folder',
+      description: 'Open a project folder in a new tab',
+      icon: FolderOpen,
+      section: 'global',
+      action: async () => {
+        toggleCommandPalette()
+        const path = await window.api.openFolder()
+        if (path) addTab(path)
       },
-      {
-        id: 'new-tab',
-        label: 'New tab',
-        description: 'Open a new tab from a folder',
-        icon: Plus,
-        section: 'global',
-        action: async () => {
-          toggleCommandPalette()
-          const path = await window.api.openFolder()
-          if (path) addTab(path)
-        },
-      },
-      {
-        id: 'resume-session',
-        label: 'Resume session',
-        description: 'Resume a previous conversation',
+    })
+
+    // Recent sessions as individual commands
+    for (const session of recentSessions) {
+      const label = session.title || session.cwd.split('/').pop() || 'Untitled'
+      cmds.push({
+        id: `resume-${session.id}`,
+        label,
+        description: `${session.cwd} · ${timeAgo(session.updated_at)}`,
         icon: RotateCcw,
-        section: 'global',
-        action: () => {
-          toggleCommandPalette()
-        },
-      }
-    )
+        section: 'recent',
+        action: () => handleResumeSession(session),
+      })
+    }
 
     return cmds
-  }, [sessionId, toggleCommandPalette, addTab])
+  }, [sessionId, toggleCommandPalette, addTab, recentSessions])
 
   const filtered = commands.filter(
     (cmd) =>
@@ -113,13 +160,15 @@ export function CommandPalette() {
       cmd.description.toLowerCase().includes(query.toLowerCase())
   )
 
-  // Group filtered commands by section (only show headers if both sections present)
+  // Group filtered commands by section
   const sessionCmds = filtered.filter((c) => c.section === 'session')
   const globalCmds = filtered.filter((c) => c.section === 'global')
-  const showSections = sessionCmds.length > 0 && globalCmds.length > 0
+  const recentCmds = filtered.filter((c) => c.section === 'recent')
+  const sections = [sessionCmds, globalCmds, recentCmds].filter((s) => s.length > 0)
+  const showSections = sections.length > 1
 
-  // Flat list for keyboard navigation (session first, then global)
-  const flatList = [...sessionCmds, ...globalCmds]
+  // Flat list for keyboard navigation (session → global → recent)
+  const flatList = [...sessionCmds, ...globalCmds, ...recentCmds]
 
   // Cmd+K / Ctrl+K toggle and Escape
   useEffect(() => {
@@ -252,6 +301,21 @@ export function CommandPalette() {
                         </div>
                       )}
                       {globalCmds.map((cmd) => {
+                        const idx = globalIdx++
+                        return <CommandRow key={cmd.id} cmd={cmd} isSelected={idx === selectedIdx} onSelect={() => setSelectedIdx(idx)} />
+                      })}
+                    </>
+                  )}
+
+                  {/* Recent sessions */}
+                  {recentCmds.length > 0 && (
+                    <>
+                      {showSections && (
+                        <div className="px-3 pt-2.5 pb-1.5 text-[10px] font-medium uppercase tracking-wider text-stone-600">
+                          Recent sessions
+                        </div>
+                      )}
+                      {recentCmds.map((cmd) => {
                         const idx = globalIdx++
                         return <CommandRow key={cmd.id} cmd={cmd} isSelected={idx === selectedIdx} onSelect={() => setSelectedIdx(idx)} />
                       })}
