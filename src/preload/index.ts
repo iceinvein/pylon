@@ -22,6 +22,12 @@ const api = {
     ipcRenderer.invoke(IPC.FILE_READ_BASE64, { path }),
   respondToPermission: (requestId: string, behavior: 'allow' | 'deny', message?: string) =>
     ipcRenderer.invoke(IPC.PERMISSION_RESPONSE, { requestId, behavior, message }),
+  respondToQuestion: (requestId: string, answers: Record<string, string>) =>
+    ipcRenderer.invoke(IPC.QUESTION_RESPONSE, { requestId, answers }),
+  setModel: (sessionId: string, model: string) =>
+    ipcRenderer.invoke(IPC.SESSION_SET_MODEL, { sessionId, model }),
+  setPermissionMode: (sessionId: string, mode: string) =>
+    ipcRenderer.invoke(IPC.SESSION_SET_PERMISSION_MODE, { sessionId, mode }),
   getSettings: () =>
     ipcRenderer.invoke(IPC.SETTINGS_GET),
   updateSettings: (key: string, value: unknown) =>
@@ -41,6 +47,11 @@ const api = {
     const handler = (_event: unknown, data: unknown) => callback(data)
     ipcRenderer.on(IPC.SESSION_PERMISSION, handler)
     return () => ipcRenderer.removeListener(IPC.SESSION_PERMISSION, handler)
+  },
+  onSessionQuestion: (callback: (data: unknown) => void) => {
+    const handler = (_event: unknown, data: unknown) => callback(data)
+    ipcRenderer.on(IPC.SESSION_QUESTION, handler)
+    return () => ipcRenderer.removeListener(IPC.SESSION_QUESTION, handler)
   },
 }
 

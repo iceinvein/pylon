@@ -14,9 +14,14 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Custom scrollbar for the warm theme */
+/* Overlay scrollbars: float on top of content, don't consume layout space */
+* {
+  scrollbar-color: #44403c transparent;
+  scrollbar-width: thin;
+}
 ::-webkit-scrollbar {
   width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
@@ -27,4 +32,18 @@ body {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #57534e;
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Code blocks: overlay horizontal scrollbar so it doesn't trigger phantom vertical scroll */
+pre, .shiki-wrapper {
+  overflow-x: overlay;
+}
+
+/* Crossfade for preview panel content swaps */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(2px); }
+  to { opacity: 1; transform: translateY(0); }
 }

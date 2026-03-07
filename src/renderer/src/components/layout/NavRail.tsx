@@ -1,4 +1,4 @@
-import { Home, FolderOpen } from 'lucide-react'
+import { Home, FolderOpen, Settings } from 'lucide-react'
 import { motion } from 'motion/react'
 import { useTabStore } from '../../store/tab-store'
 import { useUiStore } from '../../store/ui-store'
@@ -10,7 +10,7 @@ export function NavRail() {
   const tabs = useTabStore((s) => s.tabs)
   const activeTab = tabs.find((t) => t.id === activeTabId)
   const activeSessionId = activeTab?.sessionId ?? null
-  const { sidebarView, setSidebarView } = useUiStore()
+  const { sidebarView, setSidebarView, setSettingsOpen } = useUiStore()
 
   async function handleOpenFolder() {
     const path = await window.api.openFolder()
@@ -62,8 +62,18 @@ export function NavRail() {
         <FolderOpen size={18} className="relative z-10" />
       </motion.button>
 
-      <div className="mt-auto">
+      <div className="mt-auto flex flex-col items-center gap-1">
         <TasksPanel sessionId={activeSessionId} />
+        <motion.button
+          onClick={() => setSettingsOpen(true)}
+          title="Settings"
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          transition={{ duration: 0.1 }}
+          className="relative flex h-9 w-9 items-center justify-center rounded-lg text-stone-400 transition-colors hover:text-stone-100"
+        >
+          <Settings size={18} />
+        </motion.button>
       </div>
     </div>
   )

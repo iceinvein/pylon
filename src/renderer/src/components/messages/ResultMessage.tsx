@@ -3,6 +3,7 @@ import { formatCost, formatTokens } from '../../lib/utils'
 
 type ResultMessageProps = {
   isError: boolean
+  model?: string
   totalCostUsd?: number
   durationMs?: number
   numTurns?: number
@@ -13,6 +14,7 @@ type ResultMessageProps = {
 
 export function ResultMessage({
   isError,
+  model,
   totalCostUsd,
   durationMs,
   numTurns,
@@ -35,34 +37,40 @@ export function ResultMessage({
   }
 
   return (
-    <div className="flex items-center gap-3 border-t border-stone-800/60 px-5 py-2.5">
-      <CheckCircle size={14} className="text-green-500" />
-      <span className="text-sm font-medium text-green-500">Done</span>
-      <div className="flex flex-wrap items-center gap-3 text-xs text-stone-500">
-        {totalCostUsd !== undefined && (
-          <span>
-            <span className="text-stone-600">cost</span>{' '}
-            <span className="text-stone-400">{formatCost(totalCostUsd)}</span>
-          </span>
-        )}
-        {durationMs !== undefined && (
-          <span className="flex items-center gap-1">
-            <Clock size={10} />
-            <span className="text-stone-400">{(durationMs / 1000).toFixed(1)}s</span>
-          </span>
-        )}
-        {numTurns !== undefined && (
-          <span className="flex items-center gap-1">
-            <Hash size={10} />
-            <span className="text-stone-400">{numTurns} turns</span>
-          </span>
-        )}
-        {(inputTokens !== undefined || outputTokens !== undefined) && (
-          <span className="text-stone-600">
-            {formatTokens(inputTokens ?? 0)} in / {formatTokens(outputTokens ?? 0)} out
-          </span>
-        )}
+    <div className="mt-4 mb-2">
+      <div className="flex items-center gap-3 border-t border-stone-700/50 px-5 py-3">
+        <CheckCircle size={14} className="text-green-500/80" />
+        <span className="text-xs font-medium text-green-500/80">Done</span>
+        <div className="flex flex-wrap items-center gap-3 text-xs text-stone-500">
+          {model && (
+            <span className="text-stone-400">{model}</span>
+          )}
+          {totalCostUsd !== undefined && (
+            <span>
+              <span className="text-stone-600">cost</span>{' '}
+              <span className="text-stone-400">{formatCost(totalCostUsd)}</span>
+            </span>
+          )}
+          {durationMs !== undefined && (
+            <span className="flex items-center gap-1">
+              <Clock size={10} />
+              <span className="text-stone-400">{(durationMs / 1000).toFixed(1)}s</span>
+            </span>
+          )}
+          {numTurns !== undefined && (
+            <span className="flex items-center gap-1">
+              <Hash size={10} />
+              <span className="text-stone-400">{numTurns} turns</span>
+            </span>
+          )}
+          {(inputTokens !== undefined || outputTokens !== undefined) && (
+            <span className="text-stone-600">
+              {formatTokens(inputTokens ?? 0)} in / {formatTokens(outputTokens ?? 0)} out
+            </span>
+          )}
+        </div>
       </div>
+      <div className="mx-5 border-b border-stone-800/60 pb-6" />
     </div>
   )
 }

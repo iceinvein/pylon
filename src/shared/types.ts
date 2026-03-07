@@ -45,6 +45,7 @@ export type FileAttachment = {
   name: string
   path: string
   size: number
+  content?: string
 }
 
 export type Attachment = ImageAttachment | FileAttachment
@@ -64,8 +65,34 @@ export type PermissionResponse = {
   alwaysAllow?: boolean
 }
 
+export type QuestionOption = {
+  label: string
+  description: string
+  preview?: string
+}
+
+export type QuestionItem = {
+  question: string
+  header: string
+  options: QuestionOption[]
+  multiSelect?: boolean
+}
+
+export type QuestionRequest = {
+  requestId: string
+  sessionId: string
+  questions: QuestionItem[]
+}
+
+export type QuestionResponse = {
+  requestId: string
+  answers: Record<string, string>
+}
+
+export type PermissionMode = 'default' | 'auto-approve'
+
 export type AppSettings = {
   defaultModel: string
-  defaultPermissionMode: string
+  defaultPermissionMode: PermissionMode
   theme: 'dark'
 }

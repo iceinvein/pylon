@@ -34,7 +34,7 @@ export function UserMessage({ message }: UserMessageProps) {
   const images = getImages()
 
   return (
-    <div className="sticky top-0 z-10 border-l-[3px] border-l-amber-600 bg-stone-800/95 px-6 py-3 backdrop-blur-sm">
+    <div className="sticky top-0 z-10 border-l-[3px] border-l-amber-600 bg-stone-800 px-6 py-3">
       {images.length > 0 && (
         <div className="mb-2 space-y-2">
           {images.map((img, i) => (

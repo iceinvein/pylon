@@ -9,11 +9,15 @@ type Api = {
   openFolder: () => Promise<string | null>
   readFileBase64: (path: string) => Promise<string>
   respondToPermission: (requestId: string, behavior: 'allow' | 'deny', message?: string) => Promise<boolean>
+  respondToQuestion: (requestId: string, answers: Record<string, string>) => Promise<boolean>
+  setModel: (sessionId: string, model: string) => Promise<boolean>
+  setPermissionMode: (sessionId: string, mode: string) => Promise<boolean>
   getSettings: () => Promise<unknown>
   updateSettings: (key: string, value: unknown) => Promise<boolean>
   onSessionMessage: (callback: (data: unknown) => void) => () => void
   onSessionStatus: (callback: (data: unknown) => void) => () => void
   onSessionPermission: (callback: (data: unknown) => void) => () => void
+  onSessionQuestion: (callback: (data: unknown) => void) => () => void
 }
 
 declare global {

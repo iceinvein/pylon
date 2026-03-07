@@ -1,11 +1,10 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { useTabStore } from '../store/tab-store'
 import { useSessionStore } from '../store/session-store'
 import { ChatView } from '../components/messages/ChatView'
 import { InputBar } from '../components/InputBar'
-import { StatusBar } from '../components/StatusBar'
-import type { Tab } from '../../../shared/types'
-import type { Attachment, ImageAttachment } from '../../../shared/types'
+import { ThinkingIndicator } from '../components/ThinkingIndicator'
+import type { AppSettings, Tab, Attachment, ImageAttachment, PermissionMode } from '../../../shared/types'
 
 type SessionViewProps = {
   tab: Tab
@@ -22,17 +21,28 @@ export function SessionView({ tab }: SessionViewProps) {
   const { updateTab } = useTabStore()
   const { sessions, setSession, updateSession } = useSessionStore()
   const creatingSession = useRef(false)
+  const [pendingModel, setPendingModel] = useState('claude-opus-4-6')
+  const [permissionMode, setPermissionMode] = useState<PermissionMode>('default')
 
   const sessionId = tab.sessionId
   const session = sessionId ? sessions.get(sessionId) : undefined
+  const currentModel = session?.model || pendingModel
+  const streaming = useSessionStore((s) => sessionId ? s.streamingText.get(sessionId) : undefined)
   const isRunning =
     session?.status === 'running' ||
     session?.status === 'starting' ||
     session?.status === 'waiting'
+  const isProcessing = isRunning && !streaming
 
+  // Load global defaults for new sessions
   useEffect(() => {
-    // Session will be created lazily on first message
-  }, [])
+    if (sessionId) return // Already has a session, don't override
+    window.api.getSettings().then((s) => {
+      const settings = s as AppSettings
+      setPendingModel(settings.defaultModel)
+      setPermissionMode(settings.defaultPermissionMode)
+    })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function ensureSession(): Promise<string> {
     if (sessionId) return sessionId
@@ -43,13 +53,13 @@ export function SessionView({ tab }: SessionViewProps) {
     }
 
     creatingSession.current = true
-    const newSessionId = await window.api.createSession(tab.cwd)
+    const newSessionId = await window.api.createSession(tab.cwd, pendingModel)
 
     setSession({
       id: newSessionId,
       cwd: tab.cwd,
       status: 'empty',
-      model: '',
+      model: pendingModel,
       title: '',
       cost: { inputTokens: 0, outputTokens: 0, totalUsd: 0 },
       createdAt: Date.now(),
@@ -57,6 +67,9 @@ export function SessionView({ tab }: SessionViewProps) {
     })
 
     updateTab(tab.id, { sessionId: newSessionId })
+    if (permissionMode !== 'default') {
+      await window.api.setPermissionMode(newSessionId, permissionMode)
+    }
     creatingSession.current = false
     return newSessionId
   }
@@ -103,13 +116,27 @@ export function SessionView({ tab }: SessionViewProps) {
       }
       return {
         type: 'file',
-        content: att.path,
+        content: (att as import('../../../shared/types').FileAttachment).content ?? '',
         name: att.name,
       }
     })
 
     await window.api.sendMessage(sid, text, ipcAttachments)
   }
+
+  const handleModelChange = useCallback(async (model: string) => {
+    setPendingModel(model)
+    if (sessionId) {
+      await window.api.setModel(sessionId, model)
+    }
+  }, [sessionId])
+
+  const handlePermissionModeChange = useCallback(async (mode: PermissionMode) => {
+    setPermissionMode(mode)
+    if (sessionId) {
+      await window.api.setPermissionMode(sessionId, mode)
+    }
+  }, [sessionId])
 
   async function handleStop() {
     if (!sessionId) return
@@ -128,13 +155,23 @@ export function SessionView({ tab }: SessionViewProps) {
           </div>
         )}
       </div>
-      <InputBar
-        sessionId={sessionId}
-        isRunning={isRunning}
-        onSend={handleSend}
-        onStop={handleStop}
-      />
-      <StatusBar session={session} />
+      <div className="overflow-hidden">
+        <div className={`transition-opacity duration-150 ${isProcessing ? 'opacity-100' : 'opacity-0'}`}>
+          <ThinkingIndicator />
+        </div>
+      </div>
+      <div>
+        <InputBar
+          sessionId={sessionId}
+          isRunning={isRunning}
+          model={currentModel}
+          onModelChange={handleModelChange}
+          permissionMode={permissionMode}
+          onPermissionModeChange={handlePermissionModeChange}
+          onSend={handleSend}
+          onStop={handleStop}
+        />
+      </div>
     </div>
   )
 }

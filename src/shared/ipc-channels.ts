@@ -13,7 +13,11 @@ export const IPC = {
   SETTINGS_UPDATE: 'settings:update',
   FILE_READ_BASE64: 'file:read-base64',
   PERMISSION_RESPONSE: 'session:permission-response',
+  QUESTION_RESPONSE: 'session:question-response',
+  SESSION_SET_MODEL: 'session:set-model',
+  SESSION_SET_PERMISSION_MODE: 'session:set-permission-mode',
   SESSION_MESSAGE: 'session:message',
   SESSION_STATUS: 'session:status',
   SESSION_PERMISSION: 'session:permission',
+  SESSION_QUESTION: 'session:question',
 } as const

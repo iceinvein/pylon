@@ -163,116 +163,145 @@ export const ChatView = memo(function ChatView({ sessionId }: ChatViewProps) {
     )
   }
 
+  // Group messages into conversation turns: each turn starts with a user message
+  // and contains all subsequent messages until the next user message.
+  // This scopes sticky positioning to each turn so they don't overlap.
+  const turns = useMemo(() => {
+    const groups: { userIdx: number | null; messages: { msg: SdkMessage; idx: number }[] }[] = []
+    let current: { userIdx: number | null; messages: { msg: SdkMessage; idx: number }[] } = { userIdx: null, messages: [] }
+
+    for (let idx = 0; idx < mainThreadMessages.length; idx++) {
+      const msg = mainThreadMessages[idx] as SdkMessage
+      const isVisibleUser = msg.type === 'user' && !isToolResultMessage(msg) && !extractSkillName(msg)
+
+      if (isVisibleUser) {
+        // Push current group if it has messages
+        if (current.messages.length > 0) {
+          groups.push(current)
+        }
+        current = { userIdx: idx, messages: [{ msg, idx }] }
+      } else {
+        current.messages.push({ msg, idx })
+      }
+    }
+    if (current.messages.length > 0) {
+      groups.push(current)
+    }
+    return groups
+  }, [mainThreadMessages])
+
+  function renderMessage(msg: SdkMessage, idx: number) {
+    if (msg.type === 'user') {
+      if (isToolResultMessage(msg)) return null
+      const skillName = extractSkillName(msg)
+      if (skillName) {
+        return (
+          <motion.div
+            key={idx}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+          >
+            <div className="flex items-center gap-2 px-6 py-1">
+              <Zap size={12} className="flex-shrink-0 text-purple-400/70" />
+              <span className="text-xs text-stone-500">
+                Loaded skill <span className="text-stone-400">{skillName}</span>
+              </span>
+            </div>
+          </motion.div>
+        )
+      }
+      return <UserMessage key={`user-${idx}`} message={msg as Record<string, unknown>} />
+    }
+
+    if (msg.type === 'assistant') {
+      const messageObj = msg.message as { content?: AssistantContentBlock[] } | undefined
+      const content = (messageObj?.content ?? msg.content ?? []) as AssistantContentBlock[]
+      return (
+        <motion.div
+          key={idx}
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.2, ease: 'easeOut' }}
+        >
+          {renderAssistantContent(content)}
+        </motion.div>
+      )
+    }
+
+    if (msg.type === 'system') {
+      const sub = msg.subtype
+      if (
+        sub === 'init' ||
+        sub === 'status' ||
+        sub === 'hook_started' ||
+        sub === 'hook_response' ||
+        sub === 'task_started'
+      ) return null
+      const content = String(msg.content ?? msg.subtype ?? 'System message')
+      return (
+        <motion.div
+          key={idx}
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.2, ease: 'easeOut' }}
+        >
+          <SystemMessage content={content} subtype={sub} />
+        </motion.div>
+      )
+    }
+
+    if (msg.type === 'result') {
+      return (
+        <motion.div
+          key={idx}
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.2, ease: 'easeOut' }}
+        >
+          <ResultMessage
+            isError={msg.is_error === true}
+            model={msg.model as string | undefined}
+            totalCostUsd={msg.total_cost_usd as number | undefined}
+            durationMs={msg.duration_ms as number | undefined}
+            numTurns={msg.num_turns as number | undefined}
+            inputTokens={(msg.usage as { input_tokens?: number } | undefined)?.input_tokens}
+            outputTokens={(msg.usage as { output_tokens?: number } | undefined)?.output_tokens}
+            errorMessage={msg.error as string | undefined}
+          />
+        </motion.div>
+      )
+    }
+
+    if (msg.type === 'error') {
+      return (
+        <motion.div
+          key={idx}
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.2, ease: 'easeOut' }}
+        >
+          <ResultMessage
+            isError={true}
+            errorMessage={msg.error as string | undefined}
+          />
+        </motion.div>
+      )
+    }
+
+    return null
+  }
+
   return (
     <div ref={scrollContainerRef} className="flex h-full flex-col overflow-y-auto">
       <div className="mx-auto w-full max-w-3xl">
-      {mainThreadMessages.map((rawMsg, idx) => {
-        const msg = rawMsg as SdkMessage
-
-        if (msg.type === 'user') {
-          // Hide tool_result messages — they're SDK internals, not user-typed text
-          if (isToolResultMessage(msg)) return null
-
-          const skillName = extractSkillName(msg)
-          if (skillName) {
-            return (
-              <motion.div
-                key={idx}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.2, ease: 'easeOut' }}
-              >
-                <div className="flex items-center gap-2 px-6 py-1">
-                  <Zap size={12} className="flex-shrink-0 text-purple-400/70" />
-                  <span className="text-xs text-stone-500">
-                    Loaded skill <span className="text-stone-400">{skillName}</span>
-                  </span>
-                </div>
-              </motion.div>
-            )
-          }
-          return (
-            <UserMessage key={`user-${idx}`} message={msg as Record<string, unknown>} />
-          )
-        }
-
-        if (msg.type === 'assistant') {
-          const messageObj = msg.message as { content?: AssistantContentBlock[] } | undefined
-          const content = (messageObj?.content ?? msg.content ?? []) as AssistantContentBlock[]
-          return (
-            <motion.div
-              key={idx}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.2, ease: 'easeOut' }}
-            >
-              {renderAssistantContent(content)}
-            </motion.div>
-          )
-        }
-
-        if (msg.type === 'system') {
-          const sub = msg.subtype
-          if (
-            sub === 'init' ||
-            sub === 'status' ||
-            sub === 'hook_started' ||
-            sub === 'hook_response' ||
-            sub === 'task_started'
-          ) return null
-          const content = String(msg.content ?? msg.subtype ?? 'System message')
-          return (
-            <motion.div
-              key={idx}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.2, ease: 'easeOut' }}
-            >
-              <SystemMessage content={content} subtype={sub} />
-            </motion.div>
-          )
-        }
-
-        if (msg.type === 'result') {
-          return (
-            <motion.div
-              key={idx}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.2, ease: 'easeOut' }}
-            >
-              <ResultMessage
-                isError={msg.is_error === true}
-                model={msg.model as string | undefined}
-                totalCostUsd={msg.total_cost_usd as number | undefined}
-                durationMs={msg.duration_ms as number | undefined}
-                numTurns={msg.num_turns as number | undefined}
-                inputTokens={(msg.usage as { input_tokens?: number } | undefined)?.input_tokens}
-                outputTokens={(msg.usage as { output_tokens?: number } | undefined)?.output_tokens}
-                errorMessage={msg.error as string | undefined}
-              />
-            </motion.div>
-          )
-        }
-
-        if (msg.type === 'error') {
-          return (
-            <motion.div
-              key={idx}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.2, ease: 'easeOut' }}
-            >
-              <ResultMessage
-                isError={true}
-                errorMessage={msg.error as string | undefined}
-              />
-            </motion.div>
-          )
-        }
-
-        return null
-      })}
+      {turns.map((turn, turnIdx) => (
+        // Each turn is a containing block that scopes the sticky user message.
+        // When this div scrolls out of view, its sticky child naturally unsticks.
+        <div key={turn.userIdx ?? `pre-${turnIdx}`}>
+          {turn.messages.map(({ msg, idx }) => renderMessage(msg, idx))}
+        </div>
+      ))}
 
       {streaming && (
         <motion.div

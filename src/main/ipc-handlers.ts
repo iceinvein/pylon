@@ -1,8 +1,34 @@
 import { ipcMain, dialog, BrowserWindow } from 'electron'
 import { readFile } from 'fs/promises'
 import { IPC } from '../shared/ipc-channels'
+import { getDb } from './db'
 import { sessionManager } from './session-manager'
-import type { PermissionResponse } from '../shared/types'
+import type { AppSettings, PermissionMode, PermissionResponse, QuestionResponse } from '../shared/types'
+
+const DEFAULT_SETTINGS: AppSettings = {
+  defaultModel: 'claude-opus-4-6',
+  defaultPermissionMode: 'default',
+  theme: 'dark',
+}
+
+function getSettings(): AppSettings {
+  const db = getDb()
+  const rows = db.prepare('SELECT key, value FROM settings').all() as { key: string; value: string }[]
+  const stored: Record<string, string> = {}
+  for (const row of rows) {
+    stored[row.key] = row.value
+  }
+  return {
+    defaultModel: stored.defaultModel ?? DEFAULT_SETTINGS.defaultModel,
+    defaultPermissionMode: (stored.defaultPermissionMode as PermissionMode) ?? DEFAULT_SETTINGS.defaultPermissionMode,
+    theme: 'dark',
+  }
+}
+
+function updateSetting(key: string, value: unknown): void {
+  const db = getDb()
+  db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run(key, String(value))
+}
 
 export function registerIpcHandlers(): void {
   ipcMain.handle(IPC.SESSION_CREATE, async (_e, args: { cwd: string; model?: string }) => {
@@ -22,8 +48,8 @@ export function registerIpcHandlers(): void {
     return true
   })
 
-  ipcMain.handle(IPC.SESSION_RESUME, async (_e, _args: { sessionId: string }) => {
-    return true
+  ipcMain.handle(IPC.SESSION_RESUME, async (_e, args: { sessionId: string }) => {
+    return sessionManager.resumeSession(args.sessionId)
   })
 
   ipcMain.handle(IPC.SESSION_LIST, async () => {
@@ -60,11 +86,27 @@ export function registerIpcHandlers(): void {
     return true
   })
 
-  ipcMain.handle(IPC.SETTINGS_GET, async () => {
-    return { defaultModel: 'claude-sonnet-4-6', defaultPermissionMode: 'default', theme: 'dark' }
+  ipcMain.handle(IPC.QUESTION_RESPONSE, async (_e, response: QuestionResponse) => {
+    sessionManager.resolveQuestion(response)
+    return true
   })
 
-  ipcMain.handle(IPC.SETTINGS_UPDATE, async (_e, _args: { key: string; value: unknown }) => {
+  ipcMain.handle(IPC.SESSION_SET_MODEL, async (_e, args: { sessionId: string; model: string }) => {
+    sessionManager.setModel(args.sessionId, args.model)
+    return true
+  })
+
+  ipcMain.handle(IPC.SESSION_SET_PERMISSION_MODE, async (_e, args: { sessionId: string; mode: PermissionMode }) => {
+    sessionManager.setPermissionMode(args.sessionId, args.mode)
+    return true
+  })
+
+  ipcMain.handle(IPC.SETTINGS_GET, async () => {
+    return getSettings()
+  })
+
+  ipcMain.handle(IPC.SETTINGS_UPDATE, async (_e, args: { key: string; value: unknown }) => {
+    updateSetting(args.key, args.value)
     return true
   })
 }
