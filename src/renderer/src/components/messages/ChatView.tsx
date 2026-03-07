@@ -127,12 +127,46 @@ export const ChatView = memo(function ChatView({ sessionId }: ChatViewProps) {
     return () => container.removeEventListener('scroll', onScroll)
   }, [])
 
-  // Auto-scroll only when user is already near the bottom
+  // rAF scroll pinning during streaming — sets scrollTop directly each frame
+  const rafIdRef = useRef<number | null>(null)
+
   useEffect(() => {
-    if (isNearBottomRef.current) {
+    const container = scrollContainerRef.current
+    if (!container || !streaming) {
+      // Stop the rAF loop when streaming ends
+      if (rafIdRef.current !== null) {
+        cancelAnimationFrame(rafIdRef.current)
+        rafIdRef.current = null
+      }
+      return
+    }
+
+    function pin() {
+      if (!isNearBottomRef.current || !container) {
+        rafIdRef.current = null
+        return
+      }
+      container.scrollTop = container.scrollHeight
+      rafIdRef.current = requestAnimationFrame(pin)
+    }
+
+    // Start the loop
+    rafIdRef.current = requestAnimationFrame(pin)
+
+    return () => {
+      if (rafIdRef.current !== null) {
+        cancelAnimationFrame(rafIdRef.current)
+        rafIdRef.current = null
+      }
+    }
+  }, [streaming])
+
+  // Smooth scroll for discrete events (new messages, questions)
+  useEffect(() => {
+    if (isNearBottomRef.current && !streaming) {
       bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
     }
-  }, [sessionMessages.length, streaming, sessionQuestions.length])
+  }, [sessionMessages.length, sessionQuestions.length])
 
   async function handlePermissionRespond(requestId: string, behavior: 'allow' | 'deny') {
     await window.api.respondToPermission(requestId, behavior)
