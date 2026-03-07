@@ -104,7 +104,6 @@ export function InputBar({ sessionId, isRunning, model, onModelChange, permissio
     onSend(trimmed, attachments)
     setText('')
     setAttachments([])
-    setShowSlash(false)
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto'
     }
