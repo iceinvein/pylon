@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
-import { Search, FolderOpen, Plus, Archive, DollarSign, RotateCcw } from 'lucide-react'
+import { Search, FolderOpen, Plus, Archive, DollarSign, RotateCcw, GitCommit } from 'lucide-react'
 import { useUiStore } from '../store/ui-store'
 import { useTabStore } from '../store/tab-store'
 import { useSessionStore } from '../store/session-store'
@@ -100,6 +100,19 @@ export function CommandPalette() {
             try { await window.api.stopSession(sessionId) } catch {}
             // Clear tab's session — next message triggers ensureSession() for a fresh one
             updateTab(activeTabId, { sessionId: null })
+          },
+        },
+        {
+          id: 'commit',
+          label: 'Commit',
+          description: 'Commit current changes with AI-generated message',
+          icon: GitCommit,
+          section: 'session',
+          action: async () => {
+            toggleCommandPalette()
+            // Append user message to store so ChatView can detect the commit turn
+            useSessionStore.getState().appendMessage(sessionId, { type: 'user', content: 'commit' })
+            await window.api.sendMessage(sessionId, 'commit', [])
           },
         },
         {

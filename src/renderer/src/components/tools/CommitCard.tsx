@@ -1,0 +1,283 @@
+import { useState, useMemo } from 'react'
+import { motion, AnimatePresence } from 'motion/react'
+import { GitCommit, ChevronRight, Check, Loader2, XCircle, FileText } from 'lucide-react'
+
+type CommitCardProps = {
+  toolBlocks: Array<{
+    name: string
+    input: Record<string, unknown>
+    id?: string
+  }>
+  toolResultMap: Map<string, string>
+  isStreaming: boolean
+}
+
+/** Match a bash tool block to a commit workflow phase */
+function classifyTool(name: string, input: Record<string, unknown>): string | null {
+  if (!name.toLowerCase().includes('bash') && !name.toLowerCase().includes('shell')) return null
+  const cmd = String(input.command ?? input.cmd ?? '')
+  if (cmd.includes('git status') || cmd.includes('git diff')) return 'analyze'
+  if (cmd.includes('git log')) return 'review'
+  if (cmd.includes('git add')) return 'stage'
+  if (cmd.includes('git commit')) return 'commit'
+  return null
+}
+
+function parseCommitHash(output: string): string | null {
+  const match = output.match(/\[[\w/.+-]+\s+([a-f0-9]{7,})\]/)
+  return match ? match[1] : null
+}
+
+function parseCommitMessage(output: string): string | null {
+  const match = output.match(/\[[\w/.+-]+\s+[a-f0-9]+\]\s+(.+)/)
+  return match ? match[1] : null
+}
+
+function parseFileStats(output: string): { files: string[]; insertions: number; deletions: number } {
+  const files: string[] = []
+  let insertions = 0
+  let deletions = 0
+
+  for (const line of output.split('\n')) {
+    // Summary line: "3 files changed, 274 insertions(+), 201 deletions(-)"
+    const summary = line.match(/(\d+)\s+files?\s+changed(?:,\s+(\d+)\s+insertion)?(?:.*?(\d+)\s+deletion)?/)
+    if (summary) {
+      insertions = parseInt(summary[2] ?? '0', 10)
+      deletions = parseInt(summary[3] ?? '0', 10)
+    }
+    // File stat lines: " src/foo.tsx | 12 ++--"
+    const fileMatch = line.match(/^\s+(.+?)\s+\|/)
+    if (fileMatch) {
+      files.push(fileMatch[1].trim())
+    }
+    // Create/delete mode lines
+    const modeMatch = line.match(/(?:create|delete)\s+mode\s+\d+\s+(.+)/)
+    if (modeMatch && !files.includes(modeMatch[1].trim())) {
+      files.push(modeMatch[1].trim())
+    }
+  }
+  return { files, insertions, deletions }
+}
+
+type PhaseInfo = {
+  id: string
+  label: string
+  status: 'pending' | 'running' | 'done'
+}
+
+export function CommitCard({ toolBlocks, toolResultMap, isStreaming }: CommitCardProps) {
+  const [expanded, setExpanded] = useState(false)
+
+  const { phases, commitHash, commitMessage, fileStats } = useMemo(() => {
+    const phaseResults = new Map<string, { done: boolean; result: string }>()
+    let hash: string | null = null
+    let message: string | null = null
+    let stats: { files: string[]; insertions: number; deletions: number } = { files: [], insertions: 0, deletions: 0 }
+
+    for (const block of toolBlocks) {
+      const phase = classifyTool(block.name, block.input)
+      if (!phase) continue
+      const result = block.id ? toolResultMap.get(block.id) ?? '' : ''
+      const done = result.length > 0
+
+      // Extract data from completed phases
+      if (phase === 'commit' && done) {
+        hash = parseCommitHash(result)
+        message = parseCommitMessage(result)
+        const parsed = parseFileStats(result)
+        if (parsed.files.length > 0) stats = parsed
+      }
+      if (phase === 'analyze' && done && stats.files.length === 0) {
+        const parsed = parseFileStats(result)
+        if (parsed.files.length > 0) stats = parsed
+      }
+
+      // Track latest status per phase (some phases have multiple tool calls)
+      const existing = phaseResults.get(phase)
+      if (!existing || done) {
+        phaseResults.set(phase, { done, result })
+      }
+    }
+
+    // Build ordered phases — only include phases that have tool blocks
+    const phaseOrder = [
+      { id: 'analyze', label: 'Analyzing changes' },
+      { id: 'review', label: 'Reviewing history' },
+      { id: 'stage', label: 'Staging files' },
+      { id: 'commit', label: 'Committing' },
+    ]
+
+    let foundRunning = false
+    const builtPhases: PhaseInfo[] = []
+    for (const def of phaseOrder) {
+      const entry = phaseResults.get(def.id)
+      if (!entry) continue
+      if (entry.done) {
+        builtPhases.push({ id: def.id, label: def.label, status: 'done' })
+      } else if (!foundRunning) {
+        foundRunning = true
+        builtPhases.push({ id: def.id, label: def.label, status: 'running' })
+      } else {
+        builtPhases.push({ id: def.id, label: def.label, status: 'pending' })
+      }
+    }
+
+    return { phases: builtPhases, commitHash: hash, commitMessage: message, fileStats: stats }
+  }, [toolBlocks, toolResultMap])
+
+  const isDone = commitHash !== null
+  const allDone = phases.length > 0 && phases.every((p) => p.status === 'done')
+
+  return (
+    <div className="my-1 px-6 py-2">
+      <div className="overflow-hidden rounded-lg border border-stone-800 bg-stone-900/60">
+        {/* Header */}
+        <button
+          onClick={() => setExpanded((v) => !v)}
+          className="flex w-full items-center gap-3 px-4 py-3 text-left"
+        >
+          <div
+            className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg ${
+              isDone
+                ? 'bg-green-900/30 text-green-400'
+                : allDone
+                  ? 'bg-stone-800 text-stone-400'
+                  : 'bg-stone-800 text-stone-400'
+            }`}
+          >
+            {isDone ? (
+              <Check size={16} />
+            ) : isStreaming || phases.some((p) => p.status === 'running') ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <GitCommit size={16} />
+            )}
+          </div>
+
+          <div className="min-w-0 flex-1">
+            {isDone ? (
+              <>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-stone-200">Committed</span>
+                  <code className="rounded bg-stone-800 px-1.5 py-0.5 font-[family-name:var(--font-mono)] text-xs text-amber-400">
+                    {commitHash}
+                  </code>
+                </div>
+                {commitMessage && (
+                  <p className="mt-0.5 truncate text-xs text-stone-400">{commitMessage}</p>
+                )}
+              </>
+            ) : (
+              <span className="text-sm font-medium text-stone-300">
+                {isStreaming || phases.some((p) => p.status === 'running') ? 'Committing...' : 'Commit'}
+              </span>
+            )}
+          </div>
+
+          {isDone && (fileStats.insertions > 0 || fileStats.deletions > 0) && (
+            <div className="flex items-center gap-2 text-xs text-stone-500">
+              {fileStats.files.length > 0 && (
+                <span>
+                  {fileStats.files.length} file{fileStats.files.length !== 1 ? 's' : ''}
+                </span>
+              )}
+              {fileStats.insertions > 0 && <span className="text-green-500">+{fileStats.insertions}</span>}
+              {fileStats.deletions > 0 && <span className="text-red-400">&minus;{fileStats.deletions}</span>}
+            </div>
+          )}
+
+          <motion.span
+            animate={{ rotate: expanded ? 90 : 0 }}
+            transition={{ duration: 0.15 }}
+            className="flex-shrink-0 text-stone-600"
+          >
+            <ChevronRight size={14} />
+          </motion.span>
+        </button>
+
+        {/* Expanded detail */}
+        <AnimatePresence>
+          {expanded && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden"
+            >
+              <div className="space-y-3 border-t border-stone-800/60 px-4 py-3">
+                {/* Progress phases */}
+                <div className="space-y-1.5">
+                  {phases.map((phase) => (
+                    <div key={phase.id} className="flex items-center gap-2">
+                      {phase.status === 'done' && <Check size={12} className="flex-shrink-0 text-green-500" />}
+                      {phase.status === 'running' && (
+                        <Loader2 size={12} className="flex-shrink-0 animate-spin text-stone-400" />
+                      )}
+                      {phase.status === 'pending' && (
+                        <div className="h-3 w-3 flex-shrink-0 rounded-full border border-stone-700" />
+                      )}
+                      <span
+                        className={`text-xs ${
+                          phase.status === 'done'
+                            ? 'text-stone-400'
+                            : phase.status === 'running'
+                              ? 'text-stone-300'
+                              : 'text-stone-600'
+                        }`}
+                      >
+                        {phase.label}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* File list */}
+                {fileStats.files.length > 0 && (
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-medium uppercase tracking-wider text-stone-600">Files</p>
+                    {fileStats.files.map((file) => (
+                      <div key={file} className="flex items-center gap-2">
+                        <FileText size={11} className="flex-shrink-0 text-stone-600" />
+                        <span className="truncate font-[family-name:var(--font-mono)] text-xs text-stone-400">
+                          {file}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </div>
+  )
+}
+
+/** Check if a user message looks like a commit request */
+export function isCommitRequest(userMessage: string): boolean {
+  const normalized = userMessage.trim().toLowerCase()
+  if (normalized === 'commit' || normalized === 'commit changes' || normalized === 'git commit') return true
+  if (
+    /^(commit|please commit|can you commit|go ahead and commit|now commit|lets commit|let's commit|yep.*commit|yes.*commit)/.test(
+      normalized
+    )
+  )
+    return true
+  return false
+}
+
+/** Check if an assistant turn's tool blocks look like a commit workflow */
+export function hasGitCommitTools(
+  toolBlocks: Array<{ name: string; input: Record<string, unknown> }>
+): boolean {
+  let hasCommit = false
+  let hasAnalyze = false
+  for (const block of toolBlocks) {
+    const phase = classifyTool(block.name, block.input)
+    if (phase === 'commit') hasCommit = true
+    if (phase === 'analyze') hasAnalyze = true
+  }
+  return hasCommit || (hasAnalyze && toolBlocks.length >= 2)
+}

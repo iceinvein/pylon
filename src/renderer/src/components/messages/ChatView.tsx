@@ -11,6 +11,7 @@ import { QuestionPrompt } from './QuestionPrompt'
 import { TextBlock } from './TextBlock'
 import { SubagentBlock } from '../tools/SubagentBlock'
 import { ToolUseBlock } from '../tools/ToolUseBlock'
+import { isCommitRequest, hasGitCommitTools, CommitCard } from '../tools/CommitCard'
 import { Zap, Minimize2 } from 'lucide-react'
 
 type SdkMessage = {
@@ -147,7 +148,13 @@ export const ChatView = memo(function ChatView({ sessionId }: ChatViewProps) {
     const hasAgentBlocks = content.some((b) => b.type === 'tool_use' && b.name === 'Agent')
 
     if (!hasAgentBlocks) {
-      return <AssistantMessage content={content} sessionId={sessionId} toolResultMap={toolResultMap} />
+      return (
+        <AssistantMessage
+          content={content}
+          sessionId={sessionId}
+          toolResultMap={toolResultMap}
+        />
+      )
     }
 
     // Render message normally but replace Agent tool_use blocks with SubagentBlock cards
@@ -219,6 +226,42 @@ export const ChatView = memo(function ChatView({ sessionId }: ChatViewProps) {
     }
     return groups
   }, [visibleMessages])
+
+  // Detect commit turns: user message is a commit request + assistant has git tool calls.
+  // With includePartialMessages, each tool_use arrives in its own assistant message,
+  // so we aggregate tool blocks across ALL assistant messages in the turn before checking.
+  const commitTurnIndices = useMemo(() => {
+    const indices = new Set<number>()
+    for (const turn of turns) {
+      const userMsg = turn.messages.find(({ msg }) => msg.type === 'user' && !isToolResultMessage(msg))
+      if (!userMsg) continue
+      const rawContent = userMsg.msg.content ?? (userMsg.msg.message as Record<string, unknown> | undefined)?.content
+      const userText = typeof rawContent === 'string'
+        ? rawContent
+        : Array.isArray(rawContent)
+          ? (rawContent as Array<{ type: string; text?: string }>).filter((b) => b.type === 'text').map((b) => b.text ?? '').join(' ')
+          : ''
+      if (!isCommitRequest(userText)) continue
+
+      // Aggregate tool blocks from ALL assistant messages in this turn
+      const allToolBlocks: Array<{ name: string; input: Record<string, unknown> }> = []
+      for (const { msg } of turn.messages) {
+        if (msg.type !== 'assistant') continue
+        const messageObj = msg.message as { content?: AssistantContentBlock[] } | undefined
+        const blocks = (messageObj?.content ?? msg.content ?? []) as AssistantContentBlock[]
+        for (const b of blocks) {
+          if (b.type === 'tool_use') {
+            allToolBlocks.push({ name: b.name ?? '', input: b.input ?? {} })
+          }
+        }
+      }
+
+      if (hasGitCommitTools(allToolBlocks)) {
+        for (const m of turn.messages) indices.add(m.idx)
+      }
+    }
+    return indices
+  }, [turns])
 
   function renderMessage(msg: SdkMessage, idx: number) {
     if (msg.type === 'user') {
@@ -342,13 +385,66 @@ export const ChatView = memo(function ChatView({ sessionId }: ChatViewProps) {
         </div>
       )}
 
-      {turns.map((turn, turnIdx) => (
-        // Each turn is a containing block that scopes the sticky user message.
-        // When this div scrolls out of view, its sticky child naturally unsticks.
-        <div key={turn.userIdx ?? `pre-${turnIdx}`}>
-          {turn.messages.map(({ msg, idx }) => renderMessage(msg, idx))}
-        </div>
-      ))}
+      {turns.map((turn, turnIdx) => {
+        const isCommitTurn = turn.messages.some(({ idx }) => commitTurnIndices.has(idx))
+
+        if (isCommitTurn) {
+          // Render commit turns as a single CommitCard instead of individual tool blocks.
+          // Collect all tool blocks from every assistant message in the turn.
+          const allToolBlocks: Array<{ name: string; input: Record<string, unknown>; id?: string }> = []
+          const finalTextBlocks: Array<{ text: string }> = []
+
+          for (const { msg } of turn.messages) {
+            if (msg.type !== 'assistant') continue
+            const messageObj = msg.message as { content?: AssistantContentBlock[] } | undefined
+            const blocks = (messageObj?.content ?? msg.content ?? []) as AssistantContentBlock[]
+            for (const b of blocks) {
+              if (b.type === 'tool_use' && b.name) {
+                allToolBlocks.push({ name: b.name, input: b.input ?? {}, id: b.id })
+              }
+            }
+            // Collect text blocks from the last assistant message (the commit summary)
+            const texts = blocks.filter((b) => b.type === 'text' && b.text)
+            if (texts.length > 0) {
+              finalTextBlocks.length = 0 // reset — only keep text from the latest message
+              for (const t of texts) finalTextBlocks.push({ text: t.text! })
+            }
+          }
+
+          // Render: user message → CommitCard → final text → result
+          return (
+            <div key={turn.userIdx ?? `pre-${turnIdx}`}>
+              {turn.messages.map(({ msg, idx }) => {
+                if (msg.type === 'assistant') return null // handled by CommitCard below
+                return renderMessage(msg, idx)
+              })}
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2, ease: 'easeOut' }}
+              >
+                <CommitCard
+                  toolBlocks={allToolBlocks}
+                  toolResultMap={toolResultMap}
+                  isStreaming={!!streaming}
+                />
+                {finalTextBlocks.map((block, i) => (
+                  <div key={`commit-text-${i}`} className="px-6 py-1">
+                    <TextBlock text={block.text} />
+                  </div>
+                ))}
+              </motion.div>
+            </div>
+          )
+        }
+
+        // Normal turn rendering
+        return (
+          <div key={turn.userIdx ?? `pre-${turnIdx}`}>
+            {turn.messages.map(({ msg, idx }) => renderMessage(msg, idx))}
+          </div>
+        )
+      })}
 
       {streaming && (
         <motion.div
