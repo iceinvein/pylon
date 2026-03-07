@@ -499,7 +499,7 @@ export const ChatView = memo(function ChatView({ sessionId }: ChatViewProps) {
           transition={{ duration: 0.15 }}
           className="px-6 py-2"
         >
-          <TextBlock text={streaming} />
+          <TextBlock text={streaming} isStreaming />
           <span className="inline-block h-4 w-0.5 animate-pulse bg-stone-400 align-text-bottom" />
         </motion.div>
       )}

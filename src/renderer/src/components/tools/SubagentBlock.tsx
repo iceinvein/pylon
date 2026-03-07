@@ -196,7 +196,7 @@ export function SubagentBlock({ agentType, status, description, agentId, prompt,
               {/* Live streaming text */}
               {streamingText && (
                 <div className="py-1">
-                  <TextBlock text={streamingText} />
+                  <TextBlock text={streamingText} isStreaming />
                   <span className="inline-block h-3.5 w-0.5 animate-pulse bg-blue-400 align-text-bottom" />
                 </div>
               )}
