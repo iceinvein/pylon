@@ -11,7 +11,7 @@ import { QuestionPrompt } from './QuestionPrompt'
 import { TextBlock } from './TextBlock'
 import { SubagentBlock } from '../tools/SubagentBlock'
 import { ToolUseBlock } from '../tools/ToolUseBlock'
-import { Zap } from 'lucide-react'
+import { Zap, Minimize2 } from 'lucide-react'
 
 type SdkMessage = {
   type: string
@@ -82,6 +82,34 @@ export const ChatView = memo(function ChatView({ sessionId }: ChatViewProps) {
 
   const { agentMap, mainThreadMessages } = useAgentGrouping(sessionMessages)
 
+  // Find the last compact_boundary and only show messages after it
+  const { visibleMessages, wasCompacted, compactMetadata } = useMemo(() => {
+    let lastBoundaryIdx = -1
+    let metadata: { trigger?: string; pre_tokens?: number } | null = null
+    for (let i = mainThreadMessages.length - 1; i >= 0; i--) {
+      const m = mainThreadMessages[i] as SdkMessage
+      if (m.type === 'system' && m.subtype === 'compact_boundary') {
+        lastBoundaryIdx = i
+        metadata = (m as { compact_metadata?: { trigger?: string; pre_tokens?: number } }).compact_metadata ?? null
+        break
+      }
+    }
+    if (lastBoundaryIdx === -1) {
+      return { visibleMessages: mainThreadMessages, wasCompacted: false, compactMetadata: null }
+    }
+    // Skip the SDK-injected summary user message that immediately follows the boundary
+    let startIdx = lastBoundaryIdx + 1
+    const next = mainThreadMessages[startIdx] as SdkMessage | undefined
+    if (next?.type === 'user' && isCompactSummaryMessage(next)) {
+      startIdx++
+    }
+    return {
+      visibleMessages: mainThreadMessages.slice(startIdx),
+      wasCompacted: true,
+      compactMetadata: metadata,
+    }
+  }, [mainThreadMessages])
+
   const toolResultMap = useMemo(() => buildToolResultMap(sessionMessages), [sessionMessages])
 
   // Track whether the user has scrolled away from the bottom
@@ -137,6 +165,7 @@ export const ChatView = memo(function ChatView({ sessionId }: ChatViewProps) {
                 status={status}
                 description={agent?.description}
                 agentId={block.id}
+                prompt={agent?.prompt}
               />
             )
           }
@@ -170,8 +199,8 @@ export const ChatView = memo(function ChatView({ sessionId }: ChatViewProps) {
     const groups: { userIdx: number | null; messages: { msg: SdkMessage; idx: number }[] }[] = []
     let current: { userIdx: number | null; messages: { msg: SdkMessage; idx: number }[] } = { userIdx: null, messages: [] }
 
-    for (let idx = 0; idx < mainThreadMessages.length; idx++) {
-      const msg = mainThreadMessages[idx] as SdkMessage
+    for (let idx = 0; idx < visibleMessages.length; idx++) {
+      const msg = visibleMessages[idx] as SdkMessage
       const isVisibleUser = msg.type === 'user' && !isToolResultMessage(msg) && !extractSkillName(msg)
 
       if (isVisibleUser) {
@@ -188,7 +217,7 @@ export const ChatView = memo(function ChatView({ sessionId }: ChatViewProps) {
       groups.push(current)
     }
     return groups
-  }, [mainThreadMessages])
+  }, [visibleMessages])
 
   function renderMessage(msg: SdkMessage, idx: number) {
     if (msg.type === 'user') {
@@ -236,7 +265,8 @@ export const ChatView = memo(function ChatView({ sessionId }: ChatViewProps) {
         sub === 'status' ||
         sub === 'hook_started' ||
         sub === 'hook_response' ||
-        sub === 'task_started'
+        sub === 'task_started' ||
+        sub === 'compact_boundary'
       ) return null
       const content = String(msg.content ?? msg.subtype ?? 'System message')
       return (
@@ -295,6 +325,22 @@ export const ChatView = memo(function ChatView({ sessionId }: ChatViewProps) {
   return (
     <div ref={scrollContainerRef} className="flex h-full flex-col overflow-y-auto">
       <div className="mx-auto w-full max-w-3xl">
+      {wasCompacted && (
+        <div className="flex items-center gap-3 px-6 py-3">
+          <div className="h-px flex-1 bg-stone-700/50" />
+          <div className="flex items-center gap-1.5 text-xs text-stone-500">
+            <Minimize2 size={12} />
+            <span>Conversation compacted</span>
+            {compactMetadata?.pre_tokens && (
+              <span className="text-stone-600">
+                ({Math.round(compactMetadata.pre_tokens / 1000)}k tokens)
+              </span>
+            )}
+          </div>
+          <div className="h-px flex-1 bg-stone-700/50" />
+        </div>
+      )}
+
       {turns.map((turn, turnIdx) => (
         // Each turn is a containing block that scopes the sticky user message.
         // When this div scrolls out of view, its sticky child naturally unsticks.
@@ -394,4 +440,19 @@ function extractSkillName(msg: SdkMessage): string | null {
   }
 
   return null
+}
+
+/** Detect the SDK-injected compact summary user message */
+function isCompactSummaryMessage(msg: SdkMessage): boolean {
+  const rawContent = msg.content ?? (msg.message as Record<string, unknown> | undefined)?.content
+  let text = ''
+  if (typeof rawContent === 'string') {
+    text = rawContent
+  } else if (Array.isArray(rawContent)) {
+    text = (rawContent as Array<{ type: string; text?: string }>)
+      .filter((b) => b.type === 'text' && b.text)
+      .map((b) => b.text)
+      .join('\n')
+  }
+  return text.includes('This session is being continued from a previous conversation')
 }

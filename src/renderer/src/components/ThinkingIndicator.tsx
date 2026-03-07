@@ -13,10 +13,14 @@ const THINKING_PHRASES = [
   'Working through it...',
 ]
 
-export function ThinkingIndicator() {
+type ThinkingIndicatorProps = {
+  isCompacting?: boolean
+}
+
+export function ThinkingIndicator({ isCompacting }: ThinkingIndicatorProps) {
   const [phraseIdx, setPhraseIdx] = useState(() => Math.floor(Math.random() * THINKING_PHRASES.length))
   const [charIdx, setCharIdx] = useState(0)
-  const phrase = THINKING_PHRASES[phraseIdx]
+  const phrase = isCompacting ? 'Compacting conversation...' : THINKING_PHRASES[phraseIdx]
 
   useEffect(() => {
     if (charIdx < phrase.length) {

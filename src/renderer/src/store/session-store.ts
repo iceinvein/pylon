@@ -34,6 +34,8 @@ type SessionStore = {
   /** Complete subagent messages, keyed by parent_tool_use_id */
   subagentMessages: Map<string, unknown[]>
   tasks: Map<string, TaskItem[]>
+  /** SDK-reported status per session (e.g. 'compacting') */
+  sdkStatus: Map<string, string | null>
 
   setSession: (session: SessionState) => void
   updateSession: (sessionId: string, updates: Partial<SessionState>) => void
@@ -50,6 +52,7 @@ type SessionStore = {
   appendSubagentMessage: (agentToolUseId: string, message: unknown) => void
   upsertTask: (sessionId: string, task: TaskItem) => void
   clearTasks: (sessionId: string) => void
+  setSdkStatus: (sessionId: string, status: string | null) => void
 }
 
 export const useSessionStore = create<SessionStore>((set) => ({
@@ -61,6 +64,7 @@ export const useSessionStore = create<SessionStore>((set) => ({
   subagentStreaming: new Map(),
   subagentMessages: new Map(),
   tasks: new Map(),
+  sdkStatus: new Map(),
 
   setSession: (session) =>
     set((state) => {
@@ -171,6 +175,13 @@ export const useSessionStore = create<SessionStore>((set) => ({
       const next = new Map(state.tasks)
       next.delete(sessionId)
       return { tasks: next }
+    }),
+
+  setSdkStatus: (sessionId, status) =>
+    set((state) => {
+      const next = new Map(state.sdkStatus)
+      next.set(sessionId, status)
+      return { sdkStatus: next }
     }),
 }))
 

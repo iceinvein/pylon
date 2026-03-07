@@ -1,7 +1,6 @@
 import { Layout } from './components/layout/Layout'
 import { HomePage } from './pages/HomePage'
 import { SessionView } from './pages/SessionView'
-import { SubagentDrawer } from './components/SubagentDrawer'
 import { SettingsOverlay } from './components/SettingsOverlay'
 import { CommandPalette } from './components/CommandPalette'
 import { useTabStore } from './store/tab-store'
@@ -24,7 +23,6 @@ export default function App() {
           <HomePage />
         )}
       </Layout>
-      <SubagentDrawer />
       <SettingsOverlay />
       <CommandPalette />
     </>
