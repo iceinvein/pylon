@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { accumulateDelta, flushPendingDeltas } from '../lib/delta-batcher'
 import { useSessionStore } from '../store/session-store'
 import type { PermissionRequest, QuestionRequest, SessionStatus } from '../../../shared/types'
 
@@ -63,22 +64,12 @@ export function useIpcBridge(): void {
 
         if (delta?.type === 'text_delta' && delta.text) {
           if (parentToolUseId) {
-            store().appendSubagentStreamText(parentToolUseId, delta.text)
+            accumulateDelta(`subagent:${parentToolUseId}`, delta.text)
           } else {
-            useSessionStore.setState((state) => {
-              const current = state.streamingText.get(sessionId) ?? ''
-              const next = new Map(state.streamingText)
-              next.set(sessionId, current + delta.text)
-              return { streamingText: next }
-            })
+            accumulateDelta(sessionId, delta.text)
           }
         } else if (delta?.type === 'thinking_delta' && delta.thinking && !parentToolUseId) {
-          useSessionStore.setState((state) => {
-            const current = state.streamingText.get(`${sessionId}:thinking`) ?? ''
-            const next = new Map(state.streamingText)
-            next.set(`${sessionId}:thinking`, current + delta.thinking)
-            return { streamingText: next }
-          })
+          accumulateDelta(`${sessionId}:thinking`, delta.thinking)
         }
         return
       }
@@ -90,6 +81,7 @@ export function useIpcBridge(): void {
           const s = store()
           const streamedText = s.subagentStreaming.get(parentToolUseId)
           if (streamedText) {
+            flushPendingDeltas()
             s.appendSubagentMessage(parentToolUseId, {
               type: 'subagent_text',
               text: streamedText,
@@ -99,12 +91,14 @@ export function useIpcBridge(): void {
           s.appendSubagentMessage(parentToolUseId, message)
           return
         }
+        flushPendingDeltas()
         store().clearStreamingText(sessionId)
         store().clearStreamingText(`${sessionId}:thinking`)
       }
 
       if (msg.type === 'result') {
         const resultMsg = msg as ResultMessage
+        flushPendingDeltas()
         store().clearStreamingText(sessionId)
         store().clearStreamingText(`${sessionId}:thinking`)
 
