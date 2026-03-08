@@ -42,6 +42,8 @@ const api = {
     ipcRenderer.invoke(IPC.SESSION_FILE_DIFFS, { sessionId, filePaths }),
   getFileStatuses: (sessionId: string, filePaths: string[]) =>
     ipcRenderer.invoke(IPC.SESSION_FILE_STATUSES, { sessionId, filePaths }),
+  getUsageStats: (period: string) =>
+    ipcRenderer.invoke(IPC.USAGE_STATS, { period }),
 
   onSessionMessage: (callback: (data: unknown) => void) => {
     const handler = (_event: unknown, data: unknown) => callback(data)

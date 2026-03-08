@@ -19,6 +19,7 @@ type Api = {
   updateSettings: (key: string, value: unknown) => Promise<boolean>
   getFileDiffs: (sessionId: string, filePaths: string[]) => Promise<Array<{ filePath: string; status: string; diff: string }>>
   getFileStatuses: (sessionId: string, filePaths: string[]) => Promise<Array<{ filePath: string; status: string }>>
+  getUsageStats: (period: string) => Promise<import('../shared/types').UsageStats>
   onSessionMessage: (callback: (data: unknown) => void) => () => void
   onSessionStatus: (callback: (data: unknown) => void) => () => void
   onSessionPermission: (callback: (data: unknown) => void) => () => void
