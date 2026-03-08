@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Clock, Folder, Trash2, DollarSign } from 'lucide-react'
+import { Clock, Folder, Trash2, DollarSign, GitBranch } from 'lucide-react'
 import { useTabStore } from '../store/tab-store'
 import { useSessionStore } from '../store/session-store'
 import { formatCost, timeAgo } from '../lib/utils'
@@ -17,6 +17,9 @@ type StoredSession = {
   output_tokens: number
   created_at: number
   updated_at: number
+  worktree_path: string | null
+  original_cwd: string | null
+  worktree_branch: string | null
 }
 
 export function HistoryPanel() {
@@ -74,7 +77,8 @@ export function HistoryPanel() {
     }
 
     await window.api.resumeSession(session.id)
-    addTab(session.cwd, session.title || session.cwd.split('/').pop() || session.cwd, session.id)
+    const displayCwd = session.original_cwd ?? session.cwd
+    addTab(session.cwd, session.title || displayCwd.split('/').pop() || displayCwd, session.id)
   }
 
   async function handleDelete(e: React.MouseEvent, sessionId: string) {
@@ -112,7 +116,15 @@ export function HistoryPanel() {
                 <p className="truncate text-xs text-stone-300">
                   {session.title || session.cwd.split('/').pop() || 'Untitled'}
                 </p>
-                <p className="truncate text-[11px] text-stone-600">{session.cwd}</p>
+                <p className="truncate text-[11px] text-stone-600">
+                  {session.original_cwd ?? session.cwd}
+                </p>
+                {session.worktree_branch && (
+                  <div className="mt-0.5 flex items-center gap-1">
+                    <GitBranch size={9} className="text-amber-600" />
+                    <span className="text-[10px] text-amber-600/80">{session.worktree_branch}</span>
+                  </div>
+                )}
                 <div className="mt-1 flex items-center gap-2.5">
                   <span className="flex items-center gap-1 text-[11px] text-stone-700">
                     <Clock size={9} />
