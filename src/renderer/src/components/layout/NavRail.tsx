@@ -1,33 +1,12 @@
-import { useState } from 'react'
 import { Home, Clock, FolderOpen, Settings } from 'lucide-react'
 import { motion } from 'motion/react'
-import { useTabStore } from '../../store/tab-store'
 import { useUiStore } from '../../store/ui-store'
+import { useFolderOpen } from '../../hooks/use-folder-open'
 import { WorktreeDialog } from '../WorktreeDialog'
 
 export function NavRail() {
-  const addTab = useTabStore((s) => s.addTab)
   const { sidebarView, setSidebarView, setSettingsOpen } = useUiStore()
-  const [dialogState, setDialogState] = useState<{ path: string; isDirty: boolean } | null>(null)
-
-  async function handleOpenFolder() {
-    const path = await window.api.openFolder()
-    if (!path) return
-
-    const status = await window.api.checkGitStatus(path)
-    if (status.isGitRepo) {
-      setDialogState({ path, isDirty: status.isDirty })
-    } else {
-      addTab(path)
-    }
-  }
-
-  function handleDialogConfirm(useWorktree: boolean) {
-    if (dialogState) {
-      addTab(dialogState.path, undefined, undefined, useWorktree || undefined)
-    }
-    setDialogState(null)
-  }
+  const { dialogState, openFolder, confirmDialog, cancelDialog } = useFolderOpen()
 
   return (
     <>
@@ -77,7 +56,7 @@ export function NavRail() {
         </motion.button>
 
         <motion.button
-          onClick={handleOpenFolder}
+          onClick={openFolder}
           title="Open Folder"
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
@@ -105,8 +84,8 @@ export function NavRail() {
         <WorktreeDialog
           folderPath={dialogState.path}
           isDirty={dialogState.isDirty}
-          onConfirm={handleDialogConfirm}
-          onCancel={() => setDialogState(null)}
+          onConfirm={confirmDialog}
+          onCancel={cancelDialog}
         />
       )}
     </>

@@ -78,7 +78,7 @@ export function HistoryPanel() {
 
     await window.api.resumeSession(session.id)
     const displayCwd = session.original_cwd ?? session.cwd
-    addTab(session.cwd, session.title || displayCwd.split('/').pop() || displayCwd, session.id)
+    addTab(session.cwd, session.title || displayCwd.split('/').pop() || displayCwd, session.id, session.worktree_path ? true : undefined)
   }
 
   async function handleDelete(e: React.MouseEvent, sessionId: string) {
