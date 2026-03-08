@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { accumulateDelta, flushPendingDeltas } from '../lib/delta-batcher'
+import { extractTasks } from '../lib/extract-tasks'
 import { useSessionStore } from '../store/session-store'
 import { useTabStore } from '../store/tab-store'
 import type { PermissionRequest, QuestionRequest, SessionStatus } from '../../../shared/types'
@@ -126,32 +127,17 @@ export function useIpcBridge(): void {
 
       // Extract task state from assistant messages containing TodoWrite tool calls
       if (msg.type === 'assistant') {
+        const tasks = extractTasks(message)
+        for (const task of tasks) {
+          store().upsertTask(sessionId, task)
+        }
+
+        // Track changed files from Edit/Write tool calls
         const messageObj = msg.message as { content?: Array<{ type: string; name?: string; input?: Record<string, unknown> }> } | undefined
         const content = messageObj?.content ?? (msg.content as Array<{ type: string; name?: string; input?: Record<string, unknown> }> | undefined)
         if (Array.isArray(content)) {
           for (const block of content) {
             if (block.type !== 'tool_use' || !block.input) continue
-
-            // TodoWrite sends the full todo list as input.todos
-            if (block.name === 'TodoWrite') {
-              const todos = block.input.todos as Array<{ content: string; status: string; activeForm?: string }> | undefined
-              if (Array.isArray(todos)) {
-                for (let i = 0; i < todos.length; i++) {
-                  const todo = todos[i]
-                  const status = todo.status as 'pending' | 'in_progress' | 'completed'
-                  if (['pending', 'in_progress', 'completed'].includes(status)) {
-                    store().upsertTask(sessionId, {
-                      id: String(i + 1),
-                      subject: todo.content,
-                      status,
-                      activeForm: todo.activeForm,
-                    })
-                  }
-                }
-              }
-            }
-
-            // Track changed files from Edit/Write tool calls
             const blockName = (block.name ?? '').toLowerCase()
             if (blockName.includes('edit') || (blockName.includes('write') && blockName !== 'todowrite')) {
               const filePath = block.input?.file_path ?? block.input?.path
