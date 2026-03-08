@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-type SidebarView = 'home' | 'files' | 'settings'
+type SidebarView = 'home' | 'history' | 'settings'
 
 type UiStore = {
   commandPaletteOpen: boolean

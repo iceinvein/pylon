@@ -53,7 +53,7 @@ export function CommandPalette() {
       // Filter out sessions already open in tabs
       const openSessionIds = new Set(tabs.map((t) => t.sessionId).filter(Boolean))
       const available = (sessions as StoredSession[]).filter((s) => !openSessionIds.has(s.id))
-      setRecentSessions(available.slice(0, 5))
+      setRecentSessions(available.slice(0, 10))
     })
   }, [commandPaletteOpen, tabs])
 
