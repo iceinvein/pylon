@@ -35,14 +35,29 @@ export function UsageDashboard() {
   const [period, setPeriod] = useState<UsagePeriod>('30d')
   const [stats, setStats] = useState<UsageStats | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
 
   useEffect(() => {
+    let cancelled = false
     setLoading(true)
-    window.api.getUsageStats(period).then((data) => {
-      setStats(data)
-      setLoading(false)
-    })
+    setError(false)
+    window.api.getUsageStats(period)
+      .then((data) => {
+        if (!cancelled) { setStats(data); setLoading(false) }
+      })
+      .catch(() => {
+        if (!cancelled) { setError(true); setLoading(false) }
+      })
+    return () => { cancelled = true }
   }, [period])
+
+  if (error) {
+    return (
+      <div className="mt-12 flex items-center justify-center text-sm text-red-400">
+        Failed to load usage data. Try closing and reopening Settings.
+      </div>
+    )
+  }
 
   if (loading || !stats) {
     return (

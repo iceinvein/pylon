@@ -40,6 +40,7 @@ export function initDatabase(): Database.Database {
 
     CREATE INDEX IF NOT EXISTS idx_messages_session ON messages(session_id, timestamp);
     CREATE INDEX IF NOT EXISTS idx_sessions_updated ON sessions(updated_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_sessions_created ON sessions(created_at);
   `)
 
   // Migrations
