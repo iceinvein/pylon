@@ -182,7 +182,7 @@ export class SessionManager {
 
       // Save images to temp files and reference by path
       if (imageAttachments.length > 0) {
-        const tmpDir = join(app.getPath('temp'), 'claude-ui-images')
+        const tmpDir = join(app.getPath('temp'), 'pylon-images')
         await mkdir(tmpDir, { recursive: true })
 
         for (const att of imageAttachments) {
@@ -394,7 +394,7 @@ export class SessionManager {
 
   async createWorktree(repoPath: string, sessionId: string): Promise<{ worktreePath: string; branch: string; originalBranch: string }> {
     const repoName = basename(repoPath)
-    const worktreeBase = join(homedir(), '.claude-ui', 'worktrees', repoName)
+    const worktreeBase = join(homedir(), '.pylon', 'worktrees', repoName)
     const worktreePath = join(worktreeBase, sessionId)
     const branch = `claude-session-${sessionId.slice(0, 8)}`
 

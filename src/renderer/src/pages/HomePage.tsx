@@ -22,7 +22,7 @@ export function HomePage() {
     <div className="flex h-full flex-col items-center overflow-y-auto py-12 px-6">
       <div className="w-full max-w-lg">
         <div className="mb-12 text-center">
-          <h1 className="text-4xl font-bold tracking-tight text-stone-100">Claude UI</h1>
+          <h1 className="text-4xl font-bold tracking-tight text-stone-100">Pylon</h1>
           <p className="mt-2 text-stone-500">AI-powered development assistant</p>
           <button
             onClick={openFolder}

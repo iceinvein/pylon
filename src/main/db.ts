@@ -5,7 +5,7 @@ import { join } from 'path'
 let db: Database.Database
 
 export function initDatabase(): Database.Database {
-  const dbPath = join(app.getPath('userData'), 'claude-ui.db')
+  const dbPath = join(app.getPath('userData'), 'pylon.db')
   db = new Database(dbPath)
   db.pragma('journal_mode = WAL')
   db.pragma('foreign_keys = ON')

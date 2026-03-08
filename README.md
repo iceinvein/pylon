@@ -1,4 +1,4 @@
-# Claude UI
+# Pylon
 
 A native desktop app for interacting with Claude, built on the [Claude Agent SDK](https://www.npmjs.com/package/@anthropic-ai/claude-agent-sdk). Provides a rich chat interface with tool execution visualization, file diffs, git worktree isolation, and multi-session tab management.
 

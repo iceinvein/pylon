@@ -1,10 +1,9 @@
 {
-  "name": "claude-ui",
+  "name": "pylon",
   "version": "0.1.0",
-  "description": "Claude UI desktop app",
+  "description": "Pylon desktop app",
   "main": "./out/main/index.js",
-  "author": "",
-  "homepage": "https://electron-vite.org",
+  "author": "iceinvein",
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",

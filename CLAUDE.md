@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-Claude UI — an Electron desktop app that wraps the `@anthropic-ai/claude-agent-sdk` to provide a native chat interface for Claude. Built with Electron 39, React 19, Zustand, Tailwind CSS 4, and SQLite (better-sqlite3).
+Pylon — an Electron desktop app that wraps the `@anthropic-ai/claude-agent-sdk` to provide a native chat interface for Claude. Built with Electron 39, React 19, Zustand, Tailwind CSS 4, and SQLite (better-sqlite3).
 
 ## Commands
 
@@ -70,7 +70,7 @@ Module-level Map accumulates text deltas from SDK stream events; `requestAnimati
 
 **Tool permissions:** SDK's `canUseTool` callback → main sends IPC event → renderer shows PermissionPrompt → user responds → promise resolves back to SDK. Two modes: `'default'` (ask each time) and `'auto-approve'`.
 
-**Git worktrees:** Created at `~/.claude-ui/worktrees/` per session. Baseline hash captured on first Edit/Write. Diffs computed against baseline. Branch named `claude/{title-slug}`.
+**Git worktrees:** Created at `~/.pylon/worktrees/` per session. Baseline hash captured on first Edit/Write. Diffs computed against baseline. Branch named `claude/{title-slug}`.
 
 ## Path Aliases
 
