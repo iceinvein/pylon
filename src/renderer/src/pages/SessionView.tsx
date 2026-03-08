@@ -73,7 +73,7 @@ export function SessionView({ tab }: SessionViewProps) {
     }
 
     creatingSession.current = true
-    const newSessionId = await window.api.createSession(tab.cwd, pendingModel)
+    const newSessionId = await window.api.createSession(tab.cwd, pendingModel, tab.useWorktree)
 
     setSession({
       id: newSessionId,
