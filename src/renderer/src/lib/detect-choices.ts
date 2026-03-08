@@ -84,6 +84,23 @@ function parseItemContent(content: string): { label: string; description: string
 }
 
 /**
+ * Questions that indicate selection intent (asking user to pick from the list).
+ * We match against the lowercased question text. If none of these patterns match,
+ * the question is likely open-ended (e.g. "What do you see?") and the list is
+ * instructions/steps rather than choices.
+ */
+const SELECTION_QUESTION_RE =
+  /\b(which|prefer|choose|pick|select|go with|want to|need|option|approach|sound good|shall (we|i)|ready to|look(s?) right|feel(s?) right|would you like|what do you think|does this|do you want)\b/i
+
+/**
+ * Checks whether a question string indicates the user should SELECT from the
+ * list above, as opposed to open-ended follow-ups like "What do you see?"
+ */
+function isSelectionQuestion(question: string): boolean {
+  return SELECTION_QUESTION_RE.test(question)
+}
+
+/**
  * Detects numbered or lettered choice lists (2–6 items) in assistant text.
  *
  * Returns the parsed choices and the associated question text when a valid
@@ -93,6 +110,7 @@ function parseItemContent(content: string): { label: string; description: string
  * - Numbered: `1.` / `1)` through `6.` / `6)` — 2 to 6 items
  * - Lettered: `A.` / `A)` through `F.` / `F)` (case-insensitive) — 2 to 6 items
  * - Must be followed by a question (`?`) within 1–3 lines after the last item
+ * - The question must express selection intent (not open-ended like "What do you see?")
  * - Blank lines between items are allowed
  * - Labels have bold markdown (`**…**`) stripped
  * - Separator characters: `—`, `–`, `-` (spaced), `:`
@@ -228,7 +246,7 @@ export function detectChoices(text: string): DetectedChoices | null {
       }
     }
 
-    if (questionText === null) {
+    if (questionText === null || !isSelectionQuestion(questionText)) {
       i = j
       continue
     }

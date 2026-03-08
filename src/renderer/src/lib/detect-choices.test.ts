@@ -325,6 +325,91 @@ Which approach?`
     })
   })
 
+  describe('open-ended questions (false positives)', () => {
+    test('returns null for instruction list followed by "What do you see?"', () => {
+      const text = `Try:
+
+1. Kill the dev server (Ctrl+C)
+2. Run bun run dev again
+3. Open an existing session
+4. Check the terminal for output
+
+What do you see?`
+
+      expect(detectChoices(text)).toBeNull()
+    })
+
+    test('returns null for steps followed by "What happened?"', () => {
+      const text = `1. Run the build command
+2. Check the output folder
+3. Open index.html
+
+What happened?`
+
+      expect(detectChoices(text)).toBeNull()
+    })
+
+    test('returns null for "How does it look?"', () => {
+      const text = `1. Option A — first
+2. Option B — second
+
+How does it look?`
+
+      expect(detectChoices(text)).toBeNull()
+    })
+
+    test('detects choices with "Which approach?"', () => {
+      const text = `1. Fast — Quick execution
+2. Safe — No side effects
+
+Which approach?`
+
+      const result = detectChoices(text)
+      expect(result).not.toBeNull()
+      expect(result!.choices).toHaveLength(2)
+    })
+
+    test('detects choices with "What do you prefer?"', () => {
+      const text = `1. React — Component library
+2. Vue — Progressive framework
+
+What do you prefer?`
+
+      const result = detectChoices(text)
+      expect(result).not.toBeNull()
+    })
+
+    test('detects choices with "Would you like to go with?"', () => {
+      const text = `1. Option A — Description A
+2. Option B — Description B
+
+Would you like to go with one of these?`
+
+      const result = detectChoices(text)
+      expect(result).not.toBeNull()
+    })
+
+    test('detects choices with "Does this look right?"', () => {
+      const text = `1. Approach A — Conservative
+2. Approach B — Aggressive
+
+Does this look right?`
+
+      const result = detectChoices(text)
+      expect(result).not.toBeNull()
+    })
+
+    test('detects choices with "Shall we proceed?"', () => {
+      const text = `1. Deploy now — Ship immediately
+2. Wait — Deploy tomorrow
+
+Shall we go with one of these?`
+
+      const result = detectChoices(text)
+      expect(result).not.toBeNull()
+    })
+  })
+
   describe('mixed content', () => {
     test('detects choices embedded in longer text with preamble', () => {
       const text = `I can help you with that. Here are the available options:
