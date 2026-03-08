@@ -71,6 +71,18 @@ export function InputBar({ sessionId, isRunning, model, onModelChange, permissio
     return () => document.removeEventListener('keydown', handleKey)
   }, [lightboxUrl])
 
+  const draftText = useUiStore((s) => s.draftText)
+  useEffect(() => {
+    if (draftText !== null) {
+      setText(draftText)
+      useUiStore.getState().setDraftText(null)
+      requestAnimationFrame(() => {
+        textareaRef.current?.focus()
+        adjustHeight()
+      })
+    }
+  }, [draftText])
+
   function adjustHeight() {
     const el = textareaRef.current
     if (!el) return
