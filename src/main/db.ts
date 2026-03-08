@@ -47,6 +47,9 @@ export function initDatabase(): Database.Database {
   if (!cols.some((c) => c.name === 'permission_mode')) {
     db.exec("ALTER TABLE sessions ADD COLUMN permission_mode TEXT NOT NULL DEFAULT 'default'")
   }
+  if (!cols.some((c) => c.name === 'git_baseline_hash')) {
+    db.exec("ALTER TABLE sessions ADD COLUMN git_baseline_hash TEXT DEFAULT NULL")
+  }
 
   return db
 }

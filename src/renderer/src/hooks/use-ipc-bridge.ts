@@ -148,6 +148,15 @@ export function useIpcBridge(): void {
                 }
               }
             }
+
+            // Track changed files from Edit/Write tool calls
+            const blockName = (block.name ?? '').toLowerCase()
+            if (blockName.includes('edit') || (blockName.includes('write') && blockName !== 'todowrite')) {
+              const filePath = block.input?.file_path ?? block.input?.path
+              if (typeof filePath === 'string' && filePath) {
+                store().addChangedFile(sessionId, filePath)
+              }
+            }
           }
         }
       }

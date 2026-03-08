@@ -21,4 +21,6 @@ export const IPC = {
   SESSION_STATUS: 'session:status',
   SESSION_PERMISSION: 'session:permission',
   SESSION_QUESTION: 'session:question',
+  SESSION_FILE_DIFFS: 'session:file-diffs',
+  SESSION_FILE_STATUSES: 'session:file-statuses',
 } as const

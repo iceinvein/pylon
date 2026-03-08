@@ -18,7 +18,7 @@ function StatusDot({ status }: { status: SessionStatus | undefined }) {
 
 export function TabBar() {
   const { tabs, activeTabId, setActiveTab, closeTab, addTab } = useTabStore()
-  const { sessions } = useSessionStore()
+  const sessions = useSessionStore((s) => s.sessions)
 
   function handleNewTab() {
     // Open folder picker for new tab

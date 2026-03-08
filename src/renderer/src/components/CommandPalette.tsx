@@ -6,6 +6,7 @@ import { useTabStore } from '../store/tab-store'
 import { useSessionStore } from '../store/session-store'
 import type { SessionState } from '../store/session-store'
 import { timeAgo } from '../lib/utils'
+import { extractChangedFiles } from '../lib/extract-changed-files'
 
 type StoredSession = {
   id: string
@@ -32,7 +33,10 @@ type Command = {
 export function CommandPalette() {
   const { commandPaletteOpen, toggleCommandPalette } = useUiStore()
   const { tabs, activeTabId, addTab, updateTab } = useTabStore()
-  const { setSession, setMessages, clearTasks } = useSessionStore()
+  const setSession = useSessionStore((s) => s.setSession)
+  const setMessages = useSessionStore((s) => s.setMessages)
+  const addChangedFile = useSessionStore((s) => s.addChangedFile)
+  const clearTasks = useSessionStore((s) => s.clearTasks)
   const [query, setQuery] = useState('')
   const [selectedIdx, setSelectedIdx] = useState(0)
   const [recentSessions, setRecentSessions] = useState<StoredSession[]>([])
@@ -77,6 +81,11 @@ export function CommandPalette() {
       try { return JSON.parse(m.sdk_message) } catch { return null }
     }).filter(Boolean)
     setMessages(session.id, parsed)
+
+    // Rebuild changed files list from historical messages
+    for (const filePath of extractChangedFiles(parsed)) {
+      addChangedFile(session.id, filePath)
+    }
 
     await window.api.resumeSession(session.id)
     addTab(session.cwd, session.title || session.cwd.split('/').pop() || session.cwd, session.id)

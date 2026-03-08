@@ -23,6 +23,12 @@ type TaskItem = {
   activeForm?: string
 }
 
+type CachedDiff = {
+  filePath: string
+  status: string
+  diff: string
+}
+
 type SessionStore = {
   sessions: Map<string, SessionState>
   messages: Map<string, unknown[]>
@@ -36,6 +42,9 @@ type SessionStore = {
   tasks: Map<string, TaskItem[]>
   /** SDK-reported status per session (e.g. 'compacting') */
   sdkStatus: Map<string, string | null>
+  changedFiles: Map<string, string[]>
+  /** Cached diff results per session, keyed by sessionId → filePath */
+  diffCache: Map<string, Map<string, CachedDiff>>
 
   setSession: (session: SessionState) => void
   updateSession: (sessionId: string, updates: Partial<SessionState>) => void
@@ -53,6 +62,11 @@ type SessionStore = {
   upsertTask: (sessionId: string, task: TaskItem) => void
   clearTasks: (sessionId: string) => void
   setSdkStatus: (sessionId: string, status: string | null) => void
+  addChangedFile: (sessionId: string, filePath: string) => void
+  clearChangedFiles: (sessionId: string) => void
+  setCachedDiff: (sessionId: string, diff: CachedDiff) => void
+  getCachedDiff: (sessionId: string, filePath: string) => CachedDiff | undefined
+  clearDiffCache: (sessionId: string) => void
 }
 
 export const useSessionStore = create<SessionStore>((set) => ({
@@ -65,6 +79,8 @@ export const useSessionStore = create<SessionStore>((set) => ({
   subagentMessages: new Map(),
   tasks: new Map(),
   sdkStatus: new Map(),
+  changedFiles: new Map(),
+  diffCache: new Map(),
 
   setSession: (session) =>
     set((state) => {
@@ -183,6 +199,43 @@ export const useSessionStore = create<SessionStore>((set) => ({
       next.set(sessionId, status)
       return { sdkStatus: next }
     }),
+
+  addChangedFile: (sessionId, filePath) =>
+    set((state) => {
+      const next = new Map(state.changedFiles)
+      const existing = next.get(sessionId) ?? []
+      if (!existing.includes(filePath)) {
+        next.set(sessionId, [...existing, filePath])
+      }
+      return { changedFiles: next }
+    }),
+
+  clearChangedFiles: (sessionId) =>
+    set((state) => {
+      const next = new Map(state.changedFiles)
+      next.delete(sessionId)
+      return { changedFiles: next }
+    }),
+
+  setCachedDiff: (sessionId, diff) =>
+    set((state) => {
+      const next = new Map(state.diffCache)
+      const sessionCache = new Map(next.get(sessionId) ?? [])
+      sessionCache.set(diff.filePath, diff)
+      next.set(sessionId, sessionCache)
+      return { diffCache: next }
+    }),
+
+  getCachedDiff: (sessionId, filePath) => {
+    return useSessionStore.getState().diffCache.get(sessionId)?.get(filePath)
+  },
+
+  clearDiffCache: (sessionId) =>
+    set((state) => {
+      const next = new Map(state.diffCache)
+      next.delete(sessionId)
+      return { diffCache: next }
+    }),
 }))
 
-export type { SessionState, TaskItem }
+export type { SessionState, TaskItem, CachedDiff }

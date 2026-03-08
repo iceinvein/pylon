@@ -96,3 +96,9 @@ export type AppSettings = {
   defaultPermissionMode: PermissionMode
   theme: 'dark'
 }
+
+export type FileDiff = {
+  filePath: string
+  status: 'modified' | 'added' | 'deleted' | 'renamed'
+  diff: string
+}

@@ -34,6 +34,10 @@ const api = {
     ipcRenderer.invoke(IPC.SETTINGS_GET),
   updateSettings: (key: string, value: unknown) =>
     ipcRenderer.invoke(IPC.SETTINGS_UPDATE, { key, value }),
+  getFileDiffs: (sessionId: string, filePaths: string[]) =>
+    ipcRenderer.invoke(IPC.SESSION_FILE_DIFFS, { sessionId, filePaths }),
+  getFileStatuses: (sessionId: string, filePaths: string[]) =>
+    ipcRenderer.invoke(IPC.SESSION_FILE_STATUSES, { sessionId, filePaths }),
 
   onSessionMessage: (callback: (data: unknown) => void) => {
     const handler = (_event: unknown, data: unknown) => callback(data)

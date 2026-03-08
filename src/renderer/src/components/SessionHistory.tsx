@@ -3,6 +3,7 @@ import { Clock, Folder, Trash2, DollarSign } from 'lucide-react'
 import { useTabStore } from '../store/tab-store'
 import { useSessionStore } from '../store/session-store'
 import { formatCost, timeAgo } from '../lib/utils'
+import { extractChangedFiles } from '../lib/extract-changed-files'
 import type { SessionState } from '../store/session-store'
 
 type StoredSession = {
@@ -22,7 +23,9 @@ export function SessionHistory() {
   const [storedSessions, setStoredSessions] = useState<StoredSession[]>([])
   const [loading, setLoading] = useState(true)
   const { addTab } = useTabStore()
-  const { setSession, setMessages } = useSessionStore()
+  const setSession = useSessionStore((s) => s.setSession)
+  const setMessages = useSessionStore((s) => s.setMessages)
+  const addChangedFile = useSessionStore((s) => s.addChangedFile)
 
   async function loadSessions() {
     setLoading(true)
@@ -58,6 +61,11 @@ export function SessionHistory() {
       try { return JSON.parse(m.sdk_message) } catch { return null }
     }).filter(Boolean)
     setMessages(session.id, parsed)
+
+    // Rebuild changed files list from historical messages
+    for (const filePath of extractChangedFiles(parsed)) {
+      addChangedFile(session.id, filePath)
+    }
 
     await window.api.resumeSession(session.id)
     addTab(session.cwd, session.title || session.cwd.split('/').pop() || session.cwd, session.id)

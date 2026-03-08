@@ -105,6 +105,14 @@ export function registerIpcHandlers(): void {
     return sessionManager.getSessionInfo(args.sessionId)
   })
 
+  ipcMain.handle(IPC.SESSION_FILE_DIFFS, async (_e, args: { sessionId: string; filePaths: string[] }) => {
+    return sessionManager.getFileDiffs(args.sessionId, args.filePaths)
+  })
+
+  ipcMain.handle(IPC.SESSION_FILE_STATUSES, async (_e, args: { sessionId: string; filePaths: string[] }) => {
+    return sessionManager.getFileStatuses(args.sessionId, args.filePaths)
+  })
+
   ipcMain.handle(IPC.SETTINGS_GET, async () => {
     return getSettings()
   })

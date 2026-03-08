@@ -80,6 +80,8 @@ export const ChatView = memo(function ChatView({ sessionId }: ChatViewProps) {
   const bottomRef = useRef<HTMLDivElement>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const isNearBottomRef = useRef(true)
+  const prevSessionIdRef = useRef(sessionId)
+  const savedScrollPositions = useRef(new Map<string, number>())
 
   const { agentMap, mainThreadMessages } = useAgentGrouping(sessionMessages)
 
@@ -185,13 +187,42 @@ export const ChatView = memo(function ChatView({ sessionId }: ChatViewProps) {
     return () => container.removeEventListener('scroll', onScroll)
   }, [])
 
+  // Save/restore scroll position on session switch
+  useEffect(() => {
+    const container = scrollContainerRef.current
+    if (!container) return
+    if (prevSessionIdRef.current !== sessionId) {
+      // Save the outgoing session's scroll position
+      savedScrollPositions.current.set(prevSessionIdRef.current, container.scrollTop)
+      prevSessionIdRef.current = sessionId
+      // Cancel any in-flight rAF from the previous session
+      if (rafIdRef.current !== null) {
+        cancelAnimationFrame(rafIdRef.current)
+        rafIdRef.current = null
+      }
+      // Restore the incoming session's scroll position (after content renders)
+      const saved = savedScrollPositions.current.get(sessionId)
+      requestAnimationFrame(() => {
+        if (saved !== undefined) {
+          container.scrollTop = saved
+        } else {
+          // New session with no saved position — scroll to bottom
+          container.scrollTop = container.scrollHeight
+        }
+        // Update isNearBottom based on restored position
+        const threshold = 120
+        isNearBottomRef.current =
+          container.scrollHeight - container.scrollTop - container.clientHeight < threshold
+      })
+    }
+  }, [sessionId])
+
   // rAF scroll pinning during streaming — sets scrollTop directly each frame
   const rafIdRef = useRef<number | null>(null)
 
   useEffect(() => {
     const container = scrollContainerRef.current
     if (!container || !streaming) {
-      // Stop the rAF loop when streaming ends
       if (rafIdRef.current !== null) {
         cancelAnimationFrame(rafIdRef.current)
         rafIdRef.current = null
@@ -208,7 +239,6 @@ export const ChatView = memo(function ChatView({ sessionId }: ChatViewProps) {
       rafIdRef.current = requestAnimationFrame(pin)
     }
 
-    // Start the loop
     rafIdRef.current = requestAnimationFrame(pin)
 
     return () => {
