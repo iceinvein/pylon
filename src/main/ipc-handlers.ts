@@ -86,6 +86,10 @@ export function registerIpcHandlers(): void {
     return sessionManager.checkRepoStatus(args.path)
   })
 
+  ipcMain.handle(IPC.FOLDER_LIST_PROJECTS, async () => {
+    return sessionManager.getProjectFolders()
+  })
+
   ipcMain.handle(IPC.FILE_READ_BASE64, async (_e, args: { path: string }) => {
     const buffer = await readFile(args.path)
     return buffer.toString('base64')

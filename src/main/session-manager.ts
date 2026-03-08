@@ -491,6 +491,20 @@ export class SessionManager {
     }
   }
 
+  getProjectFolders(): Array<{ path: string; lastUsed: number }> {
+    const db = getDb()
+    const rows = db.prepare(`
+      SELECT
+        COALESCE(original_cwd, cwd) as path,
+        MAX(updated_at) as last_used
+      FROM sessions
+      GROUP BY COALESCE(original_cwd, cwd)
+      ORDER BY last_used DESC
+    `).all() as Array<{ path: string; last_used: number }>
+
+    return rows.map((r) => ({ path: r.path, lastUsed: r.last_used }))
+  }
+
   getStoredSessions(): unknown[] {
     const db = getDb()
     return db.prepare('SELECT * FROM sessions ORDER BY updated_at DESC').all()

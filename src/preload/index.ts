@@ -20,6 +20,8 @@ const api = {
     ipcRenderer.invoke(IPC.FOLDER_OPEN),
   checkGitStatus: (path: string) =>
     ipcRenderer.invoke(IPC.FOLDER_CHECK_GIT_STATUS, { path }),
+  listProjects: () =>
+    ipcRenderer.invoke(IPC.FOLDER_LIST_PROJECTS),
   readFileBase64: (path: string) =>
     ipcRenderer.invoke(IPC.FILE_READ_BASE64, { path }),
   respondToPermission: (requestId: string, behavior: 'allow' | 'deny', message?: string) =>
