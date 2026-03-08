@@ -22,7 +22,7 @@ export function ProjectsPopover({ open, onClose, onSelectProject, onBrowse, anch
 
   useEffect(() => {
     if (open) {
-      window.api.listProjects().then(setProjects)
+      window.api.listProjects().then(setProjects).catch(() => setProjects([]))
     }
   }, [open])
 
@@ -39,8 +39,16 @@ export function ProjectsPopover({ open, onClose, onSelectProject, onBrowse, anch
       }
     }
 
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
+    }
+
     document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
   }, [open, onClose, anchorRef])
 
   return (
@@ -54,7 +62,9 @@ export function ProjectsPopover({ open, onClose, onSelectProject, onBrowse, anch
           transition={{ duration: 0.12 }}
           className="fixed z-50 w-72 rounded-xl border border-stone-700 bg-stone-900 py-1.5 shadow-2xl"
           style={{
-            left: 56,
+            left: anchorRef.current
+              ? anchorRef.current.getBoundingClientRect().right + 6
+              : 56,
             top: anchorRef.current
               ? anchorRef.current.getBoundingClientRect().top
               : 120,

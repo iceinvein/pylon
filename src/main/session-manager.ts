@@ -500,6 +500,7 @@ export class SessionManager {
       FROM sessions
       GROUP BY COALESCE(original_cwd, cwd)
       ORDER BY last_used DESC
+      LIMIT 20
     `).all() as Array<{ path: string; last_used: number }>
 
     return rows.map((r) => ({ path: r.path, lastUsed: r.last_used }))
