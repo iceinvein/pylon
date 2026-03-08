@@ -23,6 +23,7 @@ export type Tab = {
   sessionId: string | null
   cwd: string
   label: string
+  useWorktree?: boolean
 }
 
 export type SerializedMessage = {
@@ -95,6 +96,11 @@ export type AppSettings = {
   defaultModel: string
   defaultPermissionMode: PermissionMode
   theme: 'dark'
+}
+
+export type GitRepoStatus = {
+  isGitRepo: boolean
+  isDirty: boolean
 }
 
 export type FileDiff = {

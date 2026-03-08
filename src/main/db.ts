@@ -50,6 +50,15 @@ export function initDatabase(): Database.Database {
   if (!cols.some((c) => c.name === 'git_baseline_hash')) {
     db.exec("ALTER TABLE sessions ADD COLUMN git_baseline_hash TEXT DEFAULT NULL")
   }
+  if (!cols.some((c) => c.name === 'worktree_path')) {
+    db.exec("ALTER TABLE sessions ADD COLUMN worktree_path TEXT DEFAULT NULL")
+  }
+  if (!cols.some((c) => c.name === 'original_cwd')) {
+    db.exec("ALTER TABLE sessions ADD COLUMN original_cwd TEXT DEFAULT NULL")
+  }
+  if (!cols.some((c) => c.name === 'worktree_branch')) {
+    db.exec("ALTER TABLE sessions ADD COLUMN worktree_branch TEXT DEFAULT NULL")
+  }
 
   return db
 }
