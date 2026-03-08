@@ -72,7 +72,7 @@ export function UsageDashboard() {
     )
   }
 
-  const { summary, dailyCosts, costByModel, costByProject, tokensByDay, topSessions } = stats
+  const { summary, dailyCosts, costByModel, costByProject = [], tokensByDay, topSessions } = stats
 
   return (
     <div className="mt-6 space-y-8 pb-12">
