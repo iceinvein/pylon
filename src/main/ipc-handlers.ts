@@ -135,4 +135,71 @@ export function registerIpcHandlers(): void {
     updateSetting(args.key, args.value)
     return true
   })
+
+  ipcMain.handle(IPC.USAGE_STATS, async (_e, args: { period: string }) => {
+    const db = getDb()
+    const now = Date.now()
+    const periodMs: Record<string, number> = {
+      '7d': 7 * 86_400_000,
+      '30d': 30 * 86_400_000,
+      '90d': 90 * 86_400_000,
+    }
+    const cutoff = args.period === 'all' ? 0 : now - (periodMs[args.period] ?? periodMs['30d'])
+
+    const summary = db.prepare(`
+      SELECT
+        COALESCE(SUM(total_cost_usd), 0) as totalCost,
+        COUNT(*) as sessionCount,
+        COALESCE(AVG(total_cost_usd), 0) as avgCostPerSession,
+        COALESCE(SUM(input_tokens), 0) as totalInput,
+        COALESCE(SUM(output_tokens), 0) as totalOutput
+      FROM sessions WHERE created_at >= ?
+    `).get(cutoff) as {
+      totalCost: number
+      sessionCount: number
+      avgCostPerSession: number
+      totalInput: number
+      totalOutput: number
+    }
+
+    const dailyCosts = db.prepare(`
+      SELECT
+        date(created_at / 1000, 'unixepoch') as day,
+        SUM(total_cost_usd) as cost
+      FROM sessions WHERE created_at >= ?
+      GROUP BY day ORDER BY day
+    `).all(cutoff) as Array<{ day: string; cost: number }>
+
+    const costByModel = db.prepare(`
+      SELECT
+        model,
+        SUM(total_cost_usd) as cost,
+        COUNT(*) as sessions
+      FROM sessions WHERE created_at >= ?
+      GROUP BY model ORDER BY cost DESC
+    `).all(cutoff) as Array<{ model: string; cost: number; sessions: number }>
+
+    const tokensByDay = db.prepare(`
+      SELECT
+        date(created_at / 1000, 'unixepoch') as day,
+        SUM(input_tokens) as input,
+        SUM(output_tokens) as output
+      FROM sessions WHERE created_at >= ?
+      GROUP BY day ORDER BY day
+    `).all(cutoff) as Array<{ day: string; input: number; output: number }>
+
+    const topSessions = db.prepare(`
+      SELECT
+        id, title, model, total_cost_usd as cost,
+        input_tokens as inputTokens, output_tokens as outputTokens,
+        created_at as createdAt
+      FROM sessions WHERE created_at >= ? AND total_cost_usd > 0
+      ORDER BY total_cost_usd DESC LIMIT 10
+    `).all(cutoff) as Array<{
+      id: string; title: string; model: string; cost: number
+      inputTokens: number; outputTokens: number; createdAt: number
+    }>
+
+    return { summary, dailyCosts, costByModel, tokensByDay, topSessions }
+  })
 }
