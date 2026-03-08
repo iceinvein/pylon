@@ -3,8 +3,10 @@ import { BrowserWindow, app } from 'electron'
 import { randomUUID } from 'crypto'
 import { execFile } from 'child_process'
 import { promisify } from 'util'
-import { readFile, writeFile, mkdir } from 'fs/promises'
-import { join } from 'path'
+import { readFile, writeFile, mkdir, rm } from 'fs/promises'
+import { existsSync } from 'fs'
+import { join, basename } from 'path'
+import { homedir } from 'os'
 import { getDb } from './db'
 import { IPC } from '../shared/ipc-channels'
 import type { PermissionMode, PermissionResponse, QuestionResponse } from '../shared/types'
@@ -38,6 +40,14 @@ function deriveTitle(message: string): string {
   return title
 }
 
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 50)
+}
+
 type ActiveSession = {
   id: string
   sdkSessionId: string | null
@@ -63,20 +73,33 @@ export class SessionManager {
     this.window = window
   }
 
-  async createSession(cwd: string, model?: string): Promise<string> {
+  async createSession(cwd: string, model?: string, useWorktree?: boolean): Promise<string> {
     const id = randomUUID()
     const now = Date.now()
     const sessionModel = model || 'claude-opus-4-6'
 
+    let sessionCwd = cwd
+    let worktreePath: string | null = null
+    let originalCwd: string | null = null
+    let worktreeBranch: string | null = null
+
+    if (useWorktree) {
+      const result = await this.createWorktree(cwd, id)
+      sessionCwd = result.worktreePath
+      worktreePath = result.worktreePath
+      originalCwd = cwd
+      worktreeBranch = result.branch
+    }
+
     const db = getDb()
     db.prepare(
-      'INSERT INTO sessions (id, cwd, status, model, title, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
-    ).run(id, cwd, 'empty', sessionModel, '', now, now)
+      'INSERT INTO sessions (id, cwd, status, model, title, created_at, updated_at, worktree_path, original_cwd, worktree_branch) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    ).run(id, sessionCwd, 'empty', sessionModel, '', now, now, worktreePath, originalCwd, worktreeBranch)
 
     this.sessions.set(id, {
       id,
       sdkSessionId: null,
-      cwd,
+      cwd: sessionCwd,
       gitBaselineHash: null,
       model: sessionModel,
       permissionMode: 'default',
@@ -274,11 +297,15 @@ export class SessionManager {
     if (this.sessions.has(sessionId)) return true
 
     const db = getDb()
-    const row = db.prepare('SELECT id, cwd, sdk_session_id, model, permission_mode, git_baseline_hash, title FROM sessions WHERE id = ?').get(sessionId) as
-      | { id: string; cwd: string; sdk_session_id: string | null; model: string; permission_mode: string; git_baseline_hash: string | null; title: string }
+    const row = db.prepare('SELECT id, cwd, sdk_session_id, model, permission_mode, git_baseline_hash, title, worktree_path, original_cwd FROM sessions WHERE id = ?').get(sessionId) as
+      | { id: string; cwd: string; sdk_session_id: string | null; model: string; permission_mode: string; git_baseline_hash: string | null; title: string; worktree_path: string | null; original_cwd: string | null }
       | undefined
 
     if (!row) return false
+
+    if (row.worktree_path && !existsSync(row.worktree_path)) {
+      console.warn(`Worktree path missing for session ${sessionId}: ${row.worktree_path}`)
+    }
 
     this.sessions.set(sessionId, {
       id: row.id,
@@ -342,6 +369,128 @@ export class SessionManager {
     return { model: session.model, permissionMode: session.permissionMode }
   }
 
+  async checkRepoStatus(folderPath: string): Promise<{ isGitRepo: boolean; isDirty: boolean }> {
+    try {
+      await execFileAsync('git', ['rev-parse', '--git-dir'], {
+        cwd: folderPath,
+        timeout: 3000,
+      })
+    } catch {
+      return { isGitRepo: false, isDirty: false }
+    }
+
+    try {
+      const { stdout } = await execFileAsync('git', ['status', '--porcelain'], {
+        cwd: folderPath,
+        timeout: 5000,
+      })
+      return { isGitRepo: true, isDirty: stdout.trim().length > 0 }
+    } catch {
+      return { isGitRepo: true, isDirty: false }
+    }
+  }
+
+  async createWorktree(repoPath: string, sessionId: string): Promise<{ worktreePath: string; branch: string }> {
+    const repoName = basename(repoPath)
+    const worktreeBase = join(homedir(), '.claude-ui', 'worktrees', repoName)
+    const worktreePath = join(worktreeBase, sessionId)
+    const branch = `claude-session-${sessionId.slice(0, 8)}`
+
+    await mkdir(worktreeBase, { recursive: true })
+
+    // Clean up if path already exists
+    if (existsSync(worktreePath)) {
+      try {
+        await execFileAsync('git', ['worktree', 'remove', '--force', worktreePath], {
+          cwd: repoPath,
+          timeout: 10000,
+        })
+      } catch {
+        await rm(worktreePath, { recursive: true, force: true })
+      }
+    }
+
+    await execFileAsync('git', ['worktree', 'add', worktreePath, '-b', branch], {
+      cwd: repoPath,
+      timeout: 30000,
+    })
+
+    return { worktreePath, branch }
+  }
+
+  async renameWorktreeBranch(sessionId: string, title: string): Promise<void> {
+    const db = getDb()
+    const row = db.prepare('SELECT worktree_path, worktree_branch, original_cwd FROM sessions WHERE id = ?').get(sessionId) as
+      | { worktree_path: string | null; worktree_branch: string | null; original_cwd: string | null }
+      | undefined
+
+    if (!row?.worktree_path || !row.worktree_branch || !row.original_cwd) return
+
+    const slug = slugify(title)
+    if (!slug) return
+
+    let newBranch = `claude/${slug}`
+
+    // Check for collision
+    try {
+      await execFileAsync('git', ['rev-parse', '--verify', newBranch], {
+        cwd: row.original_cwd,
+        timeout: 3000,
+      })
+      // Branch exists — add suffix
+      newBranch = `claude/${slug}-${sessionId.slice(0, 4)}`
+    } catch {
+      // Branch doesn't exist — good
+    }
+
+    try {
+      await execFileAsync('git', ['branch', '-m', row.worktree_branch, newBranch], {
+        cwd: row.worktree_path,
+        timeout: 5000,
+      })
+      db.prepare('UPDATE sessions SET worktree_branch = ? WHERE id = ?').run(newBranch, sessionId)
+    } catch {
+      // Rename failed — keep original branch name
+    }
+  }
+
+  async removeWorktree(sessionId: string): Promise<void> {
+    const db = getDb()
+    const row = db.prepare('SELECT worktree_path, worktree_branch, original_cwd FROM sessions WHERE id = ?').get(sessionId) as
+      | { worktree_path: string | null; worktree_branch: string | null; original_cwd: string | null }
+      | undefined
+
+    if (!row?.worktree_path) return
+
+    // Remove worktree
+    if (row.original_cwd && existsSync(row.original_cwd)) {
+      try {
+        await execFileAsync('git', ['worktree', 'remove', '--force', row.worktree_path], {
+          cwd: row.original_cwd,
+          timeout: 10000,
+        })
+      } catch {
+        // Fallback: delete directory directly
+        await rm(row.worktree_path, { recursive: true, force: true }).catch(() => {})
+      }
+
+      // Delete branch
+      if (row.worktree_branch) {
+        try {
+          await execFileAsync('git', ['branch', '-D', row.worktree_branch], {
+            cwd: row.original_cwd,
+            timeout: 5000,
+          })
+        } catch {
+          // Branch may already be deleted
+        }
+      }
+    } else {
+      // Original repo gone — just delete directory
+      await rm(row.worktree_path, { recursive: true, force: true }).catch(() => {})
+    }
+  }
+
   getStoredSessions(): unknown[] {
     const db = getDb()
     return db.prepare('SELECT * FROM sessions ORDER BY updated_at DESC').all()
@@ -352,8 +501,9 @@ export class SessionManager {
     return db.prepare('SELECT * FROM messages WHERE session_id = ? ORDER BY timestamp ASC').all(sessionId)
   }
 
-  deleteSession(sessionId: string): void {
-    this.stopSession(sessionId)
+  async deleteSession(sessionId: string): Promise<void> {
+    await this.stopSession(sessionId)
+    await this.removeWorktree(sessionId)
     this.sessions.delete(sessionId)
     const db = getDb()
     db.prepare('DELETE FROM sessions WHERE id = ?').run(sessionId)
@@ -591,6 +741,7 @@ export class SessionManager {
       .run(title, Date.now(), sessionId)
 
     this.send(IPC.SESSION_TITLE_UPDATED, { sessionId, title })
+    this.renameWorktreeBranch(sessionId, title).catch(() => {})
   }
 
   private async requestQuestion(
