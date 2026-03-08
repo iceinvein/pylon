@@ -31,8 +31,8 @@ function updateSetting(key: string, value: unknown): void {
 }
 
 export function registerIpcHandlers(): void {
-  ipcMain.handle(IPC.SESSION_CREATE, async (_e, args: { cwd: string; model?: string }) => {
-    return sessionManager.createSession(args.cwd, args.model)
+  ipcMain.handle(IPC.SESSION_CREATE, async (_e, args: { cwd: string; model?: string; useWorktree?: boolean }) => {
+    return sessionManager.createSession(args.cwd, args.model, args.useWorktree)
   })
 
   ipcMain.handle(IPC.SESSION_SEND, async (_e, args: {
@@ -67,7 +67,7 @@ export function registerIpcHandlers(): void {
   })
 
   ipcMain.handle(IPC.SESSION_DELETE, async (_e, args: { sessionId: string }) => {
-    sessionManager.deleteSession(args.sessionId)
+    await sessionManager.deleteSession(args.sessionId)
     return true
   })
 
@@ -80,6 +80,10 @@ export function registerIpcHandlers(): void {
     })
     if (result.canceled || result.filePaths.length === 0) return null
     return result.filePaths[0]
+  })
+
+  ipcMain.handle(IPC.FOLDER_CHECK_GIT_STATUS, async (_e, args: { path: string }) => {
+    return sessionManager.checkRepoStatus(args.path)
   })
 
   ipcMain.handle(IPC.FILE_READ_BASE64, async (_e, args: { path: string }) => {

@@ -2,8 +2,8 @@ import { contextBridge, ipcRenderer } from 'electron'
 import { IPC } from '../shared/ipc-channels'
 
 const api = {
-  createSession: (cwd: string, model?: string) =>
-    ipcRenderer.invoke(IPC.SESSION_CREATE, { cwd, model }),
+  createSession: (cwd: string, model?: string, useWorktree?: boolean) =>
+    ipcRenderer.invoke(IPC.SESSION_CREATE, { cwd, model, useWorktree }),
   sendMessage: (sessionId: string, text: string, attachments?: unknown[]) =>
     ipcRenderer.invoke(IPC.SESSION_SEND, { sessionId, text, attachments }),
   stopSession: (sessionId: string) =>
@@ -18,6 +18,8 @@ const api = {
     ipcRenderer.invoke(IPC.SESSION_DELETE, { sessionId }),
   openFolder: () =>
     ipcRenderer.invoke(IPC.FOLDER_OPEN),
+  checkGitStatus: (path: string) =>
+    ipcRenderer.invoke(IPC.FOLDER_CHECK_GIT_STATUS, { path }),
   readFileBase64: (path: string) =>
     ipcRenderer.invoke(IPC.FILE_READ_BASE64, { path }),
   respondToPermission: (requestId: string, behavior: 'allow' | 'deny', message?: string) =>
