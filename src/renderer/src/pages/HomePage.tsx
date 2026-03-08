@@ -1,10 +1,22 @@
-import { FolderOpen } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Folder, FolderOpen } from 'lucide-react'
 import { useFolderOpen } from '../hooks/use-folder-open'
 import { SessionHistory } from '../components/SessionHistory'
 import { WorktreeDialog } from '../components/WorktreeDialog'
+import { timeAgo } from '../lib/utils'
+
+type Project = {
+  path: string
+  lastUsed: number
+}
 
 export function HomePage() {
-  const { dialogState, openFolder, confirmDialog, cancelDialog } = useFolderOpen()
+  const { dialogState, openFolder, openPath, confirmDialog, cancelDialog } = useFolderOpen()
+  const [projects, setProjects] = useState<Project[]>([])
+
+  useEffect(() => {
+    window.api.listProjects().then(setProjects).catch(() => setProjects([]))
+  }, [])
 
   return (
     <div className="flex h-full flex-col items-center overflow-y-auto py-12 px-6">
@@ -20,6 +32,30 @@ export function HomePage() {
             Open Folder
           </button>
         </div>
+
+        {projects.length > 0 && (
+          <div className="mb-8">
+            <p className="mb-2 text-xs font-medium uppercase tracking-wider text-stone-600">Projects</p>
+            <div className="space-y-1">
+              {projects.map((project) => (
+                <button
+                  key={project.path}
+                  onClick={() => openPath(project.path)}
+                  className="group flex w-full items-start gap-3 rounded-lg p-3 text-left transition-colors hover:bg-stone-800/60"
+                >
+                  <Folder size={14} className="mt-0.5 flex-shrink-0 text-stone-600" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-stone-300">
+                      {project.path.split('/').pop()}
+                    </p>
+                    <p className="truncate text-xs text-stone-600">{project.path}</p>
+                    <p className="mt-0.5 text-[11px] text-stone-700">{timeAgo(project.lastUsed)}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         <SessionHistory />
       </div>
