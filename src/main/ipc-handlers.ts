@@ -179,6 +179,20 @@ export function registerIpcHandlers(): void {
       GROUP BY model ORDER BY cost DESC
     `).all(cutoff) as Array<{ model: string; cost: number; sessions: number }>
 
+    const costByProject = db.prepare(`
+      SELECT
+        COALESCE(original_cwd, cwd) as project,
+        SUM(total_cost_usd) as cost,
+        COUNT(*) as sessions,
+        SUM(input_tokens) as inputTokens,
+        SUM(output_tokens) as outputTokens
+      FROM sessions WHERE created_at >= ?
+      GROUP BY project ORDER BY cost DESC
+    `).all(cutoff) as Array<{
+      project: string; cost: number; sessions: number
+      inputTokens: number; outputTokens: number
+    }>
+
     const tokensByDay = db.prepare(`
       SELECT
         date(created_at / 1000, 'unixepoch') as day,
@@ -200,6 +214,6 @@ export function registerIpcHandlers(): void {
       inputTokens: number; outputTokens: number; createdAt: number
     }>
 
-    return { summary, dailyCosts, costByModel, tokensByDay, topSessions }
+    return { summary, dailyCosts, costByModel, costByProject, tokensByDay, topSessions }
   })
 }

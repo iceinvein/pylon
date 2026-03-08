@@ -3,7 +3,7 @@ import {
   AreaChart, Area, BarChart, Bar,
   XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell,
 } from 'recharts'
-import { TrendingUp, Hash, DollarSign, Zap } from 'lucide-react'
+import { TrendingUp, Hash, DollarSign, Zap, FolderOpen } from 'lucide-react'
 import { formatCost, formatTokens, timeAgo } from '../lib/utils'
 import type { UsageStats, UsagePeriod } from '../../../shared/types'
 
@@ -24,6 +24,11 @@ const MODEL_LABELS: Record<string, string> = {
   'claude-opus-4-6': 'Opus 4.6',
   'claude-sonnet-4-6': 'Sonnet 4.6',
   'claude-haiku-4-5': 'Haiku 4.5',
+}
+
+function projectName(fullPath: string): string {
+  const parts = fullPath.replace(/\/$/, '').split('/')
+  return parts[parts.length - 1] || fullPath
 }
 
 function formatDay(day: string): string {
@@ -67,7 +72,7 @@ export function UsageDashboard() {
     )
   }
 
-  const { summary, dailyCosts, costByModel, tokensByDay, topSessions } = stats
+  const { summary, dailyCosts, costByModel, costByProject, tokensByDay, topSessions } = stats
 
   return (
     <div className="mt-6 space-y-8 pb-12">
@@ -131,7 +136,7 @@ export function UsageDashboard() {
                   <CartesianGrid strokeDasharray="3 3" stroke="#292524" horizontal={false} />
                   <XAxis type="number" tickFormatter={(v: number) => '$' + v.toFixed(2)} tick={{ fill: '#78716c', fontSize: 11 }} axisLine={false} tickLine={false} />
                   <YAxis type="category" dataKey="model" tickFormatter={(v: string) => MODEL_LABELS[v] ?? v} tick={{ fill: '#a8a29e', fontSize: 12 }} axisLine={false} tickLine={false} width={80} />
-                  <Tooltip cursor={{ fill: 'rgba(255,255,255,0.05)' }} wrapperStyle={{ outline: 'none' }} contentStyle={{ backgroundColor: '#1c1917', border: '1px solid #44403c', borderRadius: '8px', fontSize: '12px', color: '#e7e5e4' }} formatter={(value) => [formatCost(Number(value)), 'Cost']} labelFormatter={(label) => MODEL_LABELS[String(label)] ?? String(label)} />
+                  <Tooltip cursor={{ fill: 'rgba(255,255,255,0.05)' }} wrapperStyle={{ outline: 'none' }} contentStyle={{ backgroundColor: '#1c1917', border: '1px solid #44403c', borderRadius: '8px', fontSize: '12px', color: '#e7e5e4' }} itemStyle={{ color: '#d97706' }} formatter={(value) => [formatCost(Number(value)), 'Cost']} labelFormatter={(label) => MODEL_LABELS[String(label)] ?? String(label)} />
                   <Bar dataKey="cost" radius={[0, 4, 4, 0]}>
                     {costByModel.map((entry) => (
                       <Cell key={entry.model} fill={MODEL_COLORS[entry.model] ?? '#78716c'} />
@@ -161,6 +166,43 @@ export function UsageDashboard() {
           </section>
         )}
       </div>
+
+      {/* Cost by Project */}
+      {costByProject.length > 0 && (
+        <section>
+          <h3 className="mb-3 text-sm font-medium text-stone-300">Cost by Project</h3>
+          <div className="rounded-lg border border-stone-800 bg-stone-900/50 overflow-hidden">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-stone-800 text-stone-500">
+                  <th className="px-4 py-2.5 text-left font-medium">Project</th>
+                  <th className="px-4 py-2.5 text-right font-medium">Sessions</th>
+                  <th className="px-4 py-2.5 text-right font-medium">Tokens</th>
+                  <th className="px-4 py-2.5 text-right font-medium">Cost</th>
+                </tr>
+              </thead>
+              <tbody>
+                {costByProject.map((p) => (
+                  <tr key={p.project} className="border-b border-stone-800/50 text-stone-300 last:border-0">
+                    <td className="px-4 py-2.5">
+                      <div className="flex items-center gap-2">
+                        <FolderOpen size={12} className="flex-shrink-0 text-stone-500" />
+                        <div className="min-w-0">
+                          <div className="truncate font-medium">{projectName(p.project)}</div>
+                          <div className="truncate text-[10px] text-stone-600">{p.project}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-2.5 text-right text-stone-400">{p.sessions}</td>
+                    <td className="px-4 py-2.5 text-right text-stone-400">{formatTokens(p.inputTokens + p.outputTokens)}</td>
+                    <td className="px-4 py-2.5 text-right font-mono text-amber-400/80">{formatCost(p.cost)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
 
       {/* Top Sessions Table */}
       {topSessions.length > 0 && (

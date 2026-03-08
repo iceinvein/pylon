@@ -121,6 +121,7 @@ export type UsageStats = {
   }
   dailyCosts: Array<{ day: string; cost: number }>
   costByModel: Array<{ model: string; cost: number; sessions: number }>
+  costByProject: Array<{ project: string; cost: number; sessions: number; inputTokens: number; outputTokens: number }>
   tokensByDay: Array<{ day: string; input: number; output: number }>
   topSessions: Array<{
     id: string
