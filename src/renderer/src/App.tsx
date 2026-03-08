@@ -18,12 +18,10 @@ export default function App() {
     function handleKeyDown(e: KeyboardEvent) {
       if (!e.metaKey || e.shiftKey || e.altKey || e.ctrlKey) return
 
-      // Cmd+N — new tab via folder picker
+      // Cmd+N — new blank tab (shows HomePage)
       if (e.key === 'n') {
         e.preventDefault()
-        window.api.openFolder().then((path) => {
-          if (path) addTab(path)
-        })
+        addTab('', 'New Tab')
         return
       }
 
@@ -44,7 +42,7 @@ export default function App() {
   return (
     <>
       <Layout>
-        {activeTab ? (
+        {activeTab && activeTab.cwd ? (
           <SessionView key={activeTab.id} tab={activeTab} />
         ) : (
           <HomePage />

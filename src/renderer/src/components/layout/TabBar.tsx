@@ -21,10 +21,7 @@ export function TabBar() {
   const sessions = useSessionStore((s) => s.sessions)
 
   function handleNewTab() {
-    // Open folder picker for new tab
-    window.api.openFolder().then((path) => {
-      if (path) addTab(path)
-    })
+    addTab('', 'New Tab')
   }
 
   return (
