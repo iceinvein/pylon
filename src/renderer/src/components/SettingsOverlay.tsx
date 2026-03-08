@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { ArrowLeft, ShieldCheck, ShieldAlert, Info } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useUiStore } from '../store/ui-store'
-import type { AppSettings, PermissionMode } from '../../../shared/types'
+import { UsageDashboard } from './UsageDashboard'
+import type { AppSettings } from '../../../shared/types'
 
 const MODELS = [
   { id: 'claude-opus-4-6', label: 'Opus 4.6' },
@@ -15,13 +16,26 @@ const PERMISSION_MODES = [
   { id: 'auto-approve' as const, label: 'YOLO', icon: ShieldAlert, description: 'Auto-approve all tool permissions' },
 ]
 
+const TABS = [
+  { id: 'general', label: 'General' },
+  { id: 'usage', label: 'Usage' },
+] as const
+
+type SettingsTab = (typeof TABS)[number]['id']
+
 export function SettingsOverlay() {
   const { settingsOpen, setSettingsOpen } = useUiStore()
   const [settings, setSettings] = useState<AppSettings | null>(null)
+  const [activeTab, setActiveTab] = useState<SettingsTab>('general')
 
   useEffect(() => {
     if (!settingsOpen) return
     window.api.getSettings().then((s) => setSettings(s as AppSettings))
+  }, [settingsOpen])
+
+  // Reset to General tab when overlay closes
+  useEffect(() => {
+    if (!settingsOpen) setActiveTab('general')
   }, [settingsOpen])
 
   async function updateSetting<K extends keyof AppSettings>(key: K, value: AppSettings[K]) {
@@ -44,7 +58,7 @@ export function SettingsOverlay() {
 
           {/* Content */}
           <div className="flex-1 overflow-y-auto">
-            <div className="mx-auto max-w-xl px-6 py-4">
+            <div className="mx-auto max-w-3xl px-6 py-4">
               <button
                 onClick={() => setSettingsOpen(false)}
                 className="mb-6 flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-stone-400 transition-colors hover:bg-stone-800 hover:text-stone-200"
@@ -53,9 +67,33 @@ export function SettingsOverlay() {
                 <span>Back to app</span>
               </button>
               <h1 className="text-lg font-medium text-stone-100">Settings</h1>
-              <p className="mt-1 text-xs text-stone-500">Global defaults for new sessions</p>
 
-              {settings && (
+              {/* Tab Bar */}
+              <div className="mt-4 flex gap-1 border-b border-stone-800">
+                {TABS.map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`relative px-3 py-2 text-sm transition-colors ${
+                      activeTab === tab.id
+                        ? 'text-stone-100'
+                        : 'text-stone-500 hover:text-stone-300'
+                    }`}
+                  >
+                    {tab.label}
+                    {activeTab === tab.id && (
+                      <motion.div
+                        layoutId="settings-tab-indicator"
+                        className="absolute bottom-0 left-0 right-0 h-0.5 bg-amber-500"
+                        transition={{ duration: 0.2 }}
+                      />
+                    )}
+                  </button>
+                ))}
+              </div>
+
+              {/* Tab Content */}
+              {activeTab === 'general' && settings && (
                 <div className="mt-8 space-y-8">
                   {/* Default Model */}
                   <section>
@@ -120,6 +158,8 @@ export function SettingsOverlay() {
                   </section>
                 </div>
               )}
+
+              {activeTab === 'usage' && <UsageDashboard />}
             </div>
           </div>
         </motion.div>
