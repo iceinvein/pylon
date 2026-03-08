@@ -1,12 +1,16 @@
+import { useRef, useState } from 'react'
 import { Home, Clock, FolderOpen, Settings } from 'lucide-react'
 import { motion } from 'motion/react'
 import { useUiStore } from '../../store/ui-store'
 import { useFolderOpen } from '../../hooks/use-folder-open'
 import { WorktreeDialog } from '../WorktreeDialog'
+import { ProjectsPopover } from '../ProjectsPopover'
 
 export function NavRail() {
   const { sidebarView, setSidebarView, setSettingsOpen } = useUiStore()
-  const { dialogState, openFolder, confirmDialog, cancelDialog } = useFolderOpen()
+  const { dialogState, openFolder, openPath, confirmDialog, cancelDialog } = useFolderOpen()
+  const [popoverOpen, setPopoverOpen] = useState(false)
+  const folderBtnRef = useRef<HTMLButtonElement>(null)
 
   return (
     <>
@@ -56,12 +60,17 @@ export function NavRail() {
         </motion.button>
 
         <motion.button
-          onClick={openFolder}
-          title="Open Folder"
+          ref={folderBtnRef}
+          onClick={() => setPopoverOpen((v) => !v)}
+          title="Projects"
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           transition={{ duration: 0.1 }}
-          className="relative flex h-9 w-9 items-center justify-center rounded-lg text-stone-400 transition-colors hover:text-stone-100"
+          className={`relative flex h-9 w-9 items-center justify-center rounded-lg transition-colors ${
+            popoverOpen
+              ? 'text-stone-100 bg-stone-700'
+              : 'text-stone-400 hover:text-stone-100'
+          }`}
         >
           <FolderOpen size={18} className="relative z-10" />
         </motion.button>
@@ -79,6 +88,14 @@ export function NavRail() {
           </motion.button>
         </div>
       </div>
+
+      <ProjectsPopover
+        open={popoverOpen}
+        onClose={() => setPopoverOpen(false)}
+        onSelectProject={(path) => openPath(path)}
+        onBrowse={openFolder}
+        anchorRef={folderBtnRef}
+      />
 
       {dialogState && (
         <WorktreeDialog
