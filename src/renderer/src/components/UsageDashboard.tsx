@@ -112,7 +112,7 @@ export function UsageDashboard() {
                 <CartesianGrid strokeDasharray="3 3" stroke="#292524" />
                 <XAxis dataKey="day" tickFormatter={formatDay} tick={{ fill: '#78716c', fontSize: 11 }} axisLine={{ stroke: '#44403c' }} tickLine={false} />
                 <YAxis tickFormatter={(v: number) => '$' + v.toFixed(2)} tick={{ fill: '#78716c', fontSize: 11 }} axisLine={false} tickLine={false} width={60} />
-                <Tooltip contentStyle={{ backgroundColor: '#1c1917', border: '1px solid #44403c', borderRadius: '8px', fontSize: '12px', color: '#e7e5e4' }} formatter={(value) => [formatCost(Number(value)), 'Cost']} labelFormatter={(label) => formatDay(String(label))} />
+                <Tooltip cursor={{ stroke: '#78716c', strokeWidth: 1 }} wrapperStyle={{ outline: 'none' }} contentStyle={{ backgroundColor: '#1c1917', border: '1px solid #44403c', borderRadius: '8px', fontSize: '12px', color: '#e7e5e4' }} formatter={(value) => [formatCost(Number(value)), 'Cost']} labelFormatter={(label) => formatDay(String(label))} />
                 <Area type="monotone" dataKey="cost" stroke="#d97706" strokeWidth={2} fill="url(#costGradient)" />
               </AreaChart>
             </ResponsiveContainer>
@@ -131,7 +131,7 @@ export function UsageDashboard() {
                   <CartesianGrid strokeDasharray="3 3" stroke="#292524" horizontal={false} />
                   <XAxis type="number" tickFormatter={(v: number) => '$' + v.toFixed(2)} tick={{ fill: '#78716c', fontSize: 11 }} axisLine={false} tickLine={false} />
                   <YAxis type="category" dataKey="model" tickFormatter={(v: string) => MODEL_LABELS[v] ?? v} tick={{ fill: '#a8a29e', fontSize: 12 }} axisLine={false} tickLine={false} width={80} />
-                  <Tooltip contentStyle={{ backgroundColor: '#1c1917', border: '1px solid #44403c', borderRadius: '8px', fontSize: '12px', color: '#e7e5e4' }} formatter={(value) => [formatCost(Number(value)), 'Cost']} labelFormatter={(label) => MODEL_LABELS[String(label)] ?? String(label)} />
+                  <Tooltip cursor={{ fill: 'rgba(255,255,255,0.05)' }} wrapperStyle={{ outline: 'none' }} contentStyle={{ backgroundColor: '#1c1917', border: '1px solid #44403c', borderRadius: '8px', fontSize: '12px', color: '#e7e5e4' }} formatter={(value) => [formatCost(Number(value)), 'Cost']} labelFormatter={(label) => MODEL_LABELS[String(label)] ?? String(label)} />
                   <Bar dataKey="cost" radius={[0, 4, 4, 0]}>
                     {costByModel.map((entry) => (
                       <Cell key={entry.model} fill={MODEL_COLORS[entry.model] ?? '#78716c'} />
@@ -152,7 +152,7 @@ export function UsageDashboard() {
                   <CartesianGrid strokeDasharray="3 3" stroke="#292524" />
                   <XAxis dataKey="day" tickFormatter={formatDay} tick={{ fill: '#78716c', fontSize: 11 }} axisLine={{ stroke: '#44403c' }} tickLine={false} />
                   <YAxis tickFormatter={(v: number) => formatTokens(v)} tick={{ fill: '#78716c', fontSize: 11 }} axisLine={false} tickLine={false} width={50} />
-                  <Tooltip contentStyle={{ backgroundColor: '#1c1917', border: '1px solid #44403c', borderRadius: '8px', fontSize: '12px', color: '#e7e5e4' }} formatter={(value) => [formatTokens(Number(value)), '']} labelFormatter={(label) => formatDay(String(label))} />
+                  <Tooltip cursor={{ fill: 'rgba(255,255,255,0.05)' }} wrapperStyle={{ outline: 'none' }} contentStyle={{ backgroundColor: '#1c1917', border: '1px solid #44403c', borderRadius: '8px', fontSize: '12px', color: '#e7e5e4' }} formatter={(value) => [formatTokens(Number(value)), '']} labelFormatter={(label) => formatDay(String(label))} />
                   <Bar dataKey="input" stackId="tokens" fill="#78716c" name="Input" radius={[0, 0, 0, 0]} />
                   <Bar dataKey="output" stackId="tokens" fill="#d97706" name="Output" radius={[4, 4, 0, 0]} />
                 </BarChart>
