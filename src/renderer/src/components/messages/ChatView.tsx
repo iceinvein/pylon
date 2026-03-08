@@ -13,6 +13,9 @@ import { SubagentBlock } from '../tools/SubagentBlock'
 import { ToolUseBlock } from '../tools/ToolUseBlock'
 import { isCommitRequest, hasGitCommitTools, CommitCard } from '../tools/CommitCard'
 import { Zap, Minimize2 } from 'lucide-react'
+import { detectChoices } from '../../lib/detect-choices'
+import { ChoiceButtons } from './ChoiceButtons'
+import { useUiStore } from '../../store/ui-store'
 
 type SdkMessage = {
   type: string
@@ -266,6 +269,19 @@ export const ChatView = memo(function ChatView({ sessionId }: ChatViewProps) {
     useSessionStore.getState().removeQuestion(requestId)
   }
 
+  function handleChoiceSelect(text: string) {
+    // Optimistically add user message to store (matches SessionView.handleSend pattern)
+    useSessionStore.getState().appendMessage(sessionId, {
+      type: 'user',
+      content: text,
+    })
+    window.api.sendMessage(sessionId, text, [])
+  }
+
+  function handleChoicePreFill(text: string) {
+    useUiStore.getState().setDraftText(text)
+  }
+
   function renderAssistantContent(content: AssistantContentBlock[]) {
     const hasAgentBlocks = content.some((b) => b.type === 'tool_use' && b.name === 'Agent')
 
@@ -352,6 +368,33 @@ export const ChatView = memo(function ChatView({ sessionId }: ChatViewProps) {
   // Detect commit turns: user message is a commit request + assistant has git tool calls.
   // With includePartialMessages, each tool_use arrives in its own assistant message,
   // so we aggregate tool blocks across ALL assistant messages in the turn before checking.
+  // Detect choice patterns in the last assistant message for inline buttons.
+  // Only active when not streaming and no pending questions/permissions.
+  const detectedChoices = useMemo(() => {
+    if (streaming) return null
+    if (sessionQuestions.length > 0 || sessionPermissions.length > 0) return null
+
+    // Find the last assistant message with text content
+    for (let i = visibleMessages.length - 1; i >= 0; i--) {
+      const msg = visibleMessages[i] as SdkMessage
+
+      // If we hit a user message first, no actionable choices
+      if (msg.type === 'user' && !isToolResultMessage(msg)) return null
+
+      if (msg.type === 'assistant') {
+        const messageObj = msg.message as { content?: AssistantContentBlock[] } | undefined
+        const content = (messageObj?.content ?? msg.content ?? []) as AssistantContentBlock[]
+        const textBlocks = content.filter((b) => b.type === 'text' && b.text)
+        if (textBlocks.length === 0) continue
+
+        const fullText = textBlocks.map((b) => b.text!).join('\n')
+        return detectChoices(fullText)
+      }
+    }
+
+    return null
+  }, [visibleMessages, streaming, sessionQuestions.length, sessionPermissions.length])
+
   const commitTurnIndices = useMemo(() => {
     const indices = new Set<number>()
     for (const turn of turns) {
@@ -622,6 +665,22 @@ export const ChatView = memo(function ChatView({ sessionId }: ChatViewProps) {
           />
         </motion.div>
       ))}
+
+      {detectedChoices && (
+        <motion.div
+          key="choice-buttons"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -4 }}
+          transition={{ duration: 0.2, ease: 'easeOut' }}
+        >
+          <ChoiceButtons
+            choices={detectedChoices.choices}
+            onSelect={handleChoiceSelect}
+            onPreFill={handleChoicePreFill}
+          />
+        </motion.div>
+      )}
 
       <div ref={bottomRef} />
       </div>
