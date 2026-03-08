@@ -60,6 +60,9 @@ export function initDatabase(): Database.Database {
   if (!cols.some((c) => c.name === 'worktree_branch')) {
     db.exec("ALTER TABLE sessions ADD COLUMN worktree_branch TEXT DEFAULT NULL")
   }
+  if (!cols.some((c) => c.name === 'original_branch')) {
+    db.exec("ALTER TABLE sessions ADD COLUMN original_branch TEXT DEFAULT NULL")
+  }
 
   return db
 }

@@ -27,4 +27,7 @@ export const IPC = {
   FOLDER_CHECK_GIT_STATUS: 'folder:check-git-status',
   FOLDER_LIST_PROJECTS: 'folder:list-projects',
   USAGE_STATS: 'usage:stats',
+  WORKTREE_MERGE_CLEANUP: 'worktree:merge-cleanup',
+  WORKTREE_DISCARD_CLEANUP: 'worktree:discard-cleanup',
+  WORKTREE_INFO: 'worktree:info',
 } as const

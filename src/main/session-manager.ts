@@ -82,6 +82,7 @@ export class SessionManager {
     let worktreePath: string | null = null
     let originalCwd: string | null = null
     let worktreeBranch: string | null = null
+    let originalBranch: string | null = null
 
     if (useWorktree) {
       const result = await this.createWorktree(cwd, id)
@@ -89,12 +90,13 @@ export class SessionManager {
       worktreePath = result.worktreePath
       originalCwd = cwd
       worktreeBranch = result.branch
+      originalBranch = result.originalBranch
     }
 
     const db = getDb()
     db.prepare(
-      'INSERT INTO sessions (id, cwd, status, model, title, created_at, updated_at, worktree_path, original_cwd, worktree_branch) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-    ).run(id, sessionCwd, 'empty', sessionModel, '', now, now, worktreePath, originalCwd, worktreeBranch)
+      'INSERT INTO sessions (id, cwd, status, model, title, created_at, updated_at, worktree_path, original_cwd, worktree_branch, original_branch) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    ).run(id, sessionCwd, 'empty', sessionModel, '', now, now, worktreePath, originalCwd, worktreeBranch, originalBranch)
 
     this.sessions.set(id, {
       id,
@@ -390,11 +392,17 @@ export class SessionManager {
     }
   }
 
-  async createWorktree(repoPath: string, sessionId: string): Promise<{ worktreePath: string; branch: string }> {
+  async createWorktree(repoPath: string, sessionId: string): Promise<{ worktreePath: string; branch: string; originalBranch: string }> {
     const repoName = basename(repoPath)
     const worktreeBase = join(homedir(), '.claude-ui', 'worktrees', repoName)
     const worktreePath = join(worktreeBase, sessionId)
     const branch = `claude-session-${sessionId.slice(0, 8)}`
+
+    const { stdout: branchOut } = await execFileAsync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], {
+      cwd: repoPath,
+      timeout: 5000,
+    })
+    const originalBranch = branchOut.trim()
 
     await mkdir(worktreeBase, { recursive: true })
 
@@ -415,7 +423,7 @@ export class SessionManager {
       timeout: 30000,
     })
 
-    return { worktreePath, branch }
+    return { worktreePath, branch, originalBranch }
   }
 
   async renameWorktreeBranch(sessionId: string, title: string): Promise<void> {
@@ -488,6 +496,136 @@ export class SessionManager {
     } else {
       // Original repo gone — just delete directory
       await rm(row.worktree_path, { recursive: true, force: true }).catch(() => {})
+    }
+
+    // Clear worktree columns in DB
+    db.prepare(
+      'UPDATE sessions SET worktree_path = NULL, worktree_branch = NULL, original_branch = NULL WHERE id = ?'
+    ).run(sessionId)
+  }
+
+  async mergeAndCleanupWorktree(sessionId: string): Promise<{
+    success: boolean
+    error?: string
+    conflictFiles?: string[]
+  }> {
+    const db = getDb()
+    const row = db.prepare(
+      'SELECT worktree_path, worktree_branch, original_cwd, original_branch FROM sessions WHERE id = ?'
+    ).get(sessionId) as {
+      worktree_path: string | null
+      worktree_branch: string | null
+      original_cwd: string | null
+      original_branch: string | null
+    } | undefined
+
+    if (!row?.worktree_path || !row.worktree_branch || !row.original_cwd) {
+      return { success: false, error: 'not-a-worktree' }
+    }
+
+    if (!row.original_branch) {
+      return { success: false, error: 'branch-not-found' }
+    }
+
+    // Check for uncommitted changes in worktree
+    try {
+      const { stdout: statusOut } = await execFileAsync('git', ['status', '--porcelain'], {
+        cwd: row.worktree_path,
+        timeout: 5000,
+      })
+      if (statusOut.trim()) {
+        return { success: false, error: 'uncommitted-changes' }
+      }
+    } catch {
+      // If we can't check, continue anyway
+    }
+
+    // Checkout the original branch in the original repo
+    try {
+      await execFileAsync('git', ['checkout', row.original_branch], {
+        cwd: row.original_cwd,
+        timeout: 10000,
+      })
+    } catch {
+      return { success: false, error: `Failed to checkout ${row.original_branch}` }
+    }
+
+    // Attempt merge
+    try {
+      await execFileAsync('git', ['merge', '--no-ff', row.worktree_branch], {
+        cwd: row.original_cwd,
+        timeout: 30000,
+      })
+    } catch {
+      // Merge failed — likely conflicts. Parse conflict files then abort.
+      let conflictFiles: string[] = []
+      try {
+        const { stdout: conflictOut } = await execFileAsync(
+          'git', ['diff', '--name-only', '--diff-filter=U'],
+          { cwd: row.original_cwd, timeout: 5000 }
+        )
+        conflictFiles = conflictOut.trim().split('\n').filter(Boolean)
+      } catch {
+        // Can't get conflict files
+      }
+
+      try {
+        await execFileAsync('git', ['merge', '--abort'], {
+          cwd: row.original_cwd,
+          timeout: 5000,
+        })
+      } catch {
+        // Best effort abort
+      }
+
+      return { success: false, error: 'conflicts', conflictFiles }
+    }
+
+    // Merge succeeded — clean up worktree and branch
+    try {
+      await execFileAsync('git', ['worktree', 'remove', '--force', row.worktree_path], {
+        cwd: row.original_cwd,
+        timeout: 10000,
+      })
+    } catch {
+      await rm(row.worktree_path, { recursive: true, force: true }).catch(() => {})
+    }
+
+    try {
+      await execFileAsync('git', ['branch', '-d', row.worktree_branch], {
+        cwd: row.original_cwd,
+        timeout: 5000,
+      })
+    } catch {
+      // Branch may already be deleted
+    }
+
+    // Clear worktree columns in DB
+    db.prepare(
+      'UPDATE sessions SET worktree_path = NULL, worktree_branch = NULL, original_branch = NULL WHERE id = ?'
+    ).run(sessionId)
+
+    return { success: true }
+  }
+
+  getWorktreeInfo(sessionId: string): {
+    worktreePath: string | null
+    worktreeBranch: string | null
+    originalBranch: string | null
+  } {
+    const db = getDb()
+    const row = db.prepare(
+      'SELECT worktree_path, worktree_branch, original_branch FROM sessions WHERE id = ?'
+    ).get(sessionId) as {
+      worktree_path: string | null
+      worktree_branch: string | null
+      original_branch: string | null
+    } | undefined
+
+    return {
+      worktreePath: row?.worktree_path ?? null,
+      worktreeBranch: row?.worktree_branch ?? null,
+      originalBranch: row?.original_branch ?? null,
     }
   }
 

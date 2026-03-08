@@ -44,6 +44,12 @@ const api = {
     ipcRenderer.invoke(IPC.SESSION_FILE_STATUSES, { sessionId, filePaths }),
   getUsageStats: (period: string) =>
     ipcRenderer.invoke(IPC.USAGE_STATS, { period }),
+  mergeWorktree: (sessionId: string) =>
+    ipcRenderer.invoke(IPC.WORKTREE_MERGE_CLEANUP, { sessionId }),
+  discardWorktree: (sessionId: string) =>
+    ipcRenderer.invoke(IPC.WORKTREE_DISCARD_CLEANUP, { sessionId }),
+  getWorktreeInfo: (sessionId: string) =>
+    ipcRenderer.invoke(IPC.WORKTREE_INFO, { sessionId }),
 
   onSessionMessage: (callback: (data: unknown) => void) => {
     const handler = (_event: unknown, data: unknown) => callback(data)

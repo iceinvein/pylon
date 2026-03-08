@@ -109,6 +109,18 @@ export type FileDiff = {
   diff: string
 }
 
+export type WorktreeMergeResult = {
+  success: boolean
+  error?: 'conflicts' | 'not-a-worktree' | 'branch-not-found' | 'uncommitted-changes' | string
+  conflictFiles?: string[]
+}
+
+export type WorktreeInfo = {
+  worktreePath: string | null
+  worktreeBranch: string | null
+  originalBranch: string | null
+}
+
 export type UsagePeriod = '7d' | '30d' | '90d' | 'all'
 
 export type UsageStats = {

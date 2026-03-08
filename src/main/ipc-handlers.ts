@@ -136,6 +136,19 @@ export function registerIpcHandlers(): void {
     return true
   })
 
+  ipcMain.handle(IPC.WORKTREE_MERGE_CLEANUP, async (_e, args: { sessionId: string }) => {
+    return sessionManager.mergeAndCleanupWorktree(args.sessionId)
+  })
+
+  ipcMain.handle(IPC.WORKTREE_DISCARD_CLEANUP, async (_e, args: { sessionId: string }) => {
+    await sessionManager.removeWorktree(args.sessionId)
+    return true
+  })
+
+  ipcMain.handle(IPC.WORKTREE_INFO, async (_e, args: { sessionId: string }) => {
+    return sessionManager.getWorktreeInfo(args.sessionId)
+  })
+
   ipcMain.handle(IPC.USAGE_STATS, async (_e, args: { period: string }) => {
     const db = getDb()
     const now = Date.now()

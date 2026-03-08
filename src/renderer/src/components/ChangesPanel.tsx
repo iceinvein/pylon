@@ -8,6 +8,11 @@ import {
   FileMinus,
   FileSymlink,
   FileQuestion,
+  GitMerge,
+  Trash2,
+  AlertTriangle,
+  Check,
+  Loader2,
 } from 'lucide-react'
 import { useSessionStore } from '../store/session-store'
 import { useTabStore } from '../store/tab-store'
@@ -219,6 +224,67 @@ export function ChangesPanel() {
     return () => { cancelled = true }
   }, [sessionId, changedFiles])
 
+  // Worktree state
+  const [worktreeInfo, setWorktreeInfo] = useState<{
+    worktreePath: string | null
+    worktreeBranch: string | null
+    originalBranch: string | null
+  } | null>(null)
+  const [mergeLoading, setMergeLoading] = useState(false)
+  const [mergeError, setMergeError] = useState<{ message: string; files?: string[] } | null>(null)
+  const [mergeSuccess, setMergeSuccess] = useState(false)
+  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false)
+  const [discardLoading, setDiscardLoading] = useState(false)
+
+  useEffect(() => {
+    if (!sessionId) return
+    window.api.getWorktreeInfo(sessionId).then(setWorktreeInfo).catch(console.error)
+  }, [sessionId])
+
+  const handleMergeCleanup = useCallback(async () => {
+    if (!sessionId) return
+    setMergeLoading(true)
+    setMergeError(null)
+    try {
+      const result = await window.api.mergeWorktree(sessionId)
+      if (result.success) {
+        setMergeSuccess(true)
+        setWorktreeInfo(null)
+      } else {
+        const messages: Record<string, string> = {
+          conflicts: 'Merge conflicts detected. Resolve them manually in your terminal.',
+          'not-a-worktree': 'This session is not using a worktree.',
+          'branch-not-found': 'The original branch could not be found.',
+          'uncommitted-changes': 'Uncommitted changes in worktree. Ask Claude to commit first.',
+        }
+        setMergeError({
+          message: messages[result.error ?? ''] ?? result.error ?? 'Merge failed',
+          files: result.conflictFiles,
+        })
+      }
+    } catch {
+      setMergeError({ message: 'Unexpected error during merge' })
+    } finally {
+      setMergeLoading(false)
+    }
+  }, [sessionId])
+
+  const handleDiscardCleanup = useCallback(async () => {
+    if (!sessionId) return
+    setDiscardLoading(true)
+    try {
+      await window.api.discardWorktree(sessionId)
+      setWorktreeInfo(null)
+      setShowDiscardConfirm(false)
+    } catch {
+      console.error('Failed to discard worktree')
+    } finally {
+      setDiscardLoading(false)
+    }
+  }, [sessionId])
+
+  const isWorktreeSession = worktreeInfo?.worktreePath != null
+
   if (!sessionId) {
     return (
       <div className="flex h-full items-center justify-center p-4">
@@ -276,6 +342,80 @@ export function ChangesPanel() {
                 />
               ))}
             </div>
+
+            {/* Worktree actions */}
+            {isWorktreeSession && (
+              <div className="border-t border-stone-800 px-3 py-3">
+                {mergeSuccess ? (
+                  <div className="flex items-center gap-2 rounded bg-emerald-950/40 px-3 py-2 text-xs text-emerald-400">
+                    <Check size={14} />
+                    <span>Merged into {worktreeInfo?.originalBranch ?? 'original branch'} and cleaned up</span>
+                  </div>
+                ) : (
+                  <>
+                    {mergeError && (
+                      <div className="mb-2 rounded bg-red-950/40 px-3 py-2">
+                        <div className="flex items-start gap-2 text-xs text-red-400">
+                          <AlertTriangle size={14} className="mt-0.5 flex-shrink-0" />
+                          <div>
+                            <p>{mergeError.message}</p>
+                            {mergeError.files && mergeError.files.length > 0 && (
+                              <ul className="mt-1 list-inside list-disc text-red-500/80">
+                                {mergeError.files.map((f) => (
+                                  <li key={f} className="font-[family-name:var(--font-mono)]">{f}</li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleMergeCleanup}
+                        disabled={mergeLoading || discardLoading}
+                        className="flex flex-1 items-center justify-center gap-1.5 rounded bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-emerald-500 disabled:opacity-50"
+                      >
+                        {mergeLoading ? <Loader2 size={13} className="animate-spin" /> : <GitMerge size={13} />}
+                        Merge & Cleanup
+                      </button>
+
+                      {showDiscardConfirm ? (
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={handleDiscardCleanup}
+                            disabled={discardLoading}
+                            className="rounded bg-red-600 px-2 py-1.5 text-[11px] font-medium text-white transition-colors hover:bg-red-500 disabled:opacity-50"
+                          >
+                            {discardLoading ? <Loader2 size={11} className="animate-spin" /> : 'Confirm'}
+                          </button>
+                          <button
+                            onClick={() => setShowDiscardConfirm(false)}
+                            className="rounded px-2 py-1.5 text-[11px] text-stone-500 transition-colors hover:bg-stone-800 hover:text-stone-300"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setShowDiscardConfirm(true)}
+                          disabled={mergeLoading || discardLoading}
+                          className="flex items-center gap-1.5 rounded border border-stone-700 px-3 py-1.5 text-xs text-stone-400 transition-colors hover:border-red-800 hover:bg-red-950/30 hover:text-red-400 disabled:opacity-50"
+                        >
+                          <Trash2 size={13} />
+                          Discard
+                        </button>
+                      )}
+                    </div>
+
+                    <p className="mt-1.5 text-[10px] text-stone-600">
+                      Merges <span className="text-stone-500">{worktreeInfo?.worktreeBranch}</span> → <span className="text-stone-500">{worktreeInfo?.originalBranch}</span>
+                    </p>
+                  </>
+                )}
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

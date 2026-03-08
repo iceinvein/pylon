@@ -20,6 +20,9 @@ type Api = {
   getFileDiffs: (sessionId: string, filePaths: string[]) => Promise<Array<{ filePath: string; status: string; diff: string }>>
   getFileStatuses: (sessionId: string, filePaths: string[]) => Promise<Array<{ filePath: string; status: string }>>
   getUsageStats: (period: import('../shared/types').UsagePeriod) => Promise<import('../shared/types').UsageStats>
+  mergeWorktree: (sessionId: string) => Promise<import('../shared/types').WorktreeMergeResult>
+  discardWorktree: (sessionId: string) => Promise<boolean>
+  getWorktreeInfo: (sessionId: string) => Promise<import('../shared/types').WorktreeInfo>
   onSessionMessage: (callback: (data: unknown) => void) => () => void
   onSessionStatus: (callback: (data: unknown) => void) => () => void
   onSessionPermission: (callback: (data: unknown) => void) => () => void
