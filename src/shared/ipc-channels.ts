@@ -26,4 +26,5 @@ export const IPC = {
   SESSION_TITLE_UPDATED: 'session:title-updated',
   FOLDER_CHECK_GIT_STATUS: 'folder:check-git-status',
   FOLDER_LIST_PROJECTS: 'folder:list-projects',
+  USAGE_STATS: 'usage:stats',
 } as const

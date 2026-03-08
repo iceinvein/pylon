@@ -108,3 +108,27 @@ export type FileDiff = {
   status: 'modified' | 'added' | 'deleted' | 'renamed'
   diff: string
 }
+
+export type UsagePeriod = '7d' | '30d' | '90d' | 'all'
+
+export type UsageStats = {
+  summary: {
+    totalCost: number
+    sessionCount: number
+    avgCostPerSession: number
+    totalInput: number
+    totalOutput: number
+  }
+  dailyCosts: Array<{ day: string; cost: number }>
+  costByModel: Array<{ model: string; cost: number; sessions: number }>
+  tokensByDay: Array<{ day: string; input: number; output: number }>
+  topSessions: Array<{
+    id: string
+    title: string
+    model: string
+    cost: number
+    inputTokens: number
+    outputTokens: number
+    createdAt: number
+  }>
+}
