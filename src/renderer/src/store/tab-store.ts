@@ -5,7 +5,7 @@ import { randomUUID } from '../lib/utils'
 type TabStore = {
   tabs: Tab[]
   activeTabId: string | null
-  addTab: (cwd: string, label?: string, sessionId?: string) => string
+  addTab: (cwd: string, label?: string, sessionId?: string, useWorktree?: boolean) => string
   closeTab: (tabId: string) => void
   setActiveTab: (tabId: string) => void
   updateTab: (tabId: string, updates: Partial<Tab>) => void
@@ -15,13 +15,14 @@ export const useTabStore = create<TabStore>((set, get) => ({
   tabs: [],
   activeTabId: null,
 
-  addTab: (cwd, label, sessionId) => {
+  addTab: (cwd, label, sessionId, useWorktree) => {
     const id = randomUUID()
     const tab: Tab = {
       id,
       sessionId: sessionId ?? null,
       cwd,
       label: label ?? cwd.split('/').pop() ?? cwd,
+      useWorktree,
     }
     set((state) => ({
       tabs: [...state.tabs, tab],

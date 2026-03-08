@@ -1,15 +1,30 @@
+import { useState } from 'react'
 import { FolderOpen } from 'lucide-react'
 import { useTabStore } from '../store/tab-store'
 import { SessionHistory } from '../components/SessionHistory'
+import { WorktreeDialog } from '../components/WorktreeDialog'
 
 export function HomePage() {
   const { addTab } = useTabStore()
+  const [dialogState, setDialogState] = useState<{ path: string; isDirty: boolean } | null>(null)
 
   async function handleOpenFolder() {
     const path = await window.api.openFolder()
-    if (path) {
+    if (!path) return
+
+    const status = await window.api.checkGitStatus(path)
+    if (status.isGitRepo) {
+      setDialogState({ path, isDirty: status.isDirty })
+    } else {
       addTab(path)
     }
+  }
+
+  function handleDialogConfirm(useWorktree: boolean) {
+    if (dialogState) {
+      addTab(dialogState.path, undefined, undefined, useWorktree || undefined)
+    }
+    setDialogState(null)
   }
 
   return (
@@ -29,6 +44,15 @@ export function HomePage() {
 
         <SessionHistory />
       </div>
+
+      {dialogState && (
+        <WorktreeDialog
+          folderPath={dialogState.path}
+          isDirty={dialogState.isDirty}
+          onConfirm={handleDialogConfirm}
+          onCancel={() => setDialogState(null)}
+        />
+      )}
     </div>
   )
 }
