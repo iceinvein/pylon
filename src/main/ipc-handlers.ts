@@ -49,7 +49,13 @@ export function registerIpcHandlers(): void {
   })
 
   ipcMain.handle(IPC.SESSION_RESUME, async (_e, args: { sessionId: string }) => {
-    return sessionManager.resumeSession(args.sessionId)
+    const success = sessionManager.resumeSession(args.sessionId)
+    if (success) {
+      const db = getDb()
+      const row = db.prepare('SELECT title FROM sessions WHERE id = ?').get(args.sessionId) as { title: string } | undefined
+      return { success: true, title: row?.title ?? '' }
+    }
+    return { success: false, title: '' }
   })
 
   ipcMain.handle(IPC.SESSION_LIST, async () => {

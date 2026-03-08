@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { accumulateDelta, flushPendingDeltas } from '../lib/delta-batcher'
 import { useSessionStore } from '../store/session-store'
+import { useTabStore } from '../store/tab-store'
 import type { PermissionRequest, QuestionRequest, SessionStatus } from '../../../shared/types'
 
 type SessionMessageEvent = {
@@ -52,6 +53,7 @@ export function useIpcBridge(): void {
   // The IPC callbacks only need to call store actions, not read reactive state.
   useEffect(() => {
     const store = () => useSessionStore.getState()
+    const tabStore = () => useTabStore.getState()
 
     const unsubMessage = window.api.onSessionMessage((raw) => {
       const { sessionId, message } = raw as SessionMessageEvent
@@ -180,11 +182,24 @@ export function useIpcBridge(): void {
       store().addQuestion(question)
     })
 
+    const unsubTitle = window.api.onSessionTitleUpdated((raw) => {
+      const { sessionId, title } = raw as { sessionId: string; title: string }
+      store().updateSession(sessionId, { title })
+
+      // Update matching tab label
+      const tabs = tabStore().tabs
+      const matchingTab = tabs.find((t) => t.sessionId === sessionId)
+      if (matchingTab) {
+        tabStore().updateTab(matchingTab.id, { label: title })
+      }
+    })
+
     return () => {
       unsubMessage()
       unsubStatus()
       unsubPermission()
       unsubQuestion()
+      unsubTitle()
     }
   }, [])
 }

@@ -59,6 +59,11 @@ const api = {
     ipcRenderer.on(IPC.SESSION_QUESTION, handler)
     return () => ipcRenderer.removeListener(IPC.SESSION_QUESTION, handler)
   },
+  onSessionTitleUpdated: (callback: (data: unknown) => void) => {
+    const handler = (_event: unknown, data: unknown) => callback(data)
+    ipcRenderer.on(IPC.SESSION_TITLE_UPDATED, handler)
+    return () => ipcRenderer.removeListener(IPC.SESSION_TITLE_UPDATED, handler)
+  },
 }
 
 contextBridge.exposeInMainWorld('api', api)

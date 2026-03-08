@@ -23,4 +23,5 @@ export const IPC = {
   SESSION_QUESTION: 'session:question',
   SESSION_FILE_DIFFS: 'session:file-diffs',
   SESSION_FILE_STATUSES: 'session:file-statuses',
+  SESSION_TITLE_UPDATED: 'session:title-updated',
 } as const

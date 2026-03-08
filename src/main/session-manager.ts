@@ -11,6 +11,33 @@ import type { PermissionMode, PermissionResponse, QuestionResponse } from '../sh
 
 const execFileAsync = promisify(execFile)
 
+/**
+ * Derive a short title from the user's first message.
+ * Cleans up whitespace, strips common prefixes, and caps at ~60 chars on a word boundary.
+ */
+function deriveTitle(message: string): string {
+  // Collapse whitespace and newlines
+  let title = message.replace(/\s+/g, ' ').trim()
+
+  // Strip common conversational prefixes
+  title = title
+    .replace(/^(hey,?\s*|hi,?\s*|hello,?\s*|please\s+|can you\s+|could you\s+|i need to\s+|i want to\s+|help me\s+|let's\s+|lets\s+)/i, '')
+    .trim()
+
+  // Capitalize first letter
+  title = title.charAt(0).toUpperCase() + title.slice(1)
+
+  // Truncate to ~60 chars on a word boundary
+  if (title.length > 60) {
+    title = title.slice(0, 60).replace(/\s+\S*$/, '').trim()
+  }
+
+  // Strip trailing punctuation
+  title = title.replace(/[.,;:!?]+$/, '').trim()
+
+  return title
+}
+
 type ActiveSession = {
   id: string
   sdkSessionId: string | null
@@ -186,6 +213,11 @@ export class SessionManager {
               sessionId
             )
           }
+          // Set title after first exchange
+          const currentTitle = (getDb().prepare('SELECT title FROM sessions WHERE id = ?').get(sessionId) as { title: string } | undefined)?.title
+          if (currentTitle === '') {
+            this.setTitleFromMessage(sessionId, text)
+          }
         }
       }
 
@@ -242,8 +274,8 @@ export class SessionManager {
     if (this.sessions.has(sessionId)) return true
 
     const db = getDb()
-    const row = db.prepare('SELECT id, cwd, sdk_session_id, model, permission_mode, git_baseline_hash FROM sessions WHERE id = ?').get(sessionId) as
-      | { id: string; cwd: string; sdk_session_id: string | null; model: string; permission_mode: string; git_baseline_hash: string | null }
+    const row = db.prepare('SELECT id, cwd, sdk_session_id, model, permission_mode, git_baseline_hash, title FROM sessions WHERE id = ?').get(sessionId) as
+      | { id: string; cwd: string; sdk_session_id: string | null; model: string; permission_mode: string; git_baseline_hash: string | null; title: string }
       | undefined
 
     if (!row) return false
@@ -260,6 +292,30 @@ export class SessionManager {
       pendingPermissions: new Map(),
       pendingQuestions: new Map(),
     })
+
+    // Backfill title for old sessions that never got one
+    if (row.title === '') {
+      const messages = db.prepare(
+        "SELECT sdk_message FROM messages WHERE session_id = ? ORDER BY timestamp ASC LIMIT 10"
+      ).all(sessionId) as { sdk_message: string }[]
+
+      for (const msg of messages) {
+        try {
+          const parsed = JSON.parse(msg.sdk_message)
+          if (parsed.type === 'user') {
+            const content = typeof parsed.content === 'string'
+              ? parsed.content
+              : (parsed.content?.text ?? '')
+            if (content) {
+              this.setTitleFromMessage(sessionId, content)
+              break
+            }
+          }
+        } catch {
+          // Ignore parse errors
+        }
+      }
+    }
 
     return true
   }
@@ -524,6 +580,17 @@ export class SessionManager {
     } catch {
       return null
     }
+  }
+
+  private setTitleFromMessage(sessionId: string, userMessage: string): void {
+    const title = deriveTitle(userMessage)
+    if (!title) return
+
+    const db = getDb()
+    db.prepare('UPDATE sessions SET title = ?, updated_at = ? WHERE id = ?')
+      .run(title, Date.now(), sessionId)
+
+    this.send(IPC.SESSION_TITLE_UPDATED, { sessionId, title })
   }
 
   private async requestQuestion(

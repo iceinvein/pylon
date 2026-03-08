@@ -67,8 +67,12 @@ export function SessionHistory() {
       addChangedFile(session.id, filePath)
     }
 
-    await window.api.resumeSession(session.id)
-    addTab(session.cwd, session.title || session.cwd.split('/').pop() || session.cwd, session.id)
+    const result = await window.api.resumeSession(session.id)
+    const title = result.title || session.title || session.cwd.split('/').pop() || session.cwd
+    if (result.title) {
+      setSession({ ...sessionState, title: result.title })
+    }
+    addTab(session.cwd, title, session.id)
   }
 
   async function handleDelete(e: React.MouseEvent, sessionId: string) {

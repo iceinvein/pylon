@@ -2,7 +2,7 @@ type Api = {
   createSession: (cwd: string, model?: string) => Promise<string>
   sendMessage: (sessionId: string, text: string, attachments?: unknown[]) => Promise<boolean>
   stopSession: (sessionId: string) => Promise<boolean>
-  resumeSession: (sessionId: string) => Promise<boolean>
+  resumeSession: (sessionId: string) => Promise<{ success: boolean; title: string }>
   listSessions: () => Promise<unknown[]>
   getMessages: (sessionId: string) => Promise<unknown[]>
   deleteSession: (sessionId: string) => Promise<boolean>
@@ -21,6 +21,7 @@ type Api = {
   onSessionStatus: (callback: (data: unknown) => void) => () => void
   onSessionPermission: (callback: (data: unknown) => void) => () => void
   onSessionQuestion: (callback: (data: unknown) => void) => () => void
+  onSessionTitleUpdated: (callback: (data: unknown) => void) => () => void
 }
 
 declare global {
