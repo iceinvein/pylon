@@ -5,6 +5,8 @@ import { sessionManager } from './session-manager'
 import { getPrDetail } from './gh-cli'
 import { IPC } from '../shared/ipc-channels'
 import type { GhRepo, ReviewFocus, ReviewFinding, PrReview, ReviewStatus } from '../shared/types'
+import { log } from '../shared/logger'
+const logger = log.child('pr-review')
 
 const MAX_DIFF_LINES = 50_000
 const STREAM_THROTTLE_MS = 300
@@ -388,7 +390,7 @@ class PrReviewManager {
     })
 
     this.runParallelReview(reviewId, repo, prNumber, focusAreas).catch((err) => {
-      console.error('Review failed:', err)
+      logger.error('Review failed:', err)
       this.updateReviewStatus(reviewId, 'error', Date.now())
       this.send(IPC.GH_REVIEW_UPDATE, { reviewId, status: 'error', error: String(err) })
     })
@@ -563,7 +565,7 @@ Output ONLY the review-findings block. Do not use any tools.`
     } catch (err) {
       agentSession.status = 'error'
       agentSession.error = String(err)
-      console.error(`Agent ${focus} failed:`, err)
+      logger.error(`Agent ${focus} failed:`, err)
     } finally {
       unsub()
     }
@@ -647,8 +649,8 @@ Output ONLY the review-findings block. Do not use any tools.`
     }
 
     if (!jsonStr) {
-      console.error('No review-findings block found in output. Text length:', text.length)
-      console.error('First 500 chars:', text.slice(0, 500))
+      logger.error('No review-findings block found in output. Text length:', text.length)
+      logger.error('First 500 chars:', text.slice(0, 500))
       return []
     }
 
@@ -666,8 +668,8 @@ Output ONLY the review-findings block. Do not use any tools.`
         posted: false,
       }))
     } catch (err) {
-      console.error('Failed to parse review findings JSON:', err)
-      console.error('JSON string (first 500 chars):', jsonStr.slice(0, 500))
+      logger.error('Failed to parse review findings JSON:', err)
+      logger.error('JSON string (first 500 chars):', jsonStr.slice(0, 500))
       return []
     }
   }
