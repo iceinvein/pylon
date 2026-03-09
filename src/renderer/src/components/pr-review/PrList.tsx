@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react'
-import { Search, Loader2 } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { Search, Loader2, ChevronDown, Check } from 'lucide-react'
+import { AnimatePresence, motion } from 'motion/react'
 import { usePrReviewStore } from '../../store/pr-review-store'
 import { PrCard } from './PrCard'
 
@@ -10,6 +11,8 @@ export function PrList() {
   } = usePrReviewStore()
 
   const [search, setSearch] = useState('')
+  const [repoMenuOpen, setRepoMenuOpen] = useState(false)
+  const repoMenuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     loadRepos()
@@ -21,6 +24,25 @@ export function PrList() {
     }
   }, [repos])
 
+  // Close menu on click outside
+  useEffect(() => {
+    if (!repoMenuOpen) return
+    function handleClick(e: MouseEvent) {
+      if (repoMenuRef.current && !repoMenuRef.current.contains(e.target as Node)) {
+        setRepoMenuOpen(false)
+      }
+    }
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setRepoMenuOpen(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    document.addEventListener('keydown', handleKey)
+    return () => {
+      document.removeEventListener('mousedown', handleClick)
+      document.removeEventListener('keydown', handleKey)
+    }
+  }, [repoMenuOpen])
+
   const filteredPrs = search
     ? prs.filter((pr) =>
         pr.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -28,21 +50,59 @@ export function PrList() {
       )
     : prs
 
+  const selectedLabel = selectedRepo
+    ? repos.find((r) => r.fullName === selectedRepo)?.fullName ?? selectedRepo
+    : 'All repos'
+
   return (
     <div className="flex h-full flex-col border-r border-stone-800">
       <div className="border-b border-stone-800 p-3">
-        <select
-          value={selectedRepo ?? '__all__'}
-          onChange={(e) => setSelectedRepo(e.target.value === '__all__' ? null : e.target.value)}
-          className="w-full rounded-md bg-stone-800 px-2.5 py-1.5 text-xs text-stone-300 outline-none ring-1 ring-stone-700 focus:ring-stone-500"
-        >
-          <option value="__all__">All repos</option>
-          {repos.map((r) => (
-            <option key={r.fullName} value={r.fullName}>
-              {r.fullName}
-            </option>
-          ))}
-        </select>
+        {/* Repo filter dropdown */}
+        <div ref={repoMenuRef} className="relative">
+          <button
+            onClick={() => setRepoMenuOpen((v) => !v)}
+            className="flex w-full items-center justify-between rounded-md bg-stone-800 px-2.5 py-1.5 text-xs text-stone-300 ring-1 ring-stone-700 transition-colors hover:ring-stone-600"
+          >
+            <span className="truncate">{selectedLabel}</span>
+            <ChevronDown size={12} className={`ml-1.5 flex-shrink-0 text-stone-500 transition-transform ${repoMenuOpen ? 'rotate-180' : ''}`} />
+          </button>
+          <AnimatePresence>
+            {repoMenuOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.12 }}
+                className="absolute left-0 right-0 top-full z-50 mt-1 max-h-60 overflow-y-auto rounded-lg border border-stone-700 bg-stone-900 py-1 shadow-xl"
+              >
+                <button
+                  onClick={() => { setSelectedRepo(null); setRepoMenuOpen(false) }}
+                  className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-xs transition-colors hover:bg-stone-800"
+                >
+                  <span className={`h-3 w-3 flex-shrink-0 ${!selectedRepo ? '' : 'opacity-0'}`}>
+                    {!selectedRepo && <Check size={12} className="text-stone-300" />}
+                  </span>
+                  <span className={!selectedRepo ? 'text-stone-200' : 'text-stone-400'}>All repos</span>
+                </button>
+                {repos.map((r) => {
+                  const isSelected = selectedRepo === r.fullName
+                  return (
+                    <button
+                      key={r.fullName}
+                      onClick={() => { setSelectedRepo(r.fullName); setRepoMenuOpen(false) }}
+                      className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-xs transition-colors hover:bg-stone-800"
+                    >
+                      <span className={`h-3 w-3 flex-shrink-0 ${isSelected ? '' : 'opacity-0'}`}>
+                        {isSelected && <Check size={12} className="text-stone-300" />}
+                      </span>
+                      <span className={`truncate ${isSelected ? 'text-stone-200' : 'text-stone-400'}`}>{r.fullName}</span>
+                    </button>
+                  )
+                })}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
 
         <div className="relative mt-2">
           <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-stone-500" />
