@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Home, Clock, FolderOpen, Settings } from 'lucide-react'
+import { Home, Clock, FolderOpen, Settings, GitPullRequestDraft } from 'lucide-react'
 import { motion } from 'motion/react'
 import { useUiStore } from '../../store/ui-store'
 import { useFolderOpen } from '../../hooks/use-folder-open'
@@ -57,6 +57,28 @@ export function NavRail() {
             />
           )}
           <Clock size={18} className="relative z-10" />
+        </motion.button>
+
+        <motion.button
+          onClick={() => setSidebarView(sidebarView === 'pr-review' ? 'home' : 'pr-review')}
+          title="PR Review"
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          transition={{ duration: 0.1 }}
+          className={`relative flex h-9 w-9 items-center justify-center rounded-lg transition-colors ${
+            sidebarView === 'pr-review'
+              ? 'text-stone-100'
+              : 'text-stone-400 hover:text-stone-100'
+          }`}
+        >
+          {sidebarView === 'pr-review' && (
+            <motion.span
+              layoutId="nav-active"
+              className="absolute inset-0 rounded-lg bg-stone-700"
+              transition={{ duration: 0.15, ease: 'easeOut' }}
+            />
+          )}
+          <GitPullRequestDraft size={18} className="relative z-10" />
         </motion.button>
 
         <motion.button
