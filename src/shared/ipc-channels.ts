@@ -30,4 +30,18 @@ export const IPC = {
   WORKTREE_MERGE_CLEANUP: 'worktree:merge-cleanup',
   WORKTREE_DISCARD_CLEANUP: 'worktree:discard-cleanup',
   WORKTREE_INFO: 'worktree:info',
+  // PR Review
+  GH_CHECK_STATUS: 'gh:check-status',
+  GH_SET_PATH: 'gh:set-path',
+  GH_LIST_REPOS: 'gh:list-repos',
+  GH_LIST_PRS: 'gh:list-prs',
+  GH_PR_DETAIL: 'gh:pr-detail',
+  GH_POST_COMMENT: 'gh:post-comment',
+  GH_POST_REVIEW: 'gh:post-review',
+  GH_START_REVIEW: 'gh:start-review',
+  GH_STOP_REVIEW: 'gh:stop-review',
+  GH_LIST_REVIEWS: 'gh:list-reviews',
+  GH_GET_REVIEW: 'gh:get-review',
+  GH_DELETE_REVIEW: 'gh:delete-review',
+  GH_REVIEW_UPDATE: 'gh:review-update',
 } as const

@@ -145,3 +145,72 @@ export type UsageStats = {
     createdAt: number
   }>
 }
+
+// ── PR Review ──────────────────────────────────
+
+export type GhCliStatus = {
+  available: boolean
+  authenticated: boolean
+  binaryPath: string | null
+  username: string | null
+  error: string | null
+}
+
+export type GhRepo = {
+  owner: string
+  repo: string
+  fullName: string
+  projectPath: string
+}
+
+export type GhPullRequest = {
+  number: number
+  title: string
+  author: string
+  state: 'open' | 'closed' | 'merged'
+  createdAt: string
+  updatedAt: string
+  headBranch: string
+  baseBranch: string
+  additions: number
+  deletions: number
+  reviewDecision: string | null
+  isDraft: boolean
+  url: string
+  repo: GhRepo
+}
+
+export type GhPrDetail = GhPullRequest & {
+  body: string
+  files: Array<{ path: string; additions: number; deletions: number }>
+  diff: string
+}
+
+export type ReviewFinding = {
+  id: string
+  file: string
+  line: number | null
+  severity: 'critical' | 'warning' | 'suggestion' | 'nitpick'
+  title: string
+  description: string
+  posted: boolean
+}
+
+export type ReviewFocus = 'general' | 'security' | 'bugs' | 'performance' | 'style'
+
+export type ReviewStatus = 'pending' | 'running' | 'done' | 'error'
+
+export type PrReview = {
+  id: string
+  prNumber: number
+  repo: GhRepo
+  prTitle: string
+  prUrl: string
+  status: ReviewStatus
+  focus: ReviewFocus[]
+  findings: ReviewFinding[]
+  sessionId: string | null
+  startedAt: number
+  completedAt: number | null
+  createdAt: number
+}
