@@ -196,7 +196,7 @@ export type ReviewFinding = {
   posted: boolean
 }
 
-export type ReviewFocus = 'general' | 'security' | 'bugs' | 'performance' | 'style'
+export type ReviewFocus = 'security' | 'bugs' | 'performance' | 'style' | 'architecture' | 'ux'
 
 export type ReviewStatus = 'pending' | 'running' | 'done' | 'error'
 

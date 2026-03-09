@@ -10,14 +10,6 @@ const MAX_DIFF_LINES = 50_000
 const STREAM_THROTTLE_MS = 300
 
 const DEFAULT_AGENT_PROMPTS: Record<string, string> = {
-  general: `You are a general code reviewer. Look for:
-- Code quality and readability issues
-- Violations of best practices and design patterns
-- Missing error handling or edge cases
-- Unclear naming or confusing logic
-- Unnecessary complexity
-Be thorough but avoid false positives. Only flag issues you're confident about.`,
-
   security: `You are a security-focused code reviewer. Look for:
 - Injection vulnerabilities (SQL, command, XSS)
 - Authentication and authorization flaws
@@ -52,6 +44,24 @@ Be thorough but avoid false positives. Only flag issues you're confident about.`
 - Dead code and unused imports
 - Overly complex expressions that could be simplified
 - Violations of project conventions
+Be thorough but avoid false positives. Only flag issues you're confident about.`,
+
+  architecture: `You are an architecture and design reviewer. Look for:
+- Poor separation of concerns or leaky abstractions
+- Tight coupling between modules that should be independent
+- Missing or misused design patterns
+- API design issues (inconsistent contracts, poor naming, missing validation)
+- Scalability concerns in data structures or algorithms
+- Violations of SOLID principles
+Be thorough but avoid false positives. Only flag issues you're confident about.`,
+
+  ux: `You are a UI/UX reviewer. Look for:
+- Missing or unhelpful error messages shown to users
+- Loading states not handled (spinners, skeletons, disabled buttons)
+- Accessibility issues (missing labels, keyboard navigation, contrast)
+- Inconsistent user-facing behavior or confusing flows
+- Missing confirmation for destructive actions
+- Edge cases in user input (empty states, long text, special characters)
 Be thorough but avoid false positives. Only flag issues you're confident about.`,
 }
 
@@ -430,8 +440,9 @@ Output ONLY the review-findings block. Do not use any tools.`
   getAgentPrompts(): Array<{ id: string; name: string; prompt: string; isCustom: boolean }> {
     const db = getDb()
     const names: Record<string, string> = {
-      general: 'General', security: 'Security', bugs: 'Bugs',
+      security: 'Security', bugs: 'Bugs',
       performance: 'Performance', style: 'Style',
+      architecture: 'Architecture', ux: 'UX',
     }
     return Object.keys(DEFAULT_AGENT_PROMPTS).map((id) => {
       const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(`reviewAgent.${id}`) as { value: string } | undefined
