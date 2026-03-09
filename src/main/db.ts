@@ -97,6 +97,18 @@ export function initDatabase(): Database.Database {
     CREATE INDEX IF NOT EXISTS idx_pr_review_findings_review ON pr_review_findings(review_id);
   `)
 
+  // Migration: add raw_output column to pr_reviews
+  const prCols = db.prepare("PRAGMA table_info(pr_reviews)").all() as Array<{ name: string }>
+  if (!prCols.some((c) => c.name === 'raw_output')) {
+    db.exec("ALTER TABLE pr_reviews ADD COLUMN raw_output TEXT")
+  }
+
+  // Migration: add domain column to pr_review_findings
+  const findingCols = db.prepare("PRAGMA table_info(pr_review_findings)").all() as Array<{ name: string }>
+  if (!findingCols.some((c) => c.name === 'domain')) {
+    db.exec("ALTER TABLE pr_review_findings ADD COLUMN domain TEXT")
+  }
+
   return db
 }
 

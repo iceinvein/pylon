@@ -451,10 +451,10 @@ class PrReviewManager {
     // Persist findings
     const db = getDb()
     const insertFinding = db.prepare(
-      'INSERT INTO pr_review_findings (id, review_id, file, line, severity, title, description) VALUES (?, ?, ?, ?, ?, ?, ?)'
+      'INSERT INTO pr_review_findings (id, review_id, file, line, severity, title, description, domain) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
     )
     for (const f of deduped) {
-      insertFinding.run(f.id, reviewId, f.file, f.line, f.severity, f.title, f.description)
+      insertFinding.run(f.id, reviewId, f.file, f.line, f.severity, f.title, f.description, f.domain)
     }
 
     this.updateReviewStatus(reviewId, 'done', Date.now())
@@ -558,7 +558,7 @@ Output ONLY the review-findings block. Do not use any tools.`
 
     try {
       await sessionManager.sendMessage(sessionId, prompt)
-      agentSession.findings = this.parseFindings(agentSession.streamedText)
+      agentSession.findings = this.parseFindings(agentSession.streamedText).map((f) => ({ ...f, domain: focus }))
       agentSession.status = 'done'
     } catch (err) {
       agentSession.status = 'error'
@@ -662,6 +662,7 @@ Output ONLY the review-findings block. Do not use any tools.`
         severity: (f.severity as ReviewFinding['severity']) || 'suggestion',
         title: String(f.title || ''),
         description: String(f.description || ''),
+        domain: null,
         posted: false,
       }))
     } catch (err) {
@@ -756,6 +757,7 @@ Output ONLY the review-findings block. Do not use any tools.`
       severity: f.severity as ReviewFinding['severity'],
       title: f.title as string,
       description: f.description as string,
+      domain: (f.domain as ReviewFocus) ?? null,
       posted: Boolean(f.posted),
     }))
 
@@ -775,10 +777,10 @@ Output ONLY the review-findings block. Do not use any tools.`
     // Clear existing findings for this review first
     db.prepare('DELETE FROM pr_review_findings WHERE review_id = ?').run(reviewId)
     const insert = db.prepare(
-      'INSERT INTO pr_review_findings (id, review_id, file, line, severity, title, description) VALUES (?, ?, ?, ?, ?, ?, ?)'
+      'INSERT INTO pr_review_findings (id, review_id, file, line, severity, title, description, domain) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
     )
     for (const f of findings) {
-      insert.run(f.id, reviewId, f.file, f.line, f.severity, f.title, f.description)
+      insert.run(f.id, reviewId, f.file, f.line, f.severity, f.title, f.description, f.domain)
     }
   }
 

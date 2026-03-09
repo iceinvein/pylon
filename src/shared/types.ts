@@ -193,6 +193,7 @@ export type ReviewFinding = {
   severity: 'critical' | 'warning' | 'suggestion' | 'nitpick'
   title: string
   description: string
+  domain: ReviewFocus | null
   posted: boolean
 }
 

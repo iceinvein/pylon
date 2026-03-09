@@ -1,4 +1,4 @@
-import { CheckCircle2, Send } from 'lucide-react'
+import { CheckCircle2, Send, AlertCircle, AlertTriangle, Lightbulb, Info } from 'lucide-react'
 import type { ReviewFinding } from '../../../../shared/types'
 
 type Props = {
@@ -8,51 +8,77 @@ type Props = {
   onPost: () => void
 }
 
-const SEVERITY_STYLES: Record<string, { bg: string; text: string; label: string }> = {
-  critical: { bg: 'bg-red-950/30 border-red-900/50', text: 'text-red-400', label: 'Critical' },
-  warning: { bg: 'bg-amber-950/30 border-amber-900/50', text: 'text-amber-400', label: 'Warning' },
-  suggestion: { bg: 'bg-blue-950/30 border-blue-900/50', text: 'text-blue-400', label: 'Suggestion' },
-  nitpick: { bg: 'bg-stone-800/50 border-stone-700/50', text: 'text-stone-400', label: 'Nitpick' },
+const DOMAIN_LABELS: Record<string, string> = {
+  security: 'Security',
+  bugs: 'Bugs',
+  performance: 'Perf',
+  style: 'Style',
+  architecture: 'Arch',
+  ux: 'UX',
+}
+
+const SEVERITY_STYLES: Record<string, { icon: typeof AlertCircle; border: string; text: string; label: string; bg: string }> = {
+  critical: { icon: AlertCircle, border: 'border-red-900/40', text: 'text-red-400', label: 'Critical', bg: 'bg-red-500/5' },
+  warning: { icon: AlertTriangle, border: 'border-amber-900/40', text: 'text-amber-400', label: 'Warning', bg: 'bg-amber-500/5' },
+  suggestion: { icon: Lightbulb, border: 'border-blue-900/40', text: 'text-blue-400', label: 'Suggestion', bg: 'bg-blue-500/5' },
+  nitpick: { icon: Info, border: 'border-stone-700/40', text: 'text-stone-500', label: 'Nitpick', bg: 'bg-stone-500/5' },
 }
 
 export function FindingCard({ finding, checked, onToggle, onPost }: Props) {
   const style = SEVERITY_STYLES[finding.severity] ?? SEVERITY_STYLES.suggestion
+  const Icon = style.icon
 
   return (
-    <div className={`rounded-lg border p-3 ${style.bg}`}>
-      <div className="flex items-start gap-3">
-        {!finding.posted && (
-          <input
-            type="checkbox"
-            checked={checked}
-            onChange={onToggle}
-            className="mt-1 h-3.5 w-3.5 flex-shrink-0 rounded border-stone-600 bg-stone-800 accent-stone-400"
-          />
-        )}
-        {finding.posted && (
-          <CheckCircle2 size={14} className="mt-1 flex-shrink-0 text-green-500" />
-        )}
-
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <span className={`text-xs font-medium ${style.text}`}>{style.label}</span>
-            <span className="text-sm font-medium text-stone-200">{finding.title}</span>
-          </div>
-          {finding.file && (
-            <div className="mt-0.5 text-xs text-stone-500">
-              {finding.file}{finding.line ? `:${finding.line}` : ''}
-            </div>
+    <div className={`group rounded-lg border ${style.border} ${style.bg} transition-colors`}>
+      <div className="flex gap-3 p-3">
+        {/* Checkbox / Posted indicator */}
+        <div className="flex flex-shrink-0 flex-col items-center gap-1 pt-0.5">
+          {finding.posted ? (
+            <CheckCircle2 size={14} className="text-emerald-500" />
+          ) : (
+            <input
+              type="checkbox"
+              checked={checked}
+              onChange={onToggle}
+              className="h-3.5 w-3.5 rounded border-stone-600 bg-stone-800 accent-stone-400"
+            />
           )}
-          <p className="mt-1.5 text-xs leading-relaxed text-stone-400">
+        </div>
+
+        {/* Content */}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start gap-2">
+            <Icon size={13} className={`mt-0.5 flex-shrink-0 ${style.text}`} />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-baseline gap-2">
+                <span className={`text-[10px] font-semibold uppercase tracking-wide ${style.text}`}>
+                  {style.label}
+                </span>
+                <span className="text-xs font-medium text-stone-200">{finding.title}</span>
+                {finding.domain && (
+                  <span className="rounded bg-stone-800 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider text-stone-500">
+                    {DOMAIN_LABELS[finding.domain] ?? finding.domain}
+                  </span>
+                )}
+              </div>
+              {finding.file && (
+                <div className="mt-0.5 font-[family-name:var(--font-mono)] text-[11px] text-stone-500">
+                  {finding.file}{finding.line ? `:${finding.line}` : ''}
+                </div>
+              )}
+            </div>
+          </div>
+          <p className="mt-2 pl-5 text-xs leading-relaxed text-stone-400">
             {finding.description}
           </p>
         </div>
 
+        {/* Post action */}
         {!finding.posted && (
           <button
             onClick={onPost}
             title="Post this finding"
-            className="flex-shrink-0 rounded p-1.5 text-stone-500 transition-colors hover:bg-stone-700 hover:text-stone-300"
+            className="flex-shrink-0 self-start rounded p-1.5 text-stone-600 opacity-0 transition-all hover:bg-stone-700/50 hover:text-stone-300 group-hover:opacity-100"
           >
             <Send size={12} />
           </button>

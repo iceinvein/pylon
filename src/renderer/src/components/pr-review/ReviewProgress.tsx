@@ -63,6 +63,7 @@ type StreamFinding = {
   severity: string
   title: string
   description: string
+  domain: string | null
 }
 
 const SEVERITY_CONFIG: Record<string, { icon: typeof AlertCircle; color: string; bg: string }> = {
@@ -70,6 +71,15 @@ const SEVERITY_CONFIG: Record<string, { icon: typeof AlertCircle; color: string;
   warning: { icon: AlertTriangle, color: 'text-amber-400', bg: 'bg-amber-500/10' },
   suggestion: { icon: Lightbulb, color: 'text-blue-400', bg: 'bg-blue-500/10' },
   nitpick: { icon: Info, color: 'text-stone-400', bg: 'bg-stone-500/10' },
+}
+
+const DOMAIN_LABELS: Record<string, string> = {
+  security: 'Security',
+  bugs: 'Bugs',
+  performance: 'Perf',
+  style: 'Style',
+  architecture: 'Arch',
+  ux: 'UX',
 }
 
 /** Parse a single review-findings JSON block (complete or partial) */
@@ -87,6 +97,7 @@ function parseFindingsBlock(text: string): StreamFinding[] {
           severity: String(obj.severity || 'suggestion'),
           title: String(obj.title || ''),
           description: String(obj.description || ''),
+          domain: null,
         })
       }
       return findings
@@ -122,6 +133,7 @@ function parseFindingsBlock(text: string): StreamFinding[] {
             severity: String(obj.severity || 'suggestion'),
             title: String(obj.title || ''),
             description: String(obj.description || ''),
+            domain: null,
           })
         }
       } catch { /* incomplete object, skip */ }
@@ -285,6 +297,11 @@ export function ReviewProgress({ reviewId: _reviewId, onStop, isLive = true }: P
                         <div className="min-w-0 flex-1">
                           <div className="flex items-baseline gap-2">
                             <span className="text-xs font-medium text-stone-200">{f.title}</span>
+                            {f.domain && (
+                              <span className="rounded bg-stone-800 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider text-stone-500">
+                                {DOMAIN_LABELS[f.domain] ?? f.domain}
+                              </span>
+                            )}
                           </div>
                           {f.file && (
                             <div className="mt-0.5 font-[family-name:var(--font-mono)] text-[11px] text-stone-500">

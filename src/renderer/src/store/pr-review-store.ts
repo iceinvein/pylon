@@ -41,6 +41,7 @@ function parseFindingsFromText(text: string): ReviewFinding[] {
       severity: (f.severity as ReviewFinding['severity']) || 'suggestion',
       title: String(f.title || ''),
       description: String(f.description || ''),
+      domain: (f.domain as ReviewFocus) ?? null,
       posted: false,
     }))
   } catch {
