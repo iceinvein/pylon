@@ -3,6 +3,54 @@ import { Loader2, StopCircle, ChevronDown, MessageSquareText, AlertCircle, Alert
 import { AnimatePresence, motion } from 'motion/react'
 import { usePrReviewStore } from '../../store/pr-review-store'
 
+const REVIEW_PHRASES = [
+  'Scanning for footguns...',
+  'Reading between the lines...',
+  'Judging your variable names...',
+  'Searching for TODO comments you forgot about...',
+  'Checking if you remembered error handling...',
+  'Looking for the bugs you swore weren\'t there...',
+  'Tracing data flows like a detective...',
+  'Counting the layers of abstraction...',
+  'Evaluating your life choices... I mean, code choices...',
+  'Inspecting every semicolon with suspicion...',
+  'Running the code in my head...',
+  'Consulting the OWASP top 10...',
+  'Mentally fuzzing your inputs...',
+  'Checking for off-by-one errors... or was it off-by-two...',
+  'Reviewing like my reputation depends on it...',
+  'Squinting at that regex...',
+  'Wondering why this function is 200 lines long...',
+  'Stress-testing edge cases in my imagination...',
+  'Looking for secrets you accidentally committed...',
+  'Asking myself "but what if the list is empty?"...',
+]
+
+function ReviewStatusMessage() {
+  const [phraseIdx, setPhraseIdx] = useState(() => Math.floor(Math.random() * REVIEW_PHRASES.length))
+  const [charIdx, setCharIdx] = useState(0)
+  const phrase = REVIEW_PHRASES[phraseIdx]
+
+  useEffect(() => {
+    if (charIdx < phrase.length) {
+      const id = setTimeout(() => setCharIdx((c) => c + 1), 30)
+      return () => clearTimeout(id)
+    }
+    const id = setTimeout(() => {
+      setPhraseIdx((i) => (i + 1) % REVIEW_PHRASES.length)
+      setCharIdx(0)
+    }, 2500)
+    return () => clearTimeout(id)
+  }, [charIdx, phrase.length])
+
+  return (
+    <span className="text-stone-500">
+      {phrase.slice(0, charIdx)}
+      <span className="inline-block h-3 w-[3px] animate-pulse rounded-sm bg-stone-600 align-text-bottom" />
+    </span>
+  )
+}
+
 type Props = {
   reviewId: string
   onStop?: () => void
@@ -125,12 +173,12 @@ export function ReviewProgress({ reviewId: _reviewId, onStop, isLive = true }: P
     if (!isLive) return null
     return (
       <div className="flex items-center gap-3 rounded-lg border border-stone-800 bg-stone-900/40 px-4 py-3">
-        <Loader2 size={14} className="animate-spin text-stone-400" />
-        <span className="text-xs text-stone-300">Starting review...</span>
+        <Loader2 size={14} className="flex-shrink-0 animate-spin text-stone-400" />
+        <span className="text-xs"><ReviewStatusMessage /></span>
         {onStop && (
           <button
             onClick={onStop}
-            className="ml-auto flex items-center gap-1.5 rounded border border-stone-700 px-2 py-1 text-xs text-stone-400 transition-colors hover:border-stone-600 hover:text-stone-300"
+            className="ml-auto flex flex-shrink-0 items-center gap-1.5 rounded border border-stone-700 px-2 py-1 text-xs text-stone-400 transition-colors hover:border-stone-600 hover:text-stone-300"
           >
             <StopCircle size={10} />
             Stop
@@ -255,9 +303,9 @@ export function ReviewProgress({ reviewId: _reviewId, onStop, isLive = true }: P
               )}
 
               {isLive && findings.length === 0 && !preamble && (
-                <div className="flex items-center gap-2 px-4 py-3 text-xs text-stone-500">
-                  <Loader2 size={10} className="animate-spin" />
-                  Analyzing...
+                <div className="flex items-center gap-2 px-4 py-3 text-xs">
+                  <Loader2 size={10} className="flex-shrink-0 animate-spin text-stone-500" />
+                  <ReviewStatusMessage />
                 </div>
               )}
             </div>
