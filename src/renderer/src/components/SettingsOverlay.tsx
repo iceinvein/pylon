@@ -3,7 +3,7 @@ import { ArrowLeft, ShieldCheck, ShieldAlert, Info } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useUiStore } from '../store/ui-store'
 import { UsageDashboard } from './UsageDashboard'
-import type { AppSettings } from '../../../shared/types'
+import type { AppSettings, GhCliStatus } from '../../../shared/types'
 
 const MODELS = [
   { id: 'claude-opus-4-6', label: 'Opus 4.6' },
@@ -19,6 +19,7 @@ const PERMISSION_MODES = [
 const TABS = [
   { id: 'general', label: 'General' },
   { id: 'usage', label: 'Usage' },
+  { id: 'integrations', label: 'Integrations' },
 ] as const
 
 type SettingsTab = (typeof TABS)[number]['id']
@@ -27,11 +28,33 @@ export function SettingsOverlay() {
   const { settingsOpen, setSettingsOpen } = useUiStore()
   const [settings, setSettings] = useState<AppSettings | null>(null)
   const [activeTab, setActiveTab] = useState<SettingsTab>('general')
+  const [ghStatus, setGhStatus] = useState<GhCliStatus | null>(null)
+  const [ghPath, setGhPath] = useState('')
+  const [ghChecking, setGhChecking] = useState(false)
+
+  async function recheckGh() {
+    setGhChecking(true)
+    const status = await window.api.checkGhStatus()
+    setGhStatus(status)
+    setGhChecking(false)
+  }
+
+  async function updateGhPath() {
+    if (!ghPath) return
+    setGhChecking(true)
+    const status = await window.api.setGhPath(ghPath)
+    setGhStatus(status)
+    setGhChecking(false)
+  }
 
   useEffect(() => {
     if (!settingsOpen) return
     window.api.getSettings().then((s) => setSettings(s as AppSettings))
   }, [settingsOpen])
+
+  useEffect(() => {
+    if (settingsOpen && activeTab === 'integrations') recheckGh()
+  }, [settingsOpen, activeTab])
 
   // Reset to General tab when overlay closes
   useEffect(() => {
@@ -160,6 +183,66 @@ export function SettingsOverlay() {
               )}
 
               {activeTab === 'usage' && <UsageDashboard />}
+
+              {activeTab === 'integrations' && (
+                <div className="mt-8 space-y-8">
+                  <section>
+                    <label className="block text-sm font-medium text-stone-300">GitHub CLI (gh)</label>
+                    <p className="mt-0.5 text-xs text-stone-500">Required for PR Review feature</p>
+
+                    <div className="mt-3 rounded-lg border border-stone-800 bg-stone-900/50 p-4 space-y-3">
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className={`h-2 w-2 rounded-full ${
+                          ghStatus?.available && ghStatus?.authenticated ? 'bg-green-500' :
+                          ghStatus?.available ? 'bg-amber-500' : 'bg-red-500'
+                        }`} />
+                        <span className="text-stone-300">
+                          {ghStatus?.available && ghStatus?.authenticated
+                            ? `Connected as ${ghStatus.username}`
+                            : ghStatus?.available
+                              ? 'Found but not authenticated'
+                              : ghStatus ? 'Not detected' : 'Checking...'}
+                        </span>
+                      </div>
+
+                      {ghStatus?.binaryPath && (
+                        <div className="text-xs text-stone-500">
+                          Path: <code className="text-stone-400">{ghStatus.binaryPath}</code>
+                        </div>
+                      )}
+
+                      {ghStatus?.error && (
+                        <div className="text-xs text-red-400">{ghStatus.error}</div>
+                      )}
+
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={ghPath}
+                          onChange={(e) => setGhPath(e.target.value)}
+                          placeholder="Custom path (e.g. /usr/local/bin/gh)"
+                          className="flex-1 rounded bg-stone-950 px-3 py-1.5 text-xs text-stone-300 placeholder-stone-600 outline-none ring-1 ring-stone-800 focus:ring-stone-600"
+                        />
+                        <button
+                          onClick={updateGhPath}
+                          disabled={!ghPath}
+                          className="rounded bg-stone-800 px-3 py-1.5 text-xs text-stone-300 hover:bg-stone-700 disabled:opacity-30"
+                        >
+                          Set
+                        </button>
+                      </div>
+
+                      <button
+                        onClick={recheckGh}
+                        disabled={ghChecking}
+                        className="rounded bg-stone-800 px-3 py-1.5 text-xs text-stone-300 hover:bg-stone-700 disabled:opacity-50"
+                      >
+                        {ghChecking ? 'Checking...' : 'Re-check'}
+                      </button>
+                    </div>
+                  </section>
+                </div>
+              )}
             </div>
           </div>
         </motion.div>
