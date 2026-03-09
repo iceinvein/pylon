@@ -51,6 +51,40 @@ const api = {
   getWorktreeInfo: (sessionId: string) =>
     ipcRenderer.invoke(IPC.WORKTREE_INFO, { sessionId }),
 
+  // PR Review
+  checkGhStatus: () =>
+    ipcRenderer.invoke(IPC.GH_CHECK_STATUS),
+  setGhPath: (path: string) =>
+    ipcRenderer.invoke(IPC.GH_SET_PATH, { path }),
+  listGhRepos: () =>
+    ipcRenderer.invoke(IPC.GH_LIST_REPOS),
+  listGhPrs: (repo: string, state?: string) =>
+    ipcRenderer.invoke(IPC.GH_LIST_PRS, { repo, state }),
+  getGhPrDetail: (repo: string, number: number) =>
+    ipcRenderer.invoke(IPC.GH_PR_DETAIL, { repo, number }),
+  startGhReview: (args: {
+    repo: { owner: string; repo: string; fullName: string; projectPath: string }
+    prNumber: number; prTitle: string; prUrl: string; focus: string[]
+  }) =>
+    ipcRenderer.invoke(IPC.GH_START_REVIEW, args),
+  stopGhReview: (reviewId: string) =>
+    ipcRenderer.invoke(IPC.GH_STOP_REVIEW, { reviewId }),
+  listGhReviews: (repo?: string, prNumber?: number) =>
+    ipcRenderer.invoke(IPC.GH_LIST_REVIEWS, { repo, prNumber }),
+  getGhReview: (reviewId: string) =>
+    ipcRenderer.invoke(IPC.GH_GET_REVIEW, { reviewId }),
+  deleteGhReview: (reviewId: string) =>
+    ipcRenderer.invoke(IPC.GH_DELETE_REVIEW, { reviewId }),
+  postGhComment: (repo: string, number: number, body: string) =>
+    ipcRenderer.invoke(IPC.GH_POST_COMMENT, { repo, number, body }),
+  postGhReview: (repo: string, number: number, findings: unknown[], commitId: string) =>
+    ipcRenderer.invoke(IPC.GH_POST_REVIEW, { repo, number, findings, commitId }),
+  onGhReviewUpdate: (callback: (data: unknown) => void) => {
+    const handler = (_event: unknown, data: unknown) => callback(data)
+    ipcRenderer.on(IPC.GH_REVIEW_UPDATE, handler)
+    return () => ipcRenderer.removeListener(IPC.GH_REVIEW_UPDATE, handler)
+  },
+
   onSessionMessage: (callback: (data: unknown) => void) => {
     const handler = (_event: unknown, data: unknown) => callback(data)
     ipcRenderer.on(IPC.SESSION_MESSAGE, handler)

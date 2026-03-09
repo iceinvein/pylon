@@ -28,6 +28,23 @@ type Api = {
   onSessionPermission: (callback: (data: unknown) => void) => () => void
   onSessionQuestion: (callback: (data: unknown) => void) => () => void
   onSessionTitleUpdated: (callback: (data: unknown) => void) => () => void
+  // PR Review
+  checkGhStatus: () => Promise<import('../shared/types').GhCliStatus>
+  setGhPath: (path: string) => Promise<import('../shared/types').GhCliStatus>
+  listGhRepos: () => Promise<import('../shared/types').GhRepo[]>
+  listGhPrs: (repo: string, state?: string) => Promise<import('../shared/types').GhPullRequest[]>
+  getGhPrDetail: (repo: string, number: number) => Promise<import('../shared/types').GhPrDetail>
+  startGhReview: (args: {
+    repo: import('../shared/types').GhRepo
+    prNumber: number; prTitle: string; prUrl: string; focus: string[]
+  }) => Promise<import('../shared/types').PrReview>
+  stopGhReview: (reviewId: string) => Promise<boolean>
+  listGhReviews: (repo?: string, prNumber?: number) => Promise<import('../shared/types').PrReview[]>
+  getGhReview: (reviewId: string) => Promise<(import('../shared/types').PrReview & { findings: import('../shared/types').ReviewFinding[] }) | null>
+  deleteGhReview: (reviewId: string) => Promise<boolean>
+  postGhComment: (repo: string, number: number, body: string) => Promise<boolean>
+  postGhReview: (repo: string, number: number, findings: import('../shared/types').ReviewFinding[], commitId: string) => Promise<boolean>
+  onGhReviewUpdate: (callback: (data: unknown) => void) => () => void
 }
 
 declare global {
