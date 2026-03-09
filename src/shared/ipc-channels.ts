@@ -47,4 +47,6 @@ export const IPC = {
   GH_REVIEW_UPDATE: 'gh:review-update',
   GH_GET_AGENT_PROMPTS: 'gh:get-agent-prompts',
   GH_RESET_AGENT_PROMPT: 'gh:reset-agent-prompt',
+  // Logging
+  LOG_FROM_RENDERER: 'log:from-renderer',
 } as const
