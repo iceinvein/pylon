@@ -13,7 +13,11 @@ export type DiffHunk = {
 
 const CONTEXT_LINES = 3
 
-export function computeDiffHunks(oldStr: string, newStr: string): DiffHunk[] {
+/**
+ * @param extraNewLineNos - Additional newLineNo values to include in the visible hunks
+ *   (e.g., lines referenced by findings that may be outside the normal context window)
+ */
+export function computeDiffHunks(oldStr: string, newStr: string, extraNewLineNos?: Set<number>): DiffHunk[] {
   const changes = diffLines(oldStr, newStr)
   const allLines: DiffLine[] = []
   let oldLine = 1
@@ -36,6 +40,15 @@ export function computeDiffHunks(oldStr: string, newStr: string): DiffHunk[] {
   allLines.forEach((line, i) => {
     if (line.type !== 'context') changedIndices.add(i)
   })
+
+  // Also treat finding-referenced lines as "interesting" so they appear in hunks
+  if (extraNewLineNos) {
+    allLines.forEach((line, i) => {
+      if (line.newLineNo && extraNewLineNos.has(line.newLineNo)) {
+        changedIndices.add(i)
+      }
+    })
+  }
 
   if (changedIndices.size === 0) return []
 
@@ -90,6 +103,48 @@ export function parseUnifiedDiff(unifiedDiff: string): { oldStr: string; newStr:
   }
 
   return { oldStr: oldLines.join('\n'), newStr: newLines.join('\n') }
+}
+
+/**
+ * Parse a unified diff directly into DiffHunks, preserving the original line
+ * numbers from @@ headers. This avoids the re-diffing approach which produces
+ * wrong line numbers when the diff has gaps between hunks.
+ */
+export function parseUnifiedDiffToHunks(unifiedDiff: string): DiffHunk[] {
+  const lines = unifiedDiff.split('\n')
+  const hunks: DiffHunk[] = []
+  let currentLines: DiffLine[] = []
+  let oldLine = 0
+  let newLine = 0
+
+  for (const line of lines) {
+    const hhMatch = line.match(/^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/)
+    if (hhMatch) {
+      if (currentLines.length > 0) {
+        hunks.push({ lines: currentLines })
+        currentLines = []
+      }
+      oldLine = parseInt(hhMatch[1], 10)
+      newLine = parseInt(hhMatch[2], 10)
+      continue
+    }
+    if (oldLine === 0 && newLine === 0) continue // before first hunk header
+
+    if (line.startsWith('-')) {
+      currentLines.push({ type: 'removed', content: line.slice(1), oldLineNo: oldLine++ })
+    } else if (line.startsWith('+')) {
+      currentLines.push({ type: 'added', content: line.slice(1), newLineNo: newLine++ })
+    } else if (line.startsWith(' ')) {
+      currentLines.push({ type: 'context', content: line.slice(1), oldLineNo: oldLine++, newLineNo: newLine++ })
+    } else if (line === '\\ No newline at end of file') {
+      // skip
+    }
+  }
+  if (currentLines.length > 0) {
+    hunks.push({ lines: currentLines })
+  }
+
+  return hunks
 }
 
 export function buildPairedLines(hunks: DiffHunk[]): Map<DiffLine, string> {
