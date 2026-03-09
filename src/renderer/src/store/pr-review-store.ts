@@ -19,6 +19,8 @@ type PrReviewStore = {
   activeReview: PrReview | null
   activeFindings: ReviewFinding[]
   selectedFindingIds: Set<string>
+  _loadPrsSeq: number
+  _selectPrSeq: number
 
   checkGhStatus: () => Promise<void>
   setGhPath: (path: string) => Promise<void>
@@ -55,11 +57,18 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
   activeReview: null,
   activeFindings: [],
   selectedFindingIds: new Set(),
+  _loadPrsSeq: 0,
+  _selectPrSeq: 0,
 
   checkGhStatus: async () => {
     set({ ghStatusLoading: true })
-    const status = await window.api.checkGhStatus()
-    set({ ghStatus: status, ghStatusLoading: false })
+    try {
+      const status = await window.api.checkGhStatus()
+      set({ ghStatus: status, ghStatusLoading: false })
+    } catch (err) {
+      console.error('checkGhStatus failed:', err)
+      set({ ghStatusLoading: false })
+    }
   },
 
   setGhPath: async (path) => {
@@ -69,8 +78,13 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
 
   loadRepos: async () => {
     set({ reposLoading: true })
-    const repos = await window.api.listGhRepos()
-    set({ repos, reposLoading: false })
+    try {
+      const repos = await window.api.listGhRepos()
+      set({ repos, reposLoading: false })
+    } catch (err) {
+      console.error('loadRepos failed:', err)
+      set({ reposLoading: false })
+    }
   },
 
   setSelectedRepo: (repo) => {
@@ -79,41 +93,58 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
   },
 
   loadPrs: async (repo) => {
-    set({ prsLoading: true })
-    if (repo) {
-      const prs = await window.api.listGhPrs(repo)
-      const repos = get().repos
-      const repoInfo = repos.find((r) => r.fullName === repo)
-      const prsWithRepo = prs.map((pr) => ({ ...pr, repo: repoInfo ?? pr.repo }))
-      set({ prs: prsWithRepo, prsLoading: false })
-    } else {
-      const repos = get().repos
-      const allPrs: GhPullRequest[] = []
-      for (const r of repos) {
-        try {
-          const prs = await window.api.listGhPrs(r.fullName)
-          allPrs.push(...prs.map((pr) => ({ ...pr, repo: r })))
-        } catch {
-          // skip repos that fail
+    const seq = get()._loadPrsSeq + 1
+    set({ prsLoading: true, _loadPrsSeq: seq })
+    try {
+      if (repo) {
+        const prs = await window.api.listGhPrs(repo)
+        const repos = get().repos
+        const repoInfo = repos.find((r) => r.fullName === repo)
+        const prsWithRepo = prs.map((pr) => ({ ...pr, repo: repoInfo ?? pr.repo }))
+        if (get()._loadPrsSeq !== seq) return
+        set({ prs: prsWithRepo, prsLoading: false })
+      } else {
+        const repos = get().repos
+        const allPrs: GhPullRequest[] = []
+        for (const r of repos) {
+          try {
+            const prs = await window.api.listGhPrs(r.fullName)
+            allPrs.push(...prs.map((pr) => ({ ...pr, repo: r })))
+          } catch {
+            // skip repos that fail
+          }
         }
+        if (get()._loadPrsSeq !== seq) return
+        allPrs.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+        set({ prs: allPrs, prsLoading: false })
       }
-      allPrs.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-      set({ prs: allPrs, prsLoading: false })
+    } catch (err) {
+      console.error('loadPrs failed:', err)
+      if (get()._loadPrsSeq === seq) {
+        set({ prsLoading: false })
+      }
     }
   },
 
   selectPr: async (pr) => {
-    set({ selectedPr: pr, prDetail: null, activeReview: null, activeFindings: [], selectedFindingIds: new Set() })
+    const seq = get()._selectPrSeq + 1
+    set({ selectedPr: pr, prDetail: null, activeReview: null, activeFindings: [], selectedFindingIds: new Set(), _selectPrSeq: seq })
     if (!pr) return
     set({ prDetailLoading: true })
     try {
       const detail = await window.api.getGhPrDetail(pr.repo.fullName, pr.number)
+      if (get()._selectPrSeq !== seq) return
       detail.repo = pr.repo
       set({ prDetail: detail, prDetailLoading: false })
-    } catch {
-      set({ prDetailLoading: false })
+    } catch (err) {
+      console.error('selectPr failed:', err)
+      if (get()._selectPrSeq === seq) {
+        set({ prDetailLoading: false })
+      }
     }
-    get().loadPrReviews(pr.repo.fullName, pr.number)
+    if (get()._selectPrSeq === seq) {
+      get().loadPrReviews(pr.repo.fullName, pr.number)
+    }
   },
 
   loadPrReviews: async (repo, prNumber) => {
@@ -177,38 +208,50 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
   clearFindingSelection: () => set({ selectedFindingIds: new Set() }),
 
   postFinding: async (finding, repo, prNumber) => {
-    const icon = finding.severity === 'critical' ? '🔴' : finding.severity === 'warning' ? '🟡' : finding.severity === 'suggestion' ? '🔵' : '⚪'
-    const body = `### ${icon} ${finding.severity.charAt(0).toUpperCase() + finding.severity.slice(1)}: ${finding.title}\n\n${finding.file ? `**File:** \`${finding.file}${finding.line ? `:${finding.line}` : ''}\`\n\n` : ''}${finding.description}\n\n---\n*Reviewed by Pylon*`
-    await window.api.postGhComment(repo, prNumber, body)
-    set((s) => ({
-      activeFindings: s.activeFindings.map((f) =>
-        f.id === finding.id ? { ...f, posted: true } : f
-      ),
-    }))
+    try {
+      const icon = finding.severity === 'critical' ? '🔴' : finding.severity === 'warning' ? '🟡' : finding.severity === 'suggestion' ? '🔵' : '⚪'
+      const body = `### ${icon} ${finding.severity.charAt(0).toUpperCase() + finding.severity.slice(1)}: ${finding.title}\n\n${finding.file ? `**File:** \`${finding.file}${finding.line ? `:${finding.line}` : ''}\`\n\n` : ''}${finding.description}\n\n---\n*Reviewed by Pylon*`
+      await window.api.postGhComment(repo, prNumber, body)
+      set((s) => ({
+        activeFindings: s.activeFindings.map((f) =>
+          f.id === finding.id ? { ...f, posted: true } : f
+        ),
+      }))
+    } catch (err) {
+      console.error('postFinding failed:', err)
+    }
   },
 
   postSelectedAsReview: async (repo, prNumber) => {
-    const { activeFindings, selectedFindingIds } = get()
-    const selected = activeFindings.filter((f) => selectedFindingIds.has(f.id) && !f.posted)
-    if (selected.length === 0) return
-    await window.api.postGhReview(repo, prNumber, selected, '')
-    set((s) => ({
-      activeFindings: s.activeFindings.map((f) =>
-        selectedFindingIds.has(f.id) ? { ...f, posted: true } : f
-      ),
-      selectedFindingIds: new Set(),
-    }))
+    try {
+      const { activeFindings, selectedFindingIds } = get()
+      const selected = activeFindings.filter((f) => selectedFindingIds.has(f.id) && !f.posted)
+      if (selected.length === 0) return
+      await window.api.postGhReview(repo, prNumber, selected, '')
+      set((s) => ({
+        activeFindings: s.activeFindings.map((f) =>
+          selectedFindingIds.has(f.id) ? { ...f, posted: true } : f
+        ),
+        selectedFindingIds: new Set(),
+      }))
+    } catch (err) {
+      console.error('postSelectedAsReview failed:', err)
+    }
   },
 
   postAllAsReview: async (repo, prNumber) => {
-    const { activeFindings } = get()
-    const unposted = activeFindings.filter((f) => !f.posted)
-    if (unposted.length === 0) return
-    await window.api.postGhReview(repo, prNumber, unposted, '')
-    set((s) => ({
-      activeFindings: s.activeFindings.map((f) => ({ ...f, posted: true })),
-      selectedFindingIds: new Set(),
-    }))
+    try {
+      const { activeFindings } = get()
+      const unposted = activeFindings.filter((f) => !f.posted)
+      if (unposted.length === 0) return
+      await window.api.postGhReview(repo, prNumber, unposted, '')
+      set((s) => ({
+        activeFindings: s.activeFindings.map((f) => ({ ...f, posted: true })),
+        selectedFindingIds: new Set(),
+      }))
+    } catch (err) {
+      console.error('postAllAsReview failed:', err)
+    }
   },
 
   handleReviewUpdate: (data) => {

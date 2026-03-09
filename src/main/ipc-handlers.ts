@@ -3,7 +3,7 @@ import { readFile } from 'fs/promises'
 import { IPC } from '../shared/ipc-channels'
 import { getDb } from './db'
 import { sessionManager } from './session-manager'
-import type { AppSettings, PermissionMode, PermissionResponse, QuestionResponse, ReviewFinding } from '../shared/types'
+import type { AppSettings, PermissionMode, PermissionResponse, QuestionResponse, ReviewFinding, ReviewFocus } from '../shared/types'
 
 const DEFAULT_SETTINGS: AppSettings = {
   defaultModel: 'claude-opus-4-6',
@@ -158,7 +158,7 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(IPC.GH_SET_PATH, async (_e, args: { path: string }) => {
     const { setGhPath, checkGhStatus } = await import('./gh-cli')
-    setGhPath(args.path)
+    await setGhPath(args.path)
     return checkGhStatus()
   })
 
@@ -187,8 +187,7 @@ export function registerIpcHandlers(): void {
     focus: string[]
   }) => {
     const { prReviewManager } = await import('./pr-review-manager')
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return prReviewManager.startReview(args.repo, args.prNumber, args.prTitle, args.prUrl, args.focus as any)
+    return prReviewManager.startReview(args.repo, args.prNumber, args.prTitle, args.prUrl, args.focus as ReviewFocus[])
   })
 
   ipcMain.handle(IPC.GH_STOP_REVIEW, async (_e, args: { reviewId: string }) => {
@@ -220,8 +219,9 @@ export function registerIpcHandlers(): void {
   })
 
   ipcMain.handle(IPC.GH_POST_REVIEW, async (_e, args: { repo: string; number: number; findings: ReviewFinding[]; commitId: string }) => {
-    const { postReview } = await import('./gh-cli')
-    await postReview(args.repo, args.number, args.findings, args.commitId)
+    const { postReview, getHeadCommitSha } = await import('./gh-cli')
+    const commitId = args.commitId || await getHeadCommitSha(args.repo, args.number).catch(() => '')
+    await postReview(args.repo, args.number, args.findings, commitId)
     const { prReviewManager } = await import('./pr-review-manager')
     for (const f of args.findings) {
       prReviewManager.markFindingPosted(f.id)

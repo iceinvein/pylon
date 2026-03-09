@@ -1,6 +1,7 @@
 import { execFile } from 'child_process'
 import { promisify } from 'util'
 import { writeFile, unlink } from 'fs/promises'
+import { existsSync } from 'fs'
 import { join } from 'path'
 import { tmpdir } from 'os'
 import type { GhCliStatus, GhRepo, GhPullRequest, GhPrDetail, ReviewFinding } from '../shared/types'
@@ -50,7 +51,17 @@ export async function checkGhStatus(): Promise<GhCliStatus> {
   }
 }
 
-export function setGhPath(path: string): void {
+export async function setGhPath(path: string): Promise<void> {
+  if (!existsSync(path)) {
+    throw new Error(`gh binary not found at path: ${path}`)
+  }
+
+  try {
+    await execFileAsync(path, ['--version'], { timeout: 5_000 })
+  } catch {
+    throw new Error(`Path does not appear to be a valid gh binary: ${path}`)
+  }
+
   const db = getDb()
   db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('ghBinaryPath', ?)").run(path)
   ghBinaryPath = path
