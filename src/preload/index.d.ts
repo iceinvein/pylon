@@ -48,6 +48,7 @@ type Api = {
   getAgentPrompts(): Promise<Array<{ id: string; name: string; prompt: string; isCustom: boolean }>>
   resetAgentPrompt(focus: string): Promise<boolean>
   onGhReviewUpdate: (callback: (data: unknown) => void) => () => void
+  sendLog: (level: string, source: string, message: string) => void
 }
 
 declare global {

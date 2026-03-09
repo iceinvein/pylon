@@ -114,6 +114,10 @@ const api = {
     ipcRenderer.on(IPC.SESSION_TITLE_UPDATED, handler)
     return () => ipcRenderer.removeListener(IPC.SESSION_TITLE_UPDATED, handler)
   },
+
+  // Logging
+  sendLog: (level: string, source: string, message: string) =>
+    ipcRenderer.send(IPC.LOG_FROM_RENDERER, { level, source, message }),
 }
 
 contextBridge.exposeInMainWorld('api', api)
