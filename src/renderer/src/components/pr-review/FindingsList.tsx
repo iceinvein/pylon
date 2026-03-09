@@ -1,3 +1,4 @@
+import { CheckCircle2 } from 'lucide-react'
 import { usePrReviewStore } from '../../store/pr-review-store'
 import { FindingCard } from './FindingCard'
 
@@ -6,33 +7,62 @@ type Props = {
   prNumber: number
 }
 
+const SEVERITY_ORDER: Record<string, number> = { critical: 0, warning: 1, suggestion: 2, nitpick: 3 }
+
 export function FindingsList({ repoFullName, prNumber }: Props) {
   const { activeFindings, selectedFindingIds, toggleFinding, postFinding } = usePrReviewStore()
 
   if (activeFindings.length === 0) {
     return (
-      <div className="py-8 text-center text-xs text-stone-500">
-        No findings from this review.
+      <div className="flex flex-col items-center justify-center gap-2 py-16 text-stone-600">
+        <CheckCircle2 size={24} strokeWidth={1.5} />
+        <p className="text-xs">No findings from this review.</p>
       </div>
     )
   }
 
   const sorted = [...activeFindings].sort((a, b) => {
     if (a.posted !== b.posted) return a.posted ? 1 : -1
-    const order: Record<string, number> = { critical: 0, warning: 1, suggestion: 2, nitpick: 3 }
-    return (order[a.severity] ?? 2) - (order[b.severity] ?? 2)
+    return (SEVERITY_ORDER[a.severity] ?? 2) - (SEVERITY_ORDER[b.severity] ?? 2)
   })
 
+  const criticalCount = activeFindings.filter((f) => f.severity === 'critical').length
+  const warningCount = activeFindings.filter((f) => f.severity === 'warning').length
+  const suggestionCount = activeFindings.filter((f) => f.severity === 'suggestion').length
+  const postedCount = activeFindings.filter((f) => f.posted).length
+
   return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <h3 className="text-xs font-medium text-stone-400">
-          Findings ({activeFindings.length})
-        </h3>
-        <div className="flex gap-2 text-xs text-stone-500">
-          <span>{activeFindings.filter((f) => f.posted).length} posted</span>
+    <div>
+      {/* Header with stats */}
+      <div className="mb-3 flex items-center gap-2">
+        <span className="text-[11px] font-medium text-stone-400">
+          {activeFindings.length} finding{activeFindings.length !== 1 ? 's' : ''}
+        </span>
+        <div className="flex items-center gap-1.5">
+          {criticalCount > 0 && (
+            <span className="rounded bg-red-500/10 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-red-400">
+              {criticalCount} critical
+            </span>
+          )}
+          {warningCount > 0 && (
+            <span className="rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-amber-400">
+              {warningCount} warning{warningCount !== 1 ? 's' : ''}
+            </span>
+          )}
+          {suggestionCount > 0 && (
+            <span className="rounded bg-blue-500/10 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-blue-400">
+              {suggestionCount} suggestion{suggestionCount !== 1 ? 's' : ''}
+            </span>
+          )}
         </div>
+        {postedCount > 0 && (
+          <span className="ml-auto text-[10px] text-emerald-600">
+            {postedCount} posted
+          </span>
+        )}
       </div>
+
+      {/* Finding cards */}
       <div className="space-y-2">
         {sorted.map((f) => (
           <FindingCard

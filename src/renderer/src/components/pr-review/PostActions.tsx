@@ -21,10 +21,10 @@ export function PostActions({ repoFullName, prNumber }: Props) {
   if (unposted.length === 0) return null
 
   return (
-    <div className="flex items-center gap-2 border-t border-stone-800 px-4 py-3">
+    <div className="flex items-center gap-3 border-t border-stone-800 bg-stone-950/80 px-5 py-3">
       <button
         onClick={selectedFindingIds.size > 0 ? clearFindingSelection : selectAllFindings}
-        className="text-xs text-stone-500 hover:text-stone-300"
+        className="text-xs text-stone-500 transition-colors hover:text-stone-300"
       >
         {selectedFindingIds.size > 0 ? 'Deselect all' : 'Select all'}
       </button>
@@ -34,15 +34,15 @@ export function PostActions({ repoFullName, prNumber }: Props) {
       <button
         onClick={() => postSelectedAsReview(repoFullName, prNumber)}
         disabled={selectedCount === 0}
-        className="flex items-center gap-1.5 rounded-lg border border-stone-600 px-3 py-1.5 text-xs text-stone-300 transition-colors hover:bg-stone-800 disabled:pointer-events-none disabled:opacity-30"
+        className="flex items-center gap-1.5 rounded-lg border border-stone-700 px-3 py-1.5 text-xs text-stone-300 transition-colors hover:border-stone-600 hover:bg-stone-800 disabled:pointer-events-none disabled:opacity-30"
       >
-        <Send size={12} />
+        <Send size={11} />
         Post Selected ({selectedCount})
       </button>
 
       <button
         onClick={() => postAllAsReview(repoFullName, prNumber)}
-        className="flex items-center gap-1.5 rounded-lg bg-stone-200 px-3 py-1.5 text-xs font-medium text-stone-900 transition-colors hover:bg-stone-100"
+        className="flex items-center gap-1.5 rounded-lg bg-stone-200 px-3 py-1.5 text-xs font-medium text-stone-900 transition-colors hover:bg-white"
       >
         <CheckCheck size={12} />
         Post All ({unposted.length})

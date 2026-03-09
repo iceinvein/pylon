@@ -76,7 +76,7 @@ export function Layout({ children }: LayoutProps) {
         )}
       </AnimatePresence>
       <div className="flex min-w-0 flex-1 flex-col pt-12">
-        <TabBar />
+        {sidebarView !== 'pr-review' && <TabBar />}
         <main className="min-h-0 flex-1 overflow-hidden">{children}</main>
       </div>
     </div>

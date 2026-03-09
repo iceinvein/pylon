@@ -25,7 +25,9 @@ export function PrReviewView() {
           </div>
         </>
       ) : (
-        <GhSetupGuide />
+        <div className="min-w-0 flex-1">
+          <GhSetupGuide />
+        </div>
       )}
     </div>
   )
