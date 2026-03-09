@@ -19,6 +19,7 @@ const PERMISSION_MODES = [
 const TABS = [
   { id: 'general', label: 'General' },
   { id: 'usage', label: 'Usage' },
+  { id: 'agents', label: 'Review Agents' },
   { id: 'integrations', label: 'Integrations' },
 ] as const
 
@@ -31,6 +32,7 @@ export function SettingsOverlay() {
   const [ghStatus, setGhStatus] = useState<GhCliStatus | null>(null)
   const [ghPath, setGhPath] = useState('')
   const [ghChecking, setGhChecking] = useState(false)
+  const [agentPrompts, setAgentPrompts] = useState<Array<{ id: string; name: string; prompt: string; isCustom: boolean }>>([])
 
   async function recheckGh() {
     setGhChecking(true)
@@ -55,6 +57,25 @@ export function SettingsOverlay() {
   useEffect(() => {
     if (settingsOpen && activeTab === 'integrations') recheckGh()
   }, [settingsOpen, activeTab])
+
+  useEffect(() => {
+    if (settingsOpen && activeTab === 'agents') {
+      window.api.getAgentPrompts().then(setAgentPrompts)
+    }
+  }, [settingsOpen, activeTab])
+
+  async function updateAgentPrompt(id: string, prompt: string) {
+    await window.api.updateSettings(`reviewAgent.${id}`, prompt)
+    setAgentPrompts((prev) =>
+      prev.map((a) => a.id === id ? { ...a, prompt, isCustom: true } : a)
+    )
+  }
+
+  async function resetAgentPrompt(id: string) {
+    await window.api.resetAgentPrompt(id)
+    const refreshed = await window.api.getAgentPrompts()
+    setAgentPrompts(refreshed)
+  }
 
   // Reset to General tab when overlay closes
   useEffect(() => {
@@ -183,6 +204,44 @@ export function SettingsOverlay() {
               )}
 
               {activeTab === 'usage' && <UsageDashboard />}
+
+              {activeTab === 'agents' && (
+                <div className="mt-8 space-y-6">
+                  <p className="text-sm text-stone-400">
+                    Customize the specialist prompt for each review agent. Each agent reviews the PR diff
+                    with its own focus area. The standard review template (PR context, diff, output format)
+                    is injected automatically — you only edit the specialist guidance.
+                  </p>
+                  {agentPrompts.map((agent) => (
+                    <section key={agent.id} className="rounded-lg border border-stone-800 bg-stone-900/50 p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <label className="text-sm font-medium text-stone-300">{agent.name}</label>
+                          {agent.isCustom && (
+                            <span className="ml-2 rounded bg-stone-800 px-1.5 py-0.5 text-[10px] text-stone-400">
+                              customized
+                            </span>
+                          )}
+                        </div>
+                        {agent.isCustom && (
+                          <button
+                            onClick={() => resetAgentPrompt(agent.id)}
+                            className="text-[11px] text-stone-500 transition-colors hover:text-stone-300"
+                          >
+                            Reset to default
+                          </button>
+                        )}
+                      </div>
+                      <textarea
+                        value={agent.prompt}
+                        onChange={(e) => updateAgentPrompt(agent.id, e.target.value)}
+                        rows={6}
+                        className="mt-2 w-full resize-y rounded-md bg-stone-950 px-3 py-2 text-xs leading-relaxed text-stone-300 outline-none ring-1 ring-stone-800 focus:ring-stone-600"
+                      />
+                    </section>
+                  ))}
+                </div>
+              )}
 
               {activeTab === 'integrations' && (
                 <div className="mt-8 space-y-8">
