@@ -9,3 +9,4 @@ docs/plans
 .playwright-mcp
 
 .DS_Store
+.worktrees
