@@ -1,4 +1,6 @@
 import { useState, useCallback, useMemo, useEffect } from 'react'
+import { log } from '../../../shared/logger'
+const logger = log.child('changes-panel')
 import { motion, AnimatePresence } from 'motion/react'
 import {
   ArrowLeft,
@@ -81,7 +83,7 @@ function FileDiffView({ filePath, sessionCwd, sessionId, status, onBack }: FileD
         setCachedDiff(sessionId, result)
       }
     } catch (err) {
-      console.error('Failed to fetch diff:', err)
+      logger.error('Failed to fetch diff:', err)
       setError('Failed to load diff')
     } finally {
       setLoading(false)
@@ -219,7 +221,7 @@ export function ChangesPanel() {
         map.set(filePath, status)
       }
       setFileStatuses(map)
-    }).catch(console.error)
+    }).catch((err) => logger.error('Failed to fetch file statuses:', err))
 
     return () => { cancelled = true }
   }, [sessionId, changedFiles])
@@ -238,7 +240,7 @@ export function ChangesPanel() {
 
   useEffect(() => {
     if (!sessionId) return
-    window.api.getWorktreeInfo(sessionId).then(setWorktreeInfo).catch(console.error)
+    window.api.getWorktreeInfo(sessionId).then(setWorktreeInfo).catch((err) => logger.error('Failed to get worktree info:', err))
   }, [sessionId])
 
   const handleMergeCleanup = useCallback(async () => {
@@ -277,7 +279,7 @@ export function ChangesPanel() {
       setWorktreeInfo(null)
       setShowDiscardConfirm(false)
     } catch {
-      console.error('Failed to discard worktree')
+      logger.error('Failed to discard worktree')
     } finally {
       setDiscardLoading(false)
     }
