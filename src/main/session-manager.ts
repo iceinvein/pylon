@@ -68,9 +68,33 @@ type ActiveSession = {
 export class SessionManager {
   private sessions = new Map<string, ActiveSession>()
   private window: BrowserWindow | null = null
+  private messageListeners = new Map<string, Set<(message: unknown) => void>>()
 
   setWindow(window: BrowserWindow): void {
     this.window = window
+  }
+
+  /** Subscribe to raw SDK messages for a specific session. Returns unsubscribe fn. */
+  onMessage(sessionId: string, listener: (message: unknown) => void): () => void {
+    let set = this.messageListeners.get(sessionId)
+    if (!set) {
+      set = new Set()
+      this.messageListeners.set(sessionId, set)
+    }
+    set.add(listener)
+    return () => {
+      set!.delete(listener)
+      if (set!.size === 0) this.messageListeners.delete(sessionId)
+    }
+  }
+
+  private notifyMessageListeners(sessionId: string, message: unknown): void {
+    const set = this.messageListeners.get(sessionId)
+    if (set) {
+      for (const listener of set) {
+        try { listener(message) } catch { /* ignore */ }
+      }
+    }
   }
 
   async createSession(cwd: string, model?: string, useWorktree?: boolean): Promise<string> {
@@ -223,6 +247,7 @@ export class SessionManager {
 
         this.persistMessage(sessionId, message)
         this.send(IPC.SESSION_MESSAGE, { sessionId, message })
+        this.notifyMessageListeners(sessionId, message)
 
         if (message.type === 'result') {
           const result = message as any
