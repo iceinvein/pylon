@@ -1,10 +1,12 @@
-import { app, BrowserWindow, shell } from 'electron'
+import { app, BrowserWindow, shell, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { initDatabase } from './db'
 import { registerIpcHandlers } from './ipc-handlers'
 import { sessionManager } from './session-manager'
 import { prReviewManager } from './pr-review-manager'
+import { initLogger, log, writeRendererLog } from '../shared/logger'
+import { IPC } from '../shared/ipc-channels'
 
 function createWindow(): BrowserWindow {
   const mainWindow = new BrowserWindow({
@@ -42,6 +44,16 @@ function createWindow(): BrowserWindow {
 
 app.whenReady().then(() => {
   electronApp.setAppUserModelId('com.pylon.app')
+
+  // Initialize logging
+  initLogger({ level: is.dev ? 'debug' : 'info' })
+  log.info('App starting', { version: app.getVersion(), dev: is.dev })
+
+  // Receive renderer logs
+  ipcMain.on(IPC.LOG_FROM_RENDERER, (_e, data: { level: string; source: string; message: string }) => {
+    writeRendererLog(data.level as any, data.source, data.message)
+  })
+
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
   })
@@ -64,4 +76,12 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
+})
+
+process.on('uncaughtException', (err) => {
+  log.error('Uncaught exception:', err)
+})
+
+process.on('unhandledRejection', (reason) => {
+  log.error('Unhandled rejection:', reason)
 })
