@@ -1,5 +1,17 @@
-import { existsSync, mkdirSync, appendFileSync, renameSync, statSync } from 'fs'
-import { join } from 'path'
+// fs and path are loaded lazily to avoid Vite browser-externalization errors
+// when this module is imported in the renderer process.
+let _fs: typeof import('fs') | null = null
+let _path: typeof import('path') | null = null
+
+function getFs(): typeof import('fs') {
+  if (!_fs) _fs = require('fs')
+  return _fs!
+}
+
+function getPath(): typeof import('path') {
+  if (!_path) _path = require('path')
+  return _path!
+}
 
 type LogLevel = 'debug' | 'info' | 'warn' | 'error'
 
@@ -25,16 +37,17 @@ let logDirReady = false
 
 function getLogDir(): string {
   const home = process.env.HOME || process.env.USERPROFILE || '~'
-  return join(home, '.pylon', 'logs')
+  return getPath().join(home, '.pylon', 'logs')
 }
 
 function ensureLogDir(): void {
   if (logDirReady) return
   const dir = getLogDir()
-  if (!existsSync(dir)) {
-    mkdirSync(dir, { recursive: true })
+  const fs = getFs()
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true })
   }
-  logFilePath = join(dir, 'pylon.log')
+  logFilePath = getPath().join(dir, 'pylon.log')
   logDirReady = true
 }
 
@@ -45,11 +58,12 @@ function rotateIfNeeded(): void {
   if (!logFilePath) return
   if (++writeCount % ROTATION_CHECK_INTERVAL !== 0) return
   try {
-    if (!existsSync(logFilePath)) return
-    const stats = statSync(logFilePath)
+    const fs = getFs()
+    if (!fs.existsSync(logFilePath)) return
+    const stats = fs.statSync(logFilePath)
     if (stats.size >= MAX_LOG_SIZE) {
       const backup = logFilePath + '.1'
-      renameSync(logFilePath, backup)
+      fs.renameSync(logFilePath, backup)
     }
   } catch {
     // Rotation failure is non-fatal
@@ -115,7 +129,7 @@ function writeLog(level: LogLevel, source: string, args: unknown[]): void {
     ensureLogDir()
     rotateIfNeeded()
     if (logFilePath) {
-      appendFileSync(logFilePath, line + '\n')
+      getFs().appendFileSync(logFilePath, line + '\n')
     }
   } catch {
     // File write failure is non-fatal
