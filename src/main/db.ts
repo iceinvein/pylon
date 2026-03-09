@@ -64,6 +64,39 @@ export function initDatabase(): Database.Database {
     db.exec("ALTER TABLE sessions ADD COLUMN original_branch TEXT DEFAULT NULL")
   }
 
+  // PR Review tables
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS pr_reviews (
+      id TEXT PRIMARY KEY,
+      repo_full_name TEXT NOT NULL,
+      pr_number INTEGER NOT NULL,
+      pr_title TEXT,
+      pr_url TEXT,
+      focus TEXT,
+      status TEXT NOT NULL DEFAULT 'pending',
+      session_id TEXT,
+      started_at INTEGER,
+      completed_at INTEGER,
+      created_at INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS pr_review_findings (
+      id TEXT PRIMARY KEY,
+      review_id TEXT NOT NULL,
+      file TEXT,
+      line INTEGER,
+      severity TEXT NOT NULL,
+      title TEXT NOT NULL,
+      description TEXT NOT NULL,
+      posted INTEGER NOT NULL DEFAULT 0,
+      posted_at INTEGER,
+      FOREIGN KEY (review_id) REFERENCES pr_reviews(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_pr_reviews_repo ON pr_reviews(repo_full_name, pr_number);
+    CREATE INDEX IF NOT EXISTS idx_pr_review_findings_review ON pr_review_findings(review_id);
+  `)
+
   return db
 }
 
