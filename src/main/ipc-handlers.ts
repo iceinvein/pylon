@@ -3,7 +3,7 @@ import { readFile } from 'fs/promises'
 import { IPC } from '../shared/ipc-channels'
 import { getDb } from './db'
 import { sessionManager } from './session-manager'
-import type { AppSettings, PermissionMode, PermissionResponse, QuestionResponse } from '../shared/types'
+import type { AppSettings, PermissionMode, PermissionResponse, QuestionResponse, ReviewFinding } from '../shared/types'
 
 const DEFAULT_SETTINGS: AppSettings = {
   defaultModel: 'claude-opus-4-6',
@@ -147,6 +147,86 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(IPC.WORKTREE_INFO, async (_e, args: { sessionId: string }) => {
     return sessionManager.getWorktreeInfo(args.sessionId)
+  })
+
+  // ── PR Review ──
+
+  ipcMain.handle(IPC.GH_CHECK_STATUS, async () => {
+    const { checkGhStatus } = await import('./gh-cli')
+    return checkGhStatus()
+  })
+
+  ipcMain.handle(IPC.GH_SET_PATH, async (_e, args: { path: string }) => {
+    const { setGhPath, checkGhStatus } = await import('./gh-cli')
+    setGhPath(args.path)
+    return checkGhStatus()
+  })
+
+  ipcMain.handle(IPC.GH_LIST_REPOS, async () => {
+    const { discoverRepos } = await import('./gh-cli')
+    const projects = sessionManager.getProjectFolders()
+    const paths = projects.map((p: { path: string }) => p.path)
+    return discoverRepos(paths)
+  })
+
+  ipcMain.handle(IPC.GH_LIST_PRS, async (_e, args: { repo: string; state?: string }) => {
+    const { listPrs } = await import('./gh-cli')
+    return listPrs(args.repo, args.state)
+  })
+
+  ipcMain.handle(IPC.GH_PR_DETAIL, async (_e, args: { repo: string; number: number }) => {
+    const { getPrDetail } = await import('./gh-cli')
+    return getPrDetail(args.repo, args.number)
+  })
+
+  ipcMain.handle(IPC.GH_START_REVIEW, async (_e, args: {
+    repo: { owner: string; repo: string; fullName: string; projectPath: string }
+    prNumber: number
+    prTitle: string
+    prUrl: string
+    focus: string[]
+  }) => {
+    const { prReviewManager } = await import('./pr-review-manager')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return prReviewManager.startReview(args.repo, args.prNumber, args.prTitle, args.prUrl, args.focus as any)
+  })
+
+  ipcMain.handle(IPC.GH_STOP_REVIEW, async (_e, args: { reviewId: string }) => {
+    const { prReviewManager } = await import('./pr-review-manager')
+    prReviewManager.stopReview(args.reviewId)
+    return true
+  })
+
+  ipcMain.handle(IPC.GH_LIST_REVIEWS, async (_e, args: { repo?: string; prNumber?: number }) => {
+    const { prReviewManager } = await import('./pr-review-manager')
+    return prReviewManager.listReviews(args.repo, args.prNumber)
+  })
+
+  ipcMain.handle(IPC.GH_GET_REVIEW, async (_e, args: { reviewId: string }) => {
+    const { prReviewManager } = await import('./pr-review-manager')
+    return prReviewManager.getReview(args.reviewId)
+  })
+
+  ipcMain.handle(IPC.GH_DELETE_REVIEW, async (_e, args: { reviewId: string }) => {
+    const { prReviewManager } = await import('./pr-review-manager')
+    prReviewManager.deleteReview(args.reviewId)
+    return true
+  })
+
+  ipcMain.handle(IPC.GH_POST_COMMENT, async (_e, args: { repo: string; number: number; body: string }) => {
+    const { postComment } = await import('./gh-cli')
+    await postComment(args.repo, args.number, args.body)
+    return true
+  })
+
+  ipcMain.handle(IPC.GH_POST_REVIEW, async (_e, args: { repo: string; number: number; findings: ReviewFinding[]; commitId: string }) => {
+    const { postReview } = await import('./gh-cli')
+    await postReview(args.repo, args.number, args.findings, args.commitId)
+    const { prReviewManager } = await import('./pr-review-manager')
+    for (const f of args.findings) {
+      prReviewManager.markFindingPosted(f.id)
+    }
+    return true
   })
 
   ipcMain.handle(IPC.USAGE_STATS, async (_e, args: { period: string }) => {
