@@ -4,6 +4,7 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { initDatabase } from './db'
 import { registerIpcHandlers } from './ipc-handlers'
 import { sessionManager } from './session-manager'
+import { prReviewManager } from './pr-review-manager'
 
 function createWindow(): BrowserWindow {
   const mainWindow = new BrowserWindow({
@@ -50,11 +51,13 @@ app.whenReady().then(() => {
 
   const mainWindow = createWindow()
   sessionManager.setWindow(mainWindow)
+  prReviewManager.setWindow(mainWindow)
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       const w = createWindow()
       sessionManager.setWindow(w)
+      prReviewManager.setWindow(w)
     }
   })
 })
