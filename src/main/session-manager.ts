@@ -10,6 +10,8 @@ import { homedir } from 'os'
 import { getDb } from './db'
 import { IPC } from '../shared/ipc-channels'
 import type { PermissionMode, PermissionResponse, QuestionResponse } from '../shared/types'
+import { log } from '../shared/logger'
+const logger = log.child('session-manager')
 
 const execFileAsync = promisify(execFile)
 
@@ -274,7 +276,7 @@ export class SessionManager {
       this.updateStatus(sessionId, 'done')
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error)
-      console.error('Session error:', sessionId, errorMessage)
+      logger.error('Session error:', sessionId, errorMessage)
       this.updateStatus(sessionId, 'error')
       this.send(IPC.SESSION_MESSAGE, {
         sessionId,
@@ -331,7 +333,7 @@ export class SessionManager {
     if (!row) return false
 
     if (row.worktree_path && !existsSync(row.worktree_path)) {
-      console.warn(`Worktree path missing for session ${sessionId}: ${row.worktree_path}`)
+      logger.warn(`Worktree path missing for session ${sessionId}: ${row.worktree_path}`)
     }
 
     this.sessions.set(sessionId, {
