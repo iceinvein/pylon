@@ -75,10 +75,14 @@ const api = {
     ipcRenderer.invoke(IPC.GH_GET_REVIEW, { reviewId }),
   deleteGhReview: (reviewId: string) =>
     ipcRenderer.invoke(IPC.GH_DELETE_REVIEW, { reviewId }),
+  saveGhFindings: (reviewId: string, findings: unknown[]) =>
+    ipcRenderer.invoke(IPC.GH_SAVE_FINDINGS, { reviewId, findings }),
   postGhComment: (repo: string, number: number, body: string) =>
     ipcRenderer.invoke(IPC.GH_POST_COMMENT, { repo, number, body }),
   postGhReview: (repo: string, number: number, findings: unknown[], commitId: string) =>
     ipcRenderer.invoke(IPC.GH_POST_REVIEW, { repo, number, findings, commitId }),
+  getAgentPrompts: () => ipcRenderer.invoke(IPC.GH_GET_AGENT_PROMPTS),
+  resetAgentPrompt: (focus: string) => ipcRenderer.invoke(IPC.GH_RESET_AGENT_PROMPT, { focus }),
   onGhReviewUpdate: (callback: (data: unknown) => void) => {
     const handler = (_event: unknown, data: unknown) => callback(data)
     ipcRenderer.on(IPC.GH_REVIEW_UPDATE, handler)

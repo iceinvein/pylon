@@ -212,6 +212,23 @@ export function registerIpcHandlers(): void {
     return true
   })
 
+  ipcMain.handle(IPC.GH_SAVE_FINDINGS, async (_e, args: { reviewId: string; findings: ReviewFinding[] }) => {
+    const { prReviewManager } = await import('./pr-review-manager')
+    prReviewManager.saveFindings(args.reviewId, args.findings)
+    return true
+  })
+
+  ipcMain.handle(IPC.GH_GET_AGENT_PROMPTS, async () => {
+    const { prReviewManager } = await import('./pr-review-manager')
+    return prReviewManager.getAgentPrompts()
+  })
+
+  ipcMain.handle(IPC.GH_RESET_AGENT_PROMPT, async (_e, args: { focus: string }) => {
+    const db = getDb()
+    db.prepare('DELETE FROM settings WHERE key = ?').run(`reviewAgent.${args.focus}`)
+    return true
+  })
+
   ipcMain.handle(IPC.GH_POST_COMMENT, async (_e, args: { repo: string; number: number; body: string }) => {
     const { postComment } = await import('./gh-cli')
     await postComment(args.repo, args.number, args.body)

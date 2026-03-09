@@ -43,5 +43,8 @@ export const IPC = {
   GH_LIST_REVIEWS: 'gh:list-reviews',
   GH_GET_REVIEW: 'gh:get-review',
   GH_DELETE_REVIEW: 'gh:delete-review',
+  GH_SAVE_FINDINGS: 'gh:save-findings',
   GH_REVIEW_UPDATE: 'gh:review-update',
+  GH_GET_AGENT_PROMPTS: 'gh:get-agent-prompts',
+  GH_RESET_AGENT_PROMPT: 'gh:reset-agent-prompt',
 } as const

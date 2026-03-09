@@ -7,6 +7,53 @@ import { IPC } from '../shared/ipc-channels'
 import type { GhRepo, ReviewFocus, ReviewFinding, PrReview, ReviewStatus } from '../shared/types'
 
 const MAX_DIFF_LINES = 50_000
+const STREAM_THROTTLE_MS = 300
+
+const DEFAULT_AGENT_PROMPTS: Record<string, string> = {
+  general: `You are a general code reviewer. Look for:
+- Code quality and readability issues
+- Violations of best practices and design patterns
+- Missing error handling or edge cases
+- Unclear naming or confusing logic
+- Unnecessary complexity
+Be thorough but avoid false positives. Only flag issues you're confident about.`,
+
+  security: `You are a security-focused code reviewer. Look for:
+- Injection vulnerabilities (SQL, command, XSS)
+- Authentication and authorization flaws
+- Secrets or credentials in code
+- Insecure cryptographic practices
+- Input validation gaps
+- OWASP Top 10 issues
+Be thorough but avoid false positives. Only flag issues you're confident about.`,
+
+  bugs: `You are a bug-hunting code reviewer. Look for:
+- Logic errors and off-by-one mistakes
+- Race conditions and concurrency issues
+- Null/undefined dereferences
+- Resource leaks (file handles, connections, memory)
+- Incorrect error handling that swallows errors
+- Edge cases in boundary conditions
+Be thorough but avoid false positives. Only flag issues you're confident about.`,
+
+  performance: `You are a performance-focused code reviewer. Look for:
+- N+1 query patterns
+- Unnecessary re-renders or re-computations
+- Memory leaks and unbounded growth
+- Missing caching opportunities
+- Blocking operations on hot paths
+- Inefficient data structures or algorithms
+Be thorough but avoid false positives. Only flag issues you're confident about.`,
+
+  style: `You are a code style reviewer. Look for:
+- Inconsistent naming conventions
+- Poor code organization and file structure
+- Missing or misleading comments
+- Dead code and unused imports
+- Overly complex expressions that could be simplified
+- Violations of project conventions
+Be thorough but avoid false positives. Only flag issues you're confident about.`,
+}
 
 type ActiveReviewSession = {
   reviewId: string
@@ -73,7 +120,7 @@ class PrReviewManager {
       createdAt: now,
     }
 
-    this.send(IPC.GH_REVIEW_UPDATE, { reviewId, status: 'running', findings: [] })
+    this.send(IPC.GH_REVIEW_UPDATE, { reviewId, status: 'running', findings: [], streamingText: '' })
 
     this.runReview(reviewId, repo, prNumber, focusAreas, sessionId).catch((err) => {
       console.error('Review failed:', err)
@@ -91,13 +138,19 @@ class PrReviewManager {
     focusAreas: ReviewFocus[],
     sessionId: string
   ): Promise<void> {
+    this.send(IPC.GH_REVIEW_UPDATE, {
+      reviewId,
+      status: 'running',
+      streamingText: 'Fetching PR diff...',
+    })
+
     const detail = await getPrDetail(repo.fullName, prNumber)
 
     let diff = detail.diff
-    const diffLines = diff.split('\n')
+    const diffLineCount = diff.split('\n').length
     let truncated = false
-    if (diffLines.length > MAX_DIFF_LINES) {
-      diff = diffLines.slice(0, MAX_DIFF_LINES).join('\n')
+    if (diffLineCount > MAX_DIFF_LINES) {
+      diff = diff.split('\n').slice(0, MAX_DIFF_LINES).join('\n')
       truncated = true
     }
 
@@ -144,57 +197,107 @@ Example output format:
 
 Output ONLY the review-findings block. Do not use any tools.`
 
-    await sessionManager.sendMessage(sessionId, prompt)
+    // Subscribe to session messages to stream Claude's output to the renderer.
+    // The SDK streams via 'stream_event' messages with text deltas.
+    // We accumulate these for real-time display and also use the accumulated
+    // text to parse findings (more reliable than re-reading from DB).
+    let streamedText = ''
+    let lastSendTime = 0
+    const unsub = sessionManager.onMessage(sessionId, (message: unknown) => {
+      const msg = message as Record<string, unknown>
 
-    // After sendMessage completes, parse findings from persisted messages
-    const findings = this.extractFindingsFromSession(sessionId)
+      if (msg.type === 'stream_event') {
+        const event = msg.event as Record<string, unknown> | undefined
+        const delta = event?.delta as Record<string, unknown> | undefined
+        if (delta?.type === 'text_delta' && typeof delta.text === 'string') {
+          streamedText += delta.text
+          const now = Date.now()
+          if (now - lastSendTime > STREAM_THROTTLE_MS) {
+            lastSendTime = now
+            this.send(IPC.GH_REVIEW_UPDATE, {
+              reviewId,
+              status: 'running',
+              streamingText: streamedText,
+            })
+          }
+        }
+      }
+    })
+
+    try {
+      this.send(IPC.GH_REVIEW_UPDATE, {
+        reviewId,
+        status: 'running',
+        streamingText: 'Analyzing diff...',
+      })
+
+      await sessionManager.sendMessage(sessionId, prompt)
+    } finally {
+      unsub()
+    }
+
+    // Parse findings directly from the accumulated stream text.
+    // This is more reliable than extractFindingsFromSession() which depends
+    // on the SDK's message structure in the DB.
+    const findings = this.parseFindings(streamedText)
 
     const db = getDb()
+
+    // Persist findings
     const insertFinding = db.prepare(
       'INSERT INTO pr_review_findings (id, review_id, file, line, severity, title, description) VALUES (?, ?, ?, ?, ?, ?, ?)'
     )
-
     for (const f of findings) {
       insertFinding.run(f.id, reviewId, f.file, f.line, f.severity, f.title, f.description)
     }
 
+    // Persist raw output and mark done
+    db.prepare('UPDATE pr_reviews SET raw_output = ? WHERE id = ?').run(streamedText, reviewId)
     this.updateReviewStatus(reviewId, 'done', Date.now())
-    this.send(IPC.GH_REVIEW_UPDATE, { reviewId, status: 'done', findings })
+
+    this.send(IPC.GH_REVIEW_UPDATE, {
+      reviewId,
+      status: 'done',
+      findings,
+      streamingText: streamedText,
+    })
     this.activeReviews.delete(reviewId)
   }
 
-  private extractFindingsFromSession(sessionId: string): ReviewFinding[] {
-    const db = getDb()
-    const messages = db.prepare(
-      'SELECT sdk_message FROM messages WHERE session_id = ? ORDER BY timestamp'
-    ).all(sessionId) as Array<{ sdk_message: string }>
+  private parseFindings(text: string): ReviewFinding[] {
+    // Try multiple fence patterns: ```review-findings, ````review-findings, ```json, or bare JSON array
+    const fencePatterns = [
+      /`{3,}review-findings\s*\n([\s\S]*?)`{3,}/,
+      /`{3,}json\s*\n(\[[\s\S]*?\])\s*`{3,}/,
+    ]
 
-    let fullText = ''
-    for (const msg of messages) {
-      try {
-        const parsed = JSON.parse(msg.sdk_message)
-        if (parsed.type === 'assistant' && parsed.content) {
-          for (const block of parsed.content) {
-            if (block.type === 'text') {
-              fullText += block.text
-            }
-          }
-        }
-      } catch {
-        // skip unparseable messages
+    let jsonStr: string | null = null
+    for (const regex of fencePatterns) {
+      const match = text.match(regex)
+      if (match) {
+        jsonStr = match[1].trim()
+        break
       }
     }
 
-    return this.parseFindings(fullText)
-  }
+    // Fallback: find the outermost JSON array in the text
+    if (!jsonStr) {
+      const arrayStart = text.indexOf('[')
+      const arrayEnd = text.lastIndexOf(']')
+      if (arrayStart !== -1 && arrayEnd > arrayStart) {
+        jsonStr = text.slice(arrayStart, arrayEnd + 1)
+      }
+    }
 
-  private parseFindings(text: string): ReviewFinding[] {
-    const regex = /```review-findings\s*\n([\s\S]*?)```/
-    const match = text.match(regex)
-    if (!match) return []
+    if (!jsonStr) {
+      console.error('No review-findings block found in output. Text length:', text.length)
+      console.error('First 500 chars:', text.slice(0, 500))
+      return []
+    }
 
     try {
-      const raw = JSON.parse(match[1]) as Array<Record<string, unknown>>
+      const raw = JSON.parse(jsonStr) as Array<Record<string, unknown>>
+      if (!Array.isArray(raw)) return []
       return raw.map((f) => ({
         id: randomUUID(),
         file: String(f.file || ''),
@@ -204,10 +307,35 @@ Output ONLY the review-findings block. Do not use any tools.`
         description: String(f.description || ''),
         posted: false,
       }))
-    } catch {
-      console.error('Failed to parse review findings JSON')
+    } catch (err) {
+      console.error('Failed to parse review findings JSON:', err)
+      console.error('JSON string (first 500 chars):', jsonStr.slice(0, 500))
       return []
     }
+  }
+
+  /** Used by parallel review agents (Task 2+) to get per-focus prompt */
+  getAgentPrompt(focus: ReviewFocus): string {
+    const db = getDb()
+    const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(`reviewAgent.${focus}`) as { value: string } | undefined
+    return row?.value || DEFAULT_AGENT_PROMPTS[focus] || DEFAULT_AGENT_PROMPTS.general
+  }
+
+  getAgentPrompts(): Array<{ id: string; name: string; prompt: string; isCustom: boolean }> {
+    const db = getDb()
+    const names: Record<string, string> = {
+      general: 'General', security: 'Security', bugs: 'Bugs',
+      performance: 'Performance', style: 'Style',
+    }
+    return Object.keys(DEFAULT_AGENT_PROMPTS).map((id) => {
+      const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(`reviewAgent.${id}`) as { value: string } | undefined
+      return {
+        id,
+        name: names[id] || id,
+        prompt: row?.value || DEFAULT_AGENT_PROMPTS[id],
+        isCustom: !!row,
+      }
+    })
   }
 
   stopReview(reviewId: string): void {
@@ -223,23 +351,31 @@ Output ONLY the review-findings block. Do not use any tools.`
 
   listReviews(repoFullName?: string, prNumber?: number): PrReview[] {
     const db = getDb()
-    let sql = 'SELECT * FROM pr_reviews'
+    let sql = 'SELECT r.*, (SELECT COUNT(*) FROM pr_review_findings f WHERE f.review_id = r.id) AS findings_count FROM pr_reviews r'
     const params: unknown[] = []
 
     if (repoFullName && prNumber) {
-      sql += ' WHERE repo_full_name = ? AND pr_number = ?'
+      sql += ' WHERE r.repo_full_name = ? AND r.pr_number = ?'
       params.push(repoFullName, prNumber)
     } else if (repoFullName) {
-      sql += ' WHERE repo_full_name = ?'
+      sql += ' WHERE r.repo_full_name = ?'
       params.push(repoFullName)
     }
-    sql += ' ORDER BY created_at DESC LIMIT 50'
+    sql += ' ORDER BY r.created_at DESC LIMIT 50'
 
     const rows = db.prepare(sql).all(...params) as Array<Record<string, unknown>>
-    return rows.map((r) => this.rowToReview(r))
+    return rows.map((r) => {
+      const review = this.rowToReview(r)
+      const count = (r.findings_count as number) || 0
+      if (count > 0) {
+        // Store count without loading full findings — use length for display
+        review.findings = Array.from({ length: count }) as ReviewFinding[]
+      }
+      return review
+    })
   }
 
-  getReview(reviewId: string): (PrReview & { findings: ReviewFinding[] }) | null {
+  getReview(reviewId: string): (PrReview & { findings: ReviewFinding[]; rawOutput: string }) | null {
     const db = getDb()
     const row = db.prepare('SELECT * FROM pr_reviews WHERE id = ?').get(reviewId) as Record<string, unknown> | undefined
     if (!row) return null
@@ -259,12 +395,27 @@ Output ONLY the review-findings block. Do not use any tools.`
       posted: Boolean(f.posted),
     }))
 
-    return review as PrReview & { findings: ReviewFinding[] }
+    return {
+      ...review,
+      rawOutput: (row.raw_output as string) ?? '',
+    }
   }
 
   deleteReview(reviewId: string): void {
     const db = getDb()
     db.prepare('DELETE FROM pr_reviews WHERE id = ?').run(reviewId)
+  }
+
+  saveFindings(reviewId: string, findings: ReviewFinding[]): void {
+    const db = getDb()
+    // Clear existing findings for this review first
+    db.prepare('DELETE FROM pr_review_findings WHERE review_id = ?').run(reviewId)
+    const insert = db.prepare(
+      'INSERT INTO pr_review_findings (id, review_id, file, line, severity, title, description) VALUES (?, ?, ?, ?, ?, ?, ?)'
+    )
+    for (const f of findings) {
+      insert.run(f.id, reviewId, f.file, f.line, f.severity, f.title, f.description)
+    }
   }
 
   markFindingPosted(findingId: string): void {

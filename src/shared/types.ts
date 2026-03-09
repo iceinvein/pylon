@@ -214,3 +214,16 @@ export type PrReview = {
   completedAt: number | null
   createdAt: number
 }
+
+export type ReviewAgentConfig = {
+  id: ReviewFocus
+  name: string
+  prompt: string
+}
+
+export type ReviewAgentProgress = {
+  agentId: ReviewFocus
+  status: 'pending' | 'running' | 'done' | 'error'
+  findingsCount: number
+  error?: string
+}

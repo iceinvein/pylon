@@ -42,8 +42,11 @@ type Api = {
   listGhReviews: (repo?: string, prNumber?: number) => Promise<import('../shared/types').PrReview[]>
   getGhReview: (reviewId: string) => Promise<(import('../shared/types').PrReview & { findings: import('../shared/types').ReviewFinding[] }) | null>
   deleteGhReview: (reviewId: string) => Promise<boolean>
+  saveGhFindings: (reviewId: string, findings: import('../shared/types').ReviewFinding[]) => Promise<boolean>
   postGhComment: (repo: string, number: number, body: string) => Promise<boolean>
   postGhReview: (repo: string, number: number, findings: import('../shared/types').ReviewFinding[], commitId: string) => Promise<boolean>
+  getAgentPrompts(): Promise<Array<{ id: string; name: string; prompt: string; isCustom: boolean }>>
+  resetAgentPrompt(focus: string): Promise<boolean>
   onGhReviewUpdate: (callback: (data: unknown) => void) => () => void
 }
 
