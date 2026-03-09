@@ -181,8 +181,6 @@ export function ReviewProgress({ reviewId: _reviewId, onStop, isLive = true }: P
     [streamingText]
   )
 
-  const hasRunningAgents = agentProgress.some((a) => a.status === 'running' || a.status === 'pending')
-
   useEffect(() => {
     if (isLive && scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
@@ -191,21 +189,6 @@ export function ReviewProgress({ reviewId: _reviewId, onStop, isLive = true }: P
 
   if (!streamingText && !agentProgress.length) {
     if (!isLive) return null
-    return (
-      <div className="flex items-center gap-3 rounded-lg border border-stone-800 bg-stone-900/40 px-4 py-3">
-        <Loader2 size={14} className="flex-shrink-0 animate-spin text-stone-400" />
-        <span className="text-xs"><ReviewStatusMessage /></span>
-        {onStop && (
-          <button
-            onClick={onStop}
-            className="ml-auto flex flex-shrink-0 items-center gap-1.5 rounded border border-stone-700 px-2 py-1 text-xs text-stone-400 transition-colors hover:border-stone-600 hover:text-stone-300"
-          >
-            <StopCircle size={10} />
-            Stop
-          </button>
-        )}
-      </div>
-    )
   }
 
   const findingCount = agentProgress.length > 0
@@ -224,8 +207,8 @@ export function ReviewProgress({ reviewId: _reviewId, onStop, isLive = true }: P
         ) : (
           <MessageSquareText size={12} className="flex-shrink-0 text-stone-500" />
         )}
-        <span className="font-medium text-stone-300">
-          {isLive ? 'Reviewing...' : 'Review Output'}
+        <span className="min-w-0 truncate font-medium text-stone-300">
+          {isLive ? <ReviewStatusMessage /> : 'Review Output'}
         </span>
         {findingCount > 0 && (
           <span className="rounded-full bg-stone-800 px-2 py-0.5 text-[10px] tabular-nums text-stone-400">
@@ -318,11 +301,10 @@ export function ReviewProgress({ reviewId: _reviewId, onStop, isLive = true }: P
                 </div>
               )}
 
-              {/* Witty message while agents are still working */}
-              {isLive && hasRunningAgents && (
-                <div className="flex items-center gap-2 px-4 py-3 text-xs">
-                  <Loader2 size={10} className="flex-shrink-0 animate-spin text-stone-500" />
-                  <ReviewStatusMessage />
+              {/* Empty state while waiting for findings */}
+              {isLive && findings.length === 0 && (
+                <div className="flex items-center justify-center py-8 text-xs text-stone-600">
+                  Waiting for findings...
                 </div>
               )}
             </div>
