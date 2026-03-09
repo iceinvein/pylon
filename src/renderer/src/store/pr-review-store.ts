@@ -3,6 +3,8 @@ import type {
   GhCliStatus, GhRepo, GhPullRequest, GhPrDetail,
   PrReview, ReviewFinding, ReviewFocus
 } from '../../../shared/types'
+import { log } from '../../../shared/logger'
+const logger = log.child('pr-review-store')
 
 /** Parse findings from raw streaming text (client-side fallback when main process fails) */
 function parseFindingsFromText(text: string): ReviewFinding[] {
@@ -115,7 +117,7 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
       const status = await window.api.checkGhStatus()
       set({ ghStatus: status, ghStatusLoading: false })
     } catch (err) {
-      console.error('checkGhStatus failed:', err)
+      logger.error('checkGhStatus failed:', err)
       set({ ghStatusLoading: false })
     }
   },
@@ -131,7 +133,7 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
       const repos = await window.api.listGhRepos()
       set({ repos, reposLoading: false })
     } catch (err) {
-      console.error('loadRepos failed:', err)
+      logger.error('loadRepos failed:', err)
       set({ reposLoading: false })
     }
   },
@@ -168,7 +170,7 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
         set({ prs: allPrs, prsLoading: false })
       }
     } catch (err) {
-      console.error('loadPrs failed:', err)
+      logger.error('loadPrs failed:', err)
       if (get()._loadPrsSeq === seq) {
         set({ prsLoading: false })
       }
@@ -186,7 +188,7 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
       detail.repo = pr.repo
       set({ prDetail: detail, prDetailLoading: false })
     } catch (err) {
-      console.error('selectPr failed:', err)
+      logger.error('selectPr failed:', err)
       if (get()._selectPrSeq === seq) {
         set({ prDetailLoading: false })
       }
@@ -205,7 +207,7 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
         get().loadReview(latest.id)
       }
     } catch (err) {
-      console.error('loadPrReviews failed:', err)
+      logger.error('loadPrReviews failed:', err)
     }
   },
 
@@ -228,7 +230,7 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
         reviews: [review, ...s.reviews],
       }))
     } catch (err) {
-      console.error('startReview failed:', err)
+      logger.error('startReview failed:', err)
     }
   },
 
@@ -246,7 +248,7 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
         ),
       }))
     } catch (err) {
-      console.error('stopReview failed:', err)
+      logger.error('stopReview failed:', err)
     }
   },
 
@@ -272,7 +274,7 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
         agentProgress: [],
       })
     } catch (err) {
-      console.error('loadReview failed:', err)
+      logger.error('loadReview failed:', err)
     }
   },
 
@@ -286,7 +288,7 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
         reviewStreamingText: s.activeReview?.id === reviewId ? '' : s.reviewStreamingText,
       }))
     } catch (err) {
-      console.error('deleteReview failed:', err)
+      logger.error('deleteReview failed:', err)
     }
   },
 
@@ -317,7 +319,7 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
         ),
       }))
     } catch (err) {
-      console.error('postFinding failed:', err)
+      logger.error('postFinding failed:', err)
     }
   },
 
@@ -334,7 +336,7 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
         selectedFindingIds: new Set(),
       }))
     } catch (err) {
-      console.error('postSelectedAsReview failed:', err)
+      logger.error('postSelectedAsReview failed:', err)
     }
   },
 
@@ -349,7 +351,7 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
         selectedFindingIds: new Set(),
       }))
     } catch (err) {
-      console.error('postAllAsReview failed:', err)
+      logger.error('postAllAsReview failed:', err)
     }
   },
 
