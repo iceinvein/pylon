@@ -38,8 +38,12 @@ function ensureLogDir(): void {
   logDirReady = true
 }
 
+let writeCount = 0
+const ROTATION_CHECK_INTERVAL = 100
+
 function rotateIfNeeded(): void {
   if (!logFilePath) return
+  if (++writeCount % ROTATION_CHECK_INTERVAL !== 0) return
   try {
     if (!existsSync(logFilePath)) return
     const stats = statSync(logFilePath)
@@ -76,8 +80,12 @@ function formatLine(level: LogLevel, source: string, args: unknown[]): string {
 /** Minimum level for output. Set via initLogger or defaults to 'debug' in dev, 'info' in prod. */
 let minLevel: number = 0
 
+let _isRenderer: boolean | null = null
 function isRenderer(): boolean {
-  return typeof window !== 'undefined' && typeof (window as any).api?.sendLog === 'function'
+  if (_isRenderer === null) {
+    _isRenderer = typeof window !== 'undefined' && typeof (window as any).api?.sendLog === 'function'
+  }
+  return _isRenderer
 }
 
 function writeLog(level: LogLevel, source: string, args: unknown[]): void {

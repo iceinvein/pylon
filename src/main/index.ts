@@ -50,8 +50,10 @@ app.whenReady().then(() => {
   log.info('App starting', { version: app.getVersion(), dev: is.dev })
 
   // Receive renderer logs
+  const validLogLevels = new Set(['debug', 'info', 'warn', 'error'])
   ipcMain.on(IPC.LOG_FROM_RENDERER, (_e, data: { level: string; source: string; message: string }) => {
-    writeRendererLog(data.level as any, data.source, data.message)
+    const safeLevel = validLogLevels.has(data.level) ? data.level : 'info'
+    writeRendererLog(safeLevel as 'debug' | 'info' | 'warn' | 'error', data.source, data.message)
   })
 
   app.on('browser-window-created', (_, window) => {
