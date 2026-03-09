@@ -4,6 +4,8 @@ import { IPC } from '../shared/ipc-channels'
 import { getDb } from './db'
 import { sessionManager } from './session-manager'
 import type { AppSettings, PermissionMode, PermissionResponse, QuestionResponse, ReviewFinding, ReviewFocus } from '../shared/types'
+import { log } from '../shared/logger'
+const logger = log.child('ipc')
 
 const DEFAULT_SETTINGS: AppSettings = {
   defaultModel: 'claude-opus-4-6',
@@ -39,7 +41,7 @@ export function registerIpcHandlers(): void {
     sessionId: string; text: string;
     attachments?: Array<{ type: string; content: string; mediaType?: string; name?: string }>
   }) => {
-    sessionManager.sendMessage(args.sessionId, args.text, args.attachments).catch(console.error)
+    sessionManager.sendMessage(args.sessionId, args.text, args.attachments).catch((err) => logger.error('SESSION_SEND failed:', err))
     return true
   })
 
