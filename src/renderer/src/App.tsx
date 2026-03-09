@@ -2,13 +2,18 @@ import { useEffect } from 'react'
 import { Layout } from './components/layout/Layout'
 import { HomePage } from './pages/HomePage'
 import { SessionView } from './pages/SessionView'
+import { PrReviewView } from './pages/PrReviewView'
 import { SettingsOverlay } from './components/SettingsOverlay'
 import { CommandPalette } from './components/CommandPalette'
 import { useTabStore } from './store/tab-store'
 import { useIpcBridge } from './hooks/use-ipc-bridge'
+import { usePrReviewBridge } from './hooks/use-pr-review-bridge'
+import { useUiStore } from './store/ui-store'
 
 export default function App() {
   useIpcBridge()
+  usePrReviewBridge()
+  const sidebarView = useUiStore((s) => s.sidebarView)
 
   const { tabs, activeTabId, setActiveTab, addTab } = useTabStore()
   const activeTab = tabs.find((t) => t.id === activeTabId)
@@ -42,7 +47,9 @@ export default function App() {
   return (
     <>
       <Layout>
-        {activeTab && activeTab.cwd ? (
+        {sidebarView === 'pr-review' ? (
+          <PrReviewView />
+        ) : activeTab && activeTab.cwd ? (
           <SessionView key={activeTab.id} tab={activeTab} />
         ) : (
           <HomePage />
