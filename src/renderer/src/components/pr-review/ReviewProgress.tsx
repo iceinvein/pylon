@@ -72,30 +72,13 @@ const SEVERITY_CONFIG: Record<string, { icon: typeof AlertCircle; color: string;
   nitpick: { icon: Info, color: 'text-stone-400', bg: 'bg-stone-500/10' },
 }
 
-/** Extract partially-streamed findings from raw text as it arrives */
-function extractStreamFindings(text: string): { findings: StreamFinding[]; preamble: string } {
-  // Find the review-findings fence (variable backtick count)
-  const fenceMatch = text.match(/`{3,}review-findings/)
-  if (!fenceMatch || fenceMatch.index === undefined) {
-    return { findings: [], preamble: text }
-  }
-
-  const preamble = text.slice(0, fenceMatch.index).trim()
-  const jsonStart = text.indexOf('\n', fenceMatch.index) + 1
-  let jsonText = text.slice(jsonStart)
-
-  // Remove closing fence if present
-  const closingMatch = jsonText.match(/`{3,}/)
-  if (closingMatch && closingMatch.index !== undefined) {
-    jsonText = jsonText.slice(0, closingMatch.index)
-  }
-
-  jsonText = jsonText.trim()
-
-  // First, try parsing as a complete JSON array
+/** Parse a single review-findings JSON block (complete or partial) */
+function parseFindingsBlock(text: string): StreamFinding[] {
   const findings: StreamFinding[] = []
+
+  // Try complete JSON array first
   try {
-    const parsed = JSON.parse(jsonText)
+    const parsed = JSON.parse(text)
     if (Array.isArray(parsed)) {
       for (const obj of parsed) {
         findings.push({
@@ -106,22 +89,21 @@ function extractStreamFindings(text: string): { findings: StreamFinding[]; pream
           description: String(obj.description || ''),
         })
       }
-      return { findings, preamble }
+      return findings
     }
   } catch {
-    // Incomplete array — extract individual objects by balanced brace matching
+    // Incomplete — extract individual objects by balanced brace matching
   }
 
-  // Extract individual JSON objects by tracking brace depth (handles braces in strings)
   let i = 0
-  while (i < jsonText.length) {
-    if (jsonText[i] !== '{') { i++; continue }
+  while (i < text.length) {
+    if (text[i] !== '{') { i++; continue }
     let depth = 0
     let inString = false
     let escaped = false
     let j = i
-    for (; j < jsonText.length; j++) {
-      const ch = jsonText[j]
+    for (; j < text.length; j++) {
+      const ch = text[j]
       if (escaped) { escaped = false; continue }
       if (ch === '\\' && inString) { escaped = true; continue }
       if (ch === '"') { inString = !inString; continue }
@@ -129,8 +111,8 @@ function extractStreamFindings(text: string): { findings: StreamFinding[]; pream
       if (ch === '{') depth++
       else if (ch === '}') { depth--; if (depth === 0) break }
     }
-    if (depth === 0 && j < jsonText.length) {
-      const objStr = jsonText.slice(i, j + 1)
+    if (depth === 0 && j < text.length) {
+      const objStr = text.slice(i, j + 1)
       try {
         const obj = JSON.parse(objStr)
         if (obj.file || obj.title) {
@@ -145,8 +127,44 @@ function extractStreamFindings(text: string): { findings: StreamFinding[]; pream
       } catch { /* incomplete object, skip */ }
       i = j + 1
     } else {
-      break // unclosed brace — still streaming
+      break
     }
+  }
+  return findings
+}
+
+/**
+ * Extract findings from combined streaming text that may contain
+ * multiple review-findings blocks (one per agent, separated by ---).
+ */
+function extractStreamFindings(text: string): { findings: StreamFinding[]; preamble: string } {
+  const findings: StreamFinding[] = []
+  let preamble = ''
+
+  // Find ALL review-findings fences using a global regex
+  const fenceRegex = /`{3,}review-findings\s*\n/g
+  let match: RegExpExecArray | null
+  let firstFenceIdx = -1
+
+  while ((match = fenceRegex.exec(text)) !== null) {
+    if (firstFenceIdx === -1) firstFenceIdx = match.index
+
+    const jsonStart = match.index + match[0].length
+    const rest = text.slice(jsonStart)
+
+    // Find closing fence
+    const closingMatch = rest.match(/`{3,}/)
+    const jsonText = closingMatch && closingMatch.index !== undefined
+      ? rest.slice(0, closingMatch.index).trim()
+      : rest.trim()
+
+    findings.push(...parseFindingsBlock(jsonText))
+  }
+
+  if (firstFenceIdx > 0) {
+    preamble = text.slice(0, firstFenceIdx).trim()
+  } else if (findings.length === 0) {
+    preamble = text
   }
 
   return { findings, preamble }
@@ -158,18 +176,20 @@ export function ReviewProgress({ reviewId: _reviewId, onStop, isLive = true }: P
   const [expanded, setExpanded] = useState(isLive)
   const scrollRef = useRef<HTMLDivElement>(null)
 
-  const { findings, preamble } = useMemo(
+  const { findings } = useMemo(
     () => extractStreamFindings(streamingText),
     [streamingText]
   )
+
+  const hasRunningAgents = agentProgress.some((a) => a.status === 'running' || a.status === 'pending')
 
   useEffect(() => {
     if (isLive && scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
-  }, [streamingText, isLive])
+  }, [streamingText, isLive, findings.length])
 
-  if (!streamingText) {
+  if (!streamingText && !agentProgress.length) {
     if (!isLive) return null
     return (
       <div className="flex items-center gap-3 rounded-lg border border-stone-800 bg-stone-900/40 px-4 py-3">
@@ -228,6 +248,7 @@ export function ReviewProgress({ reviewId: _reviewId, onStop, isLive = true }: P
         />
       </button>
 
+      {/* Agent progress pills */}
       {agentProgress.length > 1 && (
         <div className="flex flex-wrap gap-2 border-t border-stone-800 px-3 py-2">
           {agentProgress.map((agent) => (
@@ -269,12 +290,7 @@ export function ReviewProgress({ reviewId: _reviewId, onStop, isLive = true }: P
               ref={scrollRef}
               className="min-h-0 flex-1 overflow-y-auto border-t border-stone-800"
             >
-              {preamble && (
-                <div className="border-b border-stone-800/50 px-4 py-3 text-xs leading-relaxed text-stone-500">
-                  {preamble}
-                </div>
-              )}
-
+              {/* Streamed findings as they arrive */}
               {findings.length > 0 && (
                 <div className="space-y-px">
                   {findings.map((f, i) => {
@@ -302,7 +318,8 @@ export function ReviewProgress({ reviewId: _reviewId, onStop, isLive = true }: P
                 </div>
               )}
 
-              {isLive && findings.length === 0 && !preamble && (
+              {/* Witty message while agents are still working */}
+              {isLive && hasRunningAgents && (
                 <div className="flex items-center gap-2 px-4 py-3 text-xs">
                   <Loader2 size={10} className="flex-shrink-0 animate-spin text-stone-500" />
                   <ReviewStatusMessage />
