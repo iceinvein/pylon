@@ -338,6 +338,11 @@ Output ONLY the review-findings block. Do not use any tools.`
     })
   }
 
+  resetAgentPrompt(focus: string): void {
+    const db = getDb()
+    db.prepare('DELETE FROM settings WHERE key = ?').run(`reviewAgent.${focus}`)
+  }
+
   stopReview(reviewId: string): void {
     const active = this.activeReviews.get(reviewId)
     if (!active) return

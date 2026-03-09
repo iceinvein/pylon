@@ -224,8 +224,8 @@ export function registerIpcHandlers(): void {
   })
 
   ipcMain.handle(IPC.GH_RESET_AGENT_PROMPT, async (_e, args: { focus: string }) => {
-    const db = getDb()
-    db.prepare('DELETE FROM settings WHERE key = ?').run(`reviewAgent.${args.focus}`)
+    const { prReviewManager } = await import('./pr-review-manager')
+    prReviewManager.resetAgentPrompt(args.focus)
     return true
   })
 
