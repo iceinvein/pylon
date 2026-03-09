@@ -4,6 +4,50 @@ import type {
   PrReview, ReviewFinding, ReviewFocus
 } from '../../../shared/types'
 
+/** Parse findings from raw streaming text (client-side fallback when main process fails) */
+function parseFindingsFromText(text: string): ReviewFinding[] {
+  // Find the review-findings fence
+  const fenceMatch = text.match(/`{3,}review-findings/)
+  let jsonStr: string | null = null
+
+  if (fenceMatch && fenceMatch.index !== undefined) {
+    const jsonStart = text.indexOf('\n', fenceMatch.index) + 1
+    let jsonText = text.slice(jsonStart)
+    const closingMatch = jsonText.match(/`{3,}/)
+    if (closingMatch && closingMatch.index !== undefined) {
+      jsonText = jsonText.slice(0, closingMatch.index)
+    }
+    jsonStr = jsonText.trim()
+  }
+
+  // Fallback: find outermost JSON array
+  if (!jsonStr) {
+    const arrayStart = text.indexOf('[')
+    const arrayEnd = text.lastIndexOf(']')
+    if (arrayStart !== -1 && arrayEnd > arrayStart) {
+      jsonStr = text.slice(arrayStart, arrayEnd + 1)
+    }
+  }
+
+  if (!jsonStr) return []
+
+  try {
+    const raw = JSON.parse(jsonStr) as Array<Record<string, unknown>>
+    if (!Array.isArray(raw)) return []
+    return raw.map((f) => ({
+      id: crypto.randomUUID(),
+      file: String(f.file || ''),
+      line: f.line != null ? Number(f.line) : null,
+      severity: (f.severity as ReviewFinding['severity']) || 'suggestion',
+      title: String(f.title || ''),
+      description: String(f.description || ''),
+      posted: false,
+    }))
+  } catch {
+    return []
+  }
+}
+
 type PrReviewStore = {
   ghStatus: GhCliStatus | null
   ghStatusLoading: boolean
@@ -18,7 +62,9 @@ type PrReviewStore = {
   reviews: PrReview[]
   activeReview: PrReview | null
   activeFindings: ReviewFinding[]
+  reviewStreamingText: string
   selectedFindingIds: Set<string>
+  agentProgress: Array<{ agentId: string; status: string; findingsCount: number; error?: string }>
   _loadPrsSeq: number
   _selectPrSeq: number
 
@@ -39,7 +85,7 @@ type PrReviewStore = {
   postFinding: (finding: ReviewFinding, repo: string, prNumber: number) => Promise<void>
   postSelectedAsReview: (repo: string, prNumber: number) => Promise<void>
   postAllAsReview: (repo: string, prNumber: number) => Promise<void>
-  handleReviewUpdate: (data: { reviewId: string; status: string; findings?: ReviewFinding[]; error?: string }) => void
+  handleReviewUpdate: (data: { reviewId: string; status: string; findings?: ReviewFinding[]; streamingText?: string; error?: string }) => void
 }
 
 export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
@@ -56,7 +102,9 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
   reviews: [],
   activeReview: null,
   activeFindings: [],
+  reviewStreamingText: '',
   selectedFindingIds: new Set(),
+  agentProgress: [],
   _loadPrsSeq: 0,
   _selectPrSeq: 0,
 
@@ -88,7 +136,7 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
   },
 
   setSelectedRepo: (repo) => {
-    set({ selectedRepo: repo, selectedPr: null, prDetail: null, activeReview: null, activeFindings: [], reviews: [] })
+    set({ selectedRepo: repo, selectedPr: null, prDetail: null, activeReview: null, activeFindings: [], reviewStreamingText: '', reviews: [], agentProgress: [] })
     get().loadPrs(repo ?? undefined)
   },
 
@@ -128,7 +176,7 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
 
   selectPr: async (pr) => {
     const seq = get()._selectPrSeq + 1
-    set({ selectedPr: pr, prDetail: null, activeReview: null, activeFindings: [], selectedFindingIds: new Set(), _selectPrSeq: seq })
+    set({ selectedPr: pr, prDetail: null, activeReview: null, activeFindings: [], reviewStreamingText: '', selectedFindingIds: new Set(), agentProgress: [], _selectPrSeq: seq })
     if (!pr) return
     set({ prDetailLoading: true })
     try {
@@ -148,47 +196,97 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
   },
 
   loadPrReviews: async (repo, prNumber) => {
-    const reviews = await window.api.listGhReviews(repo, prNumber)
-    set({ reviews })
-    const latest = reviews.find((r) => r.status === 'done')
-    if (latest) {
-      get().loadReview(latest.id)
+    try {
+      const reviews = await window.api.listGhReviews(repo, prNumber)
+      set({ reviews })
+      const latest = reviews.find((r) => r.status === 'done')
+      if (latest) {
+        get().loadReview(latest.id)
+      }
+    } catch (err) {
+      console.error('loadPrReviews failed:', err)
     }
   },
 
   startReview: async (repo, pr, focus) => {
-    const review = await window.api.startGhReview({
-      repo,
-      prNumber: pr.number,
-      prTitle: pr.title,
-      prUrl: pr.url,
-      focus,
-    })
-    set({ activeReview: review, activeFindings: [], selectedFindingIds: new Set() })
+    try {
+      const review = await window.api.startGhReview({
+        repo,
+        prNumber: pr.number,
+        prTitle: pr.title,
+        prUrl: pr.url,
+        focus,
+      })
+      set((s) => ({
+        activeReview: review,
+        activeFindings: [],
+        reviewStreamingText: '',
+        selectedFindingIds: new Set(),
+        agentProgress: [],
+        // Add to reviews list so it shows in history
+        reviews: [review, ...s.reviews],
+      }))
+    } catch (err) {
+      console.error('startReview failed:', err)
+    }
   },
 
   stopReview: async (reviewId) => {
-    await window.api.stopGhReview(reviewId)
-    set((s) => ({
-      activeReview: s.activeReview?.id === reviewId
-        ? { ...s.activeReview, status: 'error' }
-        : s.activeReview,
-    }))
+    try {
+      await window.api.stopGhReview(reviewId)
+      set((s) => ({
+        activeReview: s.activeReview?.id === reviewId
+          ? { ...s.activeReview, status: 'error' }
+          : s.activeReview,
+        reviewStreamingText: '',
+        agentProgress: [],
+        reviews: s.reviews.map((r) =>
+          r.id === reviewId ? { ...r, status: 'error' as const } : r
+        ),
+      }))
+    } catch (err) {
+      console.error('stopReview failed:', err)
+    }
   },
 
   loadReview: async (reviewId) => {
-    const review = await window.api.getGhReview(reviewId)
-    if (!review) return
-    set({ activeReview: review, activeFindings: review.findings, selectedFindingIds: new Set() })
+    try {
+      const review = await window.api.getGhReview(reviewId)
+      if (!review) return
+      const rawOutput = (review as any).rawOutput ?? ''
+      let findings = review.findings
+      // Fallback: if DB has no findings but raw output exists, parse client-side
+      if (findings.length === 0 && rawOutput) {
+        findings = parseFindingsFromText(rawOutput)
+        // Persist client-side parsed findings back to DB for future loads
+        if (findings.length > 0) {
+          window.api.saveGhFindings(reviewId, findings).catch(() => {})
+        }
+      }
+      set({
+        activeReview: review,
+        activeFindings: findings,
+        reviewStreamingText: rawOutput,
+        selectedFindingIds: new Set(),
+        agentProgress: [],
+      })
+    } catch (err) {
+      console.error('loadReview failed:', err)
+    }
   },
 
   deleteReview: async (reviewId) => {
-    await window.api.deleteGhReview(reviewId)
-    set((s) => ({
-      reviews: s.reviews.filter((r) => r.id !== reviewId),
-      activeReview: s.activeReview?.id === reviewId ? null : s.activeReview,
-      activeFindings: s.activeReview?.id === reviewId ? [] : s.activeFindings,
-    }))
+    try {
+      await window.api.deleteGhReview(reviewId)
+      set((s) => ({
+        reviews: s.reviews.filter((r) => r.id !== reviewId),
+        activeReview: s.activeReview?.id === reviewId ? null : s.activeReview,
+        activeFindings: s.activeReview?.id === reviewId ? [] : s.activeFindings,
+        reviewStreamingText: s.activeReview?.id === reviewId ? '' : s.reviewStreamingText,
+      }))
+    } catch (err) {
+      console.error('deleteReview failed:', err)
+    }
   },
 
   toggleFinding: (findingId) => {
@@ -257,10 +355,54 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
   handleReviewUpdate: (data) => {
     set((s) => {
       if (s.activeReview?.id !== data.reviewId) return s
-      return {
-        activeReview: { ...s.activeReview, status: data.status as PrReview['status'] },
-        activeFindings: data.findings ?? s.activeFindings,
+
+      const updatedReview = { ...s.activeReview, status: data.status as PrReview['status'] }
+      const updates: Partial<PrReviewStore> = {
+        activeReview: updatedReview,
       }
+
+      // Update streaming text during 'running'
+      if (data.streamingText !== undefined) {
+        updates.reviewStreamingText = data.streamingText
+      }
+
+      // Update agent progress if present
+      if ((data as any).agentProgress) {
+        updates.agentProgress = (data as any).agentProgress
+      }
+
+      // On error clear streaming text and agent progress; on done keep it (the raw output)
+      if (data.status === 'error') {
+        updates.reviewStreamingText = ''
+        updates.agentProgress = []
+      }
+
+      // Update findings when provided (on 'done')
+      if (data.status === 'done') {
+        let findings = data.findings ?? []
+        // Fallback: if main process returned no findings, parse client-side from streaming text
+        if (findings.length === 0) {
+          const streamText = data.streamingText ?? s.reviewStreamingText
+          if (streamText) {
+            findings = parseFindingsFromText(streamText)
+            // Persist client-side parsed findings back to DB
+            if (findings.length > 0) {
+              window.api.saveGhFindings(data.reviewId, findings).catch(() => {})
+            }
+          }
+        }
+        updates.activeFindings = findings
+        updates.agentProgress = (data as any).agentProgress ?? []
+      }
+
+      // Update the review in the reviews list
+      if (data.status === 'done' || data.status === 'error') {
+        updates.reviews = s.reviews.map((r) =>
+          r.id === data.reviewId ? { ...r, status: data.status as PrReview['status'] } : r
+        )
+      }
+
+      return updates
     })
   },
 }))
