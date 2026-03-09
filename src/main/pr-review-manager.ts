@@ -55,11 +55,20 @@ Be thorough but avoid false positives. Only flag issues you're confident about.`
 Be thorough but avoid false positives. Only flag issues you're confident about.`,
 }
 
+type AgentSession = {
+  focus: ReviewFocus
+  sessionId: string
+  status: 'running' | 'done' | 'error'
+  findings: ReviewFinding[]
+  streamedText: string
+  error?: string
+}
+
 type ActiveReviewSession = {
   reviewId: string
-  sessionId: string
   repoFullName: string
   prNumber: number
+  agents: Map<ReviewFocus, AgentSession>
 }
 
 class PrReviewManager {
@@ -98,12 +107,12 @@ class PrReviewManager {
       'INSERT INTO pr_reviews (id, repo_full_name, pr_number, pr_title, pr_url, focus, status, started_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
     ).run(reviewId, repo.fullName, prNumber, prTitle, prUrl, JSON.stringify(focusAreas), 'running', now, now)
 
-    const sessionId = await sessionManager.createSession(repo.projectPath)
-    sessionManager.setPermissionMode(sessionId, 'auto-approve')
-
-    db.prepare('UPDATE pr_reviews SET session_id = ? WHERE id = ?').run(sessionId, reviewId)
-
-    this.activeReviews.set(reviewId, { reviewId, sessionId, repoFullName: repo.fullName, prNumber })
+    this.activeReviews.set(reviewId, {
+      reviewId,
+      repoFullName: repo.fullName,
+      prNumber,
+      agents: new Map(),
+    })
 
     const review: PrReview = {
       id: reviewId,
@@ -114,15 +123,21 @@ class PrReviewManager {
       status: 'running',
       focus: focusAreas,
       findings: [],
-      sessionId,
+      sessionId: null,
       startedAt: now,
       completedAt: null,
       createdAt: now,
     }
 
-    this.send(IPC.GH_REVIEW_UPDATE, { reviewId, status: 'running', findings: [], streamingText: '' })
+    this.send(IPC.GH_REVIEW_UPDATE, {
+      reviewId,
+      status: 'running',
+      findings: [],
+      streamingText: '',
+      agentProgress: focusAreas.map((f) => ({ agentId: f, status: 'pending', findingsCount: 0 })),
+    })
 
-    this.runReview(reviewId, repo, prNumber, focusAreas, sessionId).catch((err) => {
+    this.runParallelReview(reviewId, repo, prNumber, focusAreas).catch((err) => {
       console.error('Review failed:', err)
       this.updateReviewStatus(reviewId, 'error', Date.now())
       this.send(IPC.GH_REVIEW_UPDATE, { reviewId, status: 'error', error: String(err) })
@@ -131,17 +146,17 @@ class PrReviewManager {
     return review
   }
 
-  private async runReview(
+  private async runParallelReview(
     reviewId: string,
     repo: GhRepo,
     prNumber: number,
-    focusAreas: ReviewFocus[],
-    sessionId: string
+    focusAreas: ReviewFocus[]
   ): Promise<void> {
     this.send(IPC.GH_REVIEW_UPDATE, {
       reviewId,
       status: 'running',
       streamingText: 'Fetching PR diff...',
+      agentProgress: focusAreas.map((f) => ({ agentId: f, status: 'pending', findingsCount: 0 })),
     })
 
     const detail = await getPrDetail(repo.fullName, prNumber)
@@ -154,11 +169,92 @@ class PrReviewManager {
       truncated = true
     }
 
-    const focusStr = focusAreas.length > 0
-      ? `Focus your review on: ${focusAreas.join(', ')}.`
-      : 'Perform a general code review.'
+    const active = this.activeReviews.get(reviewId)
+    if (!active) return
 
-    const prompt = `You are reviewing a GitHub pull request. Analyze the changes and produce structured findings.
+    const agentPromises = focusAreas.map((focus) =>
+      this.runAgentSession(reviewId, repo, detail, diff, truncated, focus, active)
+    )
+
+    const results = await Promise.allSettled(agentPromises)
+
+    // Merge findings from all agents
+    const allFindings: ReviewFinding[] = []
+    let allFailed = true
+
+    for (const result of results) {
+      if (result.status === 'fulfilled') {
+        allFindings.push(...result.value)
+        allFailed = false
+      }
+    }
+
+    if (allFailed && results.length > 0) {
+      this.updateReviewStatus(reviewId, 'error', Date.now())
+      this.send(IPC.GH_REVIEW_UPDATE, { reviewId, status: 'error', error: 'All review agents failed' })
+      this.activeReviews.delete(reviewId)
+      return
+    }
+
+    const deduped = this.deduplicateFindings(allFindings)
+
+    // Persist findings
+    const db = getDb()
+    const insertFinding = db.prepare(
+      'INSERT INTO pr_review_findings (id, review_id, file, line, severity, title, description) VALUES (?, ?, ?, ?, ?, ?, ?)'
+    )
+    for (const f of deduped) {
+      insertFinding.run(f.id, reviewId, f.file, f.line, f.severity, f.title, f.description)
+    }
+
+    this.updateReviewStatus(reviewId, 'done', Date.now())
+
+    this.send(IPC.GH_REVIEW_UPDATE, {
+      reviewId,
+      status: 'done',
+      findings: deduped,
+      agentProgress: focusAreas.map((f) => {
+        const agent = active.agents.get(f)
+        return {
+          agentId: f,
+          status: agent?.status ?? 'done',
+          findingsCount: agent?.findings.length ?? 0,
+          error: agent?.error,
+        }
+      }),
+    })
+    this.activeReviews.delete(reviewId)
+  }
+
+  private async runAgentSession(
+    reviewId: string,
+    repo: GhRepo,
+    detail: Awaited<ReturnType<typeof getPrDetail>>,
+    diff: string,
+    truncated: boolean,
+    focus: ReviewFocus,
+    active: ActiveReviewSession
+  ): Promise<ReviewFinding[]> {
+    const sessionId = await sessionManager.createSession(repo.projectPath)
+    sessionManager.setPermissionMode(sessionId, 'auto-approve')
+
+    const agentSession: AgentSession = {
+      focus,
+      sessionId,
+      status: 'running',
+      findings: [],
+      streamedText: '',
+    }
+    active.agents.set(focus, agentSession)
+
+    this.sendAgentProgress(reviewId, active)
+
+    const specialistPrompt = this.getAgentPrompt(focus)
+
+    const prompt = `You are reviewing a GitHub pull request as a **${focus}** specialist.
+
+## Specialist Instructions
+${specialistPrompt}
 
 ## PR Information
 - **Title:** ${detail.title}
@@ -177,17 +273,13 @@ ${truncated ? 'Diff truncated to 50,000 lines.\n\n' : ''}\`\`\`diff
 ${diff}
 \`\`\`
 
-## Instructions
-${focusStr}
-
-Review the diff above and output your findings as a JSON array inside a fenced code block tagged \`review-findings\`. Each finding should have:
+## Output Format
+Output your findings as a JSON array inside a fenced code block tagged \`review-findings\`. Each finding should have:
 - \`file\`: the file path (string)
 - \`line\`: the line number in the new file, or null for general findings (number | null)
 - \`severity\`: one of "critical", "warning", "suggestion", "nitpick"
 - \`title\`: short title (string)
 - \`description\`: detailed explanation (string)
-
-Example output format:
 
 \`\`\`review-findings
 [
@@ -197,71 +289,86 @@ Example output format:
 
 Output ONLY the review-findings block. Do not use any tools.`
 
-    // Subscribe to session messages to stream Claude's output to the renderer.
-    // The SDK streams via 'stream_event' messages with text deltas.
-    // We accumulate these for real-time display and also use the accumulated
-    // text to parse findings (more reliable than re-reading from DB).
-    let streamedText = ''
     let lastSendTime = 0
     const unsub = sessionManager.onMessage(sessionId, (message: unknown) => {
       const msg = message as Record<string, unknown>
-
       if (msg.type === 'stream_event') {
         const event = msg.event as Record<string, unknown> | undefined
         const delta = event?.delta as Record<string, unknown> | undefined
         if (delta?.type === 'text_delta' && typeof delta.text === 'string') {
-          streamedText += delta.text
+          agentSession.streamedText += delta.text
           const now = Date.now()
           if (now - lastSendTime > STREAM_THROTTLE_MS) {
             lastSendTime = now
-            this.send(IPC.GH_REVIEW_UPDATE, {
-              reviewId,
-              status: 'running',
-              streamingText: streamedText,
-            })
+            this.sendAgentProgress(reviewId, active)
           }
         }
       }
     })
 
     try {
-      this.send(IPC.GH_REVIEW_UPDATE, {
-        reviewId,
-        status: 'running',
-        streamingText: 'Analyzing diff...',
-      })
-
       await sessionManager.sendMessage(sessionId, prompt)
+      agentSession.findings = this.parseFindings(agentSession.streamedText)
+      agentSession.status = 'done'
+    } catch (err) {
+      agentSession.status = 'error'
+      agentSession.error = String(err)
+      console.error(`Agent ${focus} failed:`, err)
     } finally {
       unsub()
     }
 
-    // Parse findings directly from the accumulated stream text.
-    // This is more reliable than extractFindingsFromSession() which depends
-    // on the SDK's message structure in the DB.
-    const findings = this.parseFindings(streamedText)
+    this.sendAgentProgress(reviewId, active)
+    return agentSession.findings
+  }
 
-    const db = getDb()
+  private sendAgentProgress(reviewId: string, active: ActiveReviewSession): void {
+    const agentProgress = Array.from(active.agents.entries()).map(([focus, agent]) => ({
+      agentId: focus,
+      status: agent.status,
+      findingsCount: agent.findings.length,
+      error: agent.error,
+    }))
 
-    // Persist findings
-    const insertFinding = db.prepare(
-      'INSERT INTO pr_review_findings (id, review_id, file, line, severity, title, description) VALUES (?, ?, ?, ?, ?, ?, ?)'
-    )
-    for (const f of findings) {
-      insertFinding.run(f.id, reviewId, f.file, f.line, f.severity, f.title, f.description)
-    }
-
-    // Persist raw output and mark done
-    db.prepare('UPDATE pr_reviews SET raw_output = ? WHERE id = ?').run(streamedText, reviewId)
-    this.updateReviewStatus(reviewId, 'done', Date.now())
+    const streamingText = Array.from(active.agents.values())
+      .map((a) => a.streamedText)
+      .filter(Boolean)
+      .join('\n\n---\n\n')
 
     this.send(IPC.GH_REVIEW_UPDATE, {
       reviewId,
-      status: 'done',
-      findings,
-      streamingText: streamedText,
+      status: 'running',
+      streamingText,
+      agentProgress,
     })
-    this.activeReviews.delete(reviewId)
+  }
+
+  private deduplicateFindings(findings: ReviewFinding[]): ReviewFinding[] {
+    const SEVERITY_RANK: Record<string, number> = { critical: 0, warning: 1, suggestion: 2, nitpick: 3 }
+    const grouped = new Map<string, ReviewFinding>()
+
+    for (const f of findings) {
+      const key = `${f.file}:${f.line ?? 'null'}`
+      const existing = grouped.get(key)
+      if (!existing) {
+        grouped.set(key, f)
+      } else {
+        const existingRank = SEVERITY_RANK[existing.severity] ?? 99
+        const newRank = SEVERITY_RANK[f.severity] ?? 99
+        if (newRank < existingRank) {
+          grouped.set(key, {
+            ...f,
+            description: f.description + `\n\n_Also flagged by another agent:_ ${existing.title}`,
+          })
+        } else {
+          grouped.set(key, {
+            ...existing,
+            description: existing.description + `\n\n_Also flagged by another agent:_ ${f.title}`,
+          })
+        }
+      }
+    }
+    return Array.from(grouped.values())
   }
 
   private parseFindings(text: string): ReviewFinding[] {
@@ -314,8 +421,7 @@ Output ONLY the review-findings block. Do not use any tools.`
     }
   }
 
-  /** Used by parallel review agents (Task 2+) to get per-focus prompt */
-  getAgentPrompt(focus: ReviewFocus): string {
+  private getAgentPrompt(focus: ReviewFocus): string {
     const db = getDb()
     const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(`reviewAgent.${focus}`) as { value: string } | undefined
     return row?.value || DEFAULT_AGENT_PROMPTS[focus] || DEFAULT_AGENT_PROMPTS.general
@@ -346,7 +452,9 @@ Output ONLY the review-findings block. Do not use any tools.`
   stopReview(reviewId: string): void {
     const active = this.activeReviews.get(reviewId)
     if (!active) return
-    sessionManager.stopSession(active.sessionId)
+    for (const agent of active.agents.values()) {
+      sessionManager.stopSession(agent.sessionId)
+    }
     this.updateReviewStatus(reviewId, 'error', Date.now())
     this.activeReviews.delete(reviewId)
     this.send(IPC.GH_REVIEW_UPDATE, { reviewId, status: 'error', error: 'Review stopped by user' })
