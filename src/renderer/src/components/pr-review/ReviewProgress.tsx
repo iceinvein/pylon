@@ -263,6 +263,11 @@ export function ReviewProgress({ reviewId: _reviewId, onStop, isLive = true }: P
               {agent.status === 'done' && <CheckCircle2 size={9} />}
               {agent.status === 'error' && <XCircle size={9} />}
               <span className="capitalize">{agent.agentId}</span>
+              {agent.status === 'running' && agent.totalChunks != null && agent.totalChunks > 1 && (
+                <span className="tabular-nums opacity-70">
+                  {agent.currentChunk}/{agent.totalChunks}
+                </span>
+              )}
               {agent.status === 'done' && agent.findingsCount > 0 && (
                 <span className="tabular-nums">{agent.findingsCount}</span>
               )}

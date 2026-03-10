@@ -67,7 +67,7 @@ type PrReviewStore = {
   activeFindings: ReviewFinding[]
   reviewStreamingText: string
   selectedFindingIds: Set<string>
-  agentProgress: Array<{ agentId: string; status: string; findingsCount: number; error?: string }>
+  agentProgress: Array<{ agentId: string; status: string; findingsCount: number; error?: string; currentChunk?: number; totalChunks?: number }>
   _loadPrsSeq: number
   _selectPrSeq: number
 

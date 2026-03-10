@@ -227,6 +227,10 @@ export type ReviewAgentProgress = {
   status: 'pending' | 'running' | 'done' | 'error'
   findingsCount: number
   error?: string
+  /** Current chunk being reviewed (1-indexed), undefined if single-chunk */
+  currentChunk?: number
+  /** Total chunks for this agent, undefined if single-chunk */
+  totalChunks?: number
 }
 
 // ── Plan Review ──────────────────────────────
