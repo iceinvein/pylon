@@ -14,6 +14,8 @@ import { useUiStore } from '../store/ui-store'
 import type { AppSettings, Tab, Attachment, ImageAttachment, PermissionMode } from '../../../shared/types'
 
 const emptyFiles: string[] = []
+const MIN_REVIEW_WIDTH = 360
+const MAX_REVIEW_WIDTH = 700
 
 type SessionViewProps = {
   tab: Tab
@@ -178,8 +180,6 @@ export function SessionView({ tab }: SessionViewProps) {
   const reviewPanelPlan = useUiStore((s) => s.reviewPanelPlan)
   const showReview = reviewPanelPlan !== null && reviewPanelPlan.sessionId === sessionId
   const [reviewPanelWidth, setReviewPanelWidth] = useState(480)
-  const MIN_REVIEW_WIDTH = 360
-  const MAX_REVIEW_WIDTH = 700
   const dragging = useRef(false)
   const dragStartX = useRef(0)
   const dragStartWidth = useRef(0)

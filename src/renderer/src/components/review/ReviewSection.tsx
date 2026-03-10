@@ -90,7 +90,6 @@ export function ReviewSection({ index, title, body, comment, onSetComment }: Rev
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={handleKeyDown}
-            onBlur={handleSave}
             placeholder="Add your feedback..."
             className="w-full resize-none rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs leading-relaxed text-stone-200 outline-none placeholder:text-stone-600 focus:border-amber-500/50"
             rows={2}

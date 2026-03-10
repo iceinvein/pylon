@@ -350,20 +350,18 @@ export const ChatView = memo(function ChatView({ sessionId }: ChatViewProps) {
   function renderAssistantContent(content: AssistantContentBlock[]) {
     const hasAgentBlocks = content.some((b) => b.type === 'tool_use' && b.name === 'Agent')
 
-    if (!hasAgentBlocks) {
-      const hasPlanBlocks = content.some((b) =>
-        b.type === 'tool_use' && b.id && detectedPlans.some((p) => p.toolUseId === b.id)
-      )
+    const hasPlanBlocks = content.some((b) =>
+      b.type === 'tool_use' && b.id && detectedPlans.some((p) => p.toolUseId === b.id)
+    )
 
-      if (!hasPlanBlocks) {
-        return (
-          <AssistantMessage
-            content={content}
-            sessionId={sessionId}
-            toolResultMap={toolResultMap}
-          />
-        )
-      }
+    if (!hasAgentBlocks && !hasPlanBlocks) {
+      return (
+        <AssistantMessage
+          content={content}
+          sessionId={sessionId}
+          toolResultMap={toolResultMap}
+        />
+      )
     }
 
     // Render message normally but replace Agent tool_use blocks with SubagentBlock cards

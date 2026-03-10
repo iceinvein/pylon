@@ -40,6 +40,8 @@ export function parsePlanSections(markdown: string): PlanSection[] {
   let currentChild: PlanSection | null = null
   let bodyLines: string[] = []
   let skipH1 = true
+  let inFrontmatter = false
+  let seenFrontmatterStart = false
 
   function flushBody() {
     const text = bodyLines.join('\n').trim()
@@ -52,10 +54,18 @@ export function parsePlanSections(markdown: string): PlanSection[] {
   }
 
   for (const line of lines) {
-    // Skip frontmatter
+    // Track YAML frontmatter block (delimited by two --- lines)
     if (line.startsWith('---') && sections.length === 0 && !current) {
-      continue
+      if (!seenFrontmatterStart) {
+        seenFrontmatterStart = true
+        inFrontmatter = true
+        continue
+      } else if (inFrontmatter) {
+        inFrontmatter = false
+        continue
+      }
     }
+    if (inFrontmatter) continue
 
     // H1 — skip the document title (first H1 only)
     if (line.startsWith('# ') && !line.startsWith('## ')) {

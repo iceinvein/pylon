@@ -1,5 +1,6 @@
 import { ipcMain, dialog, BrowserWindow } from 'electron'
 import { readFile } from 'fs/promises'
+import path from 'path'
 import { IPC } from '../shared/ipc-channels'
 import { getDb } from './db'
 import { sessionManager } from './session-manager'
@@ -98,14 +99,15 @@ export function registerIpcHandlers(): void {
   })
 
   ipcMain.handle(IPC.FILE_READ_PLAN, async (_e, args: { path: string }) => {
-    // Security: only allow reading plan/design files
-    const p = args.path.toLowerCase()
+    // Security: resolve to canonical path to prevent traversal attacks
+    const resolved = path.resolve(args.path)
+    const p = resolved.toLowerCase()
     const isInPlansDir = p.includes('/plans/') || p.includes('/specs/')
     const hasPlanSuffix = p.endsWith('-plan.md') || p.endsWith('-design.md')
-    if (!isInPlansDir && !hasPlanSuffix) {
+    if (!(isInPlansDir || hasPlanSuffix) || !p.endsWith('.md')) {
       throw new Error('Not a plan file path')
     }
-    const buffer = await readFile(args.path)
+    const buffer = await readFile(resolved)
     return buffer.toString('utf-8')
   })
 

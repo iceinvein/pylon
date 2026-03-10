@@ -22,30 +22,33 @@ export function ReviewPanel() {
   const canAct = session?.status === 'running' || session?.status === 'waiting' || session?.status === 'done'
 
   const [sections, setSections] = useState<PlanSection[]>([])
-  const [comments, setComments] = useState<Map<number, string>>(new Map())
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  // Local comments map — initialized from store, synced back on submit
+  const [comments, setComments] = useState<Map<number, string>>(() => {
+    const map = new Map<number, string>()
+    if (plan) {
+      for (const c of plan.comments) map.set(c.sectionIndex, c.comment)
+    }
+    return map
+  })
 
   // Load and parse the plan file
   useEffect(() => {
     if (!filePath) return
     setLoading(true)
+    setError(null)
     window.api.readPlanFile(filePath)
       .then((content) => {
         setSections(parsePlanSections(content))
         setLoading(false)
       })
-      .catch(() => setLoading(false))
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : 'Failed to read plan file')
+        setLoading(false)
+      })
   }, [filePath])
-
-  // Sync comments from store when plan changes
-  useEffect(() => {
-    if (!plan) return
-    const map = new Map<number, string>()
-    for (const c of plan.comments) {
-      map.set(c.sectionIndex, c.comment)
-    }
-    setComments(map)
-  }, [plan?.comments.length])
 
   // Flatten sections for display: show top-level, and children if they exist
   const flatSections = sections.flatMap((section) =>
@@ -128,6 +131,7 @@ export function ReviewPanel() {
         <button
           onClick={closeReviewPanel}
           className="rounded p-1 text-stone-600 transition-colors hover:bg-stone-800 hover:text-stone-300"
+          aria-label="Close review panel"
         >
           <X size={16} />
         </button>
@@ -139,6 +143,11 @@ export function ReviewPanel() {
           <div className="flex items-center justify-center py-12 text-xs text-stone-600">
             Loading plan...
           </div>
+        ) : error ? (
+          <div className="flex flex-col items-center justify-center gap-2 px-4 py-12">
+            <span className="text-xs text-red-400">Failed to load plan</span>
+            <span className="text-[11px] text-stone-600">{error}</span>
+          </div>
         ) : flatSections.length === 0 ? (
           <div className="flex items-center justify-center py-12 text-xs text-stone-600">
             No sections found in plan file
@@ -147,7 +156,7 @@ export function ReviewPanel() {
           <div className="divide-y divide-stone-800/60">
             {flatSections.map((section, i) => (
               <ReviewSection
-                key={i}
+                key={`${section.level}-${section.title}`}
                 index={i}
                 title={section.title}
                 body={section.body}
