@@ -178,11 +178,26 @@ export function buildFlowGraph(messages: unknown[], isStreaming: boolean): FlowG
   // ── Convert groups to FlowNodes ──
   let nodeId = 0
 
+  function uniqueFiles(blocks: ClassifiedBlock[]): string[] {
+    const seen = new Set<string>()
+    for (const b of blocks) {
+      if (b.summary) seen.add(b.summary)
+    }
+    return [...seen]
+  }
+
   function makeLabel(type: ActivityType, count: number, blocks: ClassifiedBlock[]): string {
     switch (type) {
-      case 'explore': return count === 1 ? `Searched ${blocks[0].summary}` : `Explored ${count} files`
+      case 'explore': {
+        const files = uniqueFiles(blocks)
+        return files.length === 1 ? `Searched ${files[0]}` : `Explored ${files.length} files`
+      }
       case 'think': return 'Analyzed approach'
-      case 'edit': return count === 1 ? `Modified ${blocks[0].summary}` : `Modified ${count} files`
+      case 'edit': {
+        const files = uniqueFiles(blocks)
+        if (files.length === 1) return `Edited ${files[0]}`
+        return `Edited ${files.length} files`
+      }
       case 'execute': return count === 1 ? blocks[0].summary || 'Ran command' : `Ran ${count} commands`
       case 'subagent': return `Agent: ${blocks[0].summary || 'task'}`
       case 'task-list': return count === 1 ? `Tasks ${blocks[0].summary || 'updated'}` : `Tasks updated ${count}x`
