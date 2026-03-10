@@ -15,6 +15,9 @@ import { isCommitRequest, hasGitCommitTools, CommitCard } from '../tools/CommitC
 import { Zap, Minimize2 } from 'lucide-react'
 import { detectChoices } from '../../lib/detect-choices'
 import { ChoiceButtons } from './ChoiceButtons'
+import { PlanCard } from '../tools/PlanCard'
+import { parsePlanSections } from '../../lib/parse-plan'
+import type { DetectedPlan } from '../../../../shared/types'
 import { useUiStore } from '../../store/ui-store'
 
 type SdkMessage = {
@@ -80,6 +83,7 @@ export const ChatView = memo(function ChatView({ sessionId }: ChatViewProps) {
   const pendingQuestions = useSessionStore((s) => s.pendingQuestions)
   const sessionPermissions = pendingPermissions.filter((p) => p.sessionId === sessionId)
   const sessionQuestions = pendingQuestions.filter((q) => q.sessionId === sessionId)
+  const detectedPlans = useSessionStore((s) => s.detectedPlans.get(sessionId)) ?? []
   const bottomRef = useRef<HTMLDivElement>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const isNearBottomRef = useRef(true)
@@ -134,6 +138,31 @@ export const ChatView = memo(function ChatView({ sessionId }: ChatViewProps) {
   }, [sessionMessages, visibleMessages])
 
   const toolResultMap = useMemo(() => buildToolResultMap(sessionMessages), [sessionMessages])
+
+  const planSectionTitles = useMemo(() => {
+    const map = new Map<string, string[]>()
+    for (const plan of detectedPlans) {
+      const toolUseMsg = sessionMessages.find((raw) => {
+        const msg = raw as SdkMessage
+        if (msg.type !== 'assistant') return false
+        const content = (msg.message?.content ?? msg.content ?? []) as AssistantContentBlock[]
+        return content.some((b) => b.type === 'tool_use' && b.id === plan.toolUseId)
+      }) as SdkMessage | undefined
+
+      if (!toolUseMsg) continue
+      const content = (toolUseMsg.message?.content ?? toolUseMsg.content ?? []) as AssistantContentBlock[]
+      const block = content.find((b) => b.type === 'tool_use' && b.id === plan.toolUseId)
+      const fileContent = String(block?.input?.content ?? '')
+      if (fileContent) {
+        const sections = parsePlanSections(fileContent)
+        const titles = sections.flatMap((s) =>
+          s.children && s.children.length > 0 ? s.children.map((c) => c.title) : [s.title]
+        )
+        map.set(plan.toolUseId, titles)
+      }
+    }
+    return map
+  }, [detectedPlans, sessionMessages])
 
   // Detect skill content messages injected by the SDK after Skill tool invocations.
   // Flow: assistant calls Skill tool → tool_result "Launching skill: X" → SDK injects
@@ -323,13 +352,19 @@ export const ChatView = memo(function ChatView({ sessionId }: ChatViewProps) {
     const hasAgentBlocks = content.some((b) => b.type === 'tool_use' && b.name === 'Agent')
 
     if (!hasAgentBlocks) {
-      return (
-        <AssistantMessage
-          content={content}
-          sessionId={sessionId}
-          toolResultMap={toolResultMap}
-        />
+      const hasPlanBlocks = content.some((b) =>
+        b.type === 'tool_use' && b.id && detectedPlans.some((p) => p.toolUseId === b.id)
       )
+
+      if (!hasPlanBlocks) {
+        return (
+          <AssistantMessage
+            content={content}
+            sessionId={sessionId}
+            toolResultMap={toolResultMap}
+          />
+        )
+      }
     }
 
     // Render message normally but replace Agent tool_use blocks with SubagentBlock cards
@@ -359,6 +394,10 @@ export const ChatView = memo(function ChatView({ sessionId }: ChatViewProps) {
             return null
           }
           if (block.type === 'tool_use') {
+            const matchedPlan = block.id ? detectedPlans.find((p) => p.toolUseId === block.id) : undefined
+            if (matchedPlan) {
+              return <PlanCard key={i} plan={matchedPlan} sessionId={sessionId} sectionTitles={planSectionTitles.get(matchedPlan.toolUseId) ?? []} />
+            }
             return (
               <ToolUseBlock
                 key={i}
