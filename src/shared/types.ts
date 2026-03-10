@@ -228,3 +228,28 @@ export type ReviewAgentProgress = {
   findingsCount: number
   error?: string
 }
+
+// ── Plan Review ──────────────────────────────
+
+export type PlanReviewStatus = 'pending' | 'approved' | 'changes_requested'
+
+export type PlanComment = {
+  sectionIndex: number
+  sectionTitle: string
+  comment: string
+}
+
+export type DetectedPlan = {
+  filePath: string
+  relativePath: string
+  toolUseId: string
+  status: PlanReviewStatus
+  comments: PlanComment[]
+}
+
+export type PlanSection = {
+  level: number
+  title: string
+  body: string
+  children?: PlanSection[]
+}
