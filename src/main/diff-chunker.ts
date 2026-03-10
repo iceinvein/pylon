@@ -72,7 +72,6 @@ const SKIP_PATTERNS = [
   /\.min\./,
   /\.map$/,
   /\.snap$/,
-  /^generated\//,
   /(^|\/)generated\//,
   /^coverage\//,
   /^dist\//,
