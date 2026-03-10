@@ -7,11 +7,14 @@ type UiStore = {
   settingsOpen: boolean
   sidebarView: SidebarView
   draftText: string | null
+  reviewPanelPlan: { sessionId: string; filePath: string } | null
 
   toggleCommandPalette: () => void
   setSettingsOpen: (open: boolean) => void
   setSidebarView: (view: SidebarView) => void
   setDraftText: (text: string | null) => void
+  openReviewPanel: (sessionId: string, filePath: string) => void
+  closeReviewPanel: () => void
 }
 
 export const useUiStore = create<UiStore>((set) => ({
@@ -19,6 +22,7 @@ export const useUiStore = create<UiStore>((set) => ({
   settingsOpen: false,
   sidebarView: 'home',
   draftText: null,
+  reviewPanelPlan: null,
 
   toggleCommandPalette: () =>
     set((state) => ({ commandPaletteOpen: !state.commandPaletteOpen })),
@@ -28,4 +32,7 @@ export const useUiStore = create<UiStore>((set) => ({
   setSidebarView: (view) => set({ sidebarView: view }),
 
   setDraftText: (text) => set({ draftText: text }),
+
+  openReviewPanel: (sessionId, filePath) => set({ reviewPanelPlan: { sessionId, filePath } }),
+  closeReviewPanel: () => set({ reviewPanelPlan: null }),
 }))
