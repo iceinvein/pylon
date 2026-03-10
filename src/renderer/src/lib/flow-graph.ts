@@ -129,19 +129,7 @@ export function buildFlowGraph(messages: unknown[], isStreaming: boolean): FlowG
       }
     }
 
-    if (msg.type === 'result') {
-      const cost = msg.total_cost_usd
-      const duration = msg.duration_ms
-      const label = msg.is_error
-        ? `Error: ${String(msg.error ?? '').slice(0, 40)}`
-        : `Done${cost ? ` — $${(cost as number).toFixed(2)}` : ''}${duration ? `, ${Math.round((duration as number) / 1000)}s` : ''}`
-      classified.push({
-        activityType: 'result',
-        toolName: 'result',
-        summary: label,
-        messageIndex: i,
-      })
-    }
+    // Skip result messages — they clutter the flow chart
   }
 
   if (classified.length === 0) return { elements: [] }
