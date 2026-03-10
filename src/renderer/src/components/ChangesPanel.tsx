@@ -1,24 +1,26 @@
-import { useState, useCallback, useMemo, useEffect } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { log } from '../../../shared/logger'
+
 const logger = log.child('changes-panel')
-import { motion, AnimatePresence } from 'motion/react'
+
 import {
-  ArrowLeft,
-  RefreshCw,
-  FileText,
-  FilePlus,
-  FileMinus,
-  FileSymlink,
-  FileQuestion,
-  GitMerge,
-  Trash2,
   AlertTriangle,
+  ArrowLeft,
   Check,
+  FileMinus,
+  FilePlus,
+  FileQuestion,
+  FileSymlink,
+  FileText,
+  GitMerge,
   Loader2,
+  RefreshCw,
+  Trash2,
 } from 'lucide-react'
+import { AnimatePresence, motion } from 'motion/react'
+import { computeDiffHunks, parseUnifiedDiff } from '../lib/diff-utils'
 import { useSessionStore } from '../store/session-store'
 import { useTabStore } from '../store/tab-store'
-import { computeDiffHunks, parseUnifiedDiff } from '../lib/diff-utils'
 import { DiffView } from './DiffView'
 
 type FileDiffData = {
@@ -91,7 +93,9 @@ function FileDiffView({ filePath, sessionCwd, sessionId, status, onBack }: FileD
   }, [sessionId, filePath, setCachedDiff])
 
   // Fetch on mount only if not cached
-  useState(() => { if (!cached) fetchDiff() })
+  useState(() => {
+    if (!cached) fetchDiff()
+  })
 
   const hunks = useMemo(() => {
     if (!diffData?.diff) return []
@@ -105,8 +109,9 @@ function FileDiffView({ filePath, sessionCwd, sessionId, status, onBack }: FileD
   return (
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header with back + filename + refresh */}
-      <div className="flex items-center gap-2 border-b border-stone-800 px-2 py-2">
+      <div className="flex items-center gap-2 border-stone-800 border-b px-2 py-2">
         <button
+          type="button"
           onClick={onBack}
           className="flex-shrink-0 rounded p-1 text-stone-500 transition-colors hover:bg-stone-800 hover:text-stone-300"
           title="Back to file list"
@@ -114,10 +119,11 @@ function FileDiffView({ filePath, sessionCwd, sessionId, status, onBack }: FileD
           <ArrowLeft size={14} />
         </button>
         <Icon size={13} className={`flex-shrink-0 ${iconColor}`} />
-        <span className="min-w-0 flex-1 truncate font-[family-name:var(--font-mono)] text-xs text-stone-300">
+        <span className="min-w-0 flex-1 truncate font-[family-name:var(--font-mono)] text-stone-300 text-xs">
           {relativePath}
         </span>
         <button
+          type="button"
           onClick={fetchDiff}
           className="flex-shrink-0 rounded p-1 text-stone-600 transition-colors hover:bg-stone-800 hover:text-stone-400"
           title="Refresh diff"
@@ -133,7 +139,7 @@ function FileDiffView({ filePath, sessionCwd, sessionId, status, onBack }: FileD
             <RefreshCw size={16} className="animate-spin text-stone-600" />
           </div>
         ) : error ? (
-          <div className="px-4 py-8 text-center text-xs text-red-400">{error}</div>
+          <div className="px-4 py-8 text-center text-red-400 text-xs">{error}</div>
         ) : (
           <DiffView hunks={hunks} />
         )}
@@ -168,6 +174,7 @@ function FileRow({ filePath, sessionCwd, status, onSelect }: FileRowProps) {
 
   return (
     <button
+      type="button"
       onClick={onSelect}
       className="group flex w-full items-center gap-2 rounded px-2 py-1.5 text-left transition-colors hover:bg-stone-800/60"
     >
@@ -176,7 +183,9 @@ function FileRow({ filePath, sessionCwd, status, onSelect }: FileRowProps) {
         {dir && <span className="text-stone-600">{dir}</span>}
         <span className="text-stone-300">{name}</span>
       </span>
-      <span className={`flex-shrink-0 font-[family-name:var(--font-mono)] text-[10px] font-semibold ${labelColor}`}>
+      <span
+        className={`flex-shrink-0 font-[family-name:var(--font-mono)] font-semibold text-[10px] ${labelColor}`}
+      >
         {label}
       </span>
     </button>
@@ -193,13 +202,11 @@ export function ChangesPanel() {
   const sessionId = activeTab?.sessionId ?? null
 
   const changedFilesRaw = useSessionStore((s) =>
-    sessionId ? s.changedFiles.get(sessionId) : undefined
+    sessionId ? s.changedFiles.get(sessionId) : undefined,
   )
   const changedFiles = changedFilesRaw ?? emptyChangedFiles
 
-  const session = useSessionStore((s) =>
-    sessionId ? s.sessions.get(sessionId) : undefined
-  )
+  const session = useSessionStore((s) => (sessionId ? s.sessions.get(sessionId) : undefined))
 
   const sessionCwd = session?.cwd ?? activeTab?.cwd ?? ''
 
@@ -214,16 +221,21 @@ export function ChangesPanel() {
     if (!sessionId || changedFiles.length === 0) return
 
     let cancelled = false
-    window.api.getFileStatuses(sessionId, changedFiles).then((results) => {
-      if (cancelled) return
-      const map = new Map<string, string>()
-      for (const { filePath, status } of results) {
-        map.set(filePath, status)
-      }
-      setFileStatuses(map)
-    }).catch((err) => logger.error('Failed to fetch file statuses:', err))
+    window.api
+      .getFileStatuses(sessionId, changedFiles)
+      .then((results) => {
+        if (cancelled) return
+        const map = new Map<string, string>()
+        for (const { filePath, status } of results) {
+          map.set(filePath, status)
+        }
+        setFileStatuses(map)
+      })
+      .catch((err) => logger.error('Failed to fetch file statuses:', err))
 
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [sessionId, changedFiles])
 
   // Worktree state
@@ -240,7 +252,10 @@ export function ChangesPanel() {
 
   useEffect(() => {
     if (!sessionId) return
-    window.api.getWorktreeInfo(sessionId).then(setWorktreeInfo).catch((err) => logger.error('Failed to get worktree info:', err))
+    window.api
+      .getWorktreeInfo(sessionId)
+      .then(setWorktreeInfo)
+      .catch((err) => logger.error('Failed to get worktree info:', err))
   }, [sessionId])
 
   const handleMergeCleanup = useCallback(async () => {
@@ -290,7 +305,7 @@ export function ChangesPanel() {
   if (!sessionId) {
     return (
       <div className="flex h-full items-center justify-center p-4">
-        <p className="text-xs text-stone-600">No active session</p>
+        <p className="text-stone-600 text-xs">No active session</p>
       </div>
     )
   }
@@ -299,7 +314,7 @@ export function ChangesPanel() {
     return (
       <div className="flex h-full flex-col items-center justify-center p-4">
         <FileText size={20} className="mb-2 text-stone-700" />
-        <p className="text-xs text-stone-600">No files changed yet</p>
+        <p className="text-stone-600 text-xs">No files changed yet</p>
       </div>
     )
   }
@@ -347,24 +362,28 @@ export function ChangesPanel() {
 
             {/* Worktree actions */}
             {isWorktreeSession && (
-              <div className="border-t border-stone-800 px-3 py-3">
+              <div className="border-stone-800 border-t px-3 py-3">
                 {mergeSuccess ? (
-                  <div className="flex items-center gap-2 rounded bg-emerald-950/40 px-3 py-2 text-xs text-emerald-400">
+                  <div className="flex items-center gap-2 rounded bg-emerald-950/40 px-3 py-2 text-emerald-400 text-xs">
                     <Check size={14} />
-                    <span>Merged into {worktreeInfo?.originalBranch ?? 'original branch'} and cleaned up</span>
+                    <span>
+                      Merged into {worktreeInfo?.originalBranch ?? 'original branch'} and cleaned up
+                    </span>
                   </div>
                 ) : (
                   <>
                     {mergeError && (
                       <div className="mb-2 rounded bg-red-950/40 px-3 py-2">
-                        <div className="flex items-start gap-2 text-xs text-red-400">
+                        <div className="flex items-start gap-2 text-red-400 text-xs">
                           <AlertTriangle size={14} className="mt-0.5 flex-shrink-0" />
                           <div>
                             <p>{mergeError.message}</p>
                             {mergeError.files && mergeError.files.length > 0 && (
                               <ul className="mt-1 list-inside list-disc text-red-500/80">
                                 {mergeError.files.map((f) => (
-                                  <li key={f} className="font-[family-name:var(--font-mono)]">{f}</li>
+                                  <li key={f} className="font-[family-name:var(--font-mono)]">
+                                    {f}
+                                  </li>
                                 ))}
                               </ul>
                             )}
@@ -375,24 +394,35 @@ export function ChangesPanel() {
 
                     <div className="flex gap-2">
                       <button
+                        type="button"
                         onClick={handleMergeCleanup}
                         disabled={mergeLoading || discardLoading}
-                        className="flex flex-1 items-center justify-center gap-1.5 rounded bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-emerald-500 disabled:opacity-50"
+                        className="flex flex-1 items-center justify-center gap-1.5 rounded bg-emerald-600 px-3 py-1.5 font-medium text-white text-xs transition-colors hover:bg-emerald-500 disabled:opacity-50"
                       >
-                        {mergeLoading ? <Loader2 size={13} className="animate-spin" /> : <GitMerge size={13} />}
+                        {mergeLoading ? (
+                          <Loader2 size={13} className="animate-spin" />
+                        ) : (
+                          <GitMerge size={13} />
+                        )}
                         Merge & Cleanup
                       </button>
 
                       {showDiscardConfirm ? (
                         <div className="flex items-center gap-1">
                           <button
+                            type="button"
                             onClick={handleDiscardCleanup}
                             disabled={discardLoading}
-                            className="rounded bg-red-600 px-2 py-1.5 text-[11px] font-medium text-white transition-colors hover:bg-red-500 disabled:opacity-50"
+                            className="rounded bg-red-600 px-2 py-1.5 font-medium text-[11px] text-white transition-colors hover:bg-red-500 disabled:opacity-50"
                           >
-                            {discardLoading ? <Loader2 size={11} className="animate-spin" /> : 'Confirm'}
+                            {discardLoading ? (
+                              <Loader2 size={11} className="animate-spin" />
+                            ) : (
+                              'Confirm'
+                            )}
                           </button>
                           <button
+                            type="button"
                             onClick={() => setShowDiscardConfirm(false)}
                             className="rounded px-2 py-1.5 text-[11px] text-stone-500 transition-colors hover:bg-stone-800 hover:text-stone-300"
                           >
@@ -401,9 +431,10 @@ export function ChangesPanel() {
                         </div>
                       ) : (
                         <button
+                          type="button"
                           onClick={() => setShowDiscardConfirm(true)}
                           disabled={mergeLoading || discardLoading}
-                          className="flex items-center gap-1.5 rounded border border-stone-700 px-3 py-1.5 text-xs text-stone-400 transition-colors hover:border-red-800 hover:bg-red-950/30 hover:text-red-400 disabled:opacity-50"
+                          className="flex items-center gap-1.5 rounded border border-stone-700 px-3 py-1.5 text-stone-400 text-xs transition-colors hover:border-red-800 hover:bg-red-950/30 hover:text-red-400 disabled:opacity-50"
                         >
                           <Trash2 size={13} />
                           Discard
@@ -412,7 +443,8 @@ export function ChangesPanel() {
                     </div>
 
                     <p className="mt-1.5 text-[10px] text-stone-600">
-                      Merges <span className="text-stone-500">{worktreeInfo?.worktreeBranch}</span> → <span className="text-stone-500">{worktreeInfo?.originalBranch}</span>
+                      Merges <span className="text-stone-500">{worktreeInfo?.worktreeBranch}</span>{' '}
+                      → <span className="text-stone-500">{worktreeInfo?.originalBranch}</span>
                     </p>
                   </>
                 )}

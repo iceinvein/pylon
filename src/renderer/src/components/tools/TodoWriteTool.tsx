@@ -17,7 +17,7 @@ export function TodoWriteTool({ input }: TodoWriteToolProps) {
 
   return (
     <div className="space-y-1.5">
-      <div className="flex items-center gap-3 text-xs text-stone-500">
+      <div className="flex items-center gap-3 text-stone-500 text-xs">
         <span>
           <span className="text-green-400">{completed}</span> done
         </span>
@@ -47,9 +47,7 @@ export function TodoWriteTool({ input }: TodoWriteToolProps) {
                     : 'text-stone-400'
               }`}
             >
-              {todo.status === 'in_progress' && todo.activeForm
-                ? todo.activeForm
-                : todo.content}
+              {todo.status === 'in_progress' && todo.activeForm ? todo.activeForm : todo.content}
             </span>
           </div>
         ))}

@@ -1,4 +1,4 @@
-import type { ActivityType, FlowNode, FlowElement, FlowGraph } from './flow-types'
+import type { ActivityType, FlowElement, FlowGraph, FlowNode } from './flow-types'
 
 type SdkMessage = {
   type: string
@@ -36,7 +36,14 @@ type ToolResultBlock = {
 function classifyTool(name: string): ActivityType {
   const n = name.toLowerCase()
   if (n === 'todowrite') return 'task-list'
-  if (n.includes('read') || n.includes('view') || n.includes('glob') || n.includes('grep') || n.includes('search')) return 'explore'
+  if (
+    n.includes('read') ||
+    n.includes('view') ||
+    n.includes('glob') ||
+    n.includes('grep') ||
+    n.includes('search')
+  )
+    return 'explore'
   if (n.includes('edit')) return 'edit'
   if (n.includes('write') || n.includes('create')) return 'edit'
   if (n.includes('bash') || n.includes('shell')) return 'execute'
@@ -50,7 +57,13 @@ function toolSummary(name: string, input: Record<string, unknown>): string {
   if (n.includes('bash') || n.includes('shell')) {
     return String(input.description ?? input.command ?? input.cmd ?? '').slice(0, 60)
   }
-  if (n.includes('read') || n.includes('view') || n.includes('edit') || n.includes('write') || n.includes('create')) {
+  if (
+    n.includes('read') ||
+    n.includes('view') ||
+    n.includes('edit') ||
+    n.includes('write') ||
+    n.includes('create')
+  ) {
     const path = String(input.file_path ?? input.path ?? '')
     return path.split('/').slice(-2).join('/')
   }
@@ -149,7 +162,11 @@ export function buildFlowGraph(messages: unknown[], isStreaming: boolean): FlowG
 
   for (let i = 1; i < classified.length; i++) {
     const block = classified[i]
-    if (block.activityType === currentGroup.type && block.activityType !== 'subagent' && block.activityType !== 'result') {
+    if (
+      block.activityType === currentGroup.type &&
+      block.activityType !== 'subagent' &&
+      block.activityType !== 'result'
+    ) {
       currentGroup.blocks.push(block)
     } else {
       groups.push(currentGroup)
@@ -192,19 +209,27 @@ export function buildFlowGraph(messages: unknown[], isStreaming: boolean): FlowG
         const files = uniqueFiles(blocks)
         return files.length === 1 ? `Searched ${files[0]}` : `Explored ${files.length} files`
       }
-      case 'think': return 'Analyzed approach'
+      case 'think':
+        return 'Analyzed approach'
       case 'edit': {
         const files = uniqueFiles(blocks)
         if (files.length === 1) return `Edited ${files[0]}`
         return `Edited ${files.length} files`
       }
-      case 'execute': return count === 1 ? blocks[0].summary || 'Ran command' : `Ran ${count} commands`
-      case 'subagent': return `Agent: ${blocks[0].summary || 'task'}`
-      case 'task-list': return count === 1 ? `Tasks ${blocks[0].summary || 'updated'}` : `Tasks updated ${count}x`
-      case 'ask-user': return 'Asked user'
-      case 'error-fix': return `Fixed ${Math.ceil(count / 2)} error${Math.ceil(count / 2) > 1 ? 's' : ''}`
-      case 'result': return blocks[0].summary
-      default: return `${count} operations`
+      case 'execute':
+        return count === 1 ? blocks[0].summary || 'Ran command' : `Ran ${count} commands`
+      case 'subagent':
+        return `Agent: ${blocks[0].summary || 'task'}`
+      case 'task-list':
+        return count === 1 ? `Tasks ${blocks[0].summary || 'updated'}` : `Tasks updated ${count}x`
+      case 'ask-user':
+        return 'Asked user'
+      case 'error-fix':
+        return `Fixed ${Math.ceil(count / 2)} error${Math.ceil(count / 2) > 1 ? 's' : ''}`
+      case 'result':
+        return blocks[0].summary
+      default:
+        return `${count} operations`
     }
   }
 

@@ -135,7 +135,11 @@ export function detectChoices(text: string): DetectedChoices | null {
 
     // We found the start of a potential list. Determine whether it is numbered
     // or lettered so we can validate sequence consistency.
-    const firstPrefix = trimmed.match(/^(\d+|[a-zA-Z])[.)]/)![1]
+    const firstPrefix = trimmed.match(/^(\d+|[a-zA-Z])[.)]/)?.[1]
+    if (!firstPrefix) {
+      i++
+      continue
+    }
     const isNumbered = /^\d+$/.test(firstPrefix)
 
     const itemLines: string[] = [trimmed]
@@ -152,7 +156,7 @@ export function detectChoices(text: string): DetectedChoices | null {
       }
 
       if (ITEM_LINE_RE.test(candidate)) {
-        const prefix = candidate.match(/^(\d+|[a-zA-Z])[.)]/)![1]
+        const prefix = candidate.match(/^(\d+|[a-zA-Z])[.)]/)?.[1] ?? ''
         const candidateIsNumbered = /^\d+$/.test(prefix)
 
         // Must be the same list style (numbered vs lettered).
@@ -175,7 +179,7 @@ export function detectChoices(text: string): DetectedChoices | null {
     }
 
     // Validate that all prefixes are within the allowed range (1-6 or a-f).
-    const prefixes = itemLines.map((l) => l.match(/^(\d+|[a-zA-Z])[.)]/)![1])
+    const prefixes = itemLines.map((l) => l.match(/^(\d+|[a-zA-Z])[.)]/)?.[1] ?? '')
     if (!prefixes.every((p) => VALID_PREFIX_RE.test(p))) {
       i = j
       continue

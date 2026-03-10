@@ -18,7 +18,9 @@ type ThinkingIndicatorProps = {
 }
 
 export function ThinkingIndicator({ isCompacting }: ThinkingIndicatorProps) {
-  const [phraseIdx, setPhraseIdx] = useState(() => Math.floor(Math.random() * THINKING_PHRASES.length))
+  const [phraseIdx, setPhraseIdx] = useState(() =>
+    Math.floor(Math.random() * THINKING_PHRASES.length),
+  )
   const [charIdx, setCharIdx] = useState(0)
   const phrase = isCompacting ? 'Compacting conversation...' : THINKING_PHRASES[phraseIdx]
 

@@ -1,4 +1,4 @@
-import { test, expect, describe } from 'bun:test'
+import { describe, expect, test } from 'bun:test'
 import { extractChangedFiles } from './extract-changed-files'
 
 describe('extractChangedFiles', () => {
@@ -8,8 +8,14 @@ describe('extractChangedFiles', () => {
 
   test('ignores non-assistant messages', () => {
     const messages = [
-      { type: 'user', content: [{ type: 'tool_use', name: 'Edit', input: { file_path: '/foo.ts' } }] },
-      { type: 'system', content: [{ type: 'tool_use', name: 'Write', input: { file_path: '/bar.ts' } }] },
+      {
+        type: 'user',
+        content: [{ type: 'tool_use', name: 'Edit', input: { file_path: '/foo.ts' } }],
+      },
+      {
+        type: 'system',
+        content: [{ type: 'tool_use', name: 'Write', input: { file_path: '/bar.ts' } }],
+      },
     ]
     expect(extractChangedFiles(messages)).toEqual([])
   })
@@ -18,9 +24,7 @@ describe('extractChangedFiles', () => {
     const messages = [
       {
         type: 'assistant',
-        content: [
-          { type: 'tool_use', name: 'Edit', input: { file_path: '/src/app.ts' } },
-        ],
+        content: [{ type: 'tool_use', name: 'Edit', input: { file_path: '/src/app.ts' } }],
       },
     ]
     expect(extractChangedFiles(messages)).toEqual(['/src/app.ts'])
@@ -30,9 +34,7 @@ describe('extractChangedFiles', () => {
     const messages = [
       {
         type: 'assistant',
-        content: [
-          { type: 'tool_use', name: 'Write', input: { file_path: '/src/new-file.ts' } },
-        ],
+        content: [{ type: 'tool_use', name: 'Write', input: { file_path: '/src/new-file.ts' } }],
       },
     ]
     expect(extractChangedFiles(messages)).toEqual(['/src/new-file.ts'])
@@ -42,9 +44,7 @@ describe('extractChangedFiles', () => {
     const messages = [
       {
         type: 'assistant',
-        content: [
-          { type: 'tool_use', name: 'Edit', input: { path: '/src/alt.ts' } },
-        ],
+        content: [{ type: 'tool_use', name: 'Edit', input: { path: '/src/alt.ts' } }],
       },
     ]
     expect(extractChangedFiles(messages)).toEqual(['/src/alt.ts'])
@@ -54,9 +54,7 @@ describe('extractChangedFiles', () => {
     const messages = [
       {
         type: 'assistant',
-        content: [
-          { type: 'tool_use', name: 'TodoWrite', input: { file_path: '/tasks.md' } },
-        ],
+        content: [{ type: 'tool_use', name: 'TodoWrite', input: { file_path: '/tasks.md' } }],
       },
     ]
     expect(extractChangedFiles(messages)).toEqual([])
@@ -73,9 +71,7 @@ describe('extractChangedFiles', () => {
       },
       {
         type: 'assistant',
-        content: [
-          { type: 'tool_use', name: 'Write', input: { file_path: '/src/app.ts' } },
-        ],
+        content: [{ type: 'tool_use', name: 'Write', input: { file_path: '/src/app.ts' } }],
       },
     ]
     expect(extractChangedFiles(messages)).toEqual(['/src/app.ts'])
@@ -86,9 +82,7 @@ describe('extractChangedFiles', () => {
       {
         type: 'assistant',
         message: {
-          content: [
-            { type: 'tool_use', name: 'Edit', input: { file_path: '/src/nested.ts' } },
-          ],
+          content: [{ type: 'tool_use', name: 'Edit', input: { file_path: '/src/nested.ts' } }],
         },
       },
     ]
@@ -106,9 +100,7 @@ describe('extractChangedFiles', () => {
       },
       {
         type: 'assistant',
-        content: [
-          { type: 'tool_use', name: 'Edit', input: { file_path: '/c.ts' } },
-        ],
+        content: [{ type: 'tool_use', name: 'Edit', input: { file_path: '/c.ts' } }],
       },
     ]
     expect(extractChangedFiles(messages)).toEqual(['/a.ts', '/b.ts', '/c.ts'])
@@ -161,9 +153,7 @@ describe('extractChangedFiles', () => {
     const messages = [
       {
         type: 'assistant',
-        content: [
-          { type: 'tool_use', name: 'Edit', input: { file_path: '' } },
-        ],
+        content: [{ type: 'tool_use', name: 'Edit', input: { file_path: '' } }],
       },
     ]
     expect(extractChangedFiles(messages)).toEqual([])

@@ -10,15 +10,16 @@ export function WriteTool({ input, result }: WriteToolProps) {
   const content = String(input.content ?? '')
   const lineCount = content ? content.split('\n').length : 0
 
-  const isSuccess = result?.toLowerCase().includes('success') || result?.toLowerCase().includes('created')
+  const isSuccess =
+    result?.toLowerCase().includes('success') || result?.toLowerCase().includes('created')
 
   return (
     <div className="space-y-1.5">
-      <div className="flex items-center gap-2 text-xs text-stone-400">
+      <div className="flex items-center gap-2 text-stone-400 text-xs">
         <FilePlus size={13} className="flex-shrink-0 text-emerald-400" />
         <span className="font-[family-name:var(--font-mono)] text-stone-300">{path}</span>
       </div>
-      <div className="text-xs text-stone-500">
+      <div className="text-stone-500 text-xs">
         {isSuccess ? 'Created' : 'Writing'} &mdash; {lineCount} line{lineCount !== 1 ? 's' : ''}
       </div>
       {content && (
@@ -31,9 +32,7 @@ export function WriteTool({ input, result }: WriteToolProps) {
               <span className="w-4 flex-shrink-0 select-none text-center text-emerald-500/60">
                 +
               </span>
-              <span className="min-w-0 flex-1 whitespace-pre text-emerald-300/80">
-                {line}
-              </span>
+              <span className="min-w-0 flex-1 whitespace-pre text-emerald-300/80">{line}</span>
             </div>
           ))}
         </div>

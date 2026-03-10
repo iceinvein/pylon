@@ -24,8 +24,7 @@ export const useUiStore = create<UiStore>((set) => ({
   draftText: null,
   reviewPanelPlan: null,
 
-  toggleCommandPalette: () =>
-    set((state) => ({ commandPaletteOpen: !state.commandPaletteOpen })),
+  toggleCommandPalette: () => set((state) => ({ commandPaletteOpen: !state.commandPaletteOpen })),
 
   setSettingsOpen: (open) => set({ settingsOpen: open }),
 

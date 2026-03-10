@@ -1,14 +1,23 @@
-import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
-import { GitPullRequest, GitPullRequestDraft, User, GitBranch, Loader2, Play, RotateCw, ExternalLink } from 'lucide-react'
+import {
+  ExternalLink,
+  GitBranch,
+  GitPullRequest,
+  GitPullRequestDraft,
+  Loader2,
+  Play,
+  RotateCw,
+  User,
+} from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { ReviewFocus } from '../../../../shared/types'
 import { usePrReviewStore } from '../../store/pr-review-store'
-import { ReviewModal } from './ReviewModal'
-import { ReviewProgress } from './ReviewProgress'
-import { PostActions } from './PostActions'
-import { ReviewHistory } from './ReviewHistory'
-import { PrFilesChanged } from './PrFilesChanged'
 import { DiffFileTree } from './DiffFileTree'
 import { DiffPane } from './DiffPane'
-import type { ReviewFocus } from '../../../../shared/types'
+import { PostActions } from './PostActions'
+import { PrFilesChanged } from './PrFilesChanged'
+import { ReviewHistory } from './ReviewHistory'
+import { ReviewModal } from './ReviewModal'
+import { ReviewProgress } from './ReviewProgress'
 
 function splitDiffByFile(fullDiff: string): Map<string, string> {
   const map = new Map<string, string>()
@@ -24,9 +33,16 @@ function splitDiffByFile(fullDiff: string): Map<string, string> {
 
 export function PrDetail() {
   const {
-    selectedPr, prDetail, prDetailLoading,
-    activeReview, activeFindings, selectedFindingIds,
-    startReview, stopReview, toggleFinding, postFinding,
+    selectedPr,
+    prDetail,
+    prDetailLoading,
+    activeReview,
+    activeFindings,
+    selectedFindingIds,
+    startReview,
+    stopReview,
+    toggleFinding,
+    postFinding,
   } = usePrReviewStore()
   const [showReviewModal, setShowReviewModal] = useState(false)
   const [selectedFile, setSelectedFile] = useState<string | null>(null)
@@ -34,35 +50,40 @@ export function PrDetail() {
   const resizing = useRef(false)
 
   // Reset file selection when review or PR changes
-  useEffect(() => { setSelectedFile(null) }, [activeReview?.id, selectedPr?.number])
+  useEffect(() => {
+    setSelectedFile(null)
+  }, [])
 
-  const onResizeStart = useCallback((e: React.MouseEvent) => {
-    e.preventDefault()
-    resizing.current = true
-    const startX = e.clientX
-    const startWidth = treeWidth
+  const onResizeStart = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault()
+      resizing.current = true
+      const startX = e.clientX
+      const startWidth = treeWidth
 
-    const onMove = (ev: MouseEvent) => {
-      if (!resizing.current) return
-      const newWidth = Math.max(140, Math.min(500, startWidth + ev.clientX - startX))
-      setTreeWidth(newWidth)
-    }
-    const onUp = () => {
-      resizing.current = false
-      document.removeEventListener('mousemove', onMove)
-      document.removeEventListener('mouseup', onUp)
-      document.body.style.cursor = ''
-      document.body.style.userSelect = ''
-    }
-    document.body.style.cursor = 'col-resize'
-    document.body.style.userSelect = 'none'
-    document.addEventListener('mousemove', onMove)
-    document.addEventListener('mouseup', onUp)
-  }, [treeWidth])
+      const onMove = (ev: MouseEvent) => {
+        if (!resizing.current) return
+        const newWidth = Math.max(140, Math.min(500, startWidth + ev.clientX - startX))
+        setTreeWidth(newWidth)
+      }
+      const onUp = () => {
+        resizing.current = false
+        document.removeEventListener('mousemove', onMove)
+        document.removeEventListener('mouseup', onUp)
+        document.body.style.cursor = ''
+        document.body.style.userSelect = ''
+      }
+      document.body.style.cursor = 'col-resize'
+      document.body.style.userSelect = 'none'
+      document.addEventListener('mousemove', onMove)
+      document.addEventListener('mouseup', onUp)
+    },
+    [treeWidth],
+  )
 
   const fileDiffs = useMemo(
     () => (prDetail?.diff ? splitDiffByFile(prDetail.diff) : new Map<string, string>()),
-    [prDetail?.diff]
+    [prDetail?.diff],
   )
 
   if (!selectedPr) {
@@ -87,7 +108,7 @@ export function PrDetail() {
   const isDone = activeReview?.status === 'done'
   const PrIcon = pr.isDraft ? GitPullRequestDraft : GitPullRequest
 
-  const handlePostFinding = (finding: typeof activeFindings[number]) => {
+  const handlePostFinding = (finding: (typeof activeFindings)[number]) => {
     if (!selectedPr) return
     postFinding(finding, selectedPr.repo.fullName, selectedPr.number)
   }
@@ -100,13 +121,16 @@ export function PrDetail() {
   return (
     <div className="flex h-full flex-col">
       {/* PR Header with review button */}
-      <div className="border-b border-stone-800 bg-stone-950/50 px-5 py-3">
+      <div className="border-stone-800 border-b bg-stone-950/50 px-5 py-3">
         <div className="flex items-start gap-3">
-          <PrIcon size={18} className={`mt-0.5 flex-shrink-0 ${pr.isDraft ? 'text-stone-500' : 'text-emerald-500'}`} />
+          <PrIcon
+            size={18}
+            className={`mt-0.5 flex-shrink-0 ${pr.isDraft ? 'text-stone-500' : 'text-emerald-500'}`}
+          />
           <div className="min-w-0 flex-1">
             <div className="flex items-baseline gap-2">
-              <h2 className="text-sm font-semibold text-stone-100">{pr.title}</h2>
-              <span className="flex-shrink-0 text-xs text-stone-600">#{pr.number}</span>
+              <h2 className="font-semibold text-sm text-stone-100">{pr.title}</h2>
+              <span className="flex-shrink-0 text-stone-600 text-xs">#{pr.number}</span>
             </div>
             <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-stone-500">
               <span className="flex items-center gap-1">
@@ -127,7 +151,10 @@ export function PrDetail() {
                 target="_blank"
                 rel="noreferrer"
                 className="flex items-center gap-1 transition-colors hover:text-stone-300"
-                onClick={(e) => { e.preventDefault(); window.open(pr.url, '_blank') }}
+                onClick={(e) => {
+                  e.preventDefault()
+                  window.open(pr.url, '_blank')
+                }}
               >
                 <ExternalLink size={10} /> GitHub
               </a>
@@ -137,8 +164,9 @@ export function PrDetail() {
           {/* Review button — right side of header */}
           {!isRunning && (
             <button
+              type="button"
               onClick={() => setShowReviewModal(true)}
-              className="flex flex-shrink-0 items-center gap-1.5 rounded-lg bg-stone-100 px-3.5 py-1.5 text-[12px] font-semibold text-stone-900 transition-colors hover:bg-white"
+              className="flex flex-shrink-0 items-center gap-1.5 rounded-lg bg-stone-100 px-3.5 py-1.5 font-semibold text-[12px] text-stone-900 transition-colors hover:bg-white"
             >
               {isDone ? <RotateCw size={12} /> : <Play size={12} />}
               {isDone ? 'Re-run' : 'Review'}
@@ -160,7 +188,7 @@ export function PrDetail() {
           {!isRunning && (
             <div className="space-y-4 overflow-y-auto px-5 py-4">
               {prDetail?.body && (
-                <div className="max-h-24 overflow-y-auto rounded-lg bg-stone-900/60 p-3 text-xs leading-relaxed text-stone-400">
+                <div className="max-h-24 overflow-y-auto rounded-lg bg-stone-900/60 p-3 text-stone-400 text-xs leading-relaxed">
                   {prDetail.body}
                 </div>
               )}
@@ -195,7 +223,7 @@ export function PrDetail() {
       {isDone && prDetail && (
         <div className="flex min-h-0 flex-1 flex-col">
           {/* Review history bar */}
-          <div className="border-b border-stone-800 px-3 py-1.5">
+          <div className="border-stone-800 border-b px-3 py-1.5">
             <ReviewHistory />
           </div>
 
@@ -210,6 +238,7 @@ export function PrDetail() {
               />
             </div>
             {/* Resize handle */}
+            {/* biome-ignore lint/a11y/noStaticElementInteractions: mouse-only resize handle */}
             <div
               onMouseDown={onResizeStart}
               className="group relative w-0 flex-shrink-0 cursor-col-resize"
@@ -233,10 +262,7 @@ export function PrDetail() {
 
       {/* Post actions footer */}
       {isDone && selectedPr && (
-        <PostActions
-          repoFullName={selectedPr.repo.fullName}
-          prNumber={selectedPr.number}
-        />
+        <PostActions repoFullName={selectedPr.repo.fullName} prNumber={selectedPr.number} />
       )}
 
       {/* Review modal */}

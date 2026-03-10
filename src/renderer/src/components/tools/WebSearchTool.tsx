@@ -24,8 +24,12 @@ function parseLinks(text: string): ParsedLink[] {
     for (const url of urls) {
       try {
         const parsed = new URL(url)
-        const titlePart = line.split(url)[0].replace(/[-*\[\]()]/g, '').trim()
-        const title = titlePart || parsed.pathname.split('/').filter(Boolean).pop() || parsed.hostname
+        const titlePart = line
+          .split(url)[0]
+          .replace(/[-*[\]()]/g, '')
+          .trim()
+        const title =
+          titlePart || parsed.pathname.split('/').filter(Boolean).pop() || parsed.hostname
         links.push({
           title,
           url,
@@ -50,7 +54,7 @@ export function WebSearchTool({ input, result }: WebSearchToolProps) {
 
   if (!result) {
     return (
-      <div className="text-xs text-stone-400">
+      <div className="text-stone-400 text-xs">
         Searching: <span className="text-stone-300">{query}</span>
       </div>
     )

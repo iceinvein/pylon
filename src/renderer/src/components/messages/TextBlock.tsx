@@ -1,21 +1,19 @@
-import { useState, useCallback, memo } from 'react'
+import { Check, Copy, Lightbulb } from 'lucide-react'
+import { memo, useCallback, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { Lightbulb, Copy, Check } from 'lucide-react'
 import { useShiki } from '../../hooks/use-shiki'
-import { hasAnsiCodes, ansiToHtml } from '../../lib/ansi'
+import { ansiToHtml, hasAnsiCodes } from '../../lib/ansi'
 
 type TextBlockProps = {
   text: string
   isStreaming?: boolean
 }
 
-type Segment =
-  | { kind: 'markdown'; text: string }
-  | { kind: 'insight'; text: string }
+type Segment = { kind: 'markdown'; text: string } | { kind: 'insight'; text: string }
 
-const INSIGHT_OPEN = /`[★☆✦●]\s*Insight\s*[─━─\-]+`/
-const INSIGHT_CLOSE = /`[─━─\-]+`/
+const INSIGHT_OPEN = /`[★☆✦●]\s*Insight\s*[─━─-]+`/
+const INSIGHT_CLOSE = /`[─━─-]+`/
 
 function parseSegments(text: string): Segment[] {
   const lines = text.split('\n')
@@ -78,7 +76,7 @@ function CodeBlock({ className, children }: { className?: string; children?: Rea
 
   const handleCopy = useCallback(() => {
     // Strip ANSI codes for clean clipboard text
-    // eslint-disable-next-line no-control-regex
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: intentional ANSI escape matching
     navigator.clipboard.writeText(code.replace(/\x1b\[[0-9;]*m/g, ''))
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
@@ -88,11 +86,12 @@ function CodeBlock({ className, children }: { className?: string; children?: Rea
 
   return (
     <div className="group relative my-3 overflow-hidden rounded-lg border border-stone-800 bg-stone-900">
-      <div className="flex items-center justify-between border-b border-stone-800/60 bg-stone-900/80 px-3 py-1.5">
+      <div className="flex items-center justify-between border-stone-800/60 border-b bg-stone-900/80 px-3 py-1.5">
         <span className="font-[family-name:var(--font-mono)] text-[11px] text-stone-500">
           {label}
         </span>
         <button
+          type="button"
           onClick={handleCopy}
           className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-stone-500 transition-colors hover:bg-stone-800 hover:text-stone-300"
         >
@@ -106,7 +105,7 @@ function CodeBlock({ className, children }: { className?: string; children?: Rea
         <SyntaxOutput html={highlightedHtml} />
       ) : (
         <pre className="overflow-x-auto p-3">
-          <code className="font-[family-name:var(--font-mono)] text-xs leading-relaxed text-stone-200">
+          <code className="font-[family-name:var(--font-mono)] text-stone-200 text-xs leading-relaxed">
             {code}
           </code>
         </pre>
@@ -120,8 +119,8 @@ function AnsiOutput({ code }: { code: string }) {
   const html = ansiToHtml(code)
   return (
     <pre
-      className="overflow-x-auto p-3 font-[family-name:var(--font-mono)] text-xs leading-relaxed text-stone-300"
-      // Safe: ansi-to-html escapes XML entities before wrapping in <span> color tags
+      className="overflow-x-auto p-3 font-[family-name:var(--font-mono)] text-stone-300 text-xs leading-relaxed"
+      // biome-ignore lint/security/noDangerouslySetInnerHtml: sanitized HTML from ansi-to-html (escapeXML: true)
       dangerouslySetInnerHTML={{ __html: html }}
     />
   )
@@ -131,8 +130,8 @@ function AnsiOutput({ code }: { code: string }) {
 function SyntaxOutput({ html }: { html: string }) {
   return (
     <div
-      className="shiki-wrapper overflow-x-auto p-3 font-[family-name:var(--font-mono)] text-xs leading-relaxed [&_pre]:!bg-transparent [&_code]:!bg-transparent"
-      // Safe: html is produced by Shiki's tokenizer which HTML-escapes all code content
+      className="shiki-wrapper [&_pre]:!bg-transparent [&_code]:!bg-transparent overflow-x-auto p-3 font-[family-name:var(--font-mono)] text-xs leading-relaxed"
+      // biome-ignore lint/security/noDangerouslySetInnerHtml: sanitized HTML from Shiki tokenizer (HTML-escapes all code)
       dangerouslySetInnerHTML={{ __html: html }}
     />
   )
@@ -143,7 +142,10 @@ const markdownComponents: React.ComponentProps<typeof ReactMarkdown>['components
     const isInline = !className && !String(children).includes('\n')
     if (isInline) {
       return (
-        <code className="rounded bg-stone-800 px-1.5 py-0.5 font-[family-name:var(--font-mono)] text-xs text-amber-300" {...props}>
+        <code
+          className="rounded bg-stone-800 px-1.5 py-0.5 font-[family-name:var(--font-mono)] text-amber-300 text-xs"
+          {...props}
+        >
           {children}
         </code>
       )
@@ -170,9 +172,16 @@ function InsightCard({ text }: { text: string }) {
     <div className="my-3 rounded-lg border border-amber-800/40 bg-amber-950/15 px-4 py-3">
       <div className="mb-2 flex items-center gap-2">
         <Lightbulb size={14} className="text-amber-400" />
-        <span className="text-xs font-semibold tracking-wide text-amber-400 uppercase">Insight</span>
+        <span className="font-semibold text-amber-400 text-xs uppercase tracking-wide">
+          Insight
+        </span>
       </div>
-      <div className={proseClasses + ' prose-p:text-stone-300 prose-li:text-stone-300 prose-strong:text-amber-200'}>
+      <div
+        className={
+          proseClasses +
+          'prose-li:text-stone-300 prose-p:text-stone-300 prose-strong:text-amber-200'
+        }
+      >
         <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
           {text}
         </ReactMarkdown>
@@ -190,7 +199,7 @@ const SettledMarkdown = memo(function SettledMarkdown({ text }: { text: string }
           <InsightCard key={i} text={seg.text} />
         ) : (
           <MarkdownContent key={i} text={seg.text} />
-        )
+        ),
       )}
     </>
   )
@@ -221,7 +230,7 @@ export function TextBlock({ text, isStreaming }: TextBlockProps) {
           <InsightCard key={i} text={seg.text} />
         ) : (
           <MarkdownContent key={i} text={seg.text} />
-        )
+        ),
       )}
     </>
   )

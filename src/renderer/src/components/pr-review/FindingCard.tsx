@@ -1,4 +1,12 @@
-import { CheckCircle2, Send, AlertCircle, AlertTriangle, Lightbulb, Info, Loader2 } from 'lucide-react'
+import {
+  AlertCircle,
+  AlertTriangle,
+  CheckCircle2,
+  Info,
+  Lightbulb,
+  Loader2,
+  Send,
+} from 'lucide-react'
 import type { ReviewFinding } from '../../../../shared/types'
 
 type Props = {
@@ -18,11 +26,49 @@ const DOMAIN_LABELS: Record<string, string> = {
   ux: 'UX',
 }
 
-const SEVERITY_STYLES: Record<string, { icon: typeof AlertCircle; border: string; text: string; label: string; bg: string; postedBorder: string }> = {
-  critical: { icon: AlertCircle, border: 'border-red-900/40', text: 'text-red-400', label: 'Critical', bg: 'bg-red-500/5', postedBorder: 'border-emerald-900/30' },
-  warning: { icon: AlertTriangle, border: 'border-amber-900/40', text: 'text-amber-400', label: 'Warning', bg: 'bg-amber-500/5', postedBorder: 'border-emerald-900/30' },
-  suggestion: { icon: Lightbulb, border: 'border-blue-900/40', text: 'text-blue-400', label: 'Suggestion', bg: 'bg-blue-500/5', postedBorder: 'border-emerald-900/30' },
-  nitpick: { icon: Info, border: 'border-stone-700/40', text: 'text-stone-500', label: 'Nitpick', bg: 'bg-stone-500/5', postedBorder: 'border-emerald-900/30' },
+const SEVERITY_STYLES: Record<
+  string,
+  {
+    icon: typeof AlertCircle
+    border: string
+    text: string
+    label: string
+    bg: string
+    postedBorder: string
+  }
+> = {
+  critical: {
+    icon: AlertCircle,
+    border: 'border-red-900/40',
+    text: 'text-red-400',
+    label: 'Critical',
+    bg: 'bg-red-500/5',
+    postedBorder: 'border-emerald-900/30',
+  },
+  warning: {
+    icon: AlertTriangle,
+    border: 'border-amber-900/40',
+    text: 'text-amber-400',
+    label: 'Warning',
+    bg: 'bg-amber-500/5',
+    postedBorder: 'border-emerald-900/30',
+  },
+  suggestion: {
+    icon: Lightbulb,
+    border: 'border-blue-900/40',
+    text: 'text-blue-400',
+    label: 'Suggestion',
+    bg: 'bg-blue-500/5',
+    postedBorder: 'border-emerald-900/30',
+  },
+  nitpick: {
+    icon: Info,
+    border: 'border-stone-700/40',
+    text: 'text-stone-500',
+    label: 'Nitpick',
+    bg: 'bg-stone-500/5',
+    postedBorder: 'border-emerald-900/30',
+  },
 }
 
 export function FindingCard({ finding, checked, isPosting, onToggle, onPost }: Props) {
@@ -33,7 +79,9 @@ export function FindingCard({ finding, checked, isPosting, onToggle, onPost }: P
   const bgClass = finding.posted ? 'bg-emerald-500/5' : style.bg
 
   return (
-    <div className={`group rounded-lg border ${borderClass} ${bgClass} transition-all duration-300`}>
+    <div
+      className={`group rounded-lg border ${borderClass} ${bgClass} transition-all duration-300`}
+    >
       <div className="flex gap-3 p-3">
         {/* Checkbox / Posting spinner / Posted indicator */}
         <div className="flex flex-shrink-0 flex-col items-center gap-1 pt-0.5">
@@ -52,36 +100,43 @@ export function FindingCard({ finding, checked, isPosting, onToggle, onPost }: P
         </div>
 
         {/* Content */}
-        <div className={`min-w-0 flex-1 ${finding.posted ? 'opacity-60' : ''} transition-opacity duration-300`}>
+        <div
+          className={`min-w-0 flex-1 ${finding.posted ? 'opacity-60' : ''} transition-opacity duration-300`}
+        >
           <div className="flex items-start gap-2">
-            <Icon size={13} className={`mt-0.5 flex-shrink-0 ${finding.posted ? 'text-emerald-500' : style.text}`} />
+            <Icon
+              size={13}
+              className={`mt-0.5 flex-shrink-0 ${finding.posted ? 'text-emerald-500' : style.text}`}
+            />
             <div className="min-w-0 flex-1">
               <div className="flex items-baseline gap-2">
-                <span className={`text-[10px] font-semibold uppercase tracking-wide ${finding.posted ? 'text-emerald-500' : style.text}`}>
+                <span
+                  className={`font-semibold text-[10px] uppercase tracking-wide ${finding.posted ? 'text-emerald-500' : style.text}`}
+                >
                   {finding.posted ? 'Posted' : style.label}
                 </span>
-                <span className="text-xs font-medium text-stone-200">{finding.title}</span>
+                <span className="font-medium text-stone-200 text-xs">{finding.title}</span>
                 {finding.domain && (
-                  <span className="rounded bg-stone-800 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider text-stone-500">
+                  <span className="rounded bg-stone-800 px-1.5 py-0.5 font-medium text-[9px] text-stone-500 uppercase tracking-wider">
                     {DOMAIN_LABELS[finding.domain] ?? finding.domain}
                   </span>
                 )}
               </div>
               {finding.file && (
                 <div className="mt-0.5 font-[family-name:var(--font-mono)] text-[11px] text-stone-500">
-                  {finding.file}{finding.line ? `:${finding.line}` : ''}
+                  {finding.file}
+                  {finding.line ? `:${finding.line}` : ''}
                 </div>
               )}
             </div>
           </div>
-          <p className="mt-2 pl-5 text-xs leading-relaxed text-stone-400">
-            {finding.description}
-          </p>
+          <p className="mt-2 pl-5 text-stone-400 text-xs leading-relaxed">{finding.description}</p>
         </div>
 
         {/* Post action */}
         {!finding.posted && !isPosting && (
           <button
+            type="button"
             onClick={onPost}
             title="Post this finding"
             className="flex-shrink-0 self-start rounded p-1.5 text-stone-600 opacity-0 transition-all hover:bg-stone-700/50 hover:text-stone-300 group-hover:opacity-100"

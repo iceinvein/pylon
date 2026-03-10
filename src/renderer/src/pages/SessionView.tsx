@@ -1,17 +1,24 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
-import { motion, AnimatePresence } from 'motion/react'
-import { useTabStore } from '../store/tab-store'
-import { useSessionStore } from '../store/session-store'
-import { GitCompareArrows, ChevronRight, Workflow } from 'lucide-react'
-import { ChatView } from '../components/messages/ChatView'
-import { InputBar } from '../components/InputBar'
-import { ThinkingIndicator } from '../components/ThinkingIndicator'
-import { TasksPanel } from '../components/layout/TasksPanel'
+import { ChevronRight, GitCompareArrows, Info, Workflow } from 'lucide-react'
+import { AnimatePresence, motion } from 'motion/react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import type {
+  AppSettings,
+  Attachment,
+  ImageAttachment,
+  PermissionMode,
+  Tab,
+} from '../../../shared/types'
 import { ChangesPanel } from '../components/ChangesPanel'
 import { FlowPanel } from '../components/flow/FlowPanel'
+import { InputBar } from '../components/InputBar'
+import { TasksPanel } from '../components/layout/TasksPanel'
+import { ChatView } from '../components/messages/ChatView'
 import { ReviewPanel } from '../components/review/ReviewPanel'
+import { SessionInfoPanel } from '../components/SessionInfoPanel'
+import { ThinkingIndicator } from '../components/ThinkingIndicator'
+import { useSessionStore } from '../store/session-store'
+import { useTabStore } from '../store/tab-store'
 import { useUiStore } from '../store/ui-store'
-import type { AppSettings, Tab, Attachment, ImageAttachment, PermissionMode } from '../../../shared/types'
 
 const emptyFiles: string[] = []
 const MIN_REVIEW_WIDTH = 360
@@ -40,12 +47,10 @@ export function SessionView({ tab }: SessionViewProps) {
   const sessionId = tab.sessionId
   const session = sessionId ? sessions.get(sessionId) : undefined
   const currentModel = session?.model || pendingModel
-  const streaming = useSessionStore((s) => sessionId ? s.streamingText.get(sessionId) : undefined)
-  const sdkStatus = useSessionStore((s) => sessionId ? s.sdkStatus.get(sessionId) : null)
+  const streaming = useSessionStore((s) => (sessionId ? s.streamingText.get(sessionId) : undefined))
+  const sdkStatus = useSessionStore((s) => (sessionId ? s.sdkStatus.get(sessionId) : null))
   const isRunning =
-    session?.status === 'running' ||
-    session?.status === 'starting' ||
-    session?.status === 'waiting'
+    session?.status === 'running' || session?.status === 'starting' || session?.status === 'waiting'
   const isCompacting = sdkStatus === 'compacting'
   const isProcessing = (isRunning && !streaming) || isCompacting
 
@@ -123,9 +128,12 @@ export function SessionView({ tab }: SessionViewProps) {
 
     useSessionStore.getState().appendMessage(sid, {
       type: 'user',
-      content: userContent.length === 1 && userContent[0] && (userContent[0] as { type: string }).type === 'text'
-        ? text
-        : userContent,
+      content:
+        userContent.length === 1 &&
+        userContent[0] &&
+        (userContent[0] as { type: string }).type === 'text'
+          ? text
+          : userContent,
     })
 
     // Convert attachments for IPC
@@ -149,19 +157,25 @@ export function SessionView({ tab }: SessionViewProps) {
     await window.api.sendMessage(sid, text, ipcAttachments)
   }
 
-  const handleModelChange = useCallback(async (model: string) => {
-    setPendingModel(model)
-    if (sessionId) {
-      await window.api.setModel(sessionId, model)
-    }
-  }, [sessionId])
+  const handleModelChange = useCallback(
+    async (model: string) => {
+      setPendingModel(model)
+      if (sessionId) {
+        await window.api.setModel(sessionId, model)
+      }
+    },
+    [sessionId],
+  )
 
-  const handlePermissionModeChange = useCallback(async (mode: PermissionMode) => {
-    setPermissionMode(mode)
-    if (sessionId) {
-      await window.api.setPermissionMode(sessionId, mode)
-    }
-  }, [sessionId])
+  const handlePermissionModeChange = useCallback(
+    async (mode: PermissionMode) => {
+      setPermissionMode(mode)
+      if (sessionId) {
+        await window.api.setPermissionMode(sessionId, mode)
+      }
+    },
+    [sessionId],
+  )
 
   async function handleStop() {
     if (!sessionId) return
@@ -170,13 +184,15 @@ export function SessionView({ tab }: SessionViewProps) {
   }
 
   const changedFilesRaw = useSessionStore((s) =>
-    sessionId ? s.changedFiles.get(sessionId) : undefined
+    sessionId ? s.changedFiles.get(sessionId) : undefined,
   )
   const changedFiles = changedFilesRaw ?? emptyFiles
   const [showChanges, setShowChanges] = useState(false)
   const [showFlow, setShowFlow] = useState(false)
+  const [showInfo, setShowInfo] = useState(false)
   const [panelWidth, setPanelWidth] = useState(360)
   const [flowPanelWidth, setFlowPanelWidth] = useState(280)
+  const [infoPanelWidth, setInfoPanelWidth] = useState(260)
   const reviewPanelPlan = useUiStore((s) => s.reviewPanelPlan)
   const showReview = reviewPanelPlan !== null && reviewPanelPlan.sessionId === sessionId
   const [reviewPanelWidth, setReviewPanelWidth] = useState(480)
@@ -188,56 +204,75 @@ export function SessionView({ tab }: SessionViewProps) {
   const MAX_PANEL_WIDTH = 700
   const MIN_FLOW_WIDTH = 220
   const MAX_FLOW_WIDTH = 450
+  const MIN_INFO_WIDTH = 200
+  const MAX_INFO_WIDTH = 400
 
-  const makeDragHandler = useCallback((
-    currentWidth: number,
-    setWidth: (w: number) => void,
-    min: number,
-    max: number,
-  ) => (e: React.MouseEvent) => {
-    e.preventDefault()
-    dragging.current = true
-    dragStartX.current = e.clientX
-    dragStartWidth.current = currentWidth
+  const makeDragHandler = useCallback(
+    (currentWidth: number, setWidth: (w: number) => void, min: number, max: number) =>
+      (e: React.MouseEvent) => {
+        e.preventDefault()
+        dragging.current = true
+        dragStartX.current = e.clientX
+        dragStartWidth.current = currentWidth
 
-    document.body.style.userSelect = 'none'
-    document.body.style.cursor = 'col-resize'
+        document.body.style.userSelect = 'none'
+        document.body.style.cursor = 'col-resize'
 
-    const handleMouseMove = (ev: MouseEvent) => {
-      if (!dragging.current) return
-      const delta = dragStartX.current - ev.clientX
-      setWidth(Math.min(max, Math.max(min, dragStartWidth.current + delta)))
-    }
+        const handleMouseMove = (ev: MouseEvent) => {
+          if (!dragging.current) return
+          const delta = dragStartX.current - ev.clientX
+          setWidth(Math.min(max, Math.max(min, dragStartWidth.current + delta)))
+        }
 
-    const handleMouseUp = () => {
-      dragging.current = false
-      document.body.style.userSelect = ''
-      document.body.style.cursor = ''
-      document.removeEventListener('mousemove', handleMouseMove)
-      document.removeEventListener('mouseup', handleMouseUp)
-    }
+        const handleMouseUp = () => {
+          dragging.current = false
+          document.body.style.userSelect = ''
+          document.body.style.cursor = ''
+          document.removeEventListener('mousemove', handleMouseMove)
+          document.removeEventListener('mouseup', handleMouseUp)
+        }
 
-    document.addEventListener('mousemove', handleMouseMove)
-    document.addEventListener('mouseup', handleMouseUp)
-  }, [])
+        document.addEventListener('mousemove', handleMouseMove)
+        document.addEventListener('mouseup', handleMouseUp)
+      },
+    [],
+  )
 
-  const handleChangesDragStart = useCallback((e: React.MouseEvent) => {
-    makeDragHandler(panelWidth, setPanelWidth, MIN_PANEL_WIDTH, MAX_PANEL_WIDTH)(e)
-  }, [panelWidth, makeDragHandler])
+  const handleChangesDragStart = useCallback(
+    (e: React.MouseEvent) => {
+      makeDragHandler(panelWidth, setPanelWidth, MIN_PANEL_WIDTH, MAX_PANEL_WIDTH)(e)
+    },
+    [panelWidth, makeDragHandler],
+  )
 
-  const handleFlowDragStart = useCallback((e: React.MouseEvent) => {
-    makeDragHandler(flowPanelWidth, setFlowPanelWidth, MIN_FLOW_WIDTH, MAX_FLOW_WIDTH)(e)
-  }, [flowPanelWidth, makeDragHandler])
+  const handleFlowDragStart = useCallback(
+    (e: React.MouseEvent) => {
+      makeDragHandler(flowPanelWidth, setFlowPanelWidth, MIN_FLOW_WIDTH, MAX_FLOW_WIDTH)(e)
+    },
+    [flowPanelWidth, makeDragHandler],
+  )
 
-  const handleReviewDragStart = useCallback((e: React.MouseEvent) => {
-    makeDragHandler(reviewPanelWidth, setReviewPanelWidth, MIN_REVIEW_WIDTH, MAX_REVIEW_WIDTH)(e)
-  }, [reviewPanelWidth, makeDragHandler])
+  const handleReviewDragStart = useCallback(
+    (e: React.MouseEvent) => {
+      makeDragHandler(reviewPanelWidth, setReviewPanelWidth, MIN_REVIEW_WIDTH, MAX_REVIEW_WIDTH)(e)
+    },
+    [reviewPanelWidth, makeDragHandler],
+  )
+
+  const handleInfoDragStart = useCallback(
+    (e: React.MouseEvent) => {
+      makeDragHandler(infoPanelWidth, setInfoPanelWidth, MIN_INFO_WIDTH, MAX_INFO_WIDTH)(e)
+    },
+    [infoPanelWidth, makeDragHandler],
+  )
+
+  const initInfo = useSessionStore((s) => (sessionId ? s.initInfo.get(sessionId) : undefined))
 
   return (
     <div className="flex h-full">
       {/* Main chat column */}
       <div className="flex min-w-0 flex-1 flex-col">
-        <div className="flex-1 min-h-0">
+        <div className="min-h-0 flex-1">
           {sessionId ? (
             <ChatView sessionId={sessionId} />
           ) : (
@@ -247,7 +282,9 @@ export function SessionView({ tab }: SessionViewProps) {
           )}
         </div>
         <div className="overflow-hidden">
-          <div className={`transition-opacity duration-150 ${isProcessing ? 'opacity-100' : 'opacity-0'}`}>
+          <div
+            className={`transition-opacity duration-150 ${isProcessing ? 'opacity-100' : 'opacity-0'}`}
+          >
             <ThinkingIndicator isCompacting={isCompacting} />
           </div>
         </div>
@@ -279,17 +316,19 @@ export function SessionView({ tab }: SessionViewProps) {
                 transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
                 className="flex flex-shrink-0 overflow-hidden"
               >
+                {/* biome-ignore lint/a11y/noStaticElementInteractions: mouse-only resize handle */}
                 <div
                   onMouseDown={handleFlowDragStart}
-                  className="flex w-1 flex-shrink-0 cursor-col-resize items-center justify-center border-l border-stone-800 bg-stone-950 transition-colors hover:bg-stone-700 active:bg-stone-600"
+                  className="flex w-1 flex-shrink-0 cursor-col-resize items-center justify-center border-stone-800 border-l bg-stone-950 transition-colors hover:bg-stone-700 active:bg-stone-600"
                 />
                 <div className="flex min-w-0 flex-1 flex-col bg-[var(--color-base-bg)]">
-                  <div className="flex items-center justify-between border-b border-stone-800 px-3 py-2">
-                    <div className="flex items-center gap-2 text-xs font-medium text-stone-400">
+                  <div className="flex items-center justify-between border-stone-800 border-b px-3 py-2">
+                    <div className="flex items-center gap-2 font-medium text-stone-400 text-xs">
                       <Workflow size={13} />
                       Flow
                     </div>
                     <button
+                      type="button"
                       onClick={() => setShowFlow(false)}
                       className="rounded p-0.5 text-stone-600 transition-colors hover:bg-stone-800 hover:text-stone-300"
                       title="Collapse flow"
@@ -314,17 +353,19 @@ export function SessionView({ tab }: SessionViewProps) {
                 transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
                 className="flex flex-shrink-0 overflow-hidden"
               >
+                {/* biome-ignore lint/a11y/noStaticElementInteractions: mouse-only resize handle */}
                 <div
                   onMouseDown={handleChangesDragStart}
-                  className="flex w-1 flex-shrink-0 cursor-col-resize items-center justify-center border-l border-stone-800 bg-stone-950 transition-colors hover:bg-stone-700 active:bg-stone-600"
+                  className="flex w-1 flex-shrink-0 cursor-col-resize items-center justify-center border-stone-800 border-l bg-stone-950 transition-colors hover:bg-stone-700 active:bg-stone-600"
                 />
                 <div className="flex min-w-0 flex-1 flex-col bg-[var(--color-base-bg)]">
-                  <div className="flex items-center justify-between border-b border-stone-800 px-3 py-2">
-                    <div className="flex items-center gap-2 text-xs font-medium text-stone-400">
+                  <div className="flex items-center justify-between border-stone-800 border-b px-3 py-2">
+                    <div className="flex items-center gap-2 font-medium text-stone-400 text-xs">
                       <GitCompareArrows size={13} />
                       Changes
                     </div>
                     <button
+                      type="button"
                       onClick={() => setShowChanges(false)}
                       className="rounded p-0.5 text-stone-600 transition-colors hover:bg-stone-800 hover:text-stone-300"
                       title="Collapse changes"
@@ -349,9 +390,10 @@ export function SessionView({ tab }: SessionViewProps) {
                 transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
                 className="flex flex-shrink-0 overflow-hidden"
               >
+                {/* biome-ignore lint/a11y/noStaticElementInteractions: mouse-only resize handle */}
                 <div
                   onMouseDown={handleReviewDragStart}
-                  className="flex w-1 flex-shrink-0 cursor-col-resize items-center justify-center border-l border-stone-800 bg-stone-950 transition-colors hover:bg-stone-700 active:bg-stone-600"
+                  className="flex w-1 flex-shrink-0 cursor-col-resize items-center justify-center border-stone-800 border-l bg-stone-950 transition-colors hover:bg-stone-700 active:bg-stone-600"
                 />
                 <div className="flex min-w-0 flex-1 flex-col">
                   <ReviewPanel />
@@ -360,34 +402,108 @@ export function SessionView({ tab }: SessionViewProps) {
             ) : null}
           </AnimatePresence>
 
-          {/* Collapsed tabs (shown when either panel is collapsed) */}
-          {(!showFlow || !showChanges) && (
-            <div className="flex flex-shrink-0 flex-col border-l border-stone-800 bg-[var(--color-base-bg)]">
+          {/* Info panel */}
+          <AnimatePresence mode="popLayout" initial={false}>
+            {showInfo ? (
+              <motion.div
+                key="info-panel"
+                initial={{ width: 0, opacity: 0 }}
+                animate={{ width: infoPanelWidth + 5, opacity: 1 }}
+                exit={{ width: 0, opacity: 0 }}
+                transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
+                className="flex flex-shrink-0 overflow-hidden"
+              >
+                {/* biome-ignore lint/a11y/noStaticElementInteractions: mouse-only resize handle */}
+                <div
+                  onMouseDown={handleInfoDragStart}
+                  className="flex w-1 flex-shrink-0 cursor-col-resize items-center justify-center border-stone-800 border-l bg-stone-950 transition-colors hover:bg-stone-700 active:bg-stone-600"
+                />
+                <div className="flex min-w-0 flex-1 flex-col bg-[var(--color-base-bg)]">
+                  <div className="flex items-center justify-between border-stone-800 border-b px-3 py-2">
+                    <div className="flex items-center gap-2 font-medium text-stone-400 text-xs">
+                      <Info size={13} />
+                      Session
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowInfo(false)}
+                      className="rounded p-0.5 text-stone-600 transition-colors hover:bg-stone-800 hover:text-stone-300"
+                      title="Collapse session info"
+                    >
+                      <ChevronRight size={14} />
+                    </button>
+                  </div>
+                  <SessionInfoPanel sessionId={sessionId} />
+                </div>
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
+
+          {/* Collapsed tabs (shown when any panel is collapsed) */}
+          {(!showFlow || !showChanges || !showInfo) && (
+            <div className="flex flex-shrink-0 flex-col border-stone-800 border-l bg-[var(--color-base-bg)]">
               {!showFlow && (
                 <button
+                  type="button"
                   onClick={() => setShowFlow(true)}
                   title="Show flow"
                   className="group flex w-10 flex-col items-center gap-1.5 py-3 transition-colors hover:bg-stone-800/60"
                 >
-                  <Workflow size={18} className="text-stone-500 transition-colors group-hover:text-stone-200" />
-                  <span className="text-[9px] font-medium text-stone-600 transition-colors group-hover:text-stone-300">Flow</span>
+                  <Workflow
+                    size={18}
+                    className="text-stone-500 transition-colors group-hover:text-stone-200"
+                  />
+                  <span className="font-medium text-[9px] text-stone-600 transition-colors group-hover:text-stone-300">
+                    Flow
+                  </span>
                 </button>
               )}
               {!showChanges && (
                 <button
+                  type="button"
                   onClick={() => setShowChanges(true)}
                   title="Show changed files"
                   className="group flex w-10 flex-col items-center gap-1.5 py-3 transition-colors hover:bg-stone-800/60"
                 >
                   <div className="relative">
-                    <GitCompareArrows size={18} className="text-stone-500 transition-colors group-hover:text-stone-200" />
+                    <GitCompareArrows
+                      size={18}
+                      className="text-stone-500 transition-colors group-hover:text-stone-200"
+                    />
                     {changedFiles.length > 0 && (
-                      <span className="absolute -top-1.5 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-stone-600 px-1 text-[9px] font-medium text-stone-200">
+                      <span className="absolute -top-1.5 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-stone-600 px-1 font-medium text-[9px] text-stone-200">
                         {changedFiles.length}
                       </span>
                     )}
                   </div>
-                  <span className="text-[9px] font-medium text-stone-600 transition-colors group-hover:text-stone-300">Files</span>
+                  <span className="font-medium text-[9px] text-stone-600 transition-colors group-hover:text-stone-300">
+                    Files
+                  </span>
+                </button>
+              )}
+              {!showInfo && (
+                <button
+                  type="button"
+                  onClick={() => setShowInfo(true)}
+                  title="Show session info"
+                  className="group flex w-10 flex-col items-center gap-1.5 py-3 transition-colors hover:bg-stone-800/60"
+                >
+                  <div className="relative">
+                    <Info
+                      size={18}
+                      className="text-stone-500 transition-colors group-hover:text-stone-200"
+                    />
+                    {initInfo && (
+                      <span className="absolute -top-1.5 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-stone-600 px-1 font-medium text-[9px] text-stone-200">
+                        {initInfo.plugins.length +
+                          initInfo.mcpServers.length +
+                          initInfo.skills.length}
+                      </span>
+                    )}
+                  </div>
+                  <span className="font-medium text-[9px] text-stone-600 transition-colors group-hover:text-stone-300">
+                    Info
+                  </span>
                 </button>
               )}
             </div>

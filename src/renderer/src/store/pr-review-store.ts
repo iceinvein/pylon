@@ -1,9 +1,15 @@
 import { create } from 'zustand'
-import type {
-  GhCliStatus, GhRepo, GhPullRequest, GhPrDetail,
-  PrReview, ReviewFinding, ReviewFocus
-} from '../../../shared/types'
 import { log } from '../../../shared/logger'
+import type {
+  GhCliStatus,
+  GhPrDetail,
+  GhPullRequest,
+  GhRepo,
+  PrReview,
+  ReviewFinding,
+  ReviewFocus,
+} from '../../../shared/types'
+
 const logger = log.child('pr-review-store')
 
 /** Parse findings from raw streaming text (client-side fallback when main process fails) */
@@ -70,7 +76,14 @@ type PrReviewStore = {
   postingFindingIds: Set<string>
   postingBatch: 'selected' | 'all' | null
   lastPostResult: { count: number; timestamp: number } | null
-  agentProgress: Array<{ agentId: string; status: string; findingsCount: number; error?: string; currentChunk?: number; totalChunks?: number }>
+  agentProgress: Array<{
+    agentId: string
+    status: string
+    findingsCount: number
+    error?: string
+    currentChunk?: number
+    totalChunks?: number
+  }>
   _loadPrsSeq: number
   _selectPrSeq: number
 
@@ -92,7 +105,14 @@ type PrReviewStore = {
   postFinding: (finding: ReviewFinding, repo: string, prNumber: number) => Promise<void>
   postSelectedAsReview: (repo: string, prNumber: number) => Promise<void>
   postAllAsReview: (repo: string, prNumber: number) => Promise<void>
-  handleReviewUpdate: (data: { reviewId: string; status: string; findings?: ReviewFinding[]; streamingText?: string; error?: string }) => void
+  handleReviewUpdate: (data: {
+    reviewId: string
+    status: string
+    findings?: ReviewFinding[]
+    streamingText?: string
+    error?: string
+    agentProgress?: PrReviewStore['agentProgress']
+  }) => void
 }
 
 export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
@@ -146,7 +166,16 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
   },
 
   setSelectedRepo: (repo) => {
-    set({ selectedRepo: repo, selectedPr: null, prDetail: null, activeReview: null, activeFindings: [], reviewStreamingText: '', reviews: [], agentProgress: [] })
+    set({
+      selectedRepo: repo,
+      selectedPr: null,
+      prDetail: null,
+      activeReview: null,
+      activeFindings: [],
+      reviewStreamingText: '',
+      reviews: [],
+      agentProgress: [],
+    })
     get().loadPrs(repo ?? undefined)
   },
 
@@ -186,7 +215,16 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
 
   selectPr: async (pr) => {
     const seq = get()._selectPrSeq + 1
-    set({ selectedPr: pr, prDetail: null, activeReview: null, activeFindings: [], reviewStreamingText: '', selectedFindingIds: new Set(), agentProgress: [], _selectPrSeq: seq })
+    set({
+      selectedPr: pr,
+      prDetail: null,
+      activeReview: null,
+      activeFindings: [],
+      reviewStreamingText: '',
+      selectedFindingIds: new Set(),
+      agentProgress: [],
+      _selectPrSeq: seq,
+    })
     if (!pr) return
     set({ prDetailLoading: true })
     try {
@@ -245,14 +283,11 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
     try {
       await window.api.stopGhReview(reviewId)
       set((s) => ({
-        activeReview: s.activeReview?.id === reviewId
-          ? { ...s.activeReview, status: 'error' }
-          : s.activeReview,
+        activeReview:
+          s.activeReview?.id === reviewId ? { ...s.activeReview, status: 'error' } : s.activeReview,
         reviewStreamingText: '',
         agentProgress: [],
-        reviews: s.reviews.map((r) =>
-          r.id === reviewId ? { ...r, status: 'error' as const } : r
-        ),
+        reviews: s.reviews.map((r) => (r.id === reviewId ? { ...r, status: 'error' as const } : r)),
       }))
     } catch (err) {
       logger.error('stopReview failed:', err)
@@ -263,7 +298,8 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
     try {
       const review = await window.api.getGhReview(reviewId)
       if (!review) return
-      const rawOutput = (review as any).rawOutput ?? ''
+      const rawOutput =
+        (review as PrReview & { findings: ReviewFinding[]; rawOutput?: string }).rawOutput ?? ''
       let findings = review.findings
       // Fallback: if DB has no findings but raw output exists, parse client-side
       if (findings.length === 0 && rawOutput) {
@@ -332,7 +368,14 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
   postFinding: async (finding, repo, prNumber) => {
     set((s) => ({ postingFindingIds: new Set(s.postingFindingIds).add(finding.id) }))
     try {
-      const icon = finding.severity === 'critical' ? '🔴' : finding.severity === 'warning' ? '🟡' : finding.severity === 'suggestion' ? '🔵' : '⚪'
+      const icon =
+        finding.severity === 'critical'
+          ? '🔴'
+          : finding.severity === 'warning'
+            ? '🟡'
+            : finding.severity === 'suggestion'
+              ? '🔵'
+              : '⚪'
       const body = `### ${icon} ${finding.severity.charAt(0).toUpperCase() + finding.severity.slice(1)}: ${finding.title}\n\n${finding.file ? `**File:** \`${finding.file}${finding.line ? `:${finding.line}` : ''}\`\n\n` : ''}${finding.description}\n\n---\n*Reviewed by Pylon*`
       await window.api.postGhComment(repo, prNumber, body)
       set((s) => {
@@ -340,7 +383,7 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
         next.delete(finding.id)
         return {
           activeFindings: s.activeFindings.map((f) =>
-            f.id === finding.id ? { ...f, posted: true } : f
+            f.id === finding.id ? { ...f, posted: true } : f,
           ),
           postingFindingIds: next,
           lastPostResult: { count: 1, timestamp: Date.now() },
@@ -365,7 +408,7 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
       await window.api.postGhReview(repo, prNumber, selected, '')
       set((s) => ({
         activeFindings: s.activeFindings.map((f) =>
-          selectedFindingIds.has(f.id) ? { ...f, posted: true } : f
+          selectedFindingIds.has(f.id) ? { ...f, posted: true } : f,
         ),
         selectedFindingIds: new Set(),
         postingBatch: null,
@@ -411,8 +454,8 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
       }
 
       // Update agent progress if present
-      if ((data as any).agentProgress) {
-        updates.agentProgress = (data as any).agentProgress
+      if (data.agentProgress) {
+        updates.agentProgress = data.agentProgress
       }
 
       // On error clear streaming text and agent progress; on done keep it (the raw output)
@@ -436,13 +479,13 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
           }
         }
         updates.activeFindings = findings
-        updates.agentProgress = (data as any).agentProgress ?? []
+        updates.agentProgress = data.agentProgress ?? []
       }
 
       // Update the review in the reviews list
       if (data.status === 'done' || data.status === 'error') {
         updates.reviews = s.reviews.map((r) =>
-          r.id === data.reviewId ? { ...r, status: data.status as PrReview['status'] } : r
+          r.id === data.reviewId ? { ...r, status: data.status as PrReview['status'] } : r,
         )
       }
 

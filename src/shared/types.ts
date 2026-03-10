@@ -109,6 +109,35 @@ export type FileDiff = {
   diff: string
 }
 
+// ── Session Init Info (from SDK init system message) ──
+
+export type SessionPlugin = {
+  name: string
+  path: string
+}
+
+export type SessionMcpServer = {
+  name: string
+  status: string
+}
+
+export type SessionSlashCommand = {
+  name: string
+  description: string
+  argumentHint: string
+}
+
+export type SessionInitInfo = {
+  tools: string[]
+  skills: string[]
+  slashCommands: string[]
+  plugins: SessionPlugin[]
+  mcpServers: SessionMcpServer[]
+  model: string
+  permissionMode: string
+  claudeCodeVersion: string
+}
+
 export type WorktreeMergeResult = {
   success: boolean
   error?: 'conflicts' | 'not-a-worktree' | 'branch-not-found' | 'uncommitted-changes' | string
@@ -133,7 +162,13 @@ export type UsageStats = {
   }
   dailyCosts: Array<{ day: string; cost: number }>
   costByModel: Array<{ model: string; cost: number; sessions: number }>
-  costByProject: Array<{ project: string; cost: number; sessions: number; inputTokens: number; outputTokens: number }>
+  costByProject: Array<{
+    project: string
+    cost: number
+    sessions: number
+    inputTokens: number
+    outputTokens: number
+  }>
   tokensByDay: Array<{ day: string; input: number; output: number }>
   topSessions: Array<{
     id: string

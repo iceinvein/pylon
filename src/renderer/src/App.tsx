@@ -1,13 +1,13 @@
 import { useEffect } from 'react'
-import { Layout } from './components/layout/Layout'
-import { HomePage } from './pages/HomePage'
-import { SessionView } from './pages/SessionView'
-import { PrReviewView } from './pages/PrReviewView'
-import { SettingsOverlay } from './components/SettingsOverlay'
 import { CommandPalette } from './components/CommandPalette'
-import { useTabStore } from './store/tab-store'
+import { Layout } from './components/layout/Layout'
+import { SettingsOverlay } from './components/SettingsOverlay'
 import { useIpcBridge } from './hooks/use-ipc-bridge'
 import { usePrReviewBridge } from './hooks/use-pr-review-bridge'
+import { HomePage } from './pages/HomePage'
+import { PrReviewView } from './pages/PrReviewView'
+import { SessionView } from './pages/SessionView'
+import { useTabStore } from './store/tab-store'
 import { useUiStore } from './store/ui-store'
 
 export default function App() {
@@ -49,7 +49,7 @@ export default function App() {
       <Layout>
         {sidebarView === 'pr-review' ? (
           <PrReviewView />
-        ) : activeTab && activeTab.cwd ? (
+        ) : activeTab?.cwd ? (
           <SessionView key={activeTab.id} tab={activeTab} />
         ) : (
           <HomePage />

@@ -1,23 +1,23 @@
-import { memo, useEffect, useMemo, useRef } from 'react'
+import { Minimize2, Zap } from 'lucide-react'
 import { motion } from 'motion/react'
-import { useSessionStore } from '../../store/session-store'
+import { memo, useEffect, useMemo, useRef } from 'react'
 import { useAgentGrouping } from '../../hooks/use-agent-grouping'
-import { UserMessage } from './UserMessage'
-import { AssistantMessage } from './AssistantMessage'
-import { SystemMessage } from './SystemMessage'
-import { ResultMessage } from './ResultMessage'
-import { PermissionPrompt } from './PermissionPrompt'
-import { QuestionPrompt } from './QuestionPrompt'
-import { TextBlock } from './TextBlock'
+import { detectChoices } from '../../lib/detect-choices'
+import { parsePlanSections } from '../../lib/parse-plan'
+import { useSessionStore } from '../../store/session-store'
+import { useUiStore } from '../../store/ui-store'
+import { CommitCard, hasGitCommitTools, isCommitRequest } from '../tools/CommitCard'
+import { PlanCard } from '../tools/PlanCard'
 import { SubagentBlock } from '../tools/SubagentBlock'
 import { ToolUseBlock } from '../tools/ToolUseBlock'
-import { isCommitRequest, hasGitCommitTools, CommitCard } from '../tools/CommitCard'
-import { Zap, Minimize2 } from 'lucide-react'
-import { detectChoices } from '../../lib/detect-choices'
+import { AssistantMessage } from './AssistantMessage'
 import { ChoiceButtons } from './ChoiceButtons'
-import { PlanCard } from '../tools/PlanCard'
-import { parsePlanSections } from '../../lib/parse-plan'
-import { useUiStore } from '../../store/ui-store'
+import { PermissionPrompt } from './PermissionPrompt'
+import { QuestionPrompt } from './QuestionPrompt'
+import { ResultMessage } from './ResultMessage'
+import { SystemMessage } from './SystemMessage'
+import { TextBlock } from './TextBlock'
+import { UserMessage } from './UserMessage'
 
 type SdkMessage = {
   type: string
@@ -56,11 +56,15 @@ function buildToolResultMap(messages: unknown[]): Map<string, string> {
     if (!Array.isArray(rawContent)) continue
     for (const block of rawContent as ToolResultBlock[]) {
       if (block.type === 'tool_result' && block.tool_use_id) {
-        const text = typeof block.content === 'string'
-          ? block.content
-          : Array.isArray(block.content)
-            ? block.content.filter((b) => b.type === 'text').map((b) => b.text ?? '').join('\n')
-            : ''
+        const text =
+          typeof block.content === 'string'
+            ? block.content
+            : Array.isArray(block.content)
+              ? block.content
+                  .filter((b) => b.type === 'text')
+                  .map((b) => b.text ?? '')
+                  .join('\n')
+              : ''
         if (text) map.set(block.tool_use_id, text)
       }
     }
@@ -99,7 +103,9 @@ export const ChatView = memo(function ChatView({ sessionId }: ChatViewProps) {
       const m = mainThreadMessages[i] as SdkMessage
       if (m.type === 'system' && m.subtype === 'compact_boundary') {
         lastBoundaryIdx = i
-        metadata = (m as { compact_metadata?: { trigger?: string; pre_tokens?: number } }).compact_metadata ?? null
+        metadata =
+          (m as { compact_metadata?: { trigger?: string; pre_tokens?: number } })
+            .compact_metadata ?? null
         break
       }
     }
@@ -149,13 +155,15 @@ export const ChatView = memo(function ChatView({ sessionId }: ChatViewProps) {
       }) as SdkMessage | undefined
 
       if (!toolUseMsg) continue
-      const content = (toolUseMsg.message?.content ?? toolUseMsg.content ?? []) as AssistantContentBlock[]
+      const content = (toolUseMsg.message?.content ??
+        toolUseMsg.content ??
+        []) as AssistantContentBlock[]
       const block = content.find((b) => b.type === 'tool_use' && b.id === plan.toolUseId)
       const fileContent = String(block?.input?.content ?? '')
       if (fileContent) {
         const sections = parsePlanSections(fileContent)
         const titles = sections.flatMap((s) =>
-          s.children && s.children.length > 0 ? s.children.map((c) => c.title) : [s.title]
+          s.children && s.children.length > 0 ? s.children.map((c) => c.title) : [s.title],
         )
         map.set(plan.toolUseId, titles)
       }
@@ -191,15 +199,20 @@ export const ChatView = memo(function ChatView({ sessionId }: ChatViewProps) {
     for (let i = 0; i < visibleMessages.length; i++) {
       const msg = visibleMessages[i] as SdkMessage
       if (msg.type !== 'user') continue
-      const rawContent = msg.content ?? (msg.message as Record<string, unknown> | undefined)?.content
+      const rawContent =
+        msg.content ?? (msg.message as Record<string, unknown> | undefined)?.content
       if (!Array.isArray(rawContent)) continue
 
       // Check if this user message has a tool_result for a Skill tool
       const blocks = rawContent as Array<{ type: string; tool_use_id?: string }>
       let skillName: string | null = null
       for (const block of blocks) {
-        if (block.type === 'tool_result' && block.tool_use_id && skillToolUseIds.has(block.tool_use_id)) {
-          skillName = skillToolUseIds.get(block.tool_use_id)!
+        if (
+          block.type === 'tool_result' &&
+          block.tool_use_id &&
+          skillToolUseIds.has(block.tool_use_id)
+        ) {
+          skillName = skillToolUseIds.get(block.tool_use_id) ?? ''
           break
         }
       }
@@ -302,7 +315,7 @@ export const ChatView = memo(function ChatView({ sessionId }: ChatViewProps) {
     if (isNearBottomRef.current && !streaming) {
       bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
     }
-  }, [sessionMessages.length, sessionQuestions.length])
+  }, [streaming])
 
   // Listen for flow-scroll-to-message events from the FlowPanel
   useEffect(() => {
@@ -350,17 +363,13 @@ export const ChatView = memo(function ChatView({ sessionId }: ChatViewProps) {
   function renderAssistantContent(content: AssistantContentBlock[]) {
     const hasAgentBlocks = content.some((b) => b.type === 'tool_use' && b.name === 'Agent')
 
-    const hasPlanBlocks = content.some((b) =>
-      b.type === 'tool_use' && b.id && detectedPlans.some((p) => p.toolUseId === b.id)
+    const hasPlanBlocks = content.some(
+      (b) => b.type === 'tool_use' && b.id && detectedPlans.some((p) => p.toolUseId === b.id),
     )
 
     if (!hasAgentBlocks && !hasPlanBlocks) {
       return (
-        <AssistantMessage
-          content={content}
-          sessionId={sessionId}
-          toolResultMap={toolResultMap}
-        />
+        <AssistantMessage content={content} sessionId={sessionId} toolResultMap={toolResultMap} />
       )
     }
 
@@ -391,9 +400,18 @@ export const ChatView = memo(function ChatView({ sessionId }: ChatViewProps) {
             return null
           }
           if (block.type === 'tool_use') {
-            const matchedPlan = block.id ? detectedPlans.find((p) => p.toolUseId === block.id) : undefined
+            const matchedPlan = block.id
+              ? detectedPlans.find((p) => p.toolUseId === block.id)
+              : undefined
             if (matchedPlan) {
-              return <PlanCard key={i} plan={matchedPlan} sessionId={sessionId} sectionTitles={planSectionTitles.get(matchedPlan.toolUseId) ?? []} />
+              return (
+                <PlanCard
+                  key={i}
+                  plan={matchedPlan}
+                  sessionId={sessionId}
+                  sectionTitles={planSectionTitles.get(matchedPlan.toolUseId) ?? []}
+                />
+              )
             }
             return (
               <ToolUseBlock
@@ -416,11 +434,18 @@ export const ChatView = memo(function ChatView({ sessionId }: ChatViewProps) {
   // This scopes sticky positioning to each turn so they don't overlap.
   const turns = useMemo(() => {
     const groups: { userIdx: number | null; messages: { msg: SdkMessage; idx: number }[] }[] = []
-    let current: { userIdx: number | null; messages: { msg: SdkMessage; idx: number }[] } = { userIdx: null, messages: [] }
+    let current: { userIdx: number | null; messages: { msg: SdkMessage; idx: number }[] } = {
+      userIdx: null,
+      messages: [],
+    }
 
     for (let idx = 0; idx < visibleMessages.length; idx++) {
       const msg = visibleMessages[idx] as SdkMessage
-      const isVisibleUser = msg.type === 'user' && !isToolResultMessage(msg) && !skillContentIndices.has(idx) && !extractSkillName(msg)
+      const isVisibleUser =
+        msg.type === 'user' &&
+        !isToolResultMessage(msg) &&
+        !skillContentIndices.has(idx) &&
+        !extractSkillName(msg)
 
       if (isVisibleUser) {
         // Push current group if it has messages
@@ -436,7 +461,7 @@ export const ChatView = memo(function ChatView({ sessionId }: ChatViewProps) {
       groups.push(current)
     }
     return groups
-  }, [visibleMessages])
+  }, [visibleMessages, skillContentIndices.has])
 
   // Detect commit turns: user message is a commit request + assistant has git tool calls.
   // With includePartialMessages, each tool_use arrives in its own assistant message,
@@ -460,7 +485,7 @@ export const ChatView = memo(function ChatView({ sessionId }: ChatViewProps) {
         const textBlocks = content.filter((b) => b.type === 'text' && b.text)
         if (textBlocks.length === 0) continue
 
-        const fullText = textBlocks.map((b) => b.text!).join('\n')
+        const fullText = textBlocks.map((b) => (b as { text?: string }).text ?? '').join('\n')
         return detectChoices(fullText)
       }
     }
@@ -471,14 +496,21 @@ export const ChatView = memo(function ChatView({ sessionId }: ChatViewProps) {
   const commitTurnIndices = useMemo(() => {
     const indices = new Set<number>()
     for (const turn of turns) {
-      const userMsg = turn.messages.find(({ msg }) => msg.type === 'user' && !isToolResultMessage(msg))
+      const userMsg = turn.messages.find(
+        ({ msg }) => msg.type === 'user' && !isToolResultMessage(msg),
+      )
       if (!userMsg) continue
-      const rawContent = userMsg.msg.content ?? (userMsg.msg.message as Record<string, unknown> | undefined)?.content
-      const userText = typeof rawContent === 'string'
-        ? rawContent
-        : Array.isArray(rawContent)
-          ? (rawContent as Array<{ type: string; text?: string }>).filter((b) => b.type === 'text').map((b) => b.text ?? '').join(' ')
-          : ''
+      const rawContent =
+        userMsg.msg.content ?? (userMsg.msg.message as Record<string, unknown> | undefined)?.content
+      const userText =
+        typeof rawContent === 'string'
+          ? rawContent
+          : Array.isArray(rawContent)
+            ? (rawContent as Array<{ type: string; text?: string }>)
+                .filter((b) => b.type === 'text')
+                .map((b) => b.text ?? '')
+                .join(' ')
+            : ''
       if (!isCommitRequest(userText)) continue
 
       // Aggregate tool blocks from ALL assistant messages in this turn
@@ -518,7 +550,7 @@ export const ChatView = memo(function ChatView({ sessionId }: ChatViewProps) {
           >
             <div className="flex items-center gap-2 px-6 py-1">
               <Zap size={12} className="flex-shrink-0 text-purple-400/70" />
-              <span className="text-xs text-stone-500">
+              <span className="text-stone-500 text-xs">
                 Loaded skill <span className="text-stone-400">{skillName}</span>
               </span>
             </div>
@@ -552,7 +584,8 @@ export const ChatView = memo(function ChatView({ sessionId }: ChatViewProps) {
         sub === 'hook_response' ||
         sub === 'task_started' ||
         sub === 'compact_boundary'
-      ) return null
+      )
+        return null
       const content = String(msg.content ?? msg.subtype ?? 'System message')
       return (
         <motion.div
@@ -596,10 +629,7 @@ export const ChatView = memo(function ChatView({ sessionId }: ChatViewProps) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.2, ease: 'easeOut' }}
         >
-          <ResultMessage
-            isError={true}
-            errorMessage={msg.error as string | undefined}
-          />
+          <ResultMessage isError={true} errorMessage={msg.error as string | undefined} />
         </motion.div>
       )
     }
@@ -610,156 +640,162 @@ export const ChatView = memo(function ChatView({ sessionId }: ChatViewProps) {
   return (
     <div ref={scrollContainerRef} className="flex h-full flex-col overflow-y-auto">
       <div className="mx-auto w-full max-w-3xl">
-      {wasCompacted && (
-        <div className="flex items-center gap-3 px-6 py-3">
-          <div className="h-px flex-1 bg-stone-700/50" />
-          <div className="flex items-center gap-1.5 text-xs text-stone-500">
-            <Minimize2 size={12} />
-            <span>Conversation {compactMetadata?.trigger === 'auto' ? 'auto-' : ''}compacted</span>
-            {compactMetadata?.pre_tokens && (
-              <span className="text-stone-600">
-                ({Math.round(compactMetadata.pre_tokens / 1000)}k tokens)
+        {wasCompacted && (
+          <div className="flex items-center gap-3 px-6 py-3">
+            <div className="h-px flex-1 bg-stone-700/50" />
+            <div className="flex items-center gap-1.5 text-stone-500 text-xs">
+              <Minimize2 size={12} />
+              <span>
+                Conversation {compactMetadata?.trigger === 'auto' ? 'auto-' : ''}compacted
               </span>
-            )}
+              {compactMetadata?.pre_tokens && (
+                <span className="text-stone-600">
+                  ({Math.round(compactMetadata.pre_tokens / 1000)}k tokens)
+                </span>
+              )}
+            </div>
+            <div className="h-px flex-1 bg-stone-700/50" />
           </div>
-          <div className="h-px flex-1 bg-stone-700/50" />
-        </div>
-      )}
+        )}
 
-      {turns.map((turn, turnIdx) => {
-        const isCommitTurn = turn.messages.some(({ idx }) => commitTurnIndices.has(idx))
+        {turns.map((turn, turnIdx) => {
+          const isCommitTurn = turn.messages.some(({ idx }) => commitTurnIndices.has(idx))
 
-        if (isCommitTurn) {
-          // Render commit turns as a single CommitCard instead of individual tool blocks.
-          // Collect all tool blocks from every assistant message in the turn.
-          const allToolBlocks: Array<{ name: string; input: Record<string, unknown>; id?: string }> = []
+          if (isCommitTurn) {
+            // Render commit turns as a single CommitCard instead of individual tool blocks.
+            // Collect all tool blocks from every assistant message in the turn.
+            const allToolBlocks: Array<{
+              name: string
+              input: Record<string, unknown>
+              id?: string
+            }> = []
 
-          for (const { msg } of turn.messages) {
-            if (msg.type !== 'assistant') continue
-            const messageObj = msg.message as { content?: AssistantContentBlock[] } | undefined
-            const blocks = (messageObj?.content ?? msg.content ?? []) as AssistantContentBlock[]
-            for (const b of blocks) {
-              if (b.type === 'tool_use' && b.name) {
-                allToolBlocks.push({ name: b.name, input: b.input ?? {}, id: b.id })
+            for (const { msg } of turn.messages) {
+              if (msg.type !== 'assistant') continue
+              const messageObj = msg.message as { content?: AssistantContentBlock[] } | undefined
+              const blocks = (messageObj?.content ?? msg.content ?? []) as AssistantContentBlock[]
+              for (const b of blocks) {
+                if (b.type === 'tool_use' && b.name) {
+                  allToolBlocks.push({ name: b.name, input: b.input ?? {}, id: b.id })
+                }
               }
             }
+
+            // Render: user message → CommitCard → result (skip assistant messages and their text)
+            return (
+              <div key={turn.userIdx ?? `pre-${turnIdx}`}>
+                {turn.messages.map(({ msg, idx }) => {
+                  // Skip assistant messages — handled by CommitCard
+                  if (msg.type === 'assistant') return null
+                  // Render user message first, then CommitCard, then result
+                  if (msg.type === 'result' || msg.type === 'error') {
+                    return (
+                      <div key={idx}>
+                        <motion.div
+                          initial={{ opacity: 0, y: 12 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.2, ease: 'easeOut' }}
+                        >
+                          <CommitCard
+                            toolBlocks={allToolBlocks}
+                            toolResultMap={toolResultMap}
+                            isStreaming={!!streaming}
+                          />
+                        </motion.div>
+                        {renderMessage(msg, idx)}
+                      </div>
+                    )
+                  }
+                  return renderMessage(msg, idx)
+                })}
+                {/* If no result yet (still streaming), show CommitCard at the end */}
+                {!turn.messages.some(
+                  ({ msg }) => msg.type === 'result' || msg.type === 'error',
+                ) && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.2, ease: 'easeOut' }}
+                  >
+                    <CommitCard
+                      toolBlocks={allToolBlocks}
+                      toolResultMap={toolResultMap}
+                      isStreaming={!!streaming}
+                    />
+                  </motion.div>
+                )}
+              </div>
+            )
           }
 
-          // Render: user message → CommitCard → result (skip assistant messages and their text)
+          // Normal turn rendering
           return (
             <div key={turn.userIdx ?? `pre-${turnIdx}`}>
               {turn.messages.map(({ msg, idx }) => {
-                // Skip assistant messages — handled by CommitCard
-                if (msg.type === 'assistant') return null
-                // Render user message first, then CommitCard, then result
-                if (msg.type === 'result' || msg.type === 'error') {
-                  return (
-                    <div key={idx}>
-                      <motion.div
-                        initial={{ opacity: 0, y: 12 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.2, ease: 'easeOut' }}
-                      >
-                        <CommitCard
-                          toolBlocks={allToolBlocks}
-                          toolResultMap={toolResultMap}
-                          isStreaming={!!streaming}
-                        />
-                      </motion.div>
-                      {renderMessage(msg, idx)}
-                    </div>
-                  )
-                }
-                return renderMessage(msg, idx)
+                const rendered = renderMessage(msg, idx)
+                if (!rendered) return null
+                return (
+                  <div key={`flow-${idx}`} data-message-index={originalIndexMap.get(idx) ?? idx}>
+                    {rendered}
+                  </div>
+                )
               })}
-              {/* If no result yet (still streaming), show CommitCard at the end */}
-              {!turn.messages.some(({ msg }) => msg.type === 'result' || msg.type === 'error') && (
-                <motion.div
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.2, ease: 'easeOut' }}
-                >
-                  <CommitCard
-                    toolBlocks={allToolBlocks}
-                    toolResultMap={toolResultMap}
-                    isStreaming={!!streaming}
-                  />
-                </motion.div>
-              )}
             </div>
           )
-        }
+        })}
 
-        // Normal turn rendering
-        return (
-          <div key={turn.userIdx ?? `pre-${turnIdx}`}>
-            {turn.messages.map(({ msg, idx }) => {
-              const rendered = renderMessage(msg, idx)
-              if (!rendered) return null
-              return <div key={`flow-${idx}`} data-message-index={originalIndexMap.get(idx) ?? idx}>{rendered}</div>
-            })}
-          </div>
-        )
-      })}
+        {streaming && (
+          <motion.div
+            key="streaming"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.15 }}
+            className="px-6 py-2"
+          >
+            <TextBlock text={streaming} isStreaming />
+            <span className="inline-block h-4 w-0.5 animate-pulse bg-stone-400 align-text-bottom" />
+          </motion.div>
+        )}
 
-      {streaming && (
-        <motion.div
-          key="streaming"
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.15 }}
-          className="px-6 py-2"
-        >
-          <TextBlock text={streaming} isStreaming />
-          <span className="inline-block h-4 w-0.5 animate-pulse bg-stone-400 align-text-bottom" />
-        </motion.div>
-      )}
+        {sessionPermissions.map((perm) => (
+          <motion.div
+            key={perm.requestId}
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.25, ease: [0.34, 1.56, 0.64, 1] }}
+          >
+            <PermissionPrompt permission={perm} onRespond={handlePermissionRespond} />
+          </motion.div>
+        ))}
 
-      {sessionPermissions.map((perm) => (
-        <motion.div
-          key={perm.requestId}
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.25, ease: [0.34, 1.56, 0.64, 1] }}
-        >
-          <PermissionPrompt
-            permission={perm}
-            onRespond={handlePermissionRespond}
-          />
-        </motion.div>
-      ))}
+        {sessionQuestions.map((q) => (
+          <motion.div
+            key={q.requestId}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.25, ease: [0.34, 1.56, 0.64, 1] }}
+          >
+            <QuestionPrompt question={q} onRespond={handleQuestionRespond} />
+          </motion.div>
+        ))}
 
-      {sessionQuestions.map((q) => (
-        <motion.div
-          key={q.requestId}
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.25, ease: [0.34, 1.56, 0.64, 1] }}
-        >
-          <QuestionPrompt
-            question={q}
-            onRespond={handleQuestionRespond}
-          />
-        </motion.div>
-      ))}
+        {detectedChoices && (
+          <motion.div
+            key="choice-buttons"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+          >
+            <ChoiceButtons
+              choices={detectedChoices.choices}
+              onSelect={handleChoiceSelect}
+              onPreFill={handleChoicePreFill}
+            />
+          </motion.div>
+        )}
 
-      {detectedChoices && (
-        <motion.div
-          key="choice-buttons"
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -4 }}
-          transition={{ duration: 0.2, ease: 'easeOut' }}
-        >
-          <ChoiceButtons
-            choices={detectedChoices.choices}
-            onSelect={handleChoiceSelect}
-            onPreFill={handleChoicePreFill}
-          />
-        </motion.div>
-      )}
-
-      <div ref={bottomRef} />
+        <div ref={bottomRef} />
       </div>
     </div>
   )

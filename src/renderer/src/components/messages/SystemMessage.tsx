@@ -38,7 +38,7 @@ export function SystemMessage({ content, subtype }: SystemMessageProps) {
     return (
       <div className="flex items-center gap-2 px-6 py-1">
         <Zap size={12} className="flex-shrink-0 text-purple-400/70" />
-        <span className="text-xs text-stone-500">
+        <span className="text-stone-500 text-xs">
           Loaded skill <span className="text-stone-400">{skillName ?? 'unknown'}</span>
         </span>
       </div>
@@ -49,10 +49,8 @@ export function SystemMessage({ content, subtype }: SystemMessageProps) {
     <div className="flex items-start gap-2 px-6 py-1.5">
       <Info size={12} className="mt-0.5 flex-shrink-0 text-stone-600" />
       <div className="min-w-0">
-        {subtype && (
-          <span className="mr-2 text-xs font-medium text-stone-600">[{subtype}]</span>
-        )}
-        <span className="text-xs text-stone-500">{content}</span>
+        {subtype && <span className="mr-2 font-medium text-stone-600 text-xs">[{subtype}]</span>}
+        <span className="text-stone-500 text-xs">{content}</span>
       </div>
     </div>
   )

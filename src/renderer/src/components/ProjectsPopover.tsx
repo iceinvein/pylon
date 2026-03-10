@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
 import { Folder, FolderOpen } from 'lucide-react'
-import { motion, AnimatePresence } from 'motion/react'
+import { AnimatePresence, motion } from 'motion/react'
+import { useEffect, useRef, useState } from 'react'
 import { timeAgo } from '../lib/utils'
 
 type Project = {
@@ -16,13 +16,22 @@ type ProjectsPopoverProps = {
   anchorRef: React.RefObject<HTMLButtonElement | null>
 }
 
-export function ProjectsPopover({ open, onClose, onSelectProject, onBrowse, anchorRef }: ProjectsPopoverProps) {
+export function ProjectsPopover({
+  open,
+  onClose,
+  onSelectProject,
+  onBrowse,
+  anchorRef,
+}: ProjectsPopoverProps) {
   const [projects, setProjects] = useState<Project[]>([])
   const popoverRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (open) {
-      window.api.listProjects().then(setProjects).catch(() => setProjects([]))
+      window.api
+        .listProjects()
+        .then(setProjects)
+        .catch(() => setProjects([]))
     }
   }, [open])
 
@@ -32,8 +41,10 @@ export function ProjectsPopover({ open, onClose, onSelectProject, onBrowse, anch
     function handleClickOutside(e: MouseEvent) {
       const target = e.target as Node
       if (
-        popoverRef.current && !popoverRef.current.contains(target) &&
-        anchorRef.current && !anchorRef.current.contains(target)
+        popoverRef.current &&
+        !popoverRef.current.contains(target) &&
+        anchorRef.current &&
+        !anchorRef.current.contains(target)
       ) {
         onClose()
       }
@@ -62,26 +73,23 @@ export function ProjectsPopover({ open, onClose, onSelectProject, onBrowse, anch
           transition={{ duration: 0.12 }}
           className="fixed z-50 w-72 rounded-xl border border-stone-700 bg-stone-900 py-1.5 shadow-2xl"
           style={{
-            left: anchorRef.current
-              ? anchorRef.current.getBoundingClientRect().right + 6
-              : 56,
-            top: anchorRef.current
-              ? anchorRef.current.getBoundingClientRect().top
-              : 120,
+            left: anchorRef.current ? anchorRef.current.getBoundingClientRect().right + 6 : 56,
+            top: anchorRef.current ? anchorRef.current.getBoundingClientRect().top : 120,
           }}
         >
           <div className="px-3 py-1.5">
-            <p className="text-[10px] font-medium uppercase tracking-wider text-stone-500">Projects</p>
+            <p className="font-medium text-[10px] text-stone-500 uppercase tracking-wider">
+              Projects
+            </p>
           </div>
 
           <div className="max-h-64 overflow-y-auto">
             {projects.length === 0 ? (
-              <div className="px-3 py-3 text-center text-xs text-stone-600">
-                No recent projects
-              </div>
+              <div className="px-3 py-3 text-center text-stone-600 text-xs">No recent projects</div>
             ) : (
               projects.map((project) => (
                 <button
+                  type="button"
                   key={project.path}
                   onClick={() => {
                     onSelectProject(project.path)
@@ -91,7 +99,7 @@ export function ProjectsPopover({ open, onClose, onSelectProject, onBrowse, anch
                 >
                   <Folder size={13} className="mt-0.5 flex-shrink-0 text-stone-600" />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-xs font-medium text-stone-300">
+                    <p className="truncate font-medium text-stone-300 text-xs">
                       {project.path.split('/').pop()}
                     </p>
                     <p className="truncate text-[11px] text-stone-600">{project.path}</p>
@@ -102,13 +110,14 @@ export function ProjectsPopover({ open, onClose, onSelectProject, onBrowse, anch
             )}
           </div>
 
-          <div className="border-t border-stone-800 px-1.5 pt-1.5">
+          <div className="border-stone-800 border-t px-1.5 pt-1.5">
             <button
+              type="button"
               onClick={() => {
                 onBrowse()
                 onClose()
               }}
-              className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left text-xs text-stone-400 transition-colors hover:bg-stone-800/60 hover:text-stone-300"
+              className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left text-stone-400 text-xs transition-colors hover:bg-stone-800/60 hover:text-stone-300"
             >
               <FolderOpen size={13} />
               Browse...

@@ -1,9 +1,9 @@
-import { type ReactNode, useState, useRef, useCallback } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
+import { type ReactNode, useCallback, useRef, useState } from 'react'
+import { useUiStore } from '../../store/ui-store'
+import { HistoryPanel } from '../HistoryPanel'
 import { NavRail } from './NavRail'
 import { TabBar } from './TabBar'
-import { HistoryPanel } from '../HistoryPanel'
-import { useUiStore } from '../../store/ui-store'
 
 type LayoutProps = {
   children: ReactNode
@@ -22,37 +22,43 @@ export function Layout({ children }: LayoutProps) {
   const dragStartX = useRef(0)
   const dragStartWidth = useRef(0)
 
-  const handleDragStart = useCallback((e: React.MouseEvent) => {
-    e.preventDefault()
-    dragging.current = true
-    dragStartX.current = e.clientX
-    dragStartWidth.current = panelWidth
+  const handleDragStart = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault()
+      dragging.current = true
+      dragStartX.current = e.clientX
+      dragStartWidth.current = panelWidth
 
-    document.body.style.userSelect = 'none'
-    document.body.style.cursor = 'col-resize'
+      document.body.style.userSelect = 'none'
+      document.body.style.cursor = 'col-resize'
 
-    const handleMouseMove = (ev: MouseEvent) => {
-      if (!dragging.current) return
-      const delta = ev.clientX - dragStartX.current
-      setPanelWidth(Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, dragStartWidth.current + delta)))
-    }
+      const handleMouseMove = (ev: MouseEvent) => {
+        if (!dragging.current) return
+        const delta = ev.clientX - dragStartX.current
+        setPanelWidth(Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, dragStartWidth.current + delta)))
+      }
 
-    const handleMouseUp = () => {
-      dragging.current = false
-      document.body.style.userSelect = ''
-      document.body.style.cursor = ''
-      document.removeEventListener('mousemove', handleMouseMove)
-      document.removeEventListener('mouseup', handleMouseUp)
-    }
+      const handleMouseUp = () => {
+        dragging.current = false
+        document.body.style.userSelect = ''
+        document.body.style.cursor = ''
+        document.removeEventListener('mousemove', handleMouseMove)
+        document.removeEventListener('mouseup', handleMouseUp)
+      }
 
-    document.addEventListener('mousemove', handleMouseMove)
-    document.addEventListener('mouseup', handleMouseUp)
-  }, [panelWidth])
+      document.addEventListener('mousemove', handleMouseMove)
+      document.addEventListener('mouseup', handleMouseUp)
+    },
+    [panelWidth],
+  )
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-stone-950 text-stone-100">
       {/* Drag region for macOS title bar */}
-      <div className="fixed top-0 left-0 right-0 h-12 z-50" style={{ WebkitAppRegion: 'drag' } as React.CSSProperties} />
+      <div
+        className="fixed top-0 right-0 left-0 z-50 h-12"
+        style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
+      />
       <NavRail />
       <AnimatePresence initial={false}>
         {showSidebar && (
@@ -68,9 +74,10 @@ export function Layout({ children }: LayoutProps) {
               <HistoryPanel />
             </div>
             {/* Drag handle */}
+            {/* biome-ignore lint/a11y/noStaticElementInteractions: mouse-only resize handle */}
             <div
               onMouseDown={handleDragStart}
-              className="flex w-1 flex-shrink-0 cursor-col-resize items-center justify-center border-r border-stone-800 bg-stone-950 transition-colors hover:bg-stone-700 active:bg-stone-600"
+              className="flex w-1 flex-shrink-0 cursor-col-resize items-center justify-center border-stone-800 border-r bg-stone-950 transition-colors hover:bg-stone-700 active:bg-stone-600"
             />
           </motion.div>
         )}

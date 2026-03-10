@@ -1,10 +1,10 @@
-import { useEffect, useState, useCallback } from 'react'
-import { X, ClipboardList } from 'lucide-react'
+import { ClipboardList, X } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
+import type { PlanComment, PlanSection } from '../../../../shared/types'
+import { parsePlanSections } from '../../lib/parse-plan'
 import { useSessionStore } from '../../store/session-store'
 import { useUiStore } from '../../store/ui-store'
-import { parsePlanSections } from '../../lib/parse-plan'
 import { ReviewSection } from './ReviewSection'
-import type { PlanSection, PlanComment } from '../../../../shared/types'
 
 export function ReviewPanel() {
   const reviewPlanRef = useUiStore((s) => s.reviewPanelPlan)
@@ -19,7 +19,8 @@ export function ReviewPanel() {
   })
 
   const session = useSessionStore((s) => s.sessions.get(sessionId))
-  const canAct = session?.status === 'running' || session?.status === 'waiting' || session?.status === 'done'
+  const canAct =
+    session?.status === 'running' || session?.status === 'waiting' || session?.status === 'done'
 
   const [sections, setSections] = useState<PlanSection[]>([])
   const [loading, setLoading] = useState(true)
@@ -39,7 +40,8 @@ export function ReviewPanel() {
     if (!filePath) return
     setLoading(true)
     setError(null)
-    window.api.readPlanFile(filePath)
+    window.api
+      .readPlanFile(filePath)
       .then((content) => {
         setSections(parsePlanSections(content))
         setLoading(false)
@@ -52,7 +54,7 @@ export function ReviewPanel() {
 
   // Flatten sections for display: show top-level, and children if they exist
   const flatSections = sections.flatMap((section) =>
-    section.children && section.children.length > 0 ? section.children : [section]
+    section.children && section.children.length > 0 ? section.children : [section],
   )
 
   const commentCount = comments.size
@@ -118,9 +120,9 @@ export function ReviewPanel() {
   return (
     <div className="flex h-full flex-col bg-[var(--color-base-bg)]">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-stone-800 px-4 py-3">
+      <div className="flex items-center justify-between border-stone-800 border-b px-4 py-3">
         <div>
-          <div className="flex items-center gap-2 text-sm font-semibold text-stone-200">
+          <div className="flex items-center gap-2 font-semibold text-sm text-stone-200">
             <ClipboardList size={15} className="text-violet-400" />
             Review Plan
           </div>
@@ -129,6 +131,7 @@ export function ReviewPanel() {
           </div>
         </div>
         <button
+          type="button"
           onClick={closeReviewPanel}
           className="rounded p-1 text-stone-600 transition-colors hover:bg-stone-800 hover:text-stone-300"
           aria-label="Close review panel"
@@ -140,16 +143,16 @@ export function ReviewPanel() {
       {/* Scrollable sections */}
       <div className="flex-1 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-12 text-xs text-stone-600">
+          <div className="flex items-center justify-center py-12 text-stone-600 text-xs">
             Loading plan...
           </div>
         ) : error ? (
           <div className="flex flex-col items-center justify-center gap-2 px-4 py-12">
-            <span className="text-xs text-red-400">Failed to load plan</span>
+            <span className="text-red-400 text-xs">Failed to load plan</span>
             <span className="text-[11px] text-stone-600">{error}</span>
           </div>
         ) : flatSections.length === 0 ? (
-          <div className="flex items-center justify-center py-12 text-xs text-stone-600">
+          <div className="flex items-center justify-center py-12 text-stone-600 text-xs">
             No sections found in plan file
           </div>
         ) : (
@@ -169,15 +172,21 @@ export function ReviewPanel() {
       </div>
 
       {/* Footer action bar */}
-      <div className="flex items-center gap-2.5 border-t border-stone-800 px-4 py-3">
-        <div className="flex-1 text-xs text-stone-500">
+      <div className="flex items-center gap-2.5 border-stone-800 border-t px-4 py-3">
+        <div className="flex-1 text-stone-500 text-xs">
           {commentCount > 0 ? (
-            <span className="text-amber-500">{commentCount} comment{commentCount !== 1 ? 's' : ''} on {flatSections.length} section{flatSections.length !== 1 ? 's' : ''}</span>
+            <span className="text-amber-500">
+              {commentCount} comment{commentCount !== 1 ? 's' : ''} on {flatSections.length} section
+              {flatSections.length !== 1 ? 's' : ''}
+            </span>
           ) : (
-            <span>{flatSections.length} section{flatSections.length !== 1 ? 's' : ''}</span>
+            <span>
+              {flatSections.length} section{flatSections.length !== 1 ? 's' : ''}
+            </span>
           )}
         </div>
         <button
+          type="button"
           onClick={handleApprove}
           disabled={!canAct}
           className="rounded-md border border-stone-700 bg-stone-800 px-4 py-2 text-[13px] text-stone-300 transition-colors hover:bg-stone-700 disabled:opacity-40"
@@ -186,9 +195,10 @@ export function ReviewPanel() {
         </button>
         {commentCount > 0 && (
           <button
+            type="button"
             onClick={handleRequestChanges}
             disabled={!canAct}
-            className="rounded-md bg-amber-600 px-4 py-2 text-[13px] font-semibold text-stone-950 transition-colors hover:bg-amber-500 disabled:opacity-40"
+            className="rounded-md bg-amber-600 px-4 py-2 font-semibold text-[13px] text-stone-950 transition-colors hover:bg-amber-500 disabled:opacity-40"
           >
             Request Changes
           </button>

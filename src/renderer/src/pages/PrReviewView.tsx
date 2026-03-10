@@ -1,15 +1,15 @@
 import { useEffect } from 'react'
-import { usePrReviewStore } from '../store/pr-review-store'
-import { PrList } from '../components/pr-review/PrList'
-import { PrDetail } from '../components/pr-review/PrDetail'
 import { GhSetupGuide } from '../components/pr-review/GhSetupGuide'
+import { PrDetail } from '../components/pr-review/PrDetail'
+import { PrList } from '../components/pr-review/PrList'
+import { usePrReviewStore } from '../store/pr-review-store'
 
 export function PrReviewView() {
   const { ghStatus, checkGhStatus } = usePrReviewStore()
 
   useEffect(() => {
     checkGhStatus()
-  }, [])
+  }, [checkGhStatus])
 
   const isReady = ghStatus?.available && ghStatus?.authenticated
 

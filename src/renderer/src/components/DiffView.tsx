@@ -1,11 +1,19 @@
-import { useMemo } from 'react'
 import { diffWords } from 'diff'
-import type { DiffLine, DiffHunk } from '../lib/diff-utils'
-import { buildPairedLines } from '../lib/diff-utils'
+import { useMemo } from 'react'
 import type { ReviewFinding } from '../../../shared/types'
+import type { DiffHunk, DiffLine } from '../lib/diff-utils'
+import { buildPairedLines } from '../lib/diff-utils'
 import { DiffFindingAnnotation } from './pr-review/DiffFindingAnnotation'
 
-function InlineHighlight({ oldText, newText, type }: { oldText: string; newText: string; type: 'added' | 'removed' }) {
+function InlineHighlight({
+  oldText,
+  newText,
+  type,
+}: {
+  oldText: string
+  newText: string
+  type: 'added' | 'removed'
+}) {
   const parts = diffWords(oldText, newText)
 
   return (
@@ -18,7 +26,13 @@ function InlineHighlight({ oldText, newText, type }: { oldText: string; newText:
         return (
           <span
             key={i}
-            className={isHighlighted ? (type === 'removed' ? 'bg-red-700/50 rounded-xs' : 'bg-emerald-700/50 rounded-xs') : ''}
+            className={
+              isHighlighted
+                ? type === 'removed'
+                  ? 'rounded-xs bg-red-700/50'
+                  : 'rounded-xs bg-emerald-700/50'
+                : ''
+            }
           >
             {part.value}
           </span>
@@ -28,31 +42,21 @@ function InlineHighlight({ oldText, newText, type }: { oldText: string; newText:
   )
 }
 
-function DiffLineRow({
-  line,
-  pairedContent,
-}: {
-  line: DiffLine
-  pairedContent?: string
-}) {
+function DiffLineRow({ line, pairedContent }: { line: DiffLine; pairedContent?: string }) {
   const lineNo =
-    line.type === 'removed' ? line.oldLineNo :
-    line.type === 'added' ? line.newLineNo :
-    line.newLineNo
+    line.type === 'removed'
+      ? line.oldLineNo
+      : line.type === 'added'
+        ? line.newLineNo
+        : line.newLineNo
 
   return (
     <div
       className={`flex gap-0 ${
-        line.type === 'removed'
-          ? 'bg-red-950/30'
-          : line.type === 'added'
-            ? 'bg-emerald-950/30'
-            : ''
+        line.type === 'removed' ? 'bg-red-950/30' : line.type === 'added' ? 'bg-emerald-950/30' : ''
       }`}
     >
-      <span className="w-8 flex-shrink-0 select-none pr-1 text-right text-stone-600">
-        {lineNo}
-      </span>
+      <span className="w-8 flex-shrink-0 select-none pr-1 text-right text-stone-600">{lineNo}</span>
       <span
         className={`w-4 flex-shrink-0 select-none text-center ${
           line.type === 'removed'
@@ -95,7 +99,13 @@ type DiffViewProps = {
   onPostFinding?: (finding: ReviewFinding) => void
 }
 
-export function DiffView({ hunks, findings = [], selectedFindingIds, onToggleFinding, onPostFinding }: DiffViewProps) {
+export function DiffView({
+  hunks,
+  findings = [],
+  selectedFindingIds,
+  onToggleFinding,
+  onPostFinding,
+}: DiffViewProps) {
   const pairedLines = useMemo(() => buildPairedLines(hunks), [hunks])
 
   const findingsByLine = useMemo(() => {
@@ -111,9 +121,7 @@ export function DiffView({ hunks, findings = [], selectedFindingIds, onToggleFin
   }, [findings])
 
   if (hunks.length === 0) {
-    return (
-      <div className="px-3 py-2 text-xs text-stone-600">No changes</div>
-    )
+    return <div className="px-3 py-2 text-stone-600 text-xs">No changes</div>
   }
 
   return (
@@ -121,7 +129,7 @@ export function DiffView({ hunks, findings = [], selectedFindingIds, onToggleFin
       {hunks.map((hunk, hi) => (
         <div key={hi}>
           {hi > 0 && (
-            <div className="border-y border-stone-800/50 bg-stone-900/30 px-2 py-0.5 text-center text-stone-600">
+            <div className="border-stone-800/50 border-y bg-stone-900/30 px-2 py-0.5 text-center text-stone-600">
               ⋯
             </div>
           )}

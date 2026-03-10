@@ -13,7 +13,8 @@ type UserMessageProps = {
 }
 
 export function UserMessage({ message }: UserMessageProps) {
-  const rawContent = message.content ?? (message.message as Record<string, unknown> | undefined)?.content
+  const rawContent =
+    message.content ?? (message.message as Record<string, unknown> | undefined)?.content
 
   const getText = (): string => {
     if (!rawContent) return ''
@@ -48,9 +49,7 @@ export function UserMessage({ message }: UserMessageProps) {
           ))}
         </div>
       )}
-      {text && (
-        <p className="whitespace-pre-wrap text-sm text-stone-100">{text}</p>
-      )}
+      {text && <p className="whitespace-pre-wrap text-sm text-stone-100">{text}</p>}
     </div>
   )
 }

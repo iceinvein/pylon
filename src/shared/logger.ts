@@ -4,13 +4,13 @@ let _fs: typeof import('fs') | null = null
 let _path: typeof import('path') | null = null
 
 function getFs(): typeof import('fs') {
-  if (!_fs) _fs = require('fs')
-  return _fs!
+  if (!_fs) _fs = require('node:fs')
+  return _fs as typeof import('fs')
 }
 
 function getPath(): typeof import('path') {
-  if (!_path) _path = require('path')
-  return _path!
+  if (!_path) _path = require('node:path')
+  return _path as typeof import('path')
 }
 
 type LogLevel = 'debug' | 'info' | 'warn' | 'error'
@@ -62,7 +62,7 @@ function rotateIfNeeded(): void {
     if (!fs.existsSync(logFilePath)) return
     const stats = fs.statSync(logFilePath)
     if (stats.size >= MAX_LOG_SIZE) {
-      const backup = logFilePath + '.1'
+      const backup = `${logFilePath}.1`
       fs.renameSync(logFilePath, backup)
     }
   } catch {
@@ -94,10 +94,16 @@ function formatLine(level: LogLevel, source: string, args: unknown[]): string {
 /** Minimum level for output. Set via initLogger or defaults to 'debug' in dev, 'info' in prod. */
 let minLevel: number = 0
 
+type WindowWithApi = {
+  api?: { sendLog?: (level: string, source: string, message: string) => void }
+}
+type ConsoleMethod = 'log' | 'info' | 'warn' | 'error'
+
 let _isRenderer: boolean | null = null
 function isRenderer(): boolean {
   if (_isRenderer === null) {
-    _isRenderer = typeof window !== 'undefined' && typeof (window as any).api?.sendLog === 'function'
+    _isRenderer =
+      typeof window !== 'undefined' && typeof (window as WindowWithApi).api?.sendLog === 'function'
   }
   return _isRenderer
 }
@@ -108,11 +114,12 @@ function writeLog(level: LogLevel, source: string, args: unknown[]): void {
   // Renderer process — forward over IPC
   if (isRenderer()) {
     try {
-      ;(window as any).api.sendLog(level, source, formatArgs(args))
+      const api = (window as WindowWithApi).api
+      api?.sendLog?.(level, source, formatArgs(args))
     } catch {
       // Fallback to console if IPC unavailable
-      const method = level === 'debug' ? 'log' : level
-      ;(console as any)[method](`[${source}]`, ...args)
+      const method: ConsoleMethod = level === 'debug' ? 'log' : level
+      console[method](`[${source}]`, ...args)
     }
     return
   }
@@ -121,15 +128,15 @@ function writeLog(level: LogLevel, source: string, args: unknown[]): void {
   const line = formatLine(level, source, args)
 
   // Stdout
-  const method = level === 'debug' ? 'log' : level
-  ;(console as any)[method](line)
+  const method: ConsoleMethod = level === 'debug' ? 'log' : level
+  console[method](line)
 
   // File
   try {
     ensureLogDir()
     rotateIfNeeded()
     if (logFilePath) {
-      getFs().appendFileSync(logFilePath, line + '\n')
+      getFs().appendFileSync(logFilePath, `${line}\n`)
     }
   } catch {
     // File write failure is non-fatal

@@ -1,5 +1,5 @@
-import { useMemo } from 'react'
 import { FileText } from 'lucide-react'
+import { useMemo } from 'react'
 import { computeDiffHunks } from '../../lib/diff-utils'
 import { DiffView } from '../DiffView'
 
@@ -28,16 +28,17 @@ export function EditTool({ input }: EditToolProps) {
   const isCreate = !oldString && newString
   const summaryParts: string[] = []
   if (addedCount > 0) summaryParts.push(`Added ${addedCount} line${addedCount !== 1 ? 's' : ''}`)
-  if (removedCount > 0) summaryParts.push(`removed ${removedCount} line${removedCount !== 1 ? 's' : ''}`)
+  if (removedCount > 0)
+    summaryParts.push(`removed ${removedCount} line${removedCount !== 1 ? 's' : ''}`)
 
   return (
     <div className="space-y-1.5">
-      <div className="flex items-center gap-2 text-xs text-stone-400">
+      <div className="flex items-center gap-2 text-stone-400 text-xs">
         <FileText size={13} className="flex-shrink-0 text-yellow-400" />
         <span className="font-[family-name:var(--font-mono)] text-stone-300">{path}</span>
       </div>
       {summaryParts.length > 0 && (
-        <div className="text-xs text-stone-500">
+        <div className="text-stone-500 text-xs">
           {isCreate ? 'Created' : 'Updated'} &mdash; {summaryParts.join(', ')}
         </div>
       )}

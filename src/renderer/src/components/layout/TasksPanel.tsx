@@ -1,8 +1,8 @@
+import { CheckCircle, ChevronUp, Circle, ListChecks, Loader } from 'lucide-react'
+import { AnimatePresence, motion } from 'motion/react'
 import { useState } from 'react'
-import { motion, AnimatePresence } from 'motion/react'
-import { CheckCircle, Circle, Loader, ChevronUp, ListChecks } from 'lucide-react'
-import { useSessionStore } from '../../store/session-store'
 import type { TaskItem } from '../../store/session-store'
+import { useSessionStore } from '../../store/session-store'
 
 type TasksPanelProps = {
   sessionId: string | null
@@ -29,10 +29,11 @@ export function TasksPanel({ sessionId }: TasksPanelProps) {
     <motion.div
       initial={{ opacity: 0, height: 0 }}
       animate={{ opacity: 1, height: 'auto' }}
-      className="border-t border-stone-800"
+      className="border-stone-800 border-t"
     >
       {/* Summary bar — always visible */}
       <button
+        type="button"
         onClick={() => setExpanded((v) => !v)}
         className="mx-auto flex w-full max-w-3xl items-center gap-2.5 px-4 py-2 text-left transition-colors hover:bg-stone-800/30"
       >
@@ -47,13 +48,15 @@ export function TasksPanel({ sessionId }: TasksPanelProps) {
           />
         </div>
 
-        <span className="text-xs text-stone-500">
-          <span className={allDone ? 'text-green-400' : 'text-stone-300'}>{completed}/{total}</span>
-          {' '}tasks
+        <span className="text-stone-500 text-xs">
+          <span className={allDone ? 'text-green-400' : 'text-stone-300'}>
+            {completed}/{total}
+          </span>{' '}
+          tasks
         </span>
 
         {inProgress && !expanded && (
-          <span className="min-w-0 flex-1 truncate text-xs text-stone-500 italic">
+          <span className="min-w-0 flex-1 truncate text-stone-500 text-xs italic">
             {inProgress.activeForm ?? inProgress.subject}
           </span>
         )}

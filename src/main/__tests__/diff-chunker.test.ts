@@ -1,5 +1,5 @@
-import { test, expect } from 'bun:test'
-import { parseDiffIntoFiles, classifyFile, chunkDiff } from '../diff-chunker'
+import { expect, test } from 'bun:test'
+import { chunkDiff, classifyFile, parseDiffIntoFiles } from '../diff-chunker'
 
 test('parseDiffIntoFiles splits unified diff into per-file segments', () => {
   const diff = `diff --git a/src/main.ts b/src/main.ts
@@ -171,8 +171,6 @@ test('chunkDiff groups files in the same directory together', () => {
 
   const result = chunkDiff(diff, { tokenBudget: 100_000 })
   const files = result.chunks[0].files
-  const authIndices = files
-    .map((f, i) => (f.includes('auth/') ? i : -1))
-    .filter((i) => i >= 0)
+  const authIndices = files.map((f, i) => (f.includes('auth/') ? i : -1)).filter((i) => i >= 0)
   expect(authIndices[1] - authIndices[0]).toBe(1)
 })

@@ -1,5 +1,5 @@
-import type { SessionState } from '../store/session-store'
 import { formatCost, formatTokens } from '../lib/utils'
+import type { SessionState } from '../store/session-store'
 
 type StatusBarProps = {
   session: SessionState | undefined
@@ -18,34 +18,31 @@ function StatusDot({ status }: { status: string | undefined }) {
 
 export function StatusBar({ session }: StatusBarProps) {
   return (
-    <div className="flex h-6 items-center gap-3 border-t border-stone-800 bg-stone-950 px-3">
+    <div className="flex h-6 items-center gap-3 border-stone-800 border-t bg-stone-950 px-3">
       <StatusDot status={session?.status} />
 
       {session && (
         <>
-          <span className="text-xs text-stone-500">{session.status}</span>
+          <span className="text-stone-500 text-xs">{session.status}</span>
           {session.model && (
             <>
               <span className="text-stone-700">·</span>
-              <span className="text-xs text-stone-500">{session.model}</span>
+              <span className="text-stone-500 text-xs">{session.model}</span>
             </>
           )}
 
           {session.cost.totalUsd > 0 && (
             <>
               <span className="text-stone-700">·</span>
-              <span className="text-xs text-stone-500">
-                {formatCost(session.cost.totalUsd)}
-              </span>
+              <span className="text-stone-500 text-xs">{formatCost(session.cost.totalUsd)}</span>
             </>
           )}
 
           {(session.cost.inputTokens > 0 || session.cost.outputTokens > 0) && (
             <>
               <span className="text-stone-700">·</span>
-              <span className="text-xs text-stone-600">
-                {formatTokens(session.cost.inputTokens)} /{' '}
-                {formatTokens(session.cost.outputTokens)}
+              <span className="text-stone-600 text-xs">
+                {formatTokens(session.cost.inputTokens)} / {formatTokens(session.cost.outputTokens)}
               </span>
             </>
           )}

@@ -1,13 +1,13 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
-import { motion, AnimatePresence } from 'motion/react'
-import { Search, FolderOpen, Archive, DollarSign, RotateCcw, GitCommit, Eraser } from 'lucide-react'
-import { useUiStore } from '../store/ui-store'
-import { useTabStore } from '../store/tab-store'
-import { useSessionStore } from '../store/session-store'
-import type { SessionState } from '../store/session-store'
+import { Archive, DollarSign, Eraser, FolderOpen, GitCommit, RotateCcw, Search } from 'lucide-react'
+import { AnimatePresence, motion } from 'motion/react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { SessionStatus } from '../../../shared/types'
-import { timeAgo } from '../lib/utils'
 import { extractChangedFiles } from '../lib/extract-changed-files'
+import { timeAgo } from '../lib/utils'
+import type { SessionState } from '../store/session-store'
+import { useSessionStore } from '../store/session-store'
+import { useTabStore } from '../store/tab-store'
+import { useUiStore } from '../store/ui-store'
 
 type StoredSession = {
   id: string
@@ -79,9 +79,15 @@ export function CommandPalette() {
     setSession(sessionState)
 
     const msgs = await window.api.getMessages(session.id)
-    const parsed = (msgs as { sdk_message: string }[]).map((m) => {
-      try { return JSON.parse(m.sdk_message) } catch { return null }
-    }).filter(Boolean)
+    const parsed = (msgs as { sdk_message: string }[])
+      .map((m) => {
+        try {
+          return JSON.parse(m.sdk_message)
+        } catch {
+          return null
+        }
+      })
+      .filter(Boolean)
     setMessages(session.id, parsed)
 
     // Rebuild changed files list from historical messages
@@ -96,6 +102,7 @@ export function CommandPalette() {
     addTab(session.cwd, session.title || session.cwd.split('/').pop() || session.cwd, session.id)
   }
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: handleResumeSession is an async function that would need complex useCallback wrapping; recentSessions already captures the data dependency
   const commands = useMemo(() => {
     const cmds: Command[] = []
 
@@ -111,7 +118,9 @@ export function CommandPalette() {
           action: async () => {
             toggleCommandPalette()
             // Stop current session if running
-            try { await window.api.stopSession(sessionId) } catch {}
+            try {
+              await window.api.stopSession(sessionId)
+            } catch {}
             // Clean up session data from store
             setMessages(sessionId, [])
             clearTasks(sessionId)
@@ -153,7 +162,7 @@ export function CommandPalette() {
             toggleCommandPalette()
             await window.api.sendMessage(sessionId, '/cost', [])
           },
-        }
+        },
       )
     }
 
@@ -185,12 +194,21 @@ export function CommandPalette() {
     }
 
     return cmds
-  }, [sessionId, activeTabId, toggleCommandPalette, addTab, updateTab, setMessages, clearTasks, recentSessions])
+  }, [
+    sessionId,
+    activeTabId,
+    toggleCommandPalette,
+    addTab,
+    updateTab,
+    setMessages,
+    clearTasks,
+    recentSessions,
+  ])
 
   const filtered = commands.filter(
     (cmd) =>
       cmd.label.toLowerCase().includes(query.toLowerCase()) ||
-      cmd.description.toLowerCase().includes(query.toLowerCase())
+      cmd.description.toLowerCase().includes(query.toLowerCase()),
   )
 
   // Group filtered commands by section
@@ -228,6 +246,7 @@ export function CommandPalette() {
   }, [commandPaletteOpen])
 
   // Reset selection on query change
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional trigger on query change
   useEffect(() => {
     setSelectedIdx(0)
   }, [query])
@@ -285,7 +304,7 @@ export function CommandPalette() {
             transition={{ duration: 0.12, ease: [0.32, 0.72, 0, 1] }}
           >
             {/* Search input */}
-            <div className="flex items-center gap-2.5 border-b border-stone-800/80 px-4 py-3">
+            <div className="flex items-center gap-2.5 border-stone-800/80 border-b px-4 py-3">
               <Search size={14} className="flex-shrink-0 text-stone-500" />
               <input
                 ref={inputRef}
@@ -297,7 +316,7 @@ export function CommandPalette() {
                 className="flex-1 bg-transparent text-sm text-stone-200 placeholder-stone-500 outline-none"
                 spellCheck={false}
               />
-              <kbd className="rounded border border-stone-700/70 bg-stone-800/60 px-1.5 py-0.5 text-[10px] leading-none text-stone-500">
+              <kbd className="rounded border border-stone-700/70 bg-stone-800/60 px-1.5 py-0.5 text-[10px] text-stone-500 leading-none">
                 {isMac ? '⌘K' : 'Ctrl+K'}
               </kbd>
             </div>
@@ -305,7 +324,7 @@ export function CommandPalette() {
             {/* Command list */}
             <div ref={listRef} className="max-h-[300px] overflow-y-auto p-1.5">
               {flatList.length === 0 ? (
-                <div className="px-3 py-8 text-center text-xs text-stone-500">
+                <div className="px-3 py-8 text-center text-stone-500 text-xs">
                   No matching commands
                 </div>
               ) : (
@@ -314,13 +333,20 @@ export function CommandPalette() {
                   {sessionCmds.length > 0 && (
                     <>
                       {showSections && (
-                        <div className="px-3 pt-1 pb-1.5 text-[10px] font-medium uppercase tracking-wider text-stone-600">
+                        <div className="px-3 pt-1 pb-1.5 font-medium text-[10px] text-stone-600 uppercase tracking-wider">
                           Session
                         </div>
                       )}
                       {sessionCmds.map((cmd) => {
                         const idx = globalIdx++
-                        return <CommandRow key={cmd.id} cmd={cmd} isSelected={idx === selectedIdx} onSelect={() => setSelectedIdx(idx)} />
+                        return (
+                          <CommandRow
+                            key={cmd.id}
+                            cmd={cmd}
+                            isSelected={idx === selectedIdx}
+                            onSelect={() => setSelectedIdx(idx)}
+                          />
+                        )
                       })}
                     </>
                   )}
@@ -329,13 +355,20 @@ export function CommandPalette() {
                   {globalCmds.length > 0 && (
                     <>
                       {showSections && (
-                        <div className="px-3 pt-2.5 pb-1.5 text-[10px] font-medium uppercase tracking-wider text-stone-600">
+                        <div className="px-3 pt-2.5 pb-1.5 font-medium text-[10px] text-stone-600 uppercase tracking-wider">
                           General
                         </div>
                       )}
                       {globalCmds.map((cmd) => {
                         const idx = globalIdx++
-                        return <CommandRow key={cmd.id} cmd={cmd} isSelected={idx === selectedIdx} onSelect={() => setSelectedIdx(idx)} />
+                        return (
+                          <CommandRow
+                            key={cmd.id}
+                            cmd={cmd}
+                            isSelected={idx === selectedIdx}
+                            onSelect={() => setSelectedIdx(idx)}
+                          />
+                        )
                       })}
                     </>
                   )}
@@ -344,13 +377,20 @@ export function CommandPalette() {
                   {recentCmds.length > 0 && (
                     <>
                       {showSections && (
-                        <div className="px-3 pt-2.5 pb-1.5 text-[10px] font-medium uppercase tracking-wider text-stone-600">
+                        <div className="px-3 pt-2.5 pb-1.5 font-medium text-[10px] text-stone-600 uppercase tracking-wider">
                           Recent sessions
                         </div>
                       )}
                       {recentCmds.map((cmd) => {
                         const idx = globalIdx++
-                        return <CommandRow key={cmd.id} cmd={cmd} isSelected={idx === selectedIdx} onSelect={() => setSelectedIdx(idx)} />
+                        return (
+                          <CommandRow
+                            key={cmd.id}
+                            cmd={cmd}
+                            isSelected={idx === selectedIdx}
+                            onSelect={() => setSelectedIdx(idx)}
+                          />
+                        )
                       })}
                     </>
                   )}
@@ -359,17 +399,23 @@ export function CommandPalette() {
             </div>
 
             {/* Footer */}
-            <div className="flex items-center gap-3 border-t border-stone-800/60 px-4 py-2">
+            <div className="flex items-center gap-3 border-stone-800/60 border-t px-4 py-2">
               <span className="flex items-center gap-1 text-[10px] text-stone-600">
-                <kbd className="rounded border border-stone-700/50 bg-stone-800/40 px-1 py-px text-[9px]">↑↓</kbd>
+                <kbd className="rounded border border-stone-700/50 bg-stone-800/40 px-1 py-px text-[9px]">
+                  ↑↓
+                </kbd>
                 navigate
               </span>
               <span className="flex items-center gap-1 text-[10px] text-stone-600">
-                <kbd className="rounded border border-stone-700/50 bg-stone-800/40 px-1 py-px text-[9px]">↵</kbd>
+                <kbd className="rounded border border-stone-700/50 bg-stone-800/40 px-1 py-px text-[9px]">
+                  ↵
+                </kbd>
                 run
               </span>
               <span className="flex items-center gap-1 text-[10px] text-stone-600">
-                <kbd className="rounded border border-stone-700/50 bg-stone-800/40 px-1 py-px text-[9px]">esc</kbd>
+                <kbd className="rounded border border-stone-700/50 bg-stone-800/40 px-1 py-px text-[9px]">
+                  esc
+                </kbd>
                 close
               </span>
             </div>
@@ -380,10 +426,19 @@ export function CommandPalette() {
   )
 }
 
-function CommandRow({ cmd, isSelected, onSelect }: { cmd: Command; isSelected: boolean; onSelect: () => void }) {
+function CommandRow({
+  cmd,
+  isSelected,
+  onSelect,
+}: {
+  cmd: Command
+  isSelected: boolean
+  onSelect: () => void
+}) {
   const Icon = cmd.icon
   return (
     <button
+      type="button"
       onMouseDown={(e) => {
         e.preventDefault()
         cmd.action()
@@ -403,10 +458,12 @@ function CommandRow({ cmd, isSelected, onSelect }: { cmd: Command; isSelected: b
         <Icon size={14} />
       </div>
       <div className="min-w-0 flex-1">
-        <p className={`text-sm transition-colors duration-75 ${isSelected ? 'text-stone-200' : 'text-stone-300'}`}>
+        <p
+          className={`text-sm transition-colors duration-75 ${isSelected ? 'text-stone-200' : 'text-stone-300'}`}
+        >
           {cmd.label}
         </p>
-        <p className="text-[11px] leading-tight text-stone-500">{cmd.description}</p>
+        <p className="text-[11px] text-stone-500 leading-tight">{cmd.description}</p>
       </div>
     </button>
   )

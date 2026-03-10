@@ -1,12 +1,39 @@
-import { useRef, useState, useEffect, type KeyboardEvent, type DragEvent, type ClipboardEvent } from 'react'
-import { ArrowUp, Square, Paperclip, X, Image, ChevronDown, ShieldCheck, ShieldAlert, Info } from 'lucide-react'
+import {
+  ArrowUp,
+  ChevronDown,
+  Image,
+  Info,
+  Paperclip,
+  ShieldAlert,
+  ShieldCheck,
+  Square,
+  X,
+} from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
+import {
+  type ClipboardEvent,
+  type DragEvent,
+  type KeyboardEvent,
+  useEffect,
+  useRef,
+  useState,
+} from 'react'
 import type { Attachment, ImageAttachment, PermissionMode } from '../../../shared/types'
 import { useUiStore } from '../store/ui-store'
 
 const PERMISSION_MODES = [
-  { id: 'default' as const, label: 'Default', icon: ShieldCheck, description: 'Ask before each tool use' },
-  { id: 'auto-approve' as const, label: 'YOLO', icon: ShieldAlert, description: 'Auto-approve all tool permissions' },
+  {
+    id: 'default' as const,
+    label: 'Default',
+    icon: ShieldCheck,
+    description: 'Ask before each tool use',
+  },
+  {
+    id: 'auto-approve' as const,
+    label: 'YOLO',
+    icon: ShieldAlert,
+    description: 'Auto-approve all tool permissions',
+  },
 ]
 
 const MODELS = [
@@ -26,7 +53,16 @@ type InputBarProps = {
   onStop: () => void
 }
 
-export function InputBar({ sessionId, isRunning, model, onModelChange, permissionMode, onPermissionModeChange, onSend, onStop }: InputBarProps) {
+export function InputBar({
+  sessionId,
+  isRunning,
+  model,
+  onModelChange,
+  permissionMode,
+  onPermissionModeChange,
+  onSend,
+  onStop,
+}: InputBarProps) {
   const [text, setText] = useState('')
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const [isDragging, setIsDragging] = useState(false)
@@ -72,6 +108,7 @@ export function InputBar({ sessionId, isRunning, model, onModelChange, permissio
   }, [lightboxUrl])
 
   const draftText = useUiStore((s) => s.draftText)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: adjustHeight only reads a ref and doesn't need to trigger re-runs
   useEffect(() => {
     if (draftText !== null) {
       setText(draftText)
@@ -87,7 +124,7 @@ export function InputBar({ sessionId, isRunning, model, onModelChange, permissio
     const el = textareaRef.current
     if (!el) return
     el.style.height = 'auto'
-    el.style.height = Math.min(el.scrollHeight, 200) + 'px'
+    el.style.height = `${Math.min(el.scrollHeight, 200)}px`
   }
 
   const { toggleCommandPalette } = useUiStore()
@@ -167,9 +204,7 @@ export function InputBar({ sessionId, isRunning, model, onModelChange, permissio
     if (imageItems.length === 0) return
 
     e.preventDefault()
-    const files = imageItems
-      .map((item) => item.getAsFile())
-      .filter((f): f is File => f !== null)
+    const files = imageItems.map((item) => item.getAsFile()).filter((f): f is File => f !== null)
     await addFiles(files)
   }
 
@@ -213,7 +248,7 @@ export function InputBar({ sessionId, isRunning, model, onModelChange, permissio
   const canSend = (text.trim().length > 0 || attachments.length > 0) && !isRunning
 
   return (
-    <div className="relative bg-[var(--color-base-bg)] px-4 pb-4 pt-2">
+    <div className="relative bg-[var(--color-base-bg)] px-4 pt-2 pb-4">
       <AnimatePresence>
         {lightboxUrl && (
           <motion.div
@@ -238,6 +273,7 @@ export function InputBar({ sessionId, isRunning, model, onModelChange, permissio
       </AnimatePresence>
 
       <div className="mx-auto max-w-3xl">
+        {/* biome-ignore lint/a11y/noStaticElementInteractions: drag-and-drop zone does not need keyboard interaction */}
         <div
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
@@ -248,7 +284,7 @@ export function InputBar({ sessionId, isRunning, model, onModelChange, permissio
         >
           {/* Attachments */}
           {attachments.length > 0 && (
-            <div className="flex flex-wrap gap-2 border-b border-stone-800/50 px-4 py-2">
+            <div className="flex flex-wrap gap-2 border-stone-800/50 border-b px-4 py-2">
               <AnimatePresence>
                 {attachments.map((att, i) => (
                   <motion.div
@@ -272,20 +308,25 @@ export function InputBar({ sessionId, isRunning, model, onModelChange, permissio
                           alt={att.name}
                           className="h-full w-full object-cover"
                         />
-                        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-1 pb-0.5 pt-2">
-                          <span className="block truncate text-[10px] leading-tight text-stone-300">{att.name}</span>
+                        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-1 pt-2 pb-0.5">
+                          <span className="block truncate text-[10px] text-stone-300 leading-tight">
+                            {att.name}
+                          </span>
                         </div>
                       </button>
                     ) : (
                       <>
                         <Image size={14} className="text-stone-500" />
-                        <span className="max-w-[120px] truncate text-xs text-stone-400">{att.name}</span>
-                        <span className="text-xs text-stone-600">
+                        <span className="max-w-[120px] truncate text-stone-400 text-xs">
+                          {att.name}
+                        </span>
+                        <span className="text-stone-600 text-xs">
                           {(att.size / 1024).toFixed(0)}KB
                         </span>
                       </>
                     )}
                     <button
+                      type="button"
                       onClick={() => removeAttachment(i)}
                       className="absolute top-0.5 right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-black/60 text-stone-300 opacity-0 transition-opacity group-hover:opacity-100"
                     >
@@ -322,9 +363,10 @@ export function InputBar({ sessionId, isRunning, model, onModelChange, permissio
             />
 
             <button
+              type="button"
               onClick={() => fileInputRef.current?.click()}
               title="Attach"
-              className="flex h-7 items-center gap-1.5 rounded-full border border-stone-700/50 px-2.5 text-xs text-stone-400 transition-colors hover:border-stone-600 hover:text-stone-300"
+              className="flex h-7 items-center gap-1.5 rounded-full border border-stone-700/50 px-2.5 text-stone-400 text-xs transition-colors hover:border-stone-600 hover:text-stone-300"
             >
               <Paperclip size={13} />
               <span>Attach</span>
@@ -332,8 +374,9 @@ export function InputBar({ sessionId, isRunning, model, onModelChange, permissio
 
             <div className="relative" ref={modelMenuRef}>
               <button
+                type="button"
                 onClick={() => setShowModelMenu((v) => !v)}
-                className="flex h-7 items-center gap-1 rounded-full border border-stone-700/50 px-2.5 text-xs text-stone-400 transition-colors hover:border-stone-600 hover:text-stone-300"
+                className="flex h-7 items-center gap-1 rounded-full border border-stone-700/50 px-2.5 text-stone-400 text-xs transition-colors hover:border-stone-600 hover:text-stone-300"
               >
                 <span>{currentModelLabel}</span>
                 <ChevronDown size={12} />
@@ -349,6 +392,7 @@ export function InputBar({ sessionId, isRunning, model, onModelChange, permissio
                   >
                     {MODELS.map((m) => (
                       <button
+                        type="button"
                         key={m.id}
                         onClick={() => {
                           onModelChange(m.id)
@@ -358,7 +402,9 @@ export function InputBar({ sessionId, isRunning, model, onModelChange, permissio
                           m.id === model ? 'text-stone-100' : 'text-stone-400'
                         }`}
                       >
-                        <span className={`mr-2 h-1.5 w-1.5 rounded-full ${m.id === model ? 'bg-stone-300' : 'bg-transparent'}`} />
+                        <span
+                          className={`mr-2 h-1.5 w-1.5 rounded-full ${m.id === model ? 'bg-stone-300' : 'bg-transparent'}`}
+                        />
                         {m.label}
                       </button>
                     ))}
@@ -369,11 +415,13 @@ export function InputBar({ sessionId, isRunning, model, onModelChange, permissio
 
             <div className="relative" ref={permissionMenuRef}>
               {(() => {
-                const currentMode = PERMISSION_MODES.find((m) => m.id === permissionMode) ?? PERMISSION_MODES[0]
+                const currentMode =
+                  PERMISSION_MODES.find((m) => m.id === permissionMode) ?? PERMISSION_MODES[0]
                 const ModeIcon = currentMode.icon
                 const isYolo = permissionMode === 'auto-approve'
                 return (
                   <button
+                    type="button"
                     onClick={() => setShowPermissionMenu((v) => !v)}
                     className={`flex h-7 items-center gap-1 rounded-full border px-2.5 text-xs transition-colors ${
                       isYolo
@@ -400,6 +448,7 @@ export function InputBar({ sessionId, isRunning, model, onModelChange, permissio
                       const Icon = m.icon
                       return (
                         <button
+                          type="button"
                           key={m.id}
                           onClick={() => {
                             onPermissionModeChange(m.id)
@@ -409,7 +458,9 @@ export function InputBar({ sessionId, isRunning, model, onModelChange, permissio
                             m.id === permissionMode ? 'text-stone-100' : 'text-stone-400'
                           }`}
                         >
-                          <span className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${m.id === permissionMode ? 'bg-stone-300' : 'bg-transparent'}`} />
+                          <span
+                            className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${m.id === permissionMode ? 'bg-stone-300' : 'bg-transparent'}`}
+                          />
                           <Icon size={13} className="flex-shrink-0" />
                           <div>
                             <div>{m.label}</div>
@@ -418,10 +469,13 @@ export function InputBar({ sessionId, isRunning, model, onModelChange, permissio
                         </button>
                       )
                     })}
-                    <div className="mx-3 mt-1 border-t border-stone-700/50 pt-1.5 pb-1">
+                    <div className="mx-3 mt-1 border-stone-700/50 border-t pt-1.5 pb-1">
                       <div className="flex items-start gap-1.5 text-[10px] text-stone-500">
                         <Info size={11} className="mt-0.5 flex-shrink-0 text-stone-600" />
-                        <span>YOLO mode auto-approves tool permissions but still prompts for questions that require your input.</span>
+                        <span>
+                          YOLO mode auto-approves tool permissions but still prompts for questions
+                          that require your input.
+                        </span>
                       </div>
                     </div>
                   </motion.div>
@@ -451,7 +505,7 @@ export function InputBar({ sessionId, isRunning, model, onModelChange, permissio
                   onClick={handleSend}
                   disabled={!canSend}
                   title="Send"
-                  className="flex h-7 w-7 items-center justify-center rounded-lg bg-stone-600 text-stone-200 transition-colors hover:bg-stone-500 disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="flex h-7 w-7 items-center justify-center rounded-lg bg-stone-600 text-stone-200 transition-colors hover:bg-stone-500 disabled:cursor-not-allowed disabled:opacity-30"
                   initial={{ scale: 0.8, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   exit={{ scale: 0.8, opacity: 0 }}

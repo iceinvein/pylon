@@ -1,15 +1,25 @@
+import {
+  ChevronRight,
+  FilePlus,
+  FileText,
+  ListChecks,
+  MessageCircleQuestion,
+  Pencil,
+  Search,
+  Terminal,
+  Wrench,
+} from 'lucide-react'
+import { AnimatePresence, motion } from 'motion/react'
 import { useState } from 'react'
-import { motion, AnimatePresence } from 'motion/react'
-import { ChevronRight, Terminal, FileText, Search, Pencil, FilePlus, ListChecks, Wrench, MessageCircleQuestion } from 'lucide-react'
-import { BashTool } from './BashTool'
-import { ReadTool } from './ReadTool'
-import { EditTool } from './EditTool'
-import { GlobGrepTool } from './GlobGrepTool'
-import { WriteTool } from './WriteTool'
-import { TodoWriteTool } from './TodoWriteTool'
-import { GenericTool } from './GenericTool'
 import { AskUserQuestionTool, getAskUserQuestionSummary } from './AskUserQuestionTool'
+import { BashTool } from './BashTool'
+import { EditTool } from './EditTool'
+import { GenericTool } from './GenericTool'
+import { GlobGrepTool } from './GlobGrepTool'
+import { ReadTool } from './ReadTool'
+import { TodoWriteTool } from './TodoWriteTool'
 import { WebSearchTool } from './WebSearchTool'
+import { WriteTool } from './WriteTool'
 
 type ToolUseBlockProps = {
   toolName: string
@@ -134,7 +144,15 @@ function getToolInfo(toolName: string, input: Record<string, unknown>): ToolInfo
   }
 }
 
-function ToolRenderer({ toolName, input, result }: { toolName: string; input: Record<string, unknown>; result?: string }) {
+function ToolRenderer({
+  toolName,
+  input,
+  result,
+}: {
+  toolName: string
+  input: Record<string, unknown>
+  result?: string
+}) {
   const name = toolName.toLowerCase()
   if (name.includes('bash') || name.includes('shell')) {
     return <BashTool input={input} result={result} />
@@ -174,6 +192,7 @@ export function ToolUseBlock({ toolName, input, result }: ToolUseBlockProps) {
   return (
     <div>
       <button
+        type="button"
         onClick={() => setExpanded((v) => !v)}
         className="group flex w-full items-center gap-2 py-0.5 text-left"
       >
@@ -185,7 +204,7 @@ export function ToolUseBlock({ toolName, input, result }: ToolUseBlockProps) {
           <ChevronRight size={14} />
         </motion.span>
         <Icon size={14} className={`flex-shrink-0 ${info.iconColor}`} />
-        <span className="text-sm font-medium text-stone-300">{info.label}</span>
+        <span className="font-medium text-sm text-stone-300">{info.label}</span>
         {info.summary && !expanded && (
           <span className="min-w-0 flex-1 truncate text-sm text-stone-500">{info.summary}</span>
         )}
@@ -199,7 +218,7 @@ export function ToolUseBlock({ toolName, input, result }: ToolUseBlockProps) {
             transition={{ duration: 0.2, ease: 'easeOut' }}
             className="overflow-hidden"
           >
-            <div className="ml-8 mt-1 rounded border border-stone-800 bg-stone-900/50 px-3 py-2">
+            <div className="mt-1 ml-8 rounded border border-stone-800 bg-stone-900/50 px-3 py-2">
               <ToolRenderer toolName={toolName} input={input} result={result} />
             </div>
           </motion.div>

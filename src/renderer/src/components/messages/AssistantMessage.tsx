@@ -1,6 +1,6 @@
+import { ToolUseBlock } from '../tools/ToolUseBlock'
 import { TextBlock } from './TextBlock'
 import { ThinkingBlock } from './ThinkingBlock'
-import { ToolUseBlock } from '../tools/ToolUseBlock'
 
 type ContentBlock = {
   type: string

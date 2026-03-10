@@ -1,4 +1,4 @@
-import { test, expect, describe } from 'bun:test'
+import { describe, expect, test } from 'bun:test'
 import { detectChoices } from './detect-choices'
 
 describe('detectChoices', () => {
@@ -12,14 +12,14 @@ describe('detectChoices', () => {
 
       const result = detectChoices(text)
       expect(result).not.toBeNull()
-      expect(result!.choices).toHaveLength(3)
-      expect(result!.choices[0].label).toBe('Fast')
-      expect(result!.choices[0].description).toBe('Quick but less accurate')
-      expect(result!.choices[1].label).toBe('Accurate')
-      expect(result!.choices[1].description).toBe('Slow but thorough')
-      expect(result!.choices[2].label).toBe('Balanced')
-      expect(result!.choices[2].description).toBe('Middle ground')
-      expect(result!.questionText).toContain('Which approach would you prefer?')
+      expect(result?.choices).toHaveLength(3)
+      expect(result?.choices[0].label).toBe('Fast')
+      expect(result?.choices[0].description).toBe('Quick but less accurate')
+      expect(result?.choices[1].label).toBe('Accurate')
+      expect(result?.choices[1].description).toBe('Slow but thorough')
+      expect(result?.choices[2].label).toBe('Balanced')
+      expect(result?.choices[2].description).toBe('Middle ground')
+      expect(result?.questionText).toContain('Which approach would you prefer?')
     })
 
     test('detects numbered list with question after the list', () => {
@@ -32,8 +32,8 @@ Which do you prefer?`
 
       const result = detectChoices(text)
       expect(result).not.toBeNull()
-      expect(result!.choices).toHaveLength(2)
-      expect(result!.questionText).toContain('Which do you prefer?')
+      expect(result?.choices).toHaveLength(2)
+      expect(result?.questionText).toContain('Which do you prefer?')
     })
 
     test('question immediately after last item (no blank line)', () => {
@@ -43,8 +43,8 @@ Which one?`
 
       const result = detectChoices(text)
       expect(result).not.toBeNull()
-      expect(result!.choices).toHaveLength(2)
-      expect(result!.questionText).toContain('Which one?')
+      expect(result?.choices).toHaveLength(2)
+      expect(result?.questionText).toContain('Which one?')
     })
   })
 
@@ -58,10 +58,10 @@ Which framework fits your needs?`
 
       const result = detectChoices(text)
       expect(result).not.toBeNull()
-      expect(result!.choices).toHaveLength(3)
-      expect(result!.choices[0].label).toBe('React')
-      expect(result!.choices[0].description).toBe('Component-based UI')
-      expect(result!.choices[2].label).toBe('Svelte')
+      expect(result?.choices).toHaveLength(3)
+      expect(result?.choices[0].label).toBe('React')
+      expect(result?.choices[0].description).toBe('Component-based UI')
+      expect(result?.choices[2].label).toBe('Svelte')
     })
   })
 
@@ -75,10 +75,10 @@ What would you like to use?`
 
       const result = detectChoices(text)
       expect(result).not.toBeNull()
-      expect(result!.choices).toHaveLength(3)
-      expect(result!.choices[0].label).toBe('TypeScript')
-      expect(result!.choices[0].description).toBe('Typed JavaScript')
-      expect(result!.choices[1].label).toBe('JavaScript')
+      expect(result?.choices).toHaveLength(3)
+      expect(result?.choices[0].label).toBe('TypeScript')
+      expect(result?.choices[0].description).toBe('Typed JavaScript')
+      expect(result?.choices[1].label).toBe('JavaScript')
     })
 
     test('detects lowercase lettered list with period', () => {
@@ -89,8 +89,8 @@ Which option?`
 
       const result = detectChoices(text)
       expect(result).not.toBeNull()
-      expect(result!.choices).toHaveLength(2)
-      expect(result!.choices[0].label).toBe('Option one')
+      expect(result?.choices).toHaveLength(2)
+      expect(result?.choices[0].label).toBe('Option one')
     })
   })
 
@@ -104,9 +104,9 @@ What size do you need?`
 
       const result = detectChoices(text)
       expect(result).not.toBeNull()
-      expect(result!.choices).toHaveLength(3)
-      expect(result!.choices[0].label).toBe('Small')
-      expect(result!.choices[1].label).toBe('Medium')
+      expect(result?.choices).toHaveLength(3)
+      expect(result?.choices[0].label).toBe('Small')
+      expect(result?.choices[1].label).toBe('Medium')
     })
 
     test('detects lowercase lettered list with parenthesis', () => {
@@ -117,7 +117,7 @@ Which?`
 
       const result = detectChoices(text)
       expect(result).not.toBeNull()
-      expect(result!.choices).toHaveLength(2)
+      expect(result?.choices).toHaveLength(2)
     })
   })
 
@@ -130,8 +130,8 @@ Which approach?`
 
       const result = detectChoices(text)
       expect(result).not.toBeNull()
-      expect(result!.choices[0].label).toBe('Fast')
-      expect(result!.choices[0].description).toBe('Quick execution')
+      expect(result?.choices[0].label).toBe('Fast')
+      expect(result?.choices[0].description).toBe('Quick execution')
     })
 
     test('hyphen separator splits label and description', () => {
@@ -142,8 +142,8 @@ Which approach?`
 
       const result = detectChoices(text)
       expect(result).not.toBeNull()
-      expect(result!.choices[0].label).toBe('Fast')
-      expect(result!.choices[0].description).toBe('Quick execution')
+      expect(result?.choices[0].label).toBe('Fast')
+      expect(result?.choices[0].description).toBe('Quick execution')
     })
 
     test('colon separator splits label and description', () => {
@@ -154,8 +154,8 @@ Which approach?`
 
       const result = detectChoices(text)
       expect(result).not.toBeNull()
-      expect(result!.choices[0].label).toBe('Fast')
-      expect(result!.choices[0].description).toBe('Quick execution')
+      expect(result?.choices[0].label).toBe('Fast')
+      expect(result?.choices[0].description).toBe('Quick execution')
     })
 
     test('items with no separator produce empty description', () => {
@@ -166,10 +166,10 @@ Which one do you want?`
 
       const result = detectChoices(text)
       expect(result).not.toBeNull()
-      expect(result!.choices[0].label).toBe('Option Alpha')
-      expect(result!.choices[0].description).toBe('')
-      expect(result!.choices[1].label).toBe('Option Beta')
-      expect(result!.choices[1].description).toBe('')
+      expect(result?.choices[0].label).toBe('Option Alpha')
+      expect(result?.choices[0].description).toBe('')
+      expect(result?.choices[1].label).toBe('Option Beta')
+      expect(result?.choices[1].description).toBe('')
     })
   })
 
@@ -182,9 +182,9 @@ Which do you prefer?`
 
       const result = detectChoices(text)
       expect(result).not.toBeNull()
-      expect(result!.choices[0].label).toBe('TypeScript')
-      expect(result!.choices[0].description).toBe('Typed JavaScript superset')
-      expect(result!.choices[1].label).toBe('JavaScript')
+      expect(result?.choices[0].label).toBe('TypeScript')
+      expect(result?.choices[0].description).toBe('Typed JavaScript superset')
+      expect(result?.choices[1].label).toBe('JavaScript')
     })
 
     test('strips bold markdown from labels with colon separator', () => {
@@ -195,8 +195,8 @@ Which?`
 
       const result = detectChoices(text)
       expect(result).not.toBeNull()
-      expect(result!.choices[0].label).toBe('Alpha')
-      expect(result!.choices[1].label).toBe('Beta')
+      expect(result?.choices[0].label).toBe('Alpha')
+      expect(result?.choices[1].label).toBe('Beta')
     })
   })
 
@@ -213,7 +213,7 @@ Which one?`
 
       const result = detectChoices(text)
       expect(result).not.toBeNull()
-      expect(result!.choices).toHaveLength(6)
+      expect(result?.choices).toHaveLength(6)
     })
 
     test('minimum 2 items is accepted', () => {
@@ -224,7 +224,7 @@ Shall we continue?`
 
       const result = detectChoices(text)
       expect(result).not.toBeNull()
-      expect(result!.choices).toHaveLength(2)
+      expect(result?.choices).toHaveLength(2)
     })
 
     test('more than 6 items returns null', () => {
@@ -304,10 +304,10 @@ Which do you prefer?`
 
       const result = detectChoices(text)
       expect(result).not.toBeNull()
-      expect(result!.choices).toHaveLength(3)
-      expect(result!.choices[0].label).toBe('First')
-      expect(result!.choices[1].label).toBe('Second')
-      expect(result!.choices[2].label).toBe('Third')
+      expect(result?.choices).toHaveLength(3)
+      expect(result?.choices[0].label).toBe('First')
+      expect(result?.choices[1].label).toBe('Second')
+      expect(result?.choices[2].label).toBe('Third')
     })
   })
 
@@ -320,8 +320,8 @@ Which approach?`
 
       const result = detectChoices(text)
       expect(result).not.toBeNull()
-      expect(result!.choices[0].rawText).toContain('Fast')
-      expect(result!.choices[1].rawText).toContain('Accurate')
+      expect(result?.choices[0].rawText).toContain('Fast')
+      expect(result?.choices[1].rawText).toContain('Accurate')
     })
   })
 
@@ -366,7 +366,7 @@ Which approach?`
 
       const result = detectChoices(text)
       expect(result).not.toBeNull()
-      expect(result!.choices).toHaveLength(2)
+      expect(result?.choices).toHaveLength(2)
     })
 
     test('detects choices with "What do you prefer?"', () => {
@@ -421,7 +421,7 @@ Which would you prefer?`
 
       const result = detectChoices(text)
       expect(result).not.toBeNull()
-      expect(result!.choices).toHaveLength(2)
+      expect(result?.choices).toHaveLength(2)
     })
   })
 })

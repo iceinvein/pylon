@@ -1,4 +1,4 @@
-import { GitPullRequestDraft, GitPullRequest as GitPrIcon } from 'lucide-react'
+import { GitPullRequest as GitPrIcon, GitPullRequestDraft } from 'lucide-react'
 import type { GhPullRequest } from '../../../../shared/types'
 
 type PrCardProps = {
@@ -21,11 +21,10 @@ function timeAgo(dateStr: string): string {
 export function PrCard({ pr, selected, onClick }: PrCardProps) {
   return (
     <button
+      type="button"
       onClick={onClick}
       className={`w-full rounded-lg border px-3 py-2.5 text-left transition-colors ${
-        selected
-          ? 'border-stone-600 bg-stone-800'
-          : 'border-transparent hover:bg-stone-800/50'
+        selected ? 'border-stone-600 bg-stone-800' : 'border-transparent hover:bg-stone-800/50'
       }`}
     >
       <div className="flex items-start gap-2">
@@ -35,10 +34,8 @@ export function PrCard({ pr, selected, onClick }: PrCardProps) {
           <GitPrIcon size={14} className="mt-0.5 flex-shrink-0 text-green-500" />
         )}
         <div className="min-w-0 flex-1">
-          <div className="truncate text-sm text-stone-200">
-            {pr.title}
-          </div>
-          <div className="mt-0.5 flex items-center gap-2 text-xs text-stone-500">
+          <div className="truncate text-sm text-stone-200">{pr.title}</div>
+          <div className="mt-0.5 flex items-center gap-2 text-stone-500 text-xs">
             <span>#{pr.number}</span>
             <span>{pr.author}</span>
             <span>{timeAgo(pr.updatedAt)}</span>
@@ -47,7 +44,9 @@ export function PrCard({ pr, selected, onClick }: PrCardProps) {
             <span className="text-green-600">+{pr.additions}</span>
             <span className="text-red-600">-{pr.deletions}</span>
             {pr.isDraft && (
-              <span className="rounded bg-stone-700 px-1.5 py-0.5 text-[10px] text-stone-400">Draft</span>
+              <span className="rounded bg-stone-700 px-1.5 py-0.5 text-[10px] text-stone-400">
+                Draft
+              </span>
             )}
           </div>
         </div>

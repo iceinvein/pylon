@@ -1,9 +1,18 @@
-import { useEffect, useState } from 'react'
-import { ArrowLeft, ShieldCheck, ShieldAlert, Info, Settings, BarChart3, Bot, Plug } from 'lucide-react'
+import {
+  ArrowLeft,
+  BarChart3,
+  Bot,
+  Info,
+  Plug,
+  Settings,
+  ShieldAlert,
+  ShieldCheck,
+} from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
+import { useEffect, useState } from 'react'
+import type { AppSettings, GhCliStatus } from '../../../shared/types'
 import { useUiStore } from '../store/ui-store'
 import { UsageDashboard } from './UsageDashboard'
-import type { AppSettings, GhCliStatus } from '../../../shared/types'
 
 const MODELS = [
   { id: 'claude-opus-4-6', label: 'Opus 4.6' },
@@ -12,8 +21,18 @@ const MODELS = [
 ] as const
 
 const PERMISSION_MODES = [
-  { id: 'default' as const, label: 'Default', icon: ShieldCheck, description: 'Ask before each tool use' },
-  { id: 'auto-approve' as const, label: 'YOLO', icon: ShieldAlert, description: 'Auto-approve all tool permissions' },
+  {
+    id: 'default' as const,
+    label: 'Default',
+    icon: ShieldCheck,
+    description: 'Ask before each tool use',
+  },
+  {
+    id: 'auto-approve' as const,
+    label: 'YOLO',
+    icon: ShieldAlert,
+    description: 'Auto-approve all tool permissions',
+  },
 ]
 
 const TABS = [
@@ -32,7 +51,9 @@ export function SettingsOverlay() {
   const [ghStatus, setGhStatus] = useState<GhCliStatus | null>(null)
   const [ghPath, setGhPath] = useState('')
   const [ghChecking, setGhChecking] = useState(false)
-  const [agentPrompts, setAgentPrompts] = useState<Array<{ id: string; name: string; prompt: string; isCustom: boolean }>>([])
+  const [agentPrompts, setAgentPrompts] = useState<
+    Array<{ id: string; name: string; prompt: string; isCustom: boolean }>
+  >([])
   const [activeAgent, setActiveAgent] = useState<string | null>(null)
 
   async function recheckGh() {
@@ -55,6 +76,7 @@ export function SettingsOverlay() {
     window.api.getSettings().then((s) => setSettings(s as AppSettings))
   }, [settingsOpen])
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: recheckGh is stable intent
   useEffect(() => {
     if (settingsOpen && activeTab === 'integrations') recheckGh()
   }, [settingsOpen, activeTab])
@@ -72,9 +94,7 @@ export function SettingsOverlay() {
 
   async function updateAgentPrompt(id: string, prompt: string) {
     await window.api.updateSettings(`reviewAgent.${id}`, prompt)
-    setAgentPrompts((prev) =>
-      prev.map((a) => a.id === id ? { ...a, prompt, isCustom: true } : a)
-    )
+    setAgentPrompts((prev) => prev.map((a) => (a.id === id ? { ...a, prompt, isCustom: true } : a)))
   }
 
   async function resetAgentPrompt(id: string) {
@@ -93,7 +113,7 @@ export function SettingsOverlay() {
 
   async function updateSetting<K extends keyof AppSettings>(key: K, value: AppSettings[K]) {
     await window.api.updateSettings(key, value)
-    setSettings((prev) => prev ? { ...prev, [key]: value } : prev)
+    setSettings((prev) => (prev ? { ...prev, [key]: value } : prev))
   }
 
   return (
@@ -112,20 +132,22 @@ export function SettingsOverlay() {
           {/* Two-column layout */}
           <div className="flex flex-1 overflow-hidden">
             {/* Sidebar */}
-            <aside className="flex w-[200px] flex-shrink-0 flex-col border-r border-stone-800 px-3 py-4">
+            <aside className="flex w-[200px] flex-shrink-0 flex-col border-stone-800 border-r px-3 py-4">
               <button
+                type="button"
                 onClick={() => setSettingsOpen(false)}
-                className="mb-4 flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-stone-400 transition-colors hover:bg-stone-800 hover:text-stone-200"
+                className="mb-4 flex items-center gap-1.5 rounded-md px-2 py-1 text-stone-400 text-xs transition-colors hover:bg-stone-800 hover:text-stone-200"
               >
                 <ArrowLeft size={14} />
                 <span>Back</span>
               </button>
-              <h1 className="mb-4 px-2 text-lg font-medium text-stone-100">Settings</h1>
+              <h1 className="mb-4 px-2 font-medium text-lg text-stone-100">Settings</h1>
               <nav className="flex flex-col gap-0.5">
                 {TABS.map((tab) => {
                   const Icon = tab.icon
                   return (
                     <button
+                      type="button"
                       key={tab.id}
                       onClick={() => setActiveTab(tab.id)}
                       className={`relative flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors ${
@@ -137,7 +159,7 @@ export function SettingsOverlay() {
                       {activeTab === tab.id && (
                         <motion.div
                           layoutId="settings-sidebar-indicator"
-                          className="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-r bg-amber-500"
+                          className="absolute top-1/2 left-0 h-4 w-0.5 -translate-y-1/2 rounded-r bg-amber-500"
                           transition={{ duration: 0.2 }}
                         />
                       )}
@@ -156,11 +178,16 @@ export function SettingsOverlay() {
                   <div className="mt-8 space-y-8">
                     {/* Default Model */}
                     <section>
-                      <label className="block text-sm font-medium text-stone-300">Default Model</label>
-                      <p className="mt-0.5 text-xs text-stone-500">Model used when creating new sessions</p>
+                      <span className="block font-medium text-sm text-stone-300">
+                        Default Model
+                      </span>
+                      <p className="mt-0.5 text-stone-500 text-xs">
+                        Model used when creating new sessions
+                      </p>
                       <div className="mt-3 flex gap-2">
                         {MODELS.map((m) => (
                           <button
+                            type="button"
                             key={m.id}
                             onClick={() => updateSetting('defaultModel', m.id)}
                             className={`rounded-lg border px-3 py-2 text-xs transition-colors ${
@@ -177,8 +204,12 @@ export function SettingsOverlay() {
 
                     {/* Default Permission Mode */}
                     <section>
-                      <label className="block text-sm font-medium text-stone-300">Default Permission Mode</label>
-                      <p className="mt-0.5 text-xs text-stone-500">Permission behavior for new sessions (can be overridden per-session)</p>
+                      <span className="block font-medium text-sm text-stone-300">
+                        Default Permission Mode
+                      </span>
+                      <p className="mt-0.5 text-stone-500 text-xs">
+                        Permission behavior for new sessions (can be overridden per-session)
+                      </p>
                       <div className="mt-3 space-y-2">
                         {PERMISSION_MODES.map((m) => {
                           const Icon = m.icon
@@ -186,6 +217,7 @@ export function SettingsOverlay() {
                           const isYolo = m.id === 'auto-approve'
                           return (
                             <button
+                              type="button"
                               key={m.id}
                               onClick={() => updateSetting('defaultPermissionMode', m.id)}
                               className={`flex w-full items-center gap-3 rounded-lg border px-4 py-3 text-left transition-colors ${
@@ -198,20 +230,26 @@ export function SettingsOverlay() {
                             >
                               <Icon size={16} className="flex-shrink-0" />
                               <div className="flex-1">
-                                <div className="text-sm font-medium">{m.label}</div>
-                                <div className={`text-xs ${isSelected ? (isYolo ? 'text-amber-500/70' : 'text-stone-400') : 'text-stone-500'}`}>
+                                <div className="font-medium text-sm">{m.label}</div>
+                                <div
+                                  className={`text-xs ${isSelected ? (isYolo ? 'text-amber-500/70' : 'text-stone-400') : 'text-stone-500'}`}
+                                >
                                   {m.description}
                                 </div>
                               </div>
-                              <span className={`h-2 w-2 rounded-full ${isSelected ? (isYolo ? 'bg-amber-400' : 'bg-stone-300') : 'bg-transparent'}`} />
+                              <span
+                                className={`h-2 w-2 rounded-full ${isSelected ? (isYolo ? 'bg-amber-400' : 'bg-stone-300') : 'bg-transparent'}`}
+                              />
                             </button>
                           )
                         })}
                       </div>
                       <div className="mt-3 flex items-start gap-2 rounded-md border border-stone-800 bg-stone-900/50 px-3 py-2">
                         <Info size={13} className="mt-0.5 flex-shrink-0 text-stone-600" />
-                        <p className="text-xs text-stone-500">
-                          YOLO mode auto-approves all tool permissions but still prompts for questions that require your input. You can override the mode per-session from the input bar.
+                        <p className="text-stone-500 text-xs">
+                          YOLO mode auto-approves all tool permissions but still prompts for
+                          questions that require your input. You can override the mode per-session
+                          from the input bar.
                         </p>
                       </div>
                     </section>
@@ -223,15 +261,17 @@ export function SettingsOverlay() {
                 {activeTab === 'agents' && (
                   <div className="mt-6 flex flex-1 flex-col">
                     <p className="text-sm text-stone-400">
-                      Customize the specialist prompt for each review agent. Each agent reviews the PR diff
-                      with its own focus area. The standard review template (PR context, diff, output format)
-                      is injected automatically — you only edit the specialist guidance.
+                      Customize the specialist prompt for each review agent. Each agent reviews the
+                      PR diff with its own focus area. The standard review template (PR context,
+                      diff, output format) is injected automatically — you only edit the specialist
+                      guidance.
                     </p>
 
                     {/* Horizontal agent tabs */}
-                    <div className="mt-4 flex gap-1 border-b border-stone-800">
+                    <div className="mt-4 flex gap-1 border-stone-800 border-b">
                       {agentPrompts.map((agent) => (
                         <button
+                          type="button"
                           key={agent.id}
                           onClick={() => setActiveAgent(agent.id)}
                           className={`relative px-3 py-2 text-sm transition-colors ${
@@ -247,7 +287,7 @@ export function SettingsOverlay() {
                           {activeAgent === agent.id && (
                             <motion.div
                               layoutId="agent-tab-indicator"
-                              className="absolute bottom-0 left-0 right-0 h-0.5 bg-amber-500"
+                              className="absolute right-0 bottom-0 left-0 h-0.5 bg-amber-500"
                               transition={{ duration: 0.2 }}
                             />
                           )}
@@ -262,7 +302,7 @@ export function SettingsOverlay() {
                         <div key={agent.id} className="mt-5 flex flex-1 flex-col">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                              <h3 className="text-sm font-medium text-stone-200">{agent.name}</h3>
+                              <h3 className="font-medium text-sm text-stone-200">{agent.name}</h3>
                               {agent.isCustom && (
                                 <span className="rounded bg-stone-800 px-1.5 py-0.5 text-[10px] text-stone-400">
                                   customized
@@ -271,6 +311,7 @@ export function SettingsOverlay() {
                             </div>
                             {agent.isCustom && (
                               <button
+                                type="button"
                                 onClick={() => resetAgentPrompt(agent.id)}
                                 className="text-[11px] text-stone-500 transition-colors hover:text-stone-300"
                               >
@@ -281,7 +322,7 @@ export function SettingsOverlay() {
                           <textarea
                             value={agent.prompt}
                             onChange={(e) => updateAgentPrompt(agent.id, e.target.value)}
-                            className="mt-3 min-h-[200px] w-full flex-1 resize-y rounded-md bg-stone-950 px-3 py-2 text-xs leading-relaxed text-stone-300 outline-none ring-1 ring-stone-800 focus:ring-stone-600"
+                            className="mt-3 min-h-[200px] w-full flex-1 resize-y rounded-md bg-stone-950 px-3 py-2 text-stone-300 text-xs leading-relaxed outline-none ring-1 ring-stone-800 focus:ring-stone-600"
                           />
                         </div>
                       ))}
@@ -291,32 +332,43 @@ export function SettingsOverlay() {
                 {activeTab === 'integrations' && (
                   <div className="mt-8 space-y-8">
                     <section>
-                      <label className="block text-sm font-medium text-stone-300">GitHub CLI (gh)</label>
-                      <p className="mt-0.5 text-xs text-stone-500">Required for PR Review feature</p>
+                      <span className="block font-medium text-sm text-stone-300">
+                        GitHub CLI (gh)
+                      </span>
+                      <p className="mt-0.5 text-stone-500 text-xs">
+                        Required for PR Review feature
+                      </p>
 
-                      <div className="mt-3 rounded-lg border border-stone-800 bg-stone-900/50 p-4 space-y-3">
+                      <div className="mt-3 space-y-3 rounded-lg border border-stone-800 bg-stone-900/50 p-4">
                         <div className="flex items-center gap-2 text-sm">
-                          <span className={`h-2 w-2 rounded-full ${
-                            ghStatus?.available && ghStatus?.authenticated ? 'bg-green-500' :
-                            ghStatus?.available ? 'bg-amber-500' : 'bg-red-500'
-                          }`} />
+                          <span
+                            className={`h-2 w-2 rounded-full ${
+                              ghStatus?.available && ghStatus?.authenticated
+                                ? 'bg-green-500'
+                                : ghStatus?.available
+                                  ? 'bg-amber-500'
+                                  : 'bg-red-500'
+                            }`}
+                          />
                           <span className="text-stone-300">
                             {ghStatus?.available && ghStatus?.authenticated
                               ? `Connected as ${ghStatus.username}`
                               : ghStatus?.available
                                 ? 'Found but not authenticated'
-                                : ghStatus ? 'Not detected' : 'Checking...'}
+                                : ghStatus
+                                  ? 'Not detected'
+                                  : 'Checking...'}
                           </span>
                         </div>
 
                         {ghStatus?.binaryPath && (
-                          <div className="text-xs text-stone-500">
+                          <div className="text-stone-500 text-xs">
                             Path: <code className="text-stone-400">{ghStatus.binaryPath}</code>
                           </div>
                         )}
 
                         {ghStatus?.error && (
-                          <div className="text-xs text-red-400">{ghStatus.error}</div>
+                          <div className="text-red-400 text-xs">{ghStatus.error}</div>
                         )}
 
                         <div className="flex gap-2">
@@ -325,21 +377,23 @@ export function SettingsOverlay() {
                             value={ghPath}
                             onChange={(e) => setGhPath(e.target.value)}
                             placeholder="Custom path (e.g. /usr/local/bin/gh)"
-                            className="flex-1 rounded bg-stone-950 px-3 py-1.5 text-xs text-stone-300 placeholder-stone-600 outline-none ring-1 ring-stone-800 focus:ring-stone-600"
+                            className="flex-1 rounded bg-stone-950 px-3 py-1.5 text-stone-300 text-xs placeholder-stone-600 outline-none ring-1 ring-stone-800 focus:ring-stone-600"
                           />
                           <button
+                            type="button"
                             onClick={updateGhPath}
                             disabled={!ghPath}
-                            className="rounded bg-stone-800 px-3 py-1.5 text-xs text-stone-300 hover:bg-stone-700 disabled:opacity-30"
+                            className="rounded bg-stone-800 px-3 py-1.5 text-stone-300 text-xs hover:bg-stone-700 disabled:opacity-30"
                           >
                             Set
                           </button>
                         </div>
 
                         <button
+                          type="button"
                           onClick={recheckGh}
                           disabled={ghChecking}
-                          className="rounded bg-stone-800 px-3 py-1.5 text-xs text-stone-300 hover:bg-stone-700 disabled:opacity-50"
+                          className="rounded bg-stone-800 px-3 py-1.5 text-stone-300 text-xs hover:bg-stone-700 disabled:opacity-50"
                         >
                           {ghChecking ? 'Checking...' : 'Re-check'}
                         </button>

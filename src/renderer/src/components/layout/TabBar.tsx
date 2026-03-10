@@ -1,7 +1,7 @@
-import { X, Plus } from 'lucide-react'
-import { useTabStore } from '../../store/tab-store'
-import { useSessionStore } from '../../store/session-store'
+import { Plus, X } from 'lucide-react'
 import type { SessionStatus } from '../../../../shared/types'
+import { useSessionStore } from '../../store/session-store'
+import { useTabStore } from '../../store/tab-store'
 
 function StatusDot({ status }: { status: SessionStatus | undefined }) {
   if (!status || status === 'empty' || status === 'done') {
@@ -25,7 +25,10 @@ export function TabBar() {
   }
 
   return (
-    <div className="flex h-9 items-center border-b border-stone-800 bg-stone-950 px-1" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+    <div
+      className="flex h-9 items-center border-stone-800 border-b bg-stone-950 px-1"
+      style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+    >
       <div className="flex min-w-0 flex-1 items-center gap-0.5">
         {tabs.map((tab, tabIndex) => {
           const session = tab.sessionId ? sessions.get(tab.sessionId) : undefined
@@ -34,8 +37,13 @@ export function TabBar() {
 
           return (
             <div
+              role="tab"
+              tabIndex={0}
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') setActiveTab(tab.id)
+              }}
               className={`group flex h-7 min-w-0 flex-1 cursor-pointer items-center gap-1.5 rounded-md px-3 text-xs transition-colors ${
                 isActive
                   ? 'bg-stone-800 text-stone-100'
@@ -47,13 +55,16 @@ export function TabBar() {
               {/* Right slot: shortcut indicator by default, close button on hover */}
               <div className="relative ml-1 flex h-5 flex-shrink-0 items-center justify-center">
                 {shortcutNum !== null && (
-                  <span className={`px-1 text-[11px] tabular-nums transition-opacity group-hover:opacity-0 ${
-                    isActive ? 'text-stone-500' : 'text-stone-600'
-                  }`}>
+                  <span
+                    className={`px-1 text-[11px] tabular-nums transition-opacity group-hover:opacity-0 ${
+                      isActive ? 'text-stone-500' : 'text-stone-600'
+                    }`}
+                  >
                     ⌘{shortcutNum}
                   </span>
                 )}
                 <button
+                  type="button"
                   onClick={(e) => {
                     e.stopPropagation()
                     closeTab(tab.id)
@@ -69,6 +80,7 @@ export function TabBar() {
       </div>
 
       <button
+        type="button"
         onClick={handleNewTab}
         title="New Tab"
         className="ml-1 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md text-stone-500 transition-colors hover:bg-stone-800 hover:text-stone-300"

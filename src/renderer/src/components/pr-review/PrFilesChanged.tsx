@@ -1,7 +1,7 @@
-import { useState, useMemo } from 'react'
 import { ChevronDown, ChevronRight, FileText } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
-import { parseUnifiedDiff, computeDiffHunks } from '../../lib/diff-utils'
+import { useMemo, useState } from 'react'
+import { computeDiffHunks, parseUnifiedDiff } from '../../lib/diff-utils'
 import { DiffView } from '../DiffView'
 
 type PrFile = {
@@ -45,7 +45,10 @@ export function PrFilesChanged({ files, diff }: PrFilesChangedProps) {
   const totalAdditions = files.reduce((sum, f) => sum + f.additions, 0)
   const totalDeletions = files.reduce((sum, f) => sum + f.deletions, 0)
 
-  const fileDiffs = useMemo(() => (diff ? splitDiffByFile(diff) : new Map<string, string>()), [diff])
+  const fileDiffs = useMemo(
+    () => (diff ? splitDiffByFile(diff) : new Map<string, string>()),
+    [diff],
+  )
 
   const toggleFile = (path: string) => {
     setExpandedFiles((prev) => {
@@ -60,6 +63,7 @@ export function PrFilesChanged({ files, diff }: PrFilesChangedProps) {
     <div className="mt-3 overflow-hidden rounded-lg border border-stone-800 bg-stone-900/40">
       {/* Summary header */}
       <button
+        type="button"
         onClick={() => setExpanded((v) => !v)}
         className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors hover:bg-stone-800/50"
       >
@@ -87,7 +91,7 @@ export function PrFilesChanged({ files, diff }: PrFilesChangedProps) {
             transition={{ duration: 0.15, ease: [0.25, 0.1, 0.25, 1] }}
             className="overflow-hidden"
           >
-            <div className="max-h-[70vh] overflow-y-auto border-t border-stone-800">
+            <div className="max-h-[70vh] overflow-y-auto border-stone-800 border-t">
               {files.map((file, i) => (
                 <FileRow
                   key={file.path}
@@ -125,17 +129,20 @@ function FileRow({
   const hasDiff = !!fileDiff
 
   return (
-    <div className={isLast && !isExpanded ? '' : 'border-b border-stone-800/50'}>
+    <div className={isLast && !isExpanded ? '' : 'border-stone-800/50 border-b'}>
       <button
+        type="button"
         onClick={hasDiff ? onToggle : undefined}
         className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs transition-colors ${
-          hasDiff ? 'hover:bg-stone-800/40 cursor-pointer' : 'cursor-default'
+          hasDiff ? 'cursor-pointer hover:bg-stone-800/40' : 'cursor-default'
         } ${isExpanded ? 'bg-stone-800/30' : ''}`}
       >
         {hasDiff ? (
-          isExpanded
-            ? <ChevronDown size={11} className="flex-shrink-0 text-stone-500" />
-            : <ChevronRight size={11} className="flex-shrink-0 text-stone-500" />
+          isExpanded ? (
+            <ChevronDown size={11} className="flex-shrink-0 text-stone-500" />
+          ) : (
+            <ChevronRight size={11} className="flex-shrink-0 text-stone-500" />
+          )
         ) : (
           <span className="w-[11px] flex-shrink-0" />
         )}
@@ -174,14 +181,14 @@ function FileDiffContent({ rawDiff }: { rawDiff: string }) {
 
   if (hunks.length === 0) {
     return (
-      <div className="border-t border-stone-800/30 bg-stone-950/50 px-3 py-2 text-xs text-stone-600">
+      <div className="border-stone-800/30 border-t bg-stone-950/50 px-3 py-2 text-stone-600 text-xs">
         Binary file or no textual changes
       </div>
     )
   }
 
   return (
-    <div className="border-t border-stone-800/30 bg-stone-950/50">
+    <div className="border-stone-800/30 border-t bg-stone-950/50">
       <DiffView hunks={hunks} />
     </div>
   )

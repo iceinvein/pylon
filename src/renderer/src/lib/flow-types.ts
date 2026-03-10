@@ -1,4 +1,13 @@
-type ActivityType = 'explore' | 'think' | 'edit' | 'execute' | 'subagent' | 'ask-user' | 'error-fix' | 'result' | 'task-list'
+type ActivityType =
+  | 'explore'
+  | 'think'
+  | 'edit'
+  | 'execute'
+  | 'subagent'
+  | 'ask-user'
+  | 'error-fix'
+  | 'result'
+  | 'task-list'
 
 type FlowNode = {
   id: string

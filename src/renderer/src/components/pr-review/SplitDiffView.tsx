@@ -1,7 +1,7 @@
-import { useMemo, useRef, useCallback } from 'react'
 import { diffWords } from 'diff'
-import type { DiffLine, DiffHunk } from '../../lib/diff-utils'
+import { useCallback, useMemo, useRef } from 'react'
 import type { ReviewFinding } from '../../../../shared/types'
+import type { DiffHunk, DiffLine } from '../../lib/diff-utils'
 import { DiffFindingAnnotation } from './DiffFindingAnnotation'
 
 type Props = {
@@ -55,7 +55,15 @@ function buildSplitRows(hunks: DiffHunk[]): { rows: SplitRow[]; hunkBoundaries: 
   return { rows, hunkBoundaries }
 }
 
-function WordHighlight({ oldText, newText, side }: { oldText: string; newText: string; side: 'left' | 'right' }) {
+function WordHighlight({
+  oldText,
+  newText,
+  side,
+}: {
+  oldText: string
+  newText: string
+  side: 'left' | 'right'
+}) {
   const parts = diffWords(oldText, newText)
   return (
     <span>
@@ -64,7 +72,16 @@ function WordHighlight({ oldText, newText, side }: { oldText: string; newText: s
         if (side === 'right' && part.removed) return null
         const isHighlighted = side === 'left' ? part.removed : part.added
         return (
-          <span key={i} className={isHighlighted ? (side === 'left' ? 'bg-red-700/50 rounded-xs' : 'bg-emerald-700/50 rounded-xs') : ''}>
+          <span
+            key={i}
+            className={
+              isHighlighted
+                ? side === 'left'
+                  ? 'rounded-xs bg-red-700/50'
+                  : 'rounded-xs bg-emerald-700/50'
+                : ''
+            }
+          >
             {part.value}
           </span>
         )
@@ -73,7 +90,11 @@ function WordHighlight({ oldText, newText, side }: { oldText: string; newText: s
   )
 }
 
-function SplitCell({ line, pairedContent, side }: {
+function SplitCell({
+  line,
+  pairedContent,
+  side,
+}: {
   line: DiffLine | null
   pairedContent?: string
   side: 'left' | 'right'
@@ -91,19 +112,23 @@ function SplitCell({ line, pairedContent, side }: {
   const isChanged = side === 'left' ? line.type === 'removed' : line.type === 'added'
 
   return (
-    <div className={`flex gap-0 ${
-      isChanged
-        ? (side === 'left' ? 'bg-red-950/30' : 'bg-emerald-950/30')
-        : ''
-    }`}>
+    <div
+      className={`flex gap-0 ${
+        isChanged ? (side === 'left' ? 'bg-red-950/30' : 'bg-emerald-950/30') : ''
+      }`}
+    >
       <span className="w-10 flex-shrink-0 select-none pr-2 text-right text-stone-600">
         {lineNo}
       </span>
-      <span className={`min-w-0 flex-1 whitespace-pre ${
-        isChanged
-          ? (side === 'left' ? 'text-red-300/90' : 'text-emerald-300/90')
-          : 'text-stone-400'
-      }`}>
+      <span
+        className={`min-w-0 flex-1 whitespace-pre ${
+          isChanged
+            ? side === 'left'
+              ? 'text-red-300/90'
+              : 'text-emerald-300/90'
+            : 'text-stone-400'
+        }`}
+      >
         {pairedContent !== undefined ? (
           <WordHighlight
             oldText={side === 'left' ? line.content : pairedContent}
@@ -118,7 +143,13 @@ function SplitCell({ line, pairedContent, side }: {
   )
 }
 
-export function SplitDiffView({ hunks, findings = [], selectedFindingIds, onToggleFinding, onPostFinding }: Props) {
+export function SplitDiffView({
+  hunks,
+  findings = [],
+  selectedFindingIds,
+  onToggleFinding,
+  onPostFinding,
+}: Props) {
   const { rows, hunkBoundaries } = useMemo(() => buildSplitRows(hunks), [hunks])
 
   const leftRef = useRef<HTMLDivElement>(null)
@@ -133,7 +164,9 @@ export function SplitDiffView({ hunks, findings = [], selectedFindingIds, onTogg
     if (from && to) {
       to.scrollTop = from.scrollTop
     }
-    requestAnimationFrame(() => { syncing.current = false })
+    requestAnimationFrame(() => {
+      syncing.current = false
+    })
   }, [])
 
   const findingsByLine = useMemo(() => {
@@ -148,10 +181,6 @@ export function SplitDiffView({ hunks, findings = [], selectedFindingIds, onTogg
     return map
   }, [findings])
 
-  if (hunks.length === 0) {
-    return <div className="px-3 py-2 text-xs text-stone-600">No changes</div>
-  }
-
   // Build paired content map for word highlighting in split view
   const rowPairs = useMemo(() => {
     const map = new Map<number, string>()
@@ -164,22 +193,28 @@ export function SplitDiffView({ hunks, findings = [], selectedFindingIds, onTogg
     return map
   }, [rows])
 
+  if (hunks.length === 0) {
+    return <div className="px-3 py-2 text-stone-600 text-xs">No changes</div>
+  }
+
   return (
     <div className="flex overflow-hidden font-[family-name:var(--font-mono)] text-xs leading-5">
       {/* Left (old) */}
       <div
         ref={leftRef}
-        className="min-w-0 flex-1 overflow-auto border-r border-stone-800"
+        className="min-w-0 flex-1 overflow-auto border-stone-800 border-r"
         onScroll={() => syncScroll('left')}
       >
         {rows.map((row, i) => (
           <div key={i}>
             {hunkBoundaries.has(i) && (
-              <div className="border-y border-stone-800/50 bg-stone-900/30 px-2 py-0.5 text-center text-stone-600">⋯</div>
+              <div className="border-stone-800/50 border-y bg-stone-900/30 px-2 py-0.5 text-center text-stone-600">
+                ⋯
+              </div>
             )}
             <SplitCell
               line={row.left}
-              pairedContent={rowPairs.has(i) ? row.right!.content : undefined}
+              pairedContent={rowPairs.has(i) ? row.right?.content : undefined}
               side="left"
             />
           </div>
@@ -197,11 +232,13 @@ export function SplitDiffView({ hunks, findings = [], selectedFindingIds, onTogg
           return (
             <div key={i}>
               {hunkBoundaries.has(i) && (
-                <div className="border-y border-stone-800/50 bg-stone-900/30 px-2 py-0.5 text-center text-stone-600">⋯</div>
+                <div className="border-stone-800/50 border-y bg-stone-900/30 px-2 py-0.5 text-center text-stone-600">
+                  ⋯
+                </div>
               )}
               <SplitCell
                 line={row.right}
-                pairedContent={rowPairs.has(i) ? row.left!.content : undefined}
+                pairedContent={rowPairs.has(i) ? row.left?.content : undefined}
                 side="right"
               />
               {lineFindings?.map((f) => (

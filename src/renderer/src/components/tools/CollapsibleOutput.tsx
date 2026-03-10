@@ -1,6 +1,6 @@
-import { useState, useCallback } from 'react'
-import { ChevronDown, ChevronRight, Copy, Check } from 'lucide-react'
-import { hasAnsiCodes, ansiToHtml } from '../../lib/ansi'
+import { Check, ChevronDown, ChevronRight, Copy } from 'lucide-react'
+import { useCallback, useState } from 'react'
+import { ansiToHtml, hasAnsiCodes } from '../../lib/ansi'
 
 type CollapsibleOutputProps = {
   text: string
@@ -8,7 +8,7 @@ type CollapsibleOutputProps = {
   maxExpandedHeight?: string
 }
 
-// eslint-disable-next-line no-control-regex
+// biome-ignore lint/suspicious/noControlCharactersInRegex: intentional ANSI escape matching
 const ANSI_STRIP = /\x1b\[[0-9;]*m/g
 
 export function CollapsibleOutput({
@@ -24,9 +24,8 @@ export function CollapsibleOutput({
   const needsTruncation = totalLines > maxPreviewLines
   const isAnsi = hasAnsiCodes(text)
 
-  const displayText = !expanded && needsTruncation
-    ? lines.slice(0, maxPreviewLines).join('\n')
-    : text
+  const displayText =
+    !expanded && needsTruncation ? lines.slice(0, maxPreviewLines).join('\n') : text
 
   const handleCopy = useCallback(() => {
     navigator.clipboard.writeText(text.replace(ANSI_STRIP, ''))
@@ -38,6 +37,7 @@ export function CollapsibleOutput({
     <div className="mt-1.5">
       <div className="relative">
         <button
+          type="button"
           onClick={handleCopy}
           className="absolute top-1.5 right-2 z-10 flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-stone-500 transition-colors hover:bg-stone-700 hover:text-stone-300"
         >
@@ -45,13 +45,17 @@ export function CollapsibleOutput({
           {copied ? 'Copied' : 'Copy'}
         </button>
         <div
-          className="overflow-x-auto rounded bg-stone-800/60 px-3 py-2 font-[family-name:var(--font-mono)] text-xs leading-relaxed text-stone-300"
-          style={expanded && needsTruncation ? { maxHeight: maxExpandedHeight, overflowY: 'auto' } : undefined}
+          className="overflow-x-auto rounded bg-stone-800/60 px-3 py-2 font-[family-name:var(--font-mono)] text-stone-300 text-xs leading-relaxed"
+          style={
+            expanded && needsTruncation
+              ? { maxHeight: maxExpandedHeight, overflowY: 'auto' }
+              : undefined
+          }
         >
           {isAnsi ? (
             <pre
               className="whitespace-pre-wrap"
-              // Safe: ansiToHtml uses escapeXML:true — all text is HTML-escaped before color wrapping
+              // biome-ignore lint/security/noDangerouslySetInnerHtml: sanitized HTML from ansi-to-html (escapeXML: true)
               dangerouslySetInnerHTML={{ __html: ansiToHtml(displayText) }}
             />
           ) : (
@@ -61,6 +65,7 @@ export function CollapsibleOutput({
       </div>
       {needsTruncation && (
         <button
+          type="button"
           onClick={() => setExpanded((v) => !v)}
           className="mt-1 flex items-center gap-1 text-[11px] text-stone-500 transition-colors hover:text-stone-300"
         >

@@ -1,5 +1,5 @@
-import { test, expect, describe } from 'bun:test'
-import { computeDiffHunks, parseUnifiedDiff, buildPairedLines } from './diff-utils'
+import { describe, expect, test } from 'bun:test'
+import { buildPairedLines, computeDiffHunks, parseUnifiedDiff } from './diff-utils'
 
 describe('computeDiffHunks', () => {
   test('returns empty array for identical strings', () => {

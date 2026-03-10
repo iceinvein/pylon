@@ -1,4 +1,4 @@
-import { test, expect, describe } from 'bun:test'
+import { describe, expect, test } from 'bun:test'
 import { extractTasks } from './extract-tasks'
 
 describe('extractTasks', () => {
@@ -42,9 +42,24 @@ describe('extractTasks', () => {
 
     const tasks = extractTasks(msg)
     expect(tasks).toHaveLength(3)
-    expect(tasks[0]).toEqual({ id: '1', subject: 'First task', status: 'pending', activeForm: undefined })
-    expect(tasks[1]).toEqual({ id: '2', subject: 'Second task', status: 'in_progress', activeForm: undefined })
-    expect(tasks[2]).toEqual({ id: '3', subject: 'Third task', status: 'completed', activeForm: undefined })
+    expect(tasks[0]).toEqual({
+      id: '1',
+      subject: 'First task',
+      status: 'pending',
+      activeForm: undefined,
+    })
+    expect(tasks[1]).toEqual({
+      id: '2',
+      subject: 'Second task',
+      status: 'in_progress',
+      activeForm: undefined,
+    })
+    expect(tasks[2]).toEqual({
+      id: '3',
+      subject: 'Third task',
+      status: 'completed',
+      activeForm: undefined,
+    })
   })
 
   test('preserves activeForm field', () => {
@@ -55,9 +70,7 @@ describe('extractTasks', () => {
           type: 'tool_use',
           name: 'TodoWrite',
           input: {
-            todos: [
-              { content: 'Task with form', status: 'in_progress', activeForm: 'editing' },
-            ],
+            todos: [{ content: 'Task with form', status: 'in_progress', activeForm: 'editing' }],
           },
         },
       ],
@@ -152,9 +165,7 @@ describe('extractTasks', () => {
   test('returns empty array when TodoWrite block has no input', () => {
     const msg = {
       type: 'assistant',
-      content: [
-        { type: 'tool_use', name: 'TodoWrite' },
-      ],
+      content: [{ type: 'tool_use', name: 'TodoWrite' }],
     }
 
     expect(extractTasks(msg)).toEqual([])

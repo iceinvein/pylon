@@ -1,12 +1,12 @@
-import { app, BrowserWindow, shell, ipcMain } from 'electron'
-import { join } from 'path'
-import { electronApp, optimizer, is } from '@electron-toolkit/utils'
+import { join } from 'node:path'
+import { electronApp, is, optimizer } from '@electron-toolkit/utils'
+import { app, BrowserWindow, ipcMain, shell } from 'electron'
+import { IPC } from '../shared/ipc-channels'
+import { initLogger, log, writeRendererLog } from '../shared/logger'
 import { initDatabase } from './db'
 import { registerIpcHandlers } from './ipc-handlers'
-import { sessionManager } from './session-manager'
 import { prReviewManager } from './pr-review-manager'
-import { initLogger, log, writeRendererLog } from '../shared/logger'
-import { IPC } from '../shared/ipc-channels'
+import { sessionManager } from './session-manager'
 
 function createWindow(): BrowserWindow {
   const mainWindow = new BrowserWindow({
@@ -52,10 +52,13 @@ app.whenReady().then(() => {
 
   // Receive renderer logs
   const validLogLevels = new Set(['debug', 'info', 'warn', 'error'])
-  ipcMain.on(IPC.LOG_FROM_RENDERER, (_e, data: { level: string; source: string; message: string }) => {
-    const safeLevel = validLogLevels.has(data.level) ? data.level : 'info'
-    writeRendererLog(safeLevel as 'debug' | 'info' | 'warn' | 'error', data.source, data.message)
-  })
+  ipcMain.on(
+    IPC.LOG_FROM_RENDERER,
+    (_e, data: { level: string; source: string; message: string }) => {
+      const safeLevel = validLogLevels.has(data.level) ? data.level : 'info'
+      writeRendererLog(safeLevel as 'debug' | 'info' | 'warn' | 'error', data.source, data.message)
+    },
+  )
 
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)

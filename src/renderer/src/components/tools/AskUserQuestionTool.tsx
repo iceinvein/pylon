@@ -39,7 +39,7 @@ export function AskUserQuestionTool({ input }: AskUserQuestionToolProps) {
 
   if (questions.length === 0) {
     return (
-      <pre className="overflow-x-auto rounded bg-stone-800 p-2 font-mono text-xs text-stone-300">
+      <pre className="overflow-x-auto rounded bg-stone-800 p-2 font-mono text-stone-300 text-xs">
         {JSON.stringify(input, null, 2)}
       </pre>
     )
@@ -53,7 +53,7 @@ export function AskUserQuestionTool({ input }: AskUserQuestionToolProps) {
             <MessageCircleQuestion size={13} className="mt-0.5 flex-shrink-0 text-blue-400" />
             <div className="min-w-0 flex-1">
               {q.header && (
-                <span className="mb-1 inline-block rounded-full bg-blue-900/40 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-blue-300">
+                <span className="mb-1 inline-block rounded-full bg-blue-900/40 px-2 py-0.5 font-medium text-[10px] text-blue-300 uppercase tracking-wide">
                   {q.header}
                 </span>
               )}
@@ -64,9 +64,9 @@ export function AskUserQuestionTool({ input }: AskUserQuestionToolProps) {
                     key={oi}
                     className="rounded border border-stone-700/60 bg-stone-800/50 px-3 py-2 transition-colors"
                   >
-                    <span className="text-sm font-medium text-stone-300">{opt.label}</span>
+                    <span className="font-medium text-sm text-stone-300">{opt.label}</span>
                     {opt.description && (
-                      <p className="mt-0.5 text-xs text-stone-500">{opt.description}</p>
+                      <p className="mt-0.5 text-stone-500 text-xs">{opt.description}</p>
                     )}
                   </div>
                 ))}

@@ -1,10 +1,10 @@
-import { useState, useMemo, useRef, useCallback, useEffect } from 'react'
-import { Columns2, Rows3, Eye, CheckCircle2, ChevronUp, ChevronDown } from 'lucide-react'
+import { CheckCircle2, ChevronDown, ChevronUp, Columns2, Eye, Rows3 } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { ReviewFinding } from '../../../../shared/types'
 import { parseUnifiedDiffToHunks } from '../../lib/diff-utils'
 import { DiffView } from '../DiffView'
-import { SplitDiffView } from './SplitDiffView'
 import { DiffFindingAnnotation } from './DiffFindingAnnotation'
-import type { ReviewFinding } from '../../../../shared/types'
+import { SplitDiffView } from './SplitDiffView'
 
 type FileEntry = {
   path: string
@@ -31,8 +31,15 @@ const SEVERITY_TICK_COLORS: Record<string, string> = {
   nitpick: 'bg-stone-500',
 }
 
-
-export function DiffPane({ selectedFile, files, fileDiffs, findings, selectedFindingIds, onToggleFinding, onPostFinding }: Props) {
+export function DiffPane({
+  selectedFile,
+  files,
+  fileDiffs,
+  findings,
+  selectedFindingIds,
+  onToggleFinding,
+  onPostFinding,
+}: Props) {
   const [mode, setMode] = useState<DiffMode>('unified')
   const [activeFindingIdx, setActiveFindingIdx] = useState(-1)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -50,10 +57,16 @@ export function DiffPane({ selectedFile, files, fileDiffs, findings, selectedFin
   }, [selectedFile, fileDiffs])
 
   const fileFindings = useMemo(
-    () => selectedFile ? findings.filter((f) =>
-      f.file === selectedFile || selectedFile.endsWith(f.file) || f.file.endsWith(selectedFile)
-    ) : [],
-    [selectedFile, findings]
+    () =>
+      selectedFile
+        ? findings.filter(
+            (f) =>
+              f.file === selectedFile ||
+              selectedFile.endsWith(f.file) ||
+              f.file.endsWith(selectedFile),
+          )
+        : [],
+    [selectedFile, findings],
   )
 
   const hunks = useMemo(() => {
@@ -62,7 +75,9 @@ export function DiffPane({ selectedFile, files, fileDiffs, findings, selectedFin
   }, [rawDiff])
 
   // Reset active finding index when file changes
-  useEffect(() => { setActiveFindingIdx(-1) }, [selectedFile])
+  useEffect(() => {
+    setActiveFindingIdx(-1)
+  }, [])
 
   // Compute tick positions for the scrollbar indicator after render
   useEffect(() => {
@@ -76,7 +91,10 @@ export function DiffPane({ selectedFile, files, fileDiffs, findings, selectedFin
       if (!container) return
       const scrollHeight = container.scrollHeight
       const clientHeight = container.clientHeight
-      if (scrollHeight <= clientHeight) { setTickPositions([]); return }
+      if (scrollHeight <= clientHeight) {
+        setTickPositions([])
+        return
+      }
 
       const ticks: { top: number; severity: string }[] = []
       for (const f of fileFindings) {
@@ -89,20 +107,25 @@ export function DiffPane({ selectedFile, files, fileDiffs, findings, selectedFin
       setTickPositions(ticks)
     }, 100)
     return () => clearTimeout(timer)
-  }, [fileFindings, hunks, mode])
-
-  const scrollToFinding = useCallback((idx: number) => {
-    if (idx < 0 || idx >= fileFindings.length || !scrollRef.current) return
-    setActiveFindingIdx(idx)
-    const f = fileFindings[idx]
-    const el = scrollRef.current.querySelector(`[data-finding-id="${f.id}"]`) as HTMLElement | null
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-      // Brief highlight pulse
-      el.classList.add('ring-1', 'ring-stone-400/60')
-      setTimeout(() => el.classList.remove('ring-1', 'ring-stone-400/60'), 1200)
-    }
   }, [fileFindings])
+
+  const scrollToFinding = useCallback(
+    (idx: number) => {
+      if (idx < 0 || idx >= fileFindings.length || !scrollRef.current) return
+      setActiveFindingIdx(idx)
+      const f = fileFindings[idx]
+      const el = scrollRef.current.querySelector(
+        `[data-finding-id="${f.id}"]`,
+      ) as HTMLElement | null
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        // Brief highlight pulse
+        el.classList.add('ring-1', 'ring-stone-400/60')
+        setTimeout(() => el.classList.remove('ring-1', 'ring-stone-400/60'), 1200)
+      }
+    },
+    [fileFindings],
+  )
 
   const goNext = useCallback(() => {
     const next = activeFindingIdx < fileFindings.length - 1 ? activeFindingIdx + 1 : 0
@@ -136,9 +159,9 @@ export function DiffPane({ selectedFile, files, fileDiffs, findings, selectedFin
     const generalFindings = findings.filter((f) => !f.file)
     return (
       <div className="flex h-full flex-col">
-        <div className="flex items-center gap-2 border-b border-stone-800 bg-stone-900/30 px-4 py-2">
+        <div className="flex items-center gap-2 border-stone-800 border-b bg-stone-900/30 px-4 py-2">
           <Eye size={12} className="text-stone-500" />
-          <span className="text-[11px] font-medium text-stone-300">Overview</span>
+          <span className="font-medium text-[11px] text-stone-300">Overview</span>
           <span className="text-[11px] text-stone-600">General findings</span>
         </div>
         <div className="flex-1 overflow-y-auto p-4">
@@ -180,7 +203,7 @@ export function DiffPane({ selectedFile, files, fileDiffs, findings, selectedFin
   return (
     <div className="flex h-full flex-col">
       {/* Toolbar */}
-      <div className="flex items-center gap-3 border-b border-stone-800 bg-stone-900/30 px-4 py-2">
+      <div className="flex items-center gap-3 border-stone-800 border-b bg-stone-900/30 px-4 py-2">
         <div className="min-w-0 flex-1 truncate font-[family-name:var(--font-mono)] text-[11px]">
           {dirPath && <span className="text-stone-600">{dirPath}/</span>}
           <span className="text-stone-200">{fileName}</span>
@@ -195,6 +218,7 @@ export function DiffPane({ selectedFile, files, fileDiffs, findings, selectedFin
         {fileFindings.length > 0 && (
           <div className="flex flex-shrink-0 items-center overflow-hidden rounded-md border border-stone-600 bg-stone-800">
             <button
+              type="button"
               onClick={goPrev}
               className="px-1.5 py-1 text-stone-300 transition-colors hover:bg-stone-700 hover:text-white"
               title="Previous finding (Shift+F)"
@@ -202,15 +226,26 @@ export function DiffPane({ selectedFile, files, fileDiffs, findings, selectedFin
               <ChevronUp size={13} strokeWidth={2.5} />
             </button>
             <span
-              className="cursor-default border-x border-stone-700 px-2.5 py-1 text-[11px] font-medium tabular-nums text-stone-200"
+              className="cursor-default border-stone-700 border-x px-2.5 py-1 font-medium text-[11px] text-stone-200 tabular-nums"
               title={`${fileFindings.length} finding${fileFindings.length !== 1 ? 's' : ''} in this file`}
             >
-              {activeFindingIdx >= 0
-                ? <><span className="text-white">{activeFindingIdx + 1}</span><span className="text-stone-500"> / </span><span>{fileFindings.length}</span></>
-                : <>{fileFindings.length} <span className="text-[10px] font-normal text-stone-400">finding{fileFindings.length !== 1 ? 's' : ''}</span></>
-              }
+              {activeFindingIdx >= 0 ? (
+                <>
+                  <span className="text-white">{activeFindingIdx + 1}</span>
+                  <span className="text-stone-500"> / </span>
+                  <span>{fileFindings.length}</span>
+                </>
+              ) : (
+                <>
+                  {fileFindings.length}{' '}
+                  <span className="font-normal text-[10px] text-stone-400">
+                    finding{fileFindings.length !== 1 ? 's' : ''}
+                  </span>
+                </>
+              )}
             </span>
             <button
+              type="button"
               onClick={goNext}
               className="px-1.5 py-1 text-stone-300 transition-colors hover:bg-stone-700 hover:text-white"
               title="Next finding (F)"
@@ -222,9 +257,12 @@ export function DiffPane({ selectedFile, files, fileDiffs, findings, selectedFin
         {/* Mode toggle */}
         <div className="flex flex-shrink-0 overflow-hidden rounded-md border border-stone-700">
           <button
+            type="button"
             onClick={() => setMode('unified')}
             className={`flex items-center gap-1 px-2 py-1 text-[10px] transition-colors ${
-              mode === 'unified' ? 'bg-stone-700 text-stone-200' : 'text-stone-500 hover:text-stone-300'
+              mode === 'unified'
+                ? 'bg-stone-700 text-stone-200'
+                : 'text-stone-500 hover:text-stone-300'
             }`}
             title="Unified view"
           >
@@ -232,9 +270,12 @@ export function DiffPane({ selectedFile, files, fileDiffs, findings, selectedFin
             Unified
           </button>
           <button
+            type="button"
             onClick={() => setMode('split')}
             className={`flex items-center gap-1 px-2 py-1 text-[10px] transition-colors ${
-              mode === 'split' ? 'bg-stone-700 text-stone-200' : 'text-stone-500 hover:text-stone-300'
+              mode === 'split'
+                ? 'bg-stone-700 text-stone-200'
+                : 'text-stone-500 hover:text-stone-300'
             }`}
             title="Side-by-side view"
           >
@@ -249,7 +290,7 @@ export function DiffPane({ selectedFile, files, fileDiffs, findings, selectedFin
         <div ref={scrollRef} className="h-full overflow-auto">
           {/* Unplaced findings (no line or line not in hunks) */}
           {unplacedFindings.length > 0 && (
-            <div className="space-y-1 border-b border-stone-800 bg-stone-900/20 p-3">
+            <div className="space-y-1 border-stone-800 border-b bg-stone-900/20 p-3">
               {unplacedFindings.map((f) => (
                 <DiffFindingAnnotation
                   key={f.id}
@@ -262,7 +303,7 @@ export function DiffPane({ selectedFile, files, fileDiffs, findings, selectedFin
             </div>
           )}
           {hunks.length === 0 ? (
-            <div className="flex items-center justify-center py-16 text-xs text-stone-600">
+            <div className="flex items-center justify-center py-16 text-stone-600 text-xs">
               {rawDiff ? 'Binary file or no textual changes' : 'No diff available for this file'}
             </div>
           ) : mode === 'unified' ? (
@@ -286,7 +327,7 @@ export function DiffPane({ selectedFile, files, fileDiffs, findings, selectedFin
 
         {/* Scrollbar tick marks showing finding positions */}
         {tickPositions.length > 0 && (
-          <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-2">
+          <div className="pointer-events-none absolute top-0 right-0 bottom-0 w-2">
             {tickPositions.map((tick, i) => (
               <div
                 key={i}

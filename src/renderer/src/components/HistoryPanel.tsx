@@ -1,11 +1,11 @@
+import { Clock, DollarSign, Folder, GitBranch, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { Clock, Folder, Trash2, DollarSign, GitBranch } from 'lucide-react'
-import { useTabStore } from '../store/tab-store'
-import { useSessionStore } from '../store/session-store'
-import { formatCost, timeAgo } from '../lib/utils'
-import { extractChangedFiles } from '../lib/extract-changed-files'
-import type { SessionState } from '../store/session-store'
 import type { SessionStatus } from '../../../shared/types'
+import { extractChangedFiles } from '../lib/extract-changed-files'
+import { formatCost, timeAgo } from '../lib/utils'
+import type { SessionState } from '../store/session-store'
+import { useSessionStore } from '../store/session-store'
+import { useTabStore } from '../store/tab-store'
 
 type StoredSession = {
   id: string
@@ -41,11 +41,13 @@ export function HistoryPanel() {
     setLoading(false)
   }
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: mount-only load
   useEffect(() => {
     loadSessions()
   }, [])
 
   // Reload when tabs change (to update filtered list)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional trigger on tab count
   useEffect(() => {
     loadSessions()
   }, [tabs.length])
@@ -69,9 +71,15 @@ export function HistoryPanel() {
     setSession(sessionState)
 
     const msgs = await window.api.getMessages(session.id)
-    const parsed = (msgs as { sdk_message: string }[]).map((m) => {
-      try { return JSON.parse(m.sdk_message) } catch { return null }
-    }).filter(Boolean)
+    const parsed = (msgs as { sdk_message: string }[])
+      .map((m) => {
+        try {
+          return JSON.parse(m.sdk_message)
+        } catch {
+          return null
+        }
+      })
+      .filter(Boolean)
     setMessages(session.id, parsed)
 
     for (const filePath of extractChangedFiles(parsed)) {
@@ -83,7 +91,12 @@ export function HistoryPanel() {
       updateSession(session.id, { status: result.status as SessionStatus })
     }
     const displayCwd = session.original_cwd ?? session.cwd
-    addTab(session.cwd, session.title || displayCwd.split('/').pop() || displayCwd, session.id, session.worktree_path ? true : undefined)
+    addTab(
+      session.cwd,
+      session.title || displayCwd.split('/').pop() || displayCwd,
+      session.id,
+      session.worktree_path ? true : undefined,
+    )
   }
 
   async function handleDelete(e: React.MouseEvent, sessionId: string) {
@@ -96,29 +109,32 @@ export function HistoryPanel() {
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      <div className="border-b border-stone-800 px-4 py-3">
-        <h2 className="text-xs font-medium uppercase tracking-wider text-stone-500">Session History</h2>
+      <div className="border-stone-800 border-b px-4 py-3">
+        <h2 className="font-medium text-stone-500 text-xs uppercase tracking-wider">
+          Session History
+        </h2>
       </div>
       <div className="flex-1 overflow-y-auto px-2 py-2">
         {loading ? (
-          <div className="flex items-center justify-center py-8 text-xs text-stone-600">
+          <div className="flex items-center justify-center py-8 text-stone-600 text-xs">
             Loading...
           </div>
         ) : availableSessions.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-center">
-            <p className="text-xs text-stone-600">No previous sessions</p>
+            <p className="text-stone-600 text-xs">No previous sessions</p>
             <p className="mt-1 text-[11px] text-stone-700">Open a folder to get started</p>
           </div>
         ) : (
           availableSessions.map((session) => (
             <button
+              type="button"
               key={session.id}
               onClick={() => handleResume(session)}
               className="group flex w-full items-start gap-2.5 rounded-lg px-2.5 py-2.5 text-left transition-colors hover:bg-stone-800/60"
             >
               <Folder size={13} className="mt-0.5 flex-shrink-0 text-stone-600" />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-xs text-stone-300">
+                <p className="truncate text-stone-300 text-xs">
                   {session.title || session.cwd.split('/').pop() || 'Untitled'}
                 </p>
                 <p className="truncate text-[11px] text-stone-600">
@@ -144,8 +160,9 @@ export function HistoryPanel() {
                 </div>
               </div>
               <button
+                type="button"
                 onClick={(e) => handleDelete(e, session.id)}
-                className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded opacity-0 text-stone-600 transition-all hover:bg-stone-700 hover:text-red-400 group-hover:opacity-100"
+                className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded text-stone-600 opacity-0 transition-all hover:bg-stone-700 hover:text-red-400 group-hover:opacity-100"
               >
                 <Trash2 size={11} />
               </button>

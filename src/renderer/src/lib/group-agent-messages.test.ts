@@ -1,7 +1,10 @@
-import { test, expect, describe } from 'bun:test'
+import { describe, expect, test } from 'bun:test'
 import { groupAgentMessages } from './group-agent-messages'
 
-function agentToolUse(id: string, opts: { subagent_type?: string; description?: string; prompt?: string } = {}) {
+function agentToolUse(
+  id: string,
+  opts: { subagent_type?: string; description?: string; prompt?: string } = {},
+) {
   return {
     type: 'assistant',
     message: {
@@ -65,12 +68,13 @@ describe('groupAgentMessages', () => {
     const result = groupAgentMessages(msgs)
     expect(result.agentMap.size).toBe(1)
 
-    const agent = result.agentMap.get('agent-1')!
-    expect(agent.toolUseId).toBe('agent-1')
-    expect(agent.agentType).toBe('Explore')
-    expect(agent.description).toBe('find files')
-    expect(agent.done).toBe(false)
-    expect(agent.result).toBe('')
+    const agent = result.agentMap.get('agent-1')
+    expect(agent).toBeDefined()
+    expect(agent?.toolUseId).toBe('agent-1')
+    expect(agent?.agentType).toBe('Explore')
+    expect(agent?.description).toBe('find files')
+    expect(agent?.done).toBe(false)
+    expect(agent?.result).toBe('')
   })
 
   test('filters subagent prompt messages from main thread', () => {
@@ -93,15 +97,13 @@ describe('groupAgentMessages', () => {
   })
 
   test('marks agent done when tool_result arrives with string content', () => {
-    const msgs = [
-      agentToolUse('agent-1'),
-      toolResult('agent-1', 'Here is the result'),
-    ]
+    const msgs = [agentToolUse('agent-1'), toolResult('agent-1', 'Here is the result')]
     const result = groupAgentMessages(msgs)
-    const agent = result.agentMap.get('agent-1')!
-    expect(agent.done).toBe(true)
-    expect(agent.result).toBe('Here is the result')
-    expect(agent.isError).toBe(false)
+    const agent = result.agentMap.get('agent-1')
+    expect(agent).toBeDefined()
+    expect(agent?.done).toBe(true)
+    expect(agent?.result).toBe('Here is the result')
+    expect(agent?.isError).toBe(false)
   })
 
   test('marks agent done when tool_result arrives with array content', () => {
@@ -113,20 +115,19 @@ describe('groupAgentMessages', () => {
       ]),
     ]
     const result = groupAgentMessages(msgs)
-    const agent = result.agentMap.get('agent-1')!
-    expect(agent.done).toBe(true)
-    expect(agent.result).toBe('line 1\nline 2')
+    const agent = result.agentMap.get('agent-1')
+    expect(agent).toBeDefined()
+    expect(agent?.done).toBe(true)
+    expect(agent?.result).toBe('line 1\nline 2')
   })
 
   test('marks agent as error when tool_result has is_error', () => {
-    const msgs = [
-      agentToolUse('agent-1'),
-      toolResult('agent-1', 'something failed', true),
-    ]
+    const msgs = [agentToolUse('agent-1'), toolResult('agent-1', 'something failed', true)]
     const result = groupAgentMessages(msgs)
-    const agent = result.agentMap.get('agent-1')!
-    expect(agent.done).toBe(true)
-    expect(agent.isError).toBe(true)
+    const agent = result.agentMap.get('agent-1')
+    expect(agent).toBeDefined()
+    expect(agent?.done).toBe(true)
+    expect(agent?.isError).toBe(true)
   })
 
   test('marks all agents done when session result message present', () => {
@@ -136,8 +137,8 @@ describe('groupAgentMessages', () => {
       { type: 'result', total_cost_usd: 0.05 },
     ]
     const result = groupAgentMessages(msgs)
-    expect(result.agentMap.get('agent-1')!.done).toBe(true)
-    expect(result.agentMap.get('agent-2')!.done).toBe(true)
+    expect(result.agentMap.get('agent-1')?.done).toBe(true)
+    expect(result.agentMap.get('agent-2')?.done).toBe(true)
   })
 
   test('handles multiple agents independently', () => {
@@ -149,8 +150,8 @@ describe('groupAgentMessages', () => {
     ]
     const result = groupAgentMessages(msgs)
     expect(result.agentMap.size).toBe(2)
-    expect(result.agentMap.get('agent-1')!.done).toBe(true)
-    expect(result.agentMap.get('agent-2')!.done).toBe(false)
+    expect(result.agentMap.get('agent-1')?.done).toBe(true)
+    expect(result.agentMap.get('agent-2')?.done).toBe(false)
     // Subagent prompt filtered, rest remain
     expect(result.mainThreadMessages).toHaveLength(3)
   })
@@ -159,7 +160,7 @@ describe('groupAgentMessages', () => {
     const longDesc = 'A'.repeat(100)
     const msgs = [agentToolUse('agent-1', { description: longDesc })]
     const result = groupAgentMessages(msgs)
-    expect(result.agentMap.get('agent-1')!.description).toHaveLength(80)
+    expect(result.agentMap.get('agent-1')?.description).toHaveLength(80)
   })
 
   test('defaults agentType to "agent" when no type specified', () => {
@@ -167,23 +168,19 @@ describe('groupAgentMessages', () => {
       {
         type: 'assistant',
         message: {
-          content: [
-            { type: 'tool_use', name: 'Agent', id: 'a1', input: {} },
-          ],
+          content: [{ type: 'tool_use', name: 'Agent', id: 'a1', input: {} }],
         },
       },
     ]
     const result = groupAgentMessages(msgs)
-    expect(result.agentMap.get('a1')!.agentType).toBe('agent')
+    expect(result.agentMap.get('a1')?.agentType).toBe('agent')
   })
 
   test('handles content on message directly (not nested in message.content)', () => {
     const msgs = [
       {
         type: 'assistant',
-        content: [
-          { type: 'tool_use', name: 'Agent', id: 'a1', input: { prompt: 'test' } },
-        ],
+        content: [{ type: 'tool_use', name: 'Agent', id: 'a1', input: { prompt: 'test' } }],
       },
     ]
     const result = groupAgentMessages(msgs)

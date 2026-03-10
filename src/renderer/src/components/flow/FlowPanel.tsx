@@ -1,12 +1,12 @@
-import { useMemo, useRef, useEffect, useCallback } from 'react'
+import { Workflow } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { buildFlowGraph } from '../../lib/flow-graph'
+import type { FlowElement, FlowNode as FlowNodeType } from '../../lib/flow-types'
 import { useSessionStore } from '../../store/session-store'
 import { useTabStore } from '../../store/tab-store'
-import { buildFlowGraph } from '../../lib/flow-graph'
 import { FlowNode } from './FlowNode'
-import { NODE_STYLES } from './flow-constants'
-import { Workflow } from 'lucide-react'
-import type { FlowNode as FlowNodeType, FlowElement } from '../../lib/flow-types'
 import type { DotShape as DotShapeType } from './flow-constants'
+import { NODE_STYLES } from './flow-constants'
 
 const emptyMessages: unknown[] = []
 
@@ -17,12 +17,23 @@ const CONTENT_LEFT = 40
 /** Parallel sub-lane indent from spine */
 const PARALLEL_INDENT = 16
 
-function Dot({ node, isActive, isParallel }: { node: FlowNodeType; isActive?: boolean; isParallel?: boolean }) {
+function Dot({
+  node,
+  isActive,
+  isParallel,
+}: {
+  node: FlowNodeType
+  isActive?: boolean
+  isParallel?: boolean
+}) {
   const style = NODE_STYLES[node.type]
   const size = isParallel ? 4 : 6
 
   return (
-    <div className="relative flex items-center justify-center" style={{ width: size * 2, height: size * 2 }}>
+    <div
+      className="relative flex items-center justify-center"
+      style={{ width: size * 2, height: size * 2 }}
+    >
       {isActive && (
         <div
           className="flow-dot-pulse absolute rounded-full"
@@ -39,7 +50,17 @@ function Dot({ node, isActive, isParallel }: { node: FlowNodeType; isActive?: bo
   )
 }
 
-function DotIcon({ shape, size, color, isQuiet }: { shape: DotShapeType; size: number; color: string; isQuiet: boolean }) {
+function DotIcon({
+  shape,
+  size,
+  color,
+  isQuiet,
+}: {
+  shape: DotShapeType
+  size: number
+  color: string
+  isQuiet: boolean
+}) {
   if (shape === 'diamond') {
     return (
       <div
@@ -87,7 +108,8 @@ function getBottomAccent(elements: FlowElement[], isStreaming: boolean): string 
   for (let i = elements.length - 1; i >= 0; i--) {
     const el = elements[i]
     if (el.kind === 'node') return NODE_STYLES[el.node.type].accentHex
-    if (el.kind === 'parallel' && el.nodes.length > 0) return NODE_STYLES[el.nodes[0].type].accentHex
+    if (el.kind === 'parallel' && el.nodes.length > 0)
+      return NODE_STYLES[el.nodes[0].type].accentHex
   }
   return '#78716c'
 }
@@ -95,8 +117,9 @@ function getBottomAccent(elements: FlowElement[], isStreaming: boolean): string 
 export function FlowPanel() {
   const activeTab = useTabStore((s) => s.tabs.find((t) => t.id === s.activeTabId))
   const sessionId = activeTab?.sessionId
-  const messages = useSessionStore((s) => sessionId ? s.messages.get(sessionId) : undefined) ?? emptyMessages
-  const isStreaming = useSessionStore((s) => sessionId ? !!s.streamingText.get(sessionId) : false)
+  const messages =
+    useSessionStore((s) => (sessionId ? s.messages.get(sessionId) : undefined)) ?? emptyMessages
+  const isStreaming = useSessionStore((s) => (sessionId ? !!s.streamingText.get(sessionId) : false))
 
   const graph = useMemo(() => buildFlowGraph(messages, isStreaming), [messages, isStreaming])
 
@@ -118,19 +141,21 @@ export function FlowPanel() {
     if (isNearBottomRef.current && scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
-  }, [graph.elements.length])
+  }, [])
 
   const handleNodeClick = useCallback((messageIndices: number[]) => {
     if (messageIndices.length === 0) return
-    window.dispatchEvent(new CustomEvent('flow-scroll-to-message', {
-      detail: { messageIndex: messageIndices[0] },
-    }))
+    window.dispatchEvent(
+      new CustomEvent('flow-scroll-to-message', {
+        detail: { messageIndex: messageIndices[0] },
+      }),
+    )
   }, [])
 
   if (!sessionId) {
     return (
       <div className="flex h-full items-center justify-center p-4">
-        <p className="text-xs text-stone-600">No active session</p>
+        <p className="text-stone-600 text-xs">No active session</p>
       </div>
     )
   }
@@ -141,7 +166,7 @@ export function FlowPanel() {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-2 p-4">
         <Workflow size={20} className="text-stone-700" />
-        <p className="text-xs text-stone-600">Flow will appear as the agent works</p>
+        <p className="text-stone-600 text-xs">Flow will appear as the agent works</p>
       </div>
     )
   }
@@ -172,7 +197,7 @@ export function FlowPanel() {
                 return (
                   <div key={`edge-${i}`} className="relative" style={{ height: 4 }}>
                     <div
-                      className="absolute border-l border-dashed border-red-500/40"
+                      className="absolute border-red-500/40 border-l border-dashed"
                       style={{ left: SPINE_LEFT - CONTENT_LEFT, top: 0, bottom: 0 }}
                     />
                   </div>
@@ -183,7 +208,11 @@ export function FlowPanel() {
 
             if (element.kind === 'parallel') {
               return (
-                <div key={`par-${i}`} className="relative" style={{ marginTop: 16, marginBottom: 16 }}>
+                <div
+                  key={`par-${i}`}
+                  className="relative"
+                  style={{ marginTop: 16, marginBottom: 16 }}
+                >
                   {/* Sub-lane line */}
                   <div
                     className="absolute top-0 bottom-0 bg-stone-700/50"
@@ -194,10 +223,14 @@ export function FlowPanel() {
                   />
                   <div className="flex flex-col" style={{ paddingLeft: PARALLEL_INDENT }}>
                     {element.nodes.map((node) => (
-                      <div key={node.id} className="relative flex items-start gap-2" style={{ marginBottom: 6 }}>
+                      <div
+                        key={node.id}
+                        className="relative flex items-start gap-2"
+                        style={{ marginBottom: 6 }}
+                      >
                         {/* Parallel dot */}
                         <div
-                          className="relative flex-shrink-0 flex items-center"
+                          className="relative flex flex-shrink-0 items-center"
                           style={{
                             width: 12,
                             marginLeft: SPINE_LEFT - CONTENT_LEFT + PARALLEL_INDENT - 6,
@@ -230,7 +263,7 @@ export function FlowPanel() {
               >
                 {/* Dot on the spine */}
                 <div
-                  className="relative flex-shrink-0 flex items-center"
+                  className="relative flex flex-shrink-0 items-center"
                   style={{
                     width: 20,
                     marginLeft: SPINE_LEFT - CONTENT_LEFT - 4,

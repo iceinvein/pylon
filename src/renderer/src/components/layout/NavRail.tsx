@@ -1,10 +1,10 @@
-import { useRef, useState } from 'react'
-import { Home, Clock, FolderOpen, Settings, GitPullRequestDraft } from 'lucide-react'
+import { Clock, FolderOpen, GitPullRequestDraft, Home, Settings } from 'lucide-react'
 import { motion } from 'motion/react'
-import { useUiStore } from '../../store/ui-store'
+import { useRef, useState } from 'react'
 import { useFolderOpen } from '../../hooks/use-folder-open'
-import { WorktreeDialog } from '../WorktreeDialog'
+import { useUiStore } from '../../store/ui-store'
 import { ProjectsPopover } from '../ProjectsPopover'
+import { WorktreeDialog } from '../WorktreeDialog'
 
 export function NavRail() {
   const { sidebarView, setSidebarView, setSettingsOpen } = useUiStore()
@@ -14,7 +14,10 @@ export function NavRail() {
 
   return (
     <>
-      <div className="flex w-[50px] flex-col items-center gap-1 border-r border-stone-800 bg-[var(--color-base-bg)] pt-12 pb-3" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+      <div
+        className="flex w-[50px] flex-col items-center gap-1 border-stone-800 border-r bg-[var(--color-base-bg)] pt-12 pb-3"
+        style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+      >
         <motion.button
           onClick={() => setSidebarView('home')}
           title="Home"
@@ -22,9 +25,7 @@ export function NavRail() {
           whileTap={{ scale: 0.95 }}
           transition={{ duration: 0.1 }}
           className={`relative flex h-9 w-9 items-center justify-center rounded-lg transition-colors ${
-            sidebarView === 'home'
-              ? 'text-stone-100'
-              : 'text-stone-400 hover:text-stone-100'
+            sidebarView === 'home' ? 'text-stone-100' : 'text-stone-400 hover:text-stone-100'
           }`}
         >
           {sidebarView === 'home' && (
@@ -44,9 +45,7 @@ export function NavRail() {
           whileTap={{ scale: 0.95 }}
           transition={{ duration: 0.1 }}
           className={`relative flex h-9 w-9 items-center justify-center rounded-lg transition-colors ${
-            sidebarView === 'history'
-              ? 'text-stone-100'
-              : 'text-stone-400 hover:text-stone-100'
+            sidebarView === 'history' ? 'text-stone-100' : 'text-stone-400 hover:text-stone-100'
           }`}
         >
           {sidebarView === 'history' && (
@@ -66,9 +65,7 @@ export function NavRail() {
           whileTap={{ scale: 0.95 }}
           transition={{ duration: 0.1 }}
           className={`relative flex h-9 w-9 items-center justify-center rounded-lg transition-colors ${
-            sidebarView === 'pr-review'
-              ? 'text-stone-100'
-              : 'text-stone-400 hover:text-stone-100'
+            sidebarView === 'pr-review' ? 'text-stone-100' : 'text-stone-400 hover:text-stone-100'
           }`}
         >
           {sidebarView === 'pr-review' && (
@@ -89,9 +86,7 @@ export function NavRail() {
           whileTap={{ scale: 0.95 }}
           transition={{ duration: 0.1 }}
           className={`relative flex h-9 w-9 items-center justify-center rounded-lg transition-colors ${
-            popoverOpen
-              ? 'text-stone-100 bg-stone-700'
-              : 'text-stone-400 hover:text-stone-100'
+            popoverOpen ? 'bg-stone-700 text-stone-100' : 'text-stone-400 hover:text-stone-100'
           }`}
         >
           <FolderOpen size={18} className="relative z-10" />

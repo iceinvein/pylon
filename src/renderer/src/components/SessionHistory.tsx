@@ -1,11 +1,11 @@
+import { Clock, DollarSign, Folder, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { Clock, Folder, Trash2, DollarSign } from 'lucide-react'
-import { useTabStore } from '../store/tab-store'
-import { useSessionStore } from '../store/session-store'
-import { formatCost, timeAgo } from '../lib/utils'
-import { extractChangedFiles } from '../lib/extract-changed-files'
-import type { SessionState } from '../store/session-store'
 import type { SessionStatus } from '../../../shared/types'
+import { extractChangedFiles } from '../lib/extract-changed-files'
+import { formatCost, timeAgo } from '../lib/utils'
+import type { SessionState } from '../store/session-store'
+import { useSessionStore } from '../store/session-store'
+import { useTabStore } from '../store/tab-store'
 
 type StoredSession = {
   id: string
@@ -36,6 +36,7 @@ export function SessionHistory() {
     setLoading(false)
   }
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: loadSessions is stable intent, not a dep
   useEffect(() => {
     loadSessions()
   }, [])
@@ -59,9 +60,15 @@ export function SessionHistory() {
     setSession(sessionState)
 
     const msgs = await window.api.getMessages(session.id)
-    const parsed = (msgs as { sdk_message: string }[]).map((m) => {
-      try { return JSON.parse(m.sdk_message) } catch { return null }
-    }).filter(Boolean)
+    const parsed = (msgs as { sdk_message: string }[])
+      .map((m) => {
+        try {
+          return JSON.parse(m.sdk_message)
+        } catch {
+          return null
+        }
+      })
+      .filter(Boolean)
     setMessages(session.id, parsed)
 
     // Rebuild changed files list from historical messages
@@ -98,16 +105,19 @@ export function SessionHistory() {
     return (
       <div className="flex flex-col items-center justify-center py-8 text-center">
         <p className="text-sm text-stone-600">No previous sessions</p>
-        <p className="mt-1 text-xs text-stone-700">Open a folder to get started</p>
+        <p className="mt-1 text-stone-700 text-xs">Open a folder to get started</p>
       </div>
     )
   }
 
   return (
     <div className="space-y-1">
-      <p className="mb-2 text-xs font-medium uppercase tracking-wider text-stone-600">Recent Sessions</p>
+      <p className="mb-2 font-medium text-stone-600 text-xs uppercase tracking-wider">
+        Recent Sessions
+      </p>
       {storedSessions.slice(0, 20).map((session) => (
         <button
+          type="button"
           key={session.id}
           onClick={() => handleResume(session)}
           className="group flex w-full items-start gap-3 rounded-lg p-3 text-left transition-colors hover:bg-stone-800/60"
@@ -117,14 +127,14 @@ export function SessionHistory() {
             <p className="truncate text-sm text-stone-300">
               {session.title || session.cwd.split('/').pop() || 'Untitled'}
             </p>
-            <p className="truncate text-xs text-stone-600">{session.cwd}</p>
+            <p className="truncate text-stone-600 text-xs">{session.cwd}</p>
             <div className="mt-1 flex items-center gap-3">
-              <span className="flex items-center gap-1 text-xs text-stone-700">
+              <span className="flex items-center gap-1 text-stone-700 text-xs">
                 <Clock size={10} />
                 {timeAgo(session.updated_at)}
               </span>
               {session.total_cost_usd > 0 && (
-                <span className="flex items-center gap-1 text-xs text-stone-700">
+                <span className="flex items-center gap-1 text-stone-700 text-xs">
                   <DollarSign size={10} />
                   {formatCost(session.total_cost_usd)}
                 </span>
@@ -132,8 +142,9 @@ export function SessionHistory() {
             </div>
           </div>
           <button
+            type="button"
             onClick={(e) => handleDelete(e, session.id)}
-            className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded opacity-0 text-stone-600 transition-all hover:bg-stone-700 hover:text-red-400 group-hover:opacity-100"
+            className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded text-stone-600 opacity-0 transition-all hover:bg-stone-700 hover:text-red-400 group-hover:opacity-100"
           >
             <Trash2 size={12} />
           </button>

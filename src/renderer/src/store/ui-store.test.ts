@@ -1,4 +1,4 @@
-import { test, expect, describe, beforeEach } from 'bun:test'
+import { beforeEach, describe, expect, test } from 'bun:test'
 import { useUiStore } from './ui-store'
 
 function resetStore() {

@@ -7,10 +7,16 @@ type Props = {
   prNumber: number
 }
 
-const SEVERITY_ORDER: Record<string, number> = { critical: 0, warning: 1, suggestion: 2, nitpick: 3 }
+const SEVERITY_ORDER: Record<string, number> = {
+  critical: 0,
+  warning: 1,
+  suggestion: 2,
+  nitpick: 3,
+}
 
 export function FindingsList({ repoFullName, prNumber }: Props) {
-  const { activeFindings, selectedFindingIds, postingFindingIds, toggleFinding, postFinding } = usePrReviewStore()
+  const { activeFindings, selectedFindingIds, postingFindingIds, toggleFinding, postFinding } =
+    usePrReviewStore()
 
   if (activeFindings.length === 0) {
     return (
@@ -35,30 +41,28 @@ export function FindingsList({ repoFullName, prNumber }: Props) {
     <div>
       {/* Header with stats */}
       <div className="mb-3 flex items-center gap-2">
-        <span className="text-[11px] font-medium text-stone-400">
+        <span className="font-medium text-[11px] text-stone-400">
           {activeFindings.length} finding{activeFindings.length !== 1 ? 's' : ''}
         </span>
         <div className="flex items-center gap-1.5">
           {criticalCount > 0 && (
-            <span className="rounded bg-red-500/10 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-red-400">
+            <span className="rounded bg-red-500/10 px-1.5 py-0.5 font-medium text-[10px] text-red-400 tabular-nums">
               {criticalCount} critical
             </span>
           )}
           {warningCount > 0 && (
-            <span className="rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-amber-400">
+            <span className="rounded bg-amber-500/10 px-1.5 py-0.5 font-medium text-[10px] text-amber-400 tabular-nums">
               {warningCount} warning{warningCount !== 1 ? 's' : ''}
             </span>
           )}
           {suggestionCount > 0 && (
-            <span className="rounded bg-blue-500/10 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-blue-400">
+            <span className="rounded bg-blue-500/10 px-1.5 py-0.5 font-medium text-[10px] text-blue-400 tabular-nums">
               {suggestionCount} suggestion{suggestionCount !== 1 ? 's' : ''}
             </span>
           )}
         </div>
         {postedCount > 0 && (
-          <span className="ml-auto text-[10px] text-emerald-600">
-            {postedCount} posted
-          </span>
+          <span className="ml-auto text-[10px] text-emerald-600">{postedCount} posted</span>
         )}
       </div>
 

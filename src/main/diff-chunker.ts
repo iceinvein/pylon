@@ -107,11 +107,11 @@ const SKIP_PATTERNS = [
   /\.map$/,
   /\.bundle\.\w+$/,
   // ── ORM migrations / snapshots ──
-  /(^|\/)drizzle\/meta\//,              // Drizzle ORM snapshot metadata
-  /(^|\/)drizzle\/.*\.sql$/,            // Drizzle SQL migration files
-  /\.snapshot\.json$/,                   // Drizzle snapshot JSON files
-  /(^|\/)migrations?\//,                // Generic migration directories
-  /(^|\/)prisma\/migrations\//,         // Prisma migration files
+  /(^|\/)drizzle\/meta\//, // Drizzle ORM snapshot metadata
+  /(^|\/)drizzle\/.*\.sql$/, // Drizzle SQL migration files
+  /\.snapshot\.json$/, // Drizzle snapshot JSON files
+  /(^|\/)migrations?\//, // Generic migration directories
+  /(^|\/)prisma\/migrations\//, // Prisma migration files
   // ── Test snapshots ──
   /\.snap$/,
   /\.snapshot$/,
@@ -142,28 +142,52 @@ const SKIP_PATTERNS = [
   /\.wasm$/,
 ]
 
-const TEST_PATTERNS = [
-  /\.test\./,
-  /\.spec\./,
-  /(^|\/)__tests__\//,
-]
+const TEST_PATTERNS = [/\.test\./, /\.spec\./, /(^|\/)__tests__\//]
 
 const SOURCE_EXTENSIONS = new Set([
-  '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs',
-  '.py', '.go', '.rs', '.java', '.kt', '.kts',
-  '.c', '.cpp', '.cc', '.h', '.hpp',
-  '.cs', '.rb', '.swift', '.scala',
-  '.vue', '.svelte', '.astro',
+  '.ts',
+  '.tsx',
+  '.js',
+  '.jsx',
+  '.mjs',
+  '.cjs',
+  '.py',
+  '.go',
+  '.rs',
+  '.java',
+  '.kt',
+  '.kts',
+  '.c',
+  '.cpp',
+  '.cc',
+  '.h',
+  '.hpp',
+  '.cs',
+  '.rb',
+  '.swift',
+  '.scala',
+  '.vue',
+  '.svelte',
+  '.astro',
 ])
 
 const IMPORTANT_EXTENSIONS = new Set([
-  '.yaml', '.yml', '.toml', '.sql', '.sh', '.bash',
-  '.json', '.jsonc',
+  '.yaml',
+  '.yml',
+  '.toml',
+  '.sql',
+  '.sh',
+  '.bash',
+  '.json',
+  '.jsonc',
 ])
 
 const IMPORTANT_FILENAMES = new Set([
-  'Dockerfile', 'Makefile', 'Procfile',
-  'docker-compose.yml', 'docker-compose.yaml',
+  'Dockerfile',
+  'Makefile',
+  'Procfile',
+  'docker-compose.yml',
+  'docker-compose.yaml',
 ])
 
 export function classifyFile(path: string): FileTier {
@@ -311,11 +335,17 @@ export function chunkDiff(diff: string, options: { tokenBudget: number }): Chunk
     if (fileTokens > currentBudget) {
       if (currentChunk.files.length > 0) {
         chunks.push({ files: currentChunk.files, diffs: currentChunk.diffs })
-        currentBudget = Math.max(10_000, tokenBudget - (chunks.length * PER_CHUNK_CONVERSATION_OVERHEAD))
+        currentBudget = Math.max(
+          10_000,
+          tokenBudget - chunks.length * PER_CHUNK_CONVERSATION_OVERHEAD,
+        )
       }
       chunks.push({ files: [file.path], diffs: [file.diff] })
       currentChunk = { files: [], diffs: [], tokens: 0 }
-      currentBudget = Math.max(10_000, tokenBudget - (chunks.length * PER_CHUNK_CONVERSATION_OVERHEAD))
+      currentBudget = Math.max(
+        10_000,
+        tokenBudget - chunks.length * PER_CHUNK_CONVERSATION_OVERHEAD,
+      )
       continue
     }
 
@@ -324,7 +354,10 @@ export function chunkDiff(diff: string, options: { tokenBudget: number }): Chunk
       chunks.push({ files: currentChunk.files, diffs: currentChunk.diffs })
       currentChunk = { files: [], diffs: [], tokens: 0 }
       // Reduce budget for the next chunk
-      currentBudget = Math.max(10_000, tokenBudget - (chunks.length * PER_CHUNK_CONVERSATION_OVERHEAD))
+      currentBudget = Math.max(
+        10_000,
+        tokenBudget - chunks.length * PER_CHUNK_CONVERSATION_OVERHEAD,
+      )
     }
 
     currentChunk.files.push(file.path)

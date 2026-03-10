@@ -1,12 +1,13 @@
-import { randomUUID } from 'crypto'
-import { BrowserWindow } from 'electron'
-import { getDb } from './db'
-import { sessionManager } from './session-manager'
-import { getPrDetail } from './gh-cli'
+import { randomUUID } from 'node:crypto'
+import type { BrowserWindow } from 'electron'
 import { IPC } from '../shared/ipc-channels'
-import { chunkDiff, getTokenBudget, type ChunkResult } from './diff-chunker'
-import type { GhRepo, ReviewFocus, ReviewFinding, PrReview, ReviewStatus } from '../shared/types'
 import { log } from '../shared/logger'
+import type { GhRepo, PrReview, ReviewFinding, ReviewFocus, ReviewStatus } from '../shared/types'
+import { getDb } from './db'
+import { type ChunkResult, chunkDiff, getTokenBudget } from './diff-chunker'
+import { getPrDetail } from './gh-cli'
+import { sessionManager } from './session-manager'
+
 const logger = log.child('pr-review')
 const STREAM_THROTTLE_MS = 300
 
@@ -30,7 +31,7 @@ const DEFAULT_AGENT_PROMPTS: Record<string, string> = {
     '**Authentication & authorization**',
     '- Missing auth checks on new endpoints or IPC handlers',
     '- Privilege escalation: actions that bypass permission boundaries',
-    '- Broken access control: one user accessing another\'s resources',
+    "- Broken access control: one user accessing another's resources",
     '- Session management issues: predictable tokens, missing expiry, no invalidation',
     '- Tenant isolation violations in multi-user contexts',
     '',
@@ -59,12 +60,12 @@ const DEFAULT_AGENT_PROMPTS: Record<string, string> = {
     '1. Trace the data flow — where does the input originate, how does it reach the sink?',
     '2. Identify the trust boundary — is this crossing from untrusted to trusted context?',
     '3. Assess exploitability — can an attacker realistically trigger this?',
-    '4. Evaluate impact — what\'s the blast radius if exploited?',
+    "4. Evaluate impact — what's the blast radius if exploited?",
     '',
     '**Severity guide:**',
     '- critical: Remote code execution, auth bypass, data breach, privilege escalation',
     '- warning: XSS, CSRF, injection with partial mitigation, secrets exposure',
-    '- suggestion: Defense-in-depth improvements, missing validation that\'s hard to exploit',
+    "- suggestion: Defense-in-depth improvements, missing validation that's hard to exploit",
     '- nitpick: Minor hardening opportunities, informational',
     '',
     'Report only credible concerns grounded in code shown. If a concern depends on context you can\'t see, note it as "needs verification" in the description. Do not invent vulnerabilities without evidence.',
@@ -79,7 +80,7 @@ const DEFAULT_AGENT_PROMPTS: Record<string, string> = {
     '- Off-by-one mistakes in loops, slicing, indexing, and boundary checks',
     '- Inverted or missing conditions (wrong boolean logic, missing null checks)',
     '- Incorrect operator precedence or type coercion surprises',
-    '- State machine violations: impossible states that aren\'t prevented',
+    "- State machine violations: impossible states that aren't prevented",
     '',
     '**Concurrency & timing**',
     '- Race conditions in async code: check-then-act without atomicity',
@@ -113,10 +114,10 @@ const DEFAULT_AGENT_PROMPTS: Record<string, string> = {
     '## How to reason',
     '',
     'For each potential bug:',
-    '1. What\'s the precondition that triggers it?',
+    "1. What's the precondition that triggers it?",
     '2. Is this reachable in normal usage or only edge cases?',
-    '3. What\'s the consequence — crash, data corruption, silent wrong behavior?',
-    '4. Is there an existing guard I\'m not seeing?',
+    "3. What's the consequence — crash, data corruption, silent wrong behavior?",
+    "4. Is there an existing guard I'm not seeing?",
     '',
     'Prioritize bugs that cause silent wrong behavior over those that crash (crashes are at least visible). Flag "needs verification" when you can\'t determine reachability from the diff alone.',
   ].join('\n'),
@@ -160,12 +161,12 @@ const DEFAULT_AGENT_PROMPTS: Record<string, string> = {
     '## How to reason',
     '',
     'For each potential issue:',
-    '1. What\'s the data size at scale? (10 items is fine, 10,000 is not)',
+    "1. What's the data size at scale? (10 items is fine, 10,000 is not)",
     '2. How often does this code path execute? (once on init vs. every keystroke)',
-    '3. What\'s the measurable impact? (milliseconds vs. seconds)',
+    "3. What's the measurable impact? (milliseconds vs. seconds)",
     '4. Is the optimization worth the complexity cost?',
     '',
-    'Only flag issues that would have noticeable impact at realistic scale. Don\'t suggest micro-optimizations on cold paths.',
+    "Only flag issues that would have noticeable impact at realistic scale. Don't suggest micro-optimizations on cold paths.",
   ].join('\n'),
 
   style: [
@@ -174,11 +175,11 @@ const DEFAULT_AGENT_PROMPTS: Record<string, string> = {
     '## What to look for',
     '',
     '**Naming & clarity**',
-    '- Variable/function names that don\'t communicate intent',
+    "- Variable/function names that don't communicate intent",
     '- Misleading names that suggest different behavior than implemented',
     '- Inconsistent naming conventions within the same file or module',
     '- Abbreviations that sacrifice readability for brevity',
-    '- Boolean names that don\'t read as questions (e.g., data vs isLoaded)',
+    "- Boolean names that don't read as questions (e.g., data vs isLoaded)",
     '',
     '**Code organization**',
     '- Functions doing too many things (should be split)',
@@ -219,7 +220,7 @@ const DEFAULT_AGENT_PROMPTS: Record<string, string> = {
     '- Single file or function taking on too many responsibilities',
     '',
     '**Coupling & cohesion**',
-    '- Tight coupling: module A reaching deep into module B\'s internals',
+    "- Tight coupling: module A reaching deep into module B's internals",
     '- Inappropriate dependencies: lower-level module depending on higher-level one',
     '- Circular dependencies between modules',
     '- Shared mutable state that couples otherwise independent components',
@@ -236,7 +237,7 @@ const DEFAULT_AGENT_PROMPTS: Record<string, string> = {
     '- Hardcoded values that should be configurable',
     '- Switch/if-else chains that will grow with each new variant (should be polymorphic or data-driven)',
     '- Missing abstraction layers that would isolate from future changes',
-    '- Over-engineering: abstractions for things that don\'t vary',
+    "- Over-engineering: abstractions for things that don't vary",
     '',
     '**Data flow & state management**',
     '- Unclear ownership of state (who is the source of truth?)',
@@ -263,7 +264,7 @@ const DEFAULT_AGENT_PROMPTS: Record<string, string> = {
     '**Error handling & feedback**',
     '- API errors shown as raw technical messages instead of user-friendly text',
     '- Missing error states: what does the user see when something fails?',
-    '- Form validation errors that don\'t explain what\'s wrong or how to fix it',
+    "- Form validation errors that don't explain what's wrong or how to fix it",
     '- Destructive actions without confirmation dialogs',
     '- Error recovery: can the user retry, or are they stuck?',
     '',
@@ -285,24 +286,24 @@ const DEFAULT_AGENT_PROMPTS: Record<string, string> = {
     '- Interactive elements without accessible labels (buttons with only icons)',
     '- Missing keyboard navigation for custom widgets',
     '- Focus management: does focus move logically after modal open/close, route change?',
-    '- Color as the only indicator of state (colorblind users can\'t distinguish)',
+    "- Color as the only indicator of state (colorblind users can't distinguish)",
     '- Missing ARIA attributes for dynamic content changes',
     '',
     '**Consistency & predictability**',
     '- Same action behaving differently in different contexts',
     '- Inconsistent terminology (different labels for the same concept)',
     '- UI state not preserved when navigating away and back',
-    '- Missing feedback for successful actions (user doesn\'t know it worked)',
+    "- Missing feedback for successful actions (user doesn't know it worked)",
     '',
     '## How to reason',
     '',
     'For each potential issue:',
-    '1. Put yourself in the user\'s shoes — what were they trying to do?',
-    '2. What\'s the worst case input/state? Test mentally with empty, huge, special-char data.',
+    "1. Put yourself in the user's shoes — what were they trying to do?",
+    "2. What's the worst case input/state? Test mentally with empty, huge, special-char data.",
     '3. Is the behavior predictable? Would a new user understand what happened?',
     '4. How frequently would real users hit this issue?',
     '',
-    'Focus on issues that would confuse or frustrate users. Don\'t flag minor aesthetic preferences.',
+    "Focus on issues that would confuse or frustrate users. Don't flag minor aesthetic preferences.",
   ].join('\n'),
 }
 
@@ -339,7 +340,11 @@ class PrReviewManager {
   private updateReviewStatus(reviewId: string, status: ReviewStatus, completedAt?: number): void {
     const db = getDb()
     if (completedAt) {
-      db.prepare('UPDATE pr_reviews SET status = ?, completed_at = ? WHERE id = ?').run(status, completedAt, reviewId)
+      db.prepare('UPDATE pr_reviews SET status = ?, completed_at = ? WHERE id = ?').run(
+        status,
+        completedAt,
+        reviewId,
+      )
     } else {
       db.prepare('UPDATE pr_reviews SET status = ? WHERE id = ?').run(status, reviewId)
     }
@@ -350,15 +355,25 @@ class PrReviewManager {
     prNumber: number,
     prTitle: string,
     prUrl: string,
-    focusAreas: ReviewFocus[]
+    focusAreas: ReviewFocus[],
   ): Promise<PrReview> {
     const reviewId = randomUUID()
     const now = Date.now()
 
     const db = getDb()
     db.prepare(
-      'INSERT INTO pr_reviews (id, repo_full_name, pr_number, pr_title, pr_url, focus, status, started_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
-    ).run(reviewId, repo.fullName, prNumber, prTitle, prUrl, JSON.stringify(focusAreas), 'running', now, now)
+      'INSERT INTO pr_reviews (id, repo_full_name, pr_number, pr_title, pr_url, focus, status, started_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    ).run(
+      reviewId,
+      repo.fullName,
+      prNumber,
+      prTitle,
+      prUrl,
+      JSON.stringify(focusAreas),
+      'running',
+      now,
+      now,
+    )
 
     this.activeReviews.set(reviewId, {
       reviewId,
@@ -403,7 +418,7 @@ class PrReviewManager {
     reviewId: string,
     repo: GhRepo,
     prNumber: number,
-    focusAreas: ReviewFocus[]
+    focusAreas: ReviewFocus[],
   ): Promise<void> {
     this.send(IPC.GH_REVIEW_UPDATE, {
       reviewId,
@@ -415,13 +430,17 @@ class PrReviewManager {
     const detail = await getPrDetail(repo.fullName, prNumber)
 
     const tokenBudget = getTokenBudget()
-    logger.info(`Token budget: ${tokenBudget} tokens (diff length: ${detail.diff.length} chars, ~${Math.ceil(detail.diff.length / 3.3)} tokens)`)
+    logger.info(
+      `Token budget: ${tokenBudget} tokens (diff length: ${detail.diff.length} chars, ~${Math.ceil(detail.diff.length / 3.3)} tokens)`,
+    )
     const { chunks, skippedFiles } = chunkDiff(detail.diff, { tokenBudget })
 
     if (skippedFiles.length > 0) {
       logger.info(`Skipped ${skippedFiles.length} files:`, skippedFiles)
     }
-    logger.info(`Chunked into ${chunks.length} chunks: ${chunks.map((c, i) => `chunk ${i + 1}: ${c.files.length} files, ${c.diff.length} chars (~${Math.ceil(c.diff.length / 3.3)} tokens)`).join('; ')}`)
+    logger.info(
+      `Chunked into ${chunks.length} chunks: ${chunks.map((c, i) => `chunk ${i + 1}: ${c.files.length} files, ${c.diff.length} chars (~${Math.ceil(c.diff.length / 3.3)} tokens)`).join('; ')}`,
+    )
 
     const active = this.activeReviews.get(reviewId)
     if (!active) return
@@ -434,14 +453,18 @@ class PrReviewManager {
         status: 'done',
         findings: [],
         streamingText: `All changed files were skipped (lockfiles, generated code, etc.):\n${skippedFiles.map((f) => `- ${f}`).join('\n')}`,
-        agentProgress: focusAreas.map((f) => ({ agentId: f, status: 'done' as const, findingsCount: 0 })),
+        agentProgress: focusAreas.map((f) => ({
+          agentId: f,
+          status: 'done' as const,
+          findingsCount: 0,
+        })),
       })
       this.activeReviews.delete(reviewId)
       return
     }
 
     const agentPromises = focusAreas.map((focus) =>
-      this.runAgentSession(reviewId, repo, detail, chunks, skippedFiles, focus, active)
+      this.runAgentSession(reviewId, repo, detail, chunks, skippedFiles, focus, active),
     )
 
     const results = await Promise.allSettled(agentPromises)
@@ -459,7 +482,11 @@ class PrReviewManager {
 
     if (allFailed && results.length > 0) {
       this.updateReviewStatus(reviewId, 'error', Date.now())
-      this.send(IPC.GH_REVIEW_UPDATE, { reviewId, status: 'error', error: 'All review agents failed' })
+      this.send(IPC.GH_REVIEW_UPDATE, {
+        reviewId,
+        status: 'error',
+        error: 'All review agents failed',
+      })
       this.activeReviews.delete(reviewId)
       return
     }
@@ -469,10 +496,19 @@ class PrReviewManager {
     // Persist findings
     const db = getDb()
     const insertFinding = db.prepare(
-      'INSERT INTO pr_review_findings (id, review_id, file, line, severity, title, description, domain) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+      'INSERT INTO pr_review_findings (id, review_id, file, line, severity, title, description, domain) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
     )
     for (const f of deduped) {
-      insertFinding.run(f.id, reviewId, f.file, f.line, f.severity, f.title, f.description, f.domain)
+      insertFinding.run(
+        f.id,
+        reviewId,
+        f.file,
+        f.line,
+        f.severity,
+        f.title,
+        f.description,
+        f.domain,
+      )
     }
 
     this.updateReviewStatus(reviewId, 'done', Date.now())
@@ -501,9 +537,14 @@ class PrReviewManager {
     chunks: ChunkResult['chunks'],
     skippedFiles: string[],
     focus: ReviewFocus,
-    active: ActiveReviewSession
+    active: ActiveReviewSession,
   ): Promise<ReviewFinding[]> {
-    const sessionId = await sessionManager.createSession(repo.projectPath, undefined, undefined, 'pr-review')
+    const sessionId = await sessionManager.createSession(
+      repo.projectPath,
+      undefined,
+      undefined,
+      'pr-review',
+    )
     sessionManager.setPermissionMode(sessionId, 'auto-approve')
 
     const agentSession: AgentSession = {
@@ -553,9 +594,10 @@ class PrReviewManager {
           const chunkHeader = isMultiChunk
             ? `\n\n> **Chunk 1 of ${chunks.length}** — this chunk contains: ${chunk.files.join(', ')}\n`
             : ''
-          const skippedNote = skippedFiles.length > 0
-            ? `\n\n## Skipped Files (excluded from review)\n${skippedFiles.map((f) => `- ${f}`).join('\n')}\n`
-            : ''
+          const skippedNote =
+            skippedFiles.length > 0
+              ? `\n\n## Skipped Files (excluded from review)\n${skippedFiles.map((f) => `- ${f}`).join('\n')}\n`
+              : ''
 
           prompt = `You are reviewing a GitHub pull request as a **${focus}** specialist.
 
@@ -609,31 +651,47 @@ ${chunk.diff}
 Output findings in the same \`review-findings\` format.`
         }
 
-        logger.info(`Agent ${focus} sending chunk ${i + 1}/${chunks.length}: prompt ${prompt.length} chars (~${Math.ceil(prompt.length / 3.3)} tokens)`)
+        logger.info(
+          `Agent ${focus} sending chunk ${i + 1}/${chunks.length}: prompt ${prompt.length} chars (~${Math.ceil(prompt.length / 3.3)} tokens)`,
+        )
 
         try {
           await sessionManager.sendMessage(sessionId, prompt)
         } catch (chunkErr) {
           const errMsg = String(chunkErr).toLowerCase()
-          if (errMsg.includes('too long') || errMsg.includes('too_long') || errMsg.includes('prompt is too long')) {
+          if (
+            errMsg.includes('too long') ||
+            errMsg.includes('too_long') ||
+            errMsg.includes('prompt is too long')
+          ) {
             // Conversation grew too large — stop sending more chunks.
             // Parse whatever findings we've collected from prior chunks.
-            logger.warn(`Agent ${focus} hit context limit at chunk ${i + 1}/${chunks.length}, collecting partial results`)
+            logger.warn(
+              `Agent ${focus} hit context limit at chunk ${i + 1}/${chunks.length}, collecting partial results`,
+            )
             break
           }
           throw chunkErr
         }
       }
 
-      agentSession.findings = this.parseFindings(agentSession.streamedText).map((f) => ({ ...f, domain: focus }))
+      agentSession.findings = this.parseFindings(agentSession.streamedText).map((f) => ({
+        ...f,
+        domain: focus,
+      }))
       agentSession.status = 'done'
     } catch (err) {
       // If we collected some findings before the error, still return them
-      const partialFindings = this.parseFindings(agentSession.streamedText).map((f) => ({ ...f, domain: focus }))
+      const partialFindings = this.parseFindings(agentSession.streamedText).map((f) => ({
+        ...f,
+        domain: focus,
+      }))
       if (partialFindings.length > 0) {
         agentSession.findings = partialFindings
         agentSession.status = 'done'
-        logger.warn(`Agent ${focus} failed but recovered ${partialFindings.length} findings from partial output`)
+        logger.warn(
+          `Agent ${focus} failed but recovered ${partialFindings.length} findings from partial output`,
+        )
       } else {
         agentSession.status = 'error'
         agentSession.error = String(err)
@@ -671,7 +729,12 @@ Output findings in the same \`review-findings\` format.`
   }
 
   private deduplicateFindings(findings: ReviewFinding[]): ReviewFinding[] {
-    const SEVERITY_RANK: Record<string, number> = { critical: 0, warning: 1, suggestion: 2, nitpick: 3 }
+    const SEVERITY_RANK: Record<string, number> = {
+      critical: 0,
+      warning: 1,
+      suggestion: 2,
+      nitpick: 3,
+    }
     const grouped = new Map<string, ReviewFinding>()
 
     for (const f of findings) {
@@ -685,12 +748,12 @@ Output findings in the same \`review-findings\` format.`
         if (newRank < existingRank) {
           grouped.set(key, {
             ...f,
-            description: f.description + `\n\n_Also flagged by another agent:_ ${existing.title}`,
+            description: `${f.description}\n\n_Also flagged by another agent:_ ${existing.title}`,
           })
         } else {
           grouped.set(key, {
             ...existing,
-            description: existing.description + `\n\n_Also flagged by another agent:_ ${f.title}`,
+            description: `${existing.description}\n\n_Also flagged by another agent:_ ${f.title}`,
           })
         }
       }
@@ -703,9 +766,10 @@ Output findings in the same \`review-findings\` format.`
 
     // Find ALL review-findings fence blocks (global regex for multi-chunk support)
     const fenceRegex = /`{3,}review-findings\s*\n([\s\S]*?)`{3,}/g
-    let match: RegExpExecArray | null
-    while ((match = fenceRegex.exec(text)) !== null) {
+    let match: RegExpExecArray | null = fenceRegex.exec(text)
+    while (match !== null) {
       allFindings.push(...this.parseJsonFindings(match[1].trim()))
+      match = fenceRegex.exec(text)
     }
 
     // If we found fenced blocks, return those
@@ -713,8 +777,10 @@ Output findings in the same \`review-findings\` format.`
 
     // Fallback: try ```json blocks
     const jsonFenceRegex = /`{3,}json\s*\n(\[[\s\S]*?\])\s*`{3,}/g
-    while ((match = jsonFenceRegex.exec(text)) !== null) {
+    match = jsonFenceRegex.exec(text)
+    while (match !== null) {
       allFindings.push(...this.parseJsonFindings(match[1].trim()))
+      match = jsonFenceRegex.exec(text)
     }
     if (allFindings.length > 0) return allFindings
 
@@ -752,19 +818,26 @@ Output findings in the same \`review-findings\` format.`
 
   private getAgentPrompt(focus: ReviewFocus): string {
     const db = getDb()
-    const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(`reviewAgent.${focus}`) as { value: string } | undefined
+    const row = db
+      .prepare('SELECT value FROM settings WHERE key = ?')
+      .get(`reviewAgent.${focus}`) as { value: string } | undefined
     return row?.value || DEFAULT_AGENT_PROMPTS[focus] || DEFAULT_AGENT_PROMPTS.general
   }
 
   getAgentPrompts(): Array<{ id: string; name: string; prompt: string; isCustom: boolean }> {
     const db = getDb()
     const names: Record<string, string> = {
-      security: 'Security', bugs: 'Bugs',
-      performance: 'Performance', style: 'Style',
-      architecture: 'Architecture', ux: 'UX',
+      security: 'Security',
+      bugs: 'Bugs',
+      performance: 'Performance',
+      style: 'Style',
+      architecture: 'Architecture',
+      ux: 'UX',
     }
     return Object.keys(DEFAULT_AGENT_PROMPTS).map((id) => {
-      const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(`reviewAgent.${id}`) as { value: string } | undefined
+      const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(`reviewAgent.${id}`) as
+        | { value: string }
+        | undefined
       return {
         id,
         name: names[id] || id,
@@ -794,7 +867,8 @@ Output findings in the same \`review-findings\` format.`
 
   listReviews(repoFullName?: string, prNumber?: number): PrReview[] {
     const db = getDb()
-    let sql = 'SELECT r.*, (SELECT COUNT(*) FROM pr_review_findings f WHERE f.review_id = r.id) AS findings_count FROM pr_reviews r'
+    let sql =
+      'SELECT r.*, (SELECT COUNT(*) FROM pr_review_findings f WHERE f.review_id = r.id) AS findings_count FROM pr_reviews r'
     const params: unknown[] = []
 
     if (repoFullName && prNumber) {
@@ -818,14 +892,20 @@ Output findings in the same \`review-findings\` format.`
     })
   }
 
-  getReview(reviewId: string): (PrReview & { findings: ReviewFinding[]; rawOutput: string }) | null {
+  getReview(
+    reviewId: string,
+  ): (PrReview & { findings: ReviewFinding[]; rawOutput: string }) | null {
     const db = getDb()
-    const row = db.prepare('SELECT * FROM pr_reviews WHERE id = ?').get(reviewId) as Record<string, unknown> | undefined
+    const row = db.prepare('SELECT * FROM pr_reviews WHERE id = ?').get(reviewId) as
+      | Record<string, unknown>
+      | undefined
     if (!row) return null
 
-    const findings = db.prepare(
-      "SELECT * FROM pr_review_findings WHERE review_id = ? ORDER BY CASE severity WHEN 'critical' THEN 0 WHEN 'warning' THEN 1 WHEN 'suggestion' THEN 2 WHEN 'nitpick' THEN 3 END"
-    ).all(reviewId) as Array<Record<string, unknown>>
+    const findings = db
+      .prepare(
+        "SELECT * FROM pr_review_findings WHERE review_id = ? ORDER BY CASE severity WHEN 'critical' THEN 0 WHEN 'warning' THEN 1 WHEN 'suggestion' THEN 2 WHEN 'nitpick' THEN 3 END",
+      )
+      .all(reviewId) as Array<Record<string, unknown>>
 
     const review = this.rowToReview(row)
     review.findings = findings.map((f) => ({
@@ -855,7 +935,7 @@ Output findings in the same \`review-findings\` format.`
     // Clear existing findings for this review first
     db.prepare('DELETE FROM pr_review_findings WHERE review_id = ?').run(reviewId)
     const insert = db.prepare(
-      'INSERT INTO pr_review_findings (id, review_id, file, line, severity, title, description, domain) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+      'INSERT INTO pr_review_findings (id, review_id, file, line, severity, title, description, domain) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
     )
     for (const f of findings) {
       insert.run(f.id, reviewId, f.file, f.line, f.severity, f.title, f.description, f.domain)
@@ -864,7 +944,10 @@ Output findings in the same \`review-findings\` format.`
 
   markFindingPosted(findingId: string): void {
     const db = getDb()
-    db.prepare('UPDATE pr_review_findings SET posted = 1, posted_at = ? WHERE id = ?').run(Date.now(), findingId)
+    db.prepare('UPDATE pr_review_findings SET posted = 1, posted_at = ? WHERE id = ?').run(
+      Date.now(),
+      findingId,
+    )
   }
 
   private rowToReview(row: Record<string, unknown>): PrReview {

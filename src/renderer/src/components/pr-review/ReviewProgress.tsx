@@ -1,6 +1,17 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
-import { Loader2, StopCircle, ChevronDown, MessageSquareText, AlertCircle, AlertTriangle, Lightbulb, Info, CheckCircle2, XCircle } from 'lucide-react'
+import {
+  AlertCircle,
+  AlertTriangle,
+  CheckCircle2,
+  ChevronDown,
+  Info,
+  Lightbulb,
+  Loader2,
+  MessageSquareText,
+  StopCircle,
+  XCircle,
+} from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { usePrReviewStore } from '../../store/pr-review-store'
 
 const REVIEW_PHRASES = [
@@ -9,7 +20,7 @@ const REVIEW_PHRASES = [
   'Judging your variable names...',
   'Searching for TODO comments you forgot about...',
   'Checking if you remembered error handling...',
-  'Looking for the bugs you swore weren\'t there...',
+  "Looking for the bugs you swore weren't there...",
   'Tracing data flows like a detective...',
   'Counting the layers of abstraction...',
   'Evaluating your life choices... I mean, code choices...',
@@ -27,7 +38,9 @@ const REVIEW_PHRASES = [
 ]
 
 function ReviewStatusMessage() {
-  const [phraseIdx, setPhraseIdx] = useState(() => Math.floor(Math.random() * REVIEW_PHRASES.length))
+  const [phraseIdx, setPhraseIdx] = useState(() =>
+    Math.floor(Math.random() * REVIEW_PHRASES.length),
+  )
   const [charIdx, setCharIdx] = useState(0)
   const phrase = REVIEW_PHRASES[phraseIdx]
 
@@ -108,19 +121,34 @@ function parseFindingsBlock(text: string): StreamFinding[] {
 
   let i = 0
   while (i < text.length) {
-    if (text[i] !== '{') { i++; continue }
+    if (text[i] !== '{') {
+      i++
+      continue
+    }
     let depth = 0
     let inString = false
     let escaped = false
     let j = i
     for (; j < text.length; j++) {
       const ch = text[j]
-      if (escaped) { escaped = false; continue }
-      if (ch === '\\' && inString) { escaped = true; continue }
-      if (ch === '"') { inString = !inString; continue }
+      if (escaped) {
+        escaped = false
+        continue
+      }
+      if (ch === '\\' && inString) {
+        escaped = true
+        continue
+      }
+      if (ch === '"') {
+        inString = !inString
+        continue
+      }
       if (inString) continue
       if (ch === '{') depth++
-      else if (ch === '}') { depth--; if (depth === 0) break }
+      else if (ch === '}') {
+        depth--
+        if (depth === 0) break
+      }
     }
     if (depth === 0 && j < text.length) {
       const objStr = text.slice(i, j + 1)
@@ -136,7 +164,9 @@ function parseFindingsBlock(text: string): StreamFinding[] {
             domain: null,
           })
         }
-      } catch { /* incomplete object, skip */ }
+      } catch {
+        /* incomplete object, skip */
+      }
       i = j + 1
     } else {
       break
@@ -155,10 +185,10 @@ function extractStreamFindings(text: string): { findings: StreamFinding[]; pream
 
   // Find ALL review-findings fences using a global regex
   const fenceRegex = /`{3,}review-findings\s*\n/g
-  let match: RegExpExecArray | null
+  let match: RegExpExecArray | null = fenceRegex.exec(text)
   let firstFenceIdx = -1
 
-  while ((match = fenceRegex.exec(text)) !== null) {
+  while (match !== null) {
     if (firstFenceIdx === -1) firstFenceIdx = match.index
 
     const jsonStart = match.index + match[0].length
@@ -166,11 +196,13 @@ function extractStreamFindings(text: string): { findings: StreamFinding[]; pream
 
     // Find closing fence
     const closingMatch = rest.match(/`{3,}/)
-    const jsonText = closingMatch && closingMatch.index !== undefined
-      ? rest.slice(0, closingMatch.index).trim()
-      : rest.trim()
+    const jsonText =
+      closingMatch && closingMatch.index !== undefined
+        ? rest.slice(0, closingMatch.index).trim()
+        : rest.trim()
 
     findings.push(...parseFindingsBlock(jsonText))
+    match = fenceRegex.exec(text)
   }
 
   if (firstFenceIdx > 0) {
@@ -188,29 +220,28 @@ export function ReviewProgress({ reviewId: _reviewId, onStop, isLive = true }: P
   const [expanded, setExpanded] = useState(isLive)
   const scrollRef = useRef<HTMLDivElement>(null)
 
-  const { findings } = useMemo(
-    () => extractStreamFindings(streamingText),
-    [streamingText]
-  )
+  const { findings } = useMemo(() => extractStreamFindings(streamingText), [streamingText])
 
   useEffect(() => {
     if (isLive && scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
-  }, [streamingText, isLive, findings.length])
+  }, [isLive])
 
   if (!streamingText && !agentProgress.length) {
     if (!isLive) return null
   }
 
-  const findingCount = agentProgress.length > 0
-    ? agentProgress.reduce((sum, a) => sum + a.findingsCount, 0)
-    : findings.length
+  const findingCount =
+    agentProgress.length > 0
+      ? agentProgress.reduce((sum, a) => sum + a.findingsCount, 0)
+      : findings.length
 
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-lg border border-stone-800 bg-stone-900/40">
       {/* Header */}
       <button
+        type="button"
         onClick={() => setExpanded((v) => !v)}
         className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-xs transition-colors hover:bg-stone-800/40"
       >
@@ -223,14 +254,18 @@ export function ReviewProgress({ reviewId: _reviewId, onStop, isLive = true }: P
           {isLive ? <ReviewStatusMessage /> : 'Review Output'}
         </span>
         {findingCount > 0 && (
-          <span className="rounded-full bg-stone-800 px-2 py-0.5 text-[10px] tabular-nums text-stone-400">
+          <span className="rounded-full bg-stone-800 px-2 py-0.5 text-[10px] text-stone-400 tabular-nums">
             {findingCount} finding{findingCount !== 1 ? 's' : ''}
           </span>
         )}
         <div className="flex-1" />
         {isLive && onStop && (
           <button
-            onClick={(e) => { e.stopPropagation(); onStop() }}
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              onStop()
+            }}
             className="flex items-center gap-1 rounded border border-stone-700 px-2 py-0.5 text-stone-400 transition-colors hover:border-red-800 hover:bg-red-950/30 hover:text-red-400"
           >
             <StopCircle size={10} />
@@ -245,11 +280,11 @@ export function ReviewProgress({ reviewId: _reviewId, onStop, isLive = true }: P
 
       {/* Agent progress pills */}
       {agentProgress.length > 1 && (
-        <div className="flex flex-wrap gap-2 border-t border-stone-800 px-3 py-2">
+        <div className="flex flex-wrap gap-2 border-stone-800 border-t px-3 py-2">
           {agentProgress.map((agent) => (
             <div
               key={agent.agentId}
-              className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-medium ${
+              className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 font-medium text-[10px] ${
                 agent.status === 'done'
                   ? 'bg-emerald-500/10 text-emerald-400'
                   : agent.status === 'error'
@@ -288,7 +323,7 @@ export function ReviewProgress({ reviewId: _reviewId, onStop, isLive = true }: P
           >
             <div
               ref={scrollRef}
-              className="min-h-0 flex-1 overflow-y-auto border-t border-stone-800"
+              className="min-h-0 flex-1 overflow-y-auto border-stone-800 border-t"
             >
               {/* Streamed findings as they arrive */}
               {findings.length > 0 && (
@@ -301,20 +336,23 @@ export function ReviewProgress({ reviewId: _reviewId, onStop, isLive = true }: P
                         <Icon size={14} className={`mt-0.5 flex-shrink-0 ${config.color}`} />
                         <div className="min-w-0 flex-1">
                           <div className="flex items-baseline gap-2">
-                            <span className="text-xs font-medium text-stone-200">{f.title}</span>
+                            <span className="font-medium text-stone-200 text-xs">{f.title}</span>
                             {f.domain && (
-                              <span className="rounded bg-stone-800 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider text-stone-500">
+                              <span className="rounded bg-stone-800 px-1.5 py-0.5 font-medium text-[9px] text-stone-500 uppercase tracking-wider">
                                 {DOMAIN_LABELS[f.domain] ?? f.domain}
                               </span>
                             )}
                           </div>
                           {f.file && (
                             <div className="mt-0.5 font-[family-name:var(--font-mono)] text-[11px] text-stone-500">
-                              {f.file}{f.line ? `:${f.line}` : ''}
+                              {f.file}
+                              {f.line ? `:${f.line}` : ''}
                             </div>
                           )}
                           {f.description && (
-                            <p className="mt-1 text-xs leading-relaxed text-stone-400">{f.description}</p>
+                            <p className="mt-1 text-stone-400 text-xs leading-relaxed">
+                              {f.description}
+                            </p>
                           )}
                         </div>
                       </div>
@@ -325,7 +363,7 @@ export function ReviewProgress({ reviewId: _reviewId, onStop, isLive = true }: P
 
               {/* Empty state while waiting for findings */}
               {isLive && findings.length === 0 && (
-                <div className="flex items-center justify-center py-8 text-xs text-stone-600">
+                <div className="flex items-center justify-center py-8 text-stone-600 text-xs">
                   Waiting for findings...
                 </div>
               )}

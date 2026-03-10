@@ -1,7 +1,10 @@
-import { Trash2, CheckCircle2, XCircle, Loader2, Clock } from 'lucide-react'
+import { CheckCircle2, Clock, Loader2, Trash2, XCircle } from 'lucide-react'
 import { usePrReviewStore } from '../../store/pr-review-store'
 
-const STATUS_CONFIG: Record<string, { icon: typeof Clock; color: string; label: (count: number) => string }> = {
+const STATUS_CONFIG: Record<
+  string,
+  { icon: typeof Clock; color: string; label: (count: number) => string }
+> = {
   done: {
     icon: CheckCircle2,
     color: 'text-emerald-400',
@@ -38,52 +41,57 @@ function timeAgo(ts: number): string {
 export function ReviewHistory() {
   const { reviews, activeReview, activeFindings, loadReview, deleteReview } = usePrReviewStore()
 
-  const pastReviews = reviews.filter((r) => r.id !== activeReview?.id || r.status === 'done' || r.status === 'error')
+  const pastReviews = reviews.filter(
+    (r) => r.id !== activeReview?.id || r.status === 'done' || r.status === 'error',
+  )
   if (pastReviews.length === 0) return null
 
   return (
     <div>
       <div className="flex items-center gap-2 px-2.5 py-1.5">
-        <span className="text-[10px] font-medium uppercase tracking-wider text-stone-600">
+        <span className="font-medium text-[10px] text-stone-600 uppercase tracking-wider">
           Past reviews
         </span>
-        <span className="text-[10px] tabular-nums text-stone-700">{pastReviews.length}</span>
+        <span className="text-[10px] text-stone-700 tabular-nums">{pastReviews.length}</span>
       </div>
       <div className="space-y-px">
-      {pastReviews.map((r) => {
-        const isActive = activeReview?.id === r.id
-        const findingsCount = (isActive && r.status === 'done') ? activeFindings.length : r.findings.length
-        const config = STATUS_CONFIG[r.status] ?? STATUS_CONFIG.pending
-        const StatusIcon = config.icon
+        {pastReviews.map((r) => {
+          const isActive = activeReview?.id === r.id
+          const findingsCount =
+            isActive && r.status === 'done' ? activeFindings.length : r.findings.length
+          const config = STATUS_CONFIG[r.status] ?? STATUS_CONFIG.pending
+          const StatusIcon = config.icon
 
-        return (
-          <div
-            key={r.id}
-            className={`group flex items-center rounded-md transition-colors ${
-              isActive ? 'bg-stone-800/60' : 'hover:bg-stone-800/30'
-            }`}
-          >
-            <button
-              onClick={() => loadReview(r.id)}
-              className="flex min-w-0 flex-1 items-center gap-2.5 px-2.5 py-2"
+          return (
+            <div
+              key={r.id}
+              className={`group flex items-center rounded-md transition-colors ${
+                isActive ? 'bg-stone-800/60' : 'hover:bg-stone-800/30'
+              }`}
             >
-              <StatusIcon size={12} className={`flex-shrink-0 ${config.color}`} />
-              <span className="text-[11px] text-stone-400">{timeAgo(r.createdAt)}</span>
-              <span className="truncate text-[11px] text-stone-600">{r.focus.join(', ')}</span>
-              <span className={`ml-auto flex-shrink-0 text-[11px] font-medium ${config.color}`}>
-                {config.label(findingsCount)}
-              </span>
-            </button>
-            <button
-              onClick={() => deleteReview(r.id)}
-              className="flex-shrink-0 p-1.5 text-stone-700 opacity-0 transition-all hover:text-red-400 group-hover:opacity-100"
-              title="Delete"
-            >
-              <Trash2 size={10} />
-            </button>
-          </div>
-        )
-      })}
+              <button
+                type="button"
+                onClick={() => loadReview(r.id)}
+                className="flex min-w-0 flex-1 items-center gap-2.5 px-2.5 py-2"
+              >
+                <StatusIcon size={12} className={`flex-shrink-0 ${config.color}`} />
+                <span className="text-[11px] text-stone-400">{timeAgo(r.createdAt)}</span>
+                <span className="truncate text-[11px] text-stone-600">{r.focus.join(', ')}</span>
+                <span className={`ml-auto flex-shrink-0 font-medium text-[11px] ${config.color}`}>
+                  {config.label(findingsCount)}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => deleteReview(r.id)}
+                className="flex-shrink-0 p-1.5 text-stone-700 opacity-0 transition-all hover:text-red-400 group-hover:opacity-100"
+                title="Delete"
+              >
+                <Trash2 size={10} />
+              </button>
+            </div>
+          )
+        })}
       </div>
     </div>
   )

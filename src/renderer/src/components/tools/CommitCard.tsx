@@ -1,6 +1,6 @@
+import { Check, FileText, GitCommit, Loader2 } from 'lucide-react'
+import { AnimatePresence, motion } from 'motion/react'
 import { useMemo } from 'react'
-import { motion, AnimatePresence } from 'motion/react'
-import { GitCommit, Check, Loader2, FileText } from 'lucide-react'
 
 type CommitCardProps = {
   toolBlocks: Array<{
@@ -48,14 +48,20 @@ function parseCommitMessage(output: string): string | null {
   return match ? match[1] : null
 }
 
-function parseFileStats(output: string): { files: string[]; insertions: number; deletions: number } {
+function parseFileStats(output: string): {
+  files: string[]
+  insertions: number
+  deletions: number
+} {
   const files: string[] = []
   let insertions = 0
   let deletions = 0
 
   for (const line of output.split('\n')) {
     // Summary line: "3 files changed, 274 insertions(+), 201 deletions(-)"
-    const summary = line.match(/(\d+)\s+files?\s+changed(?:,\s+(\d+)\s+insertion)?(?:.*?(\d+)\s+deletion)?/)
+    const summary = line.match(
+      /(\d+)\s+files?\s+changed(?:,\s+(\d+)\s+insertion)?(?:.*?(\d+)\s+deletion)?/,
+    )
     if (summary) {
       insertions = parseInt(summary[2] ?? '0', 10)
       deletions = parseInt(summary[3] ?? '0', 10)
@@ -85,13 +91,17 @@ export function CommitCard({ toolBlocks, toolResultMap, isStreaming }: CommitCar
     const phaseResults = new Map<string, { done: boolean; result: string }>()
     let hash: string | null = null
     let message: string | null = null
-    let stats: { files: string[]; insertions: number; deletions: number } = { files: [], insertions: 0, deletions: 0 }
+    let stats: { files: string[]; insertions: number; deletions: number } = {
+      files: [],
+      insertions: 0,
+      deletions: 0,
+    }
 
     for (const block of toolBlocks) {
       // Use classifyToolPhases to track ALL phases in combined commands
       const blockPhases = classifyToolPhases(block.name, block.input)
       if (blockPhases.length === 0) continue
-      const result = block.id ? toolResultMap.get(block.id) ?? '' : ''
+      const result = block.id ? (toolResultMap.get(block.id) ?? '') : ''
       const done = result.length > 0
 
       for (const phase of blockPhases) {
@@ -153,9 +163,7 @@ export function CommitCard({ toolBlocks, toolResultMap, isStreaming }: CommitCar
         <div className="flex items-center gap-3 px-4 py-3">
           <div
             className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg ${
-              isDone
-                ? 'bg-green-900/30 text-green-400'
-                : 'bg-stone-800 text-stone-400'
+              isDone ? 'bg-green-900/30 text-green-400' : 'bg-stone-800 text-stone-400'
             }`}
           >
             {isDone ? (
@@ -171,31 +179,35 @@ export function CommitCard({ toolBlocks, toolResultMap, isStreaming }: CommitCar
             {isDone ? (
               <>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-stone-200">Committed</span>
-                  <code className="rounded bg-stone-800 px-1.5 py-0.5 font-[family-name:var(--font-mono)] text-xs text-amber-400">
+                  <span className="font-medium text-sm text-stone-200">Committed</span>
+                  <code className="rounded bg-stone-800 px-1.5 py-0.5 font-[family-name:var(--font-mono)] text-amber-400 text-xs">
                     {commitHash}
                   </code>
                 </div>
                 {commitMessage && (
-                  <p className="mt-0.5 truncate text-xs text-stone-400">{commitMessage}</p>
+                  <p className="mt-0.5 truncate text-stone-400 text-xs">{commitMessage}</p>
                 )}
               </>
             ) : (
-              <span className="text-sm font-medium text-stone-300">
+              <span className="font-medium text-sm text-stone-300">
                 {inProgress ? 'Committing...' : 'Commit'}
               </span>
             )}
           </div>
 
           {isDone && (fileStats.insertions > 0 || fileStats.deletions > 0) && (
-            <div className="flex items-center gap-2 text-xs text-stone-500">
+            <div className="flex items-center gap-2 text-stone-500 text-xs">
               {fileStats.files.length > 0 && (
                 <span>
                   {fileStats.files.length} file{fileStats.files.length !== 1 ? 's' : ''}
                 </span>
               )}
-              {fileStats.insertions > 0 && <span className="text-green-500">+{fileStats.insertions}</span>}
-              {fileStats.deletions > 0 && <span className="text-red-400">&minus;{fileStats.deletions}</span>}
+              {fileStats.insertions > 0 && (
+                <span className="text-green-500">+{fileStats.insertions}</span>
+              )}
+              {fileStats.deletions > 0 && (
+                <span className="text-red-400">&minus;{fileStats.deletions}</span>
+              )}
             </div>
           )}
         </div>
@@ -210,12 +222,14 @@ export function CommitCard({ toolBlocks, toolResultMap, isStreaming }: CommitCar
               transition={{ duration: 0.2 }}
               className="overflow-hidden"
             >
-              <div className="space-y-3 border-t border-stone-800/60 px-4 py-3">
+              <div className="space-y-3 border-stone-800/60 border-t px-4 py-3">
                 {/* Progress phases */}
                 <div className="space-y-1.5">
                   {phases.map((phase) => (
                     <div key={phase.id} className="flex items-center gap-2">
-                      {phase.status === 'done' && <Check size={12} className="flex-shrink-0 text-green-500" />}
+                      {phase.status === 'done' && (
+                        <Check size={12} className="flex-shrink-0 text-green-500" />
+                      )}
                       {phase.status === 'running' && (
                         <Loader2 size={12} className="flex-shrink-0 animate-spin text-stone-400" />
                       )}
@@ -240,11 +254,13 @@ export function CommitCard({ toolBlocks, toolResultMap, isStreaming }: CommitCar
                 {/* File list */}
                 {fileStats.files.length > 0 && (
                   <div className="space-y-1">
-                    <p className="text-[10px] font-medium uppercase tracking-wider text-stone-600">Files</p>
+                    <p className="font-medium text-[10px] text-stone-600 uppercase tracking-wider">
+                      Files
+                    </p>
                     {fileStats.files.map((file) => (
                       <div key={file} className="flex items-center gap-2">
                         <FileText size={11} className="flex-shrink-0 text-stone-600" />
-                        <span className="truncate font-[family-name:var(--font-mono)] text-xs text-stone-400">
+                        <span className="truncate font-[family-name:var(--font-mono)] text-stone-400 text-xs">
                           {file}
                         </span>
                       </div>
@@ -263,10 +279,11 @@ export function CommitCard({ toolBlocks, toolResultMap, isStreaming }: CommitCar
 /** Check if a user message looks like a commit request */
 export function isCommitRequest(userMessage: string): boolean {
   const normalized = userMessage.trim().toLowerCase()
-  if (normalized === 'commit' || normalized === 'commit changes' || normalized === 'git commit') return true
+  if (normalized === 'commit' || normalized === 'commit changes' || normalized === 'git commit')
+    return true
   if (
     /^(commit|please commit|can you commit|go ahead and commit|now commit|lets commit|let's commit|yep.*commit|yes.*commit)/.test(
-      normalized
+      normalized,
     )
   )
     return true
@@ -275,7 +292,7 @@ export function isCommitRequest(userMessage: string): boolean {
 
 /** Check if an assistant turn's tool blocks look like a commit workflow */
 export function hasGitCommitTools(
-  toolBlocks: Array<{ name: string; input: Record<string, unknown> }>
+  toolBlocks: Array<{ name: string; input: Record<string, unknown> }>,
 ): boolean {
   let hasCommit = false
   let hasAnalyze = false

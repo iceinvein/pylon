@@ -1,5 +1,5 @@
-import { test, expect, describe } from 'bun:test'
-import { formatTokens, formatCost, timeAgo } from './utils'
+import { describe, expect, test } from 'bun:test'
+import { formatCost, formatTokens, timeAgo } from './utils'
 
 describe('formatTokens', () => {
   test('returns raw number below 1000', () => {

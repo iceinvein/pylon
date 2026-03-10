@@ -1,10 +1,15 @@
 import { useEffect } from 'react'
+import type {
+  PermissionRequest,
+  QuestionRequest,
+  SessionInitInfo,
+  SessionStatus,
+} from '../../../shared/types'
 import { accumulateDelta, flushPendingDeltas } from '../lib/delta-batcher'
 import { extractTasks } from '../lib/extract-tasks'
 import { isPlanPath, toRelativePath } from '../lib/parse-plan'
 import { useSessionStore } from '../store/session-store'
 import { useTabStore } from '../store/tab-store'
-import type { PermissionRequest, QuestionRequest, SessionStatus } from '../../../shared/types'
 
 type SessionMessageEvent = {
   sessionId: string
@@ -124,6 +129,22 @@ export function useIpcBridge(): void {
         store().setSdkStatus(sessionId, (msg as { status?: string | null }).status ?? null)
       }
 
+      // Extract session init info (tools, skills, plugins, MCP servers)
+      if (msg.type === 'system' && msg.subtype === 'init') {
+        const init = msg as Record<string, unknown>
+        const initInfo: SessionInitInfo = {
+          tools: (init.tools as string[]) ?? [],
+          skills: (init.skills as string[]) ?? [],
+          slashCommands: (init.slash_commands as string[]) ?? [],
+          plugins: (init.plugins as Array<{ name: string; path: string }>) ?? [],
+          mcpServers: (init.mcp_servers as Array<{ name: string; status: string }>) ?? [],
+          model: (init.model as string) ?? '',
+          permissionMode: (init.permissionMode as string) ?? 'default',
+          claudeCodeVersion: (init.claude_code_version as string) ?? '',
+        }
+        store().setInitInfo(sessionId, initInfo)
+      }
+
       store().appendMessage(sessionId, message)
 
       // Extract task state from assistant messages containing TodoWrite tool calls
@@ -134,13 +155,29 @@ export function useIpcBridge(): void {
         }
 
         // Track changed files from Edit/Write tool calls
-        const messageObj = msg.message as { content?: Array<{ type: string; id?: string; name?: string; input?: Record<string, unknown> }> } | undefined
-        const content = messageObj?.content ?? (msg.content as Array<{ type: string; id?: string; name?: string; input?: Record<string, unknown> }> | undefined)
+        const messageObj = msg.message as
+          | {
+              content?: Array<{
+                type: string
+                id?: string
+                name?: string
+                input?: Record<string, unknown>
+              }>
+            }
+          | undefined
+        const content =
+          messageObj?.content ??
+          (msg.content as
+            | Array<{ type: string; id?: string; name?: string; input?: Record<string, unknown> }>
+            | undefined)
         if (Array.isArray(content)) {
           for (const block of content) {
             if (block.type !== 'tool_use' || !block.input) continue
             const blockName = (block.name ?? '').toLowerCase()
-            if (blockName.includes('edit') || (blockName.includes('write') && blockName !== 'todowrite')) {
+            if (
+              blockName.includes('edit') ||
+              (blockName.includes('write') && blockName !== 'todowrite')
+            ) {
               const filePath = block.input?.file_path ?? block.input?.path
               if (typeof filePath === 'string' && filePath) {
                 store().addChangedFile(sessionId, filePath)

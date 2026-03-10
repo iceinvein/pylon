@@ -1,6 +1,6 @@
+import { join } from 'node:path'
 import Database from 'better-sqlite3'
 import { app } from 'electron'
-import { join } from 'path'
 
 let db: Database.Database
 
@@ -44,24 +44,24 @@ export function initDatabase(): Database.Database {
   `)
 
   // Migrations
-  const cols = db.prepare("PRAGMA table_info(sessions)").all() as { name: string }[]
+  const cols = db.prepare('PRAGMA table_info(sessions)').all() as { name: string }[]
   if (!cols.some((c) => c.name === 'permission_mode')) {
     db.exec("ALTER TABLE sessions ADD COLUMN permission_mode TEXT NOT NULL DEFAULT 'default'")
   }
   if (!cols.some((c) => c.name === 'git_baseline_hash')) {
-    db.exec("ALTER TABLE sessions ADD COLUMN git_baseline_hash TEXT DEFAULT NULL")
+    db.exec('ALTER TABLE sessions ADD COLUMN git_baseline_hash TEXT DEFAULT NULL')
   }
   if (!cols.some((c) => c.name === 'worktree_path')) {
-    db.exec("ALTER TABLE sessions ADD COLUMN worktree_path TEXT DEFAULT NULL")
+    db.exec('ALTER TABLE sessions ADD COLUMN worktree_path TEXT DEFAULT NULL')
   }
   if (!cols.some((c) => c.name === 'original_cwd')) {
-    db.exec("ALTER TABLE sessions ADD COLUMN original_cwd TEXT DEFAULT NULL")
+    db.exec('ALTER TABLE sessions ADD COLUMN original_cwd TEXT DEFAULT NULL')
   }
   if (!cols.some((c) => c.name === 'worktree_branch')) {
-    db.exec("ALTER TABLE sessions ADD COLUMN worktree_branch TEXT DEFAULT NULL")
+    db.exec('ALTER TABLE sessions ADD COLUMN worktree_branch TEXT DEFAULT NULL')
   }
   if (!cols.some((c) => c.name === 'original_branch')) {
-    db.exec("ALTER TABLE sessions ADD COLUMN original_branch TEXT DEFAULT NULL")
+    db.exec('ALTER TABLE sessions ADD COLUMN original_branch TEXT DEFAULT NULL')
   }
   if (!cols.some((c) => c.name === 'source')) {
     db.exec("ALTER TABLE sessions ADD COLUMN source TEXT NOT NULL DEFAULT 'user'")
@@ -101,15 +101,17 @@ export function initDatabase(): Database.Database {
   `)
 
   // Migration: add raw_output column to pr_reviews
-  const prCols = db.prepare("PRAGMA table_info(pr_reviews)").all() as Array<{ name: string }>
+  const prCols = db.prepare('PRAGMA table_info(pr_reviews)').all() as Array<{ name: string }>
   if (!prCols.some((c) => c.name === 'raw_output')) {
-    db.exec("ALTER TABLE pr_reviews ADD COLUMN raw_output TEXT")
+    db.exec('ALTER TABLE pr_reviews ADD COLUMN raw_output TEXT')
   }
 
   // Migration: add domain column to pr_review_findings
-  const findingCols = db.prepare("PRAGMA table_info(pr_review_findings)").all() as Array<{ name: string }>
+  const findingCols = db.prepare('PRAGMA table_info(pr_review_findings)').all() as Array<{
+    name: string
+  }>
   if (!findingCols.some((c) => c.name === 'domain')) {
-    db.exec("ALTER TABLE pr_review_findings ADD COLUMN domain TEXT")
+    db.exec('ALTER TABLE pr_review_findings ADD COLUMN domain TEXT')
   }
 
   return db

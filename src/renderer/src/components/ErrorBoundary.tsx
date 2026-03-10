@@ -1,6 +1,7 @@
+import type { ErrorInfo, ReactNode } from 'react'
 import { Component } from 'react'
-import type { ReactNode, ErrorInfo } from 'react'
 import { log } from '../../../shared/logger'
+
 const logger = log.child('error-boundary')
 
 type Props = { children: ReactNode }
@@ -22,11 +23,12 @@ export class ErrorBoundary extends Component<Props, State> {
       return (
         <div className="flex h-screen w-screen items-center justify-center bg-stone-950 text-stone-300">
           <div className="max-w-md space-y-4 text-center">
-            <h1 className="text-lg font-medium text-stone-100">Something went wrong</h1>
+            <h1 className="font-medium text-lg text-stone-100">Something went wrong</h1>
             <p className="text-sm text-stone-500">
               {this.state.error?.message ?? 'An unexpected error occurred.'}
             </p>
             <button
+              type="button"
               onClick={() => window.location.reload()}
               className="rounded-md bg-stone-800 px-4 py-2 text-sm text-stone-200 transition-colors hover:bg-stone-700"
             >

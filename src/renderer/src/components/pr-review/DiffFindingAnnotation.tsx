@@ -1,4 +1,12 @@
-import { CheckCircle2, Send, AlertCircle, AlertTriangle, Lightbulb, Info, Loader2 } from 'lucide-react'
+import {
+  AlertCircle,
+  AlertTriangle,
+  CheckCircle2,
+  Info,
+  Lightbulb,
+  Loader2,
+  Send,
+} from 'lucide-react'
 import type { ReviewFinding } from '../../../../shared/types'
 import { usePrReviewStore } from '../../store/pr-review-store'
 
@@ -18,11 +26,49 @@ const DOMAIN_LABELS: Record<string, string> = {
   ux: 'UX',
 }
 
-const SEVERITY_CONFIG: Record<string, { icon: typeof AlertCircle; border: string; text: string; bg: string; label: string; postedBorder: string }> = {
-  critical: { icon: AlertCircle, border: 'border-l-red-500', text: 'text-red-400', bg: 'bg-red-500/5', label: 'Critical', postedBorder: 'border-l-emerald-500' },
-  warning: { icon: AlertTriangle, border: 'border-l-amber-500', text: 'text-amber-400', bg: 'bg-amber-500/5', label: 'Warning', postedBorder: 'border-l-emerald-500' },
-  suggestion: { icon: Lightbulb, border: 'border-l-blue-500', text: 'text-blue-400', bg: 'bg-blue-500/5', label: 'Suggestion', postedBorder: 'border-l-emerald-500' },
-  nitpick: { icon: Info, border: 'border-l-stone-500', text: 'text-stone-500', bg: 'bg-stone-500/5', label: 'Nitpick', postedBorder: 'border-l-emerald-500' },
+const SEVERITY_CONFIG: Record<
+  string,
+  {
+    icon: typeof AlertCircle
+    border: string
+    text: string
+    bg: string
+    label: string
+    postedBorder: string
+  }
+> = {
+  critical: {
+    icon: AlertCircle,
+    border: 'border-l-red-500',
+    text: 'text-red-400',
+    bg: 'bg-red-500/5',
+    label: 'Critical',
+    postedBorder: 'border-l-emerald-500',
+  },
+  warning: {
+    icon: AlertTriangle,
+    border: 'border-l-amber-500',
+    text: 'text-amber-400',
+    bg: 'bg-amber-500/5',
+    label: 'Warning',
+    postedBorder: 'border-l-emerald-500',
+  },
+  suggestion: {
+    icon: Lightbulb,
+    border: 'border-l-blue-500',
+    text: 'text-blue-400',
+    bg: 'bg-blue-500/5',
+    label: 'Suggestion',
+    postedBorder: 'border-l-emerald-500',
+  },
+  nitpick: {
+    icon: Info,
+    border: 'border-l-stone-500',
+    text: 'text-stone-500',
+    bg: 'bg-stone-500/5',
+    label: 'Nitpick',
+    postedBorder: 'border-l-emerald-500',
+  },
 }
 
 export function DiffFindingAnnotation({ finding, checked, onToggle, onPost }: Props) {
@@ -35,7 +81,10 @@ export function DiffFindingAnnotation({ finding, checked, onToggle, onPost }: Pr
   const bgClass = finding.posted ? 'bg-emerald-500/5' : config.bg
 
   return (
-    <div data-finding-id={finding.id} className={`group border-l-2 ${borderClass} ${bgClass} mx-2 my-1 rounded-r-md transition-all duration-300`}>
+    <div
+      data-finding-id={finding.id}
+      className={`group border-l-2 ${borderClass} ${bgClass} mx-2 my-1 rounded-r-md transition-all duration-300`}
+    >
       <div className="flex items-start gap-2 px-3 py-2">
         <div className="flex-shrink-0 pt-0.5">
           {isPosting ? (
@@ -52,26 +101,32 @@ export function DiffFindingAnnotation({ finding, checked, onToggle, onPost }: Pr
           )}
         </div>
 
-        <div className={`min-w-0 flex-1 ${finding.posted ? 'opacity-60' : ''} transition-opacity duration-300`}>
+        <div
+          className={`min-w-0 flex-1 ${finding.posted ? 'opacity-60' : ''} transition-opacity duration-300`}
+        >
           <div className="flex items-center gap-1.5">
-            <Icon size={11} className={`flex-shrink-0 ${finding.posted ? 'text-emerald-500' : config.text}`} />
-            <span className={`text-[10px] font-semibold uppercase tracking-wide ${finding.posted ? 'text-emerald-500' : config.text}`}>
+            <Icon
+              size={11}
+              className={`flex-shrink-0 ${finding.posted ? 'text-emerald-500' : config.text}`}
+            />
+            <span
+              className={`font-semibold text-[10px] uppercase tracking-wide ${finding.posted ? 'text-emerald-500' : config.text}`}
+            >
               {finding.posted ? 'Posted' : config.label}
             </span>
-            <span className="text-[11px] font-medium text-stone-200">{finding.title}</span>
+            <span className="font-medium text-[11px] text-stone-200">{finding.title}</span>
             {finding.domain && (
-              <span className="rounded bg-stone-800 px-1 py-0.5 text-[9px] font-medium uppercase tracking-wider text-stone-500">
+              <span className="rounded bg-stone-800 px-1 py-0.5 font-medium text-[9px] text-stone-500 uppercase tracking-wider">
                 {DOMAIN_LABELS[finding.domain] ?? finding.domain}
               </span>
             )}
           </div>
-          <p className="mt-1 text-[11px] leading-relaxed text-stone-400">
-            {finding.description}
-          </p>
+          <p className="mt-1 text-[11px] text-stone-400 leading-relaxed">{finding.description}</p>
         </div>
 
         {!finding.posted && !isPosting && (
           <button
+            type="button"
             onClick={onPost}
             title="Post this finding"
             className="flex-shrink-0 rounded p-1 text-stone-600 opacity-0 transition-all hover:bg-stone-700/50 hover:text-stone-300 group-hover:opacity-100"

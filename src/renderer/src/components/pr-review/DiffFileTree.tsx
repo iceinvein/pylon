@@ -1,5 +1,5 @@
+import { ChevronDown, ChevronRight, Eye, FileText, FolderOpen } from 'lucide-react'
 import { useState } from 'react'
-import { FileText, FolderOpen, ChevronRight, ChevronDown, Eye } from 'lucide-react'
 import type { ReviewFinding } from '../../../../shared/types'
 
 type FileEntry = {
@@ -33,7 +33,7 @@ function buildTree(files: FileEntry[]): DirNode {
         const parentPath = node.fullPath ? `${node.fullPath}/${dirName}` : dirName
         node.dirs.set(dirName, { name: dirName, fullPath: parentPath, files: [], dirs: new Map() })
       }
-      node = node.dirs.get(dirName)!
+      node = node.dirs.get(dirName) as DirNode
     }
     node.files.push(file)
   }
@@ -59,16 +59,22 @@ function collapseTree(node: DirNode): DirNode {
 
 const SEVERITY_ORDER = ['critical', 'warning', 'suggestion', 'nitpick'] as const
 
-function findingCountsBySeverity(findings: ReviewFinding[], filePath: string): { severity: string; count: number }[] {
-  const fileFindings = findings.filter((f) =>
-    f.file === filePath || filePath.endsWith(f.file) || f.file.endsWith(filePath)
+function findingCountsBySeverity(
+  findings: ReviewFinding[],
+  filePath: string,
+): { severity: string; count: number }[] {
+  const fileFindings = findings.filter(
+    (f) => f.file === filePath || filePath.endsWith(f.file) || f.file.endsWith(filePath),
   )
   if (fileFindings.length === 0) return []
   const counts = new Map<string, number>()
   for (const f of fileFindings) {
     counts.set(f.severity, (counts.get(f.severity) || 0) + 1)
   }
-  return SEVERITY_ORDER.filter((s) => counts.has(s)).map((s) => ({ severity: s, count: counts.get(s)! }))
+  return SEVERITY_ORDER.filter((s) => counts.has(s)).map((s) => ({
+    severity: s,
+    count: counts.get(s) ?? 0,
+  }))
 }
 
 const SEVERITY_COLORS: Record<string, string> = {
@@ -83,18 +89,21 @@ export function DiffFileTree({ files, findings, selectedFile, onSelectFile }: Pr
   const generalFindings = findings.filter((f) => !f.file)
 
   return (
-    <div className="flex h-full flex-col overflow-y-auto border-r border-stone-800 bg-stone-950/50">
+    <div className="flex h-full flex-col overflow-y-auto border-stone-800 border-r bg-stone-950/50">
       {/* Overview entry */}
       <button
+        type="button"
         onClick={() => onSelectFile(null)}
-        className={`flex items-center gap-2 border-b border-stone-800/50 px-3 py-2 text-left text-[11px] transition-colors ${
-          selectedFile === null ? 'bg-stone-800/60 text-stone-200' : 'text-stone-400 hover:bg-stone-800/30'
+        className={`flex items-center gap-2 border-stone-800/50 border-b px-3 py-2 text-left text-[11px] transition-colors ${
+          selectedFile === null
+            ? 'bg-stone-800/60 text-stone-200'
+            : 'text-stone-400 hover:bg-stone-800/30'
         }`}
       >
         <Eye size={12} className="flex-shrink-0 text-stone-500" />
         <span className="flex-1">Overview</span>
         {generalFindings.length > 0 && (
-          <span className="rounded-full bg-stone-600 px-1.5 py-0.5 text-[9px] font-medium tabular-nums text-white">
+          <span className="rounded-full bg-stone-600 px-1.5 py-0.5 font-medium text-[9px] text-white tabular-nums">
             {generalFindings.length}
           </span>
         )}
@@ -102,13 +111,25 @@ export function DiffFileTree({ files, findings, selectedFile, onSelectFile }: Pr
 
       {/* File tree */}
       <div className="flex-1 overflow-y-auto py-1">
-        <DirContent node={tree} findings={findings} selectedFile={selectedFile} onSelectFile={onSelectFile} depth={0} />
+        <DirContent
+          node={tree}
+          findings={findings}
+          selectedFile={selectedFile}
+          onSelectFile={onSelectFile}
+          depth={0}
+        />
       </div>
     </div>
   )
 }
 
-function DirContent({ node, findings, selectedFile, onSelectFile, depth }: {
+function DirContent({
+  node,
+  findings,
+  selectedFile,
+  onSelectFile,
+  depth,
+}: {
   node: DirNode
   findings: ReviewFinding[]
   selectedFile: string | null
@@ -120,7 +141,14 @@ function DirContent({ node, findings, selectedFile, onSelectFile, depth }: {
       {[...node.dirs.values()]
         .sort((a, b) => a.name.localeCompare(b.name))
         .map((dir) => (
-          <DirEntry key={dir.fullPath} dir={dir} findings={findings} selectedFile={selectedFile} onSelectFile={onSelectFile} depth={depth} />
+          <DirEntry
+            key={dir.fullPath}
+            dir={dir}
+            findings={findings}
+            selectedFile={selectedFile}
+            onSelectFile={onSelectFile}
+            depth={depth}
+          />
         ))}
       {node.files
         .sort((a, b) => a.path.localeCompare(b.path))
@@ -129,6 +157,7 @@ function DirContent({ node, findings, selectedFile, onSelectFile, depth }: {
           const severityCounts = findingCountsBySeverity(findings, file.path)
           return (
             <button
+              type="button"
               key={file.path}
               onClick={() => onSelectFile(file.path)}
               className={`flex w-full items-center gap-1.5 py-1 pr-2 text-left text-[11px] transition-colors ${
@@ -139,17 +168,22 @@ function DirContent({ node, findings, selectedFile, onSelectFile, depth }: {
               style={{ paddingLeft: `${(depth + 1) * 12 + 8}px` }}
             >
               <FileText size={11} className="flex-shrink-0 text-stone-600" />
-              <span className="min-w-0 flex-1 truncate font-[family-name:var(--font-mono)]">{fileName}</span>
+              <span className="min-w-0 flex-1 truncate font-[family-name:var(--font-mono)]">
+                {fileName}
+              </span>
               {severityCounts.length > 0 && (
                 <span className="flex items-center gap-0.5">
                   {severityCounts.map(({ severity, count }) => (
-                    <span key={severity} className={`rounded-full px-1.5 py-0.5 text-[9px] font-medium tabular-nums ${SEVERITY_COLORS[severity] || SEVERITY_COLORS.nitpick}`}>
+                    <span
+                      key={severity}
+                      className={`rounded-full px-1.5 py-0.5 font-medium text-[9px] tabular-nums ${SEVERITY_COLORS[severity] || SEVERITY_COLORS.nitpick}`}
+                    >
                       {count}
                     </span>
                   ))}
                 </span>
               )}
-              <span className="flex-shrink-0 font-[family-name:var(--font-mono)] tabular-nums text-[10px]">
+              <span className="flex-shrink-0 font-[family-name:var(--font-mono)] text-[10px] tabular-nums">
                 <span className="text-emerald-600">+{file.additions}</span>{' '}
                 <span className="text-red-600">-{file.deletions}</span>
               </span>
@@ -160,7 +194,13 @@ function DirContent({ node, findings, selectedFile, onSelectFile, depth }: {
   )
 }
 
-function DirEntry({ dir, findings, selectedFile, onSelectFile, depth }: {
+function DirEntry({
+  dir,
+  findings,
+  selectedFile,
+  onSelectFile,
+  depth,
+}: {
   dir: DirNode
   findings: ReviewFinding[]
   selectedFile: string | null
@@ -173,6 +213,7 @@ function DirEntry({ dir, findings, selectedFile, onSelectFile, depth }: {
   return (
     <div>
       <button
+        type="button"
         onClick={() => setExpanded((v) => !v)}
         className="flex w-full items-center gap-1.5 py-1 pr-2 text-left text-[11px] text-stone-500 transition-colors hover:text-stone-300"
         style={{ paddingLeft: `${depth * 12 + 8}px` }}
@@ -182,7 +223,13 @@ function DirEntry({ dir, findings, selectedFile, onSelectFile, depth }: {
         <span className="truncate font-[family-name:var(--font-mono)]">{dir.name}</span>
       </button>
       {expanded && (
-        <DirContent node={dir} findings={findings} selectedFile={selectedFile} onSelectFile={onSelectFile} depth={depth + 1} />
+        <DirContent
+          node={dir}
+          findings={findings}
+          selectedFile={selectedFile}
+          onSelectFile={onSelectFile}
+          depth={depth + 1}
+        />
       )}
     </div>
   )

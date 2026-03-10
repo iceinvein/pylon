@@ -27,7 +27,10 @@ export function extractChangedFiles(messages: unknown[]): string[] {
       if (block.type !== 'tool_use' || !block.input) continue
 
       const blockName = (block.name ?? '').toLowerCase()
-      if (blockName.includes('edit') || (blockName.includes('write') && blockName !== 'todowrite')) {
+      if (
+        blockName.includes('edit') ||
+        (blockName.includes('write') && blockName !== 'todowrite')
+      ) {
         const filePath = block.input?.file_path ?? block.input?.path
         if (typeof filePath === 'string' && filePath) {
           seen.add(filePath)

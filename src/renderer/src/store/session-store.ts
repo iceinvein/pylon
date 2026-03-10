@@ -1,5 +1,13 @@
 import { create } from 'zustand'
-import type { SessionStatus, PermissionRequest, QuestionRequest, DetectedPlan, PlanReviewStatus, PlanComment } from '../../../shared/types'
+import type {
+  DetectedPlan,
+  PermissionRequest,
+  PlanComment,
+  PlanReviewStatus,
+  QuestionRequest,
+  SessionInitInfo,
+  SessionStatus,
+} from '../../../shared/types'
 
 type SessionState = {
   id: string
@@ -46,6 +54,8 @@ type SessionStore = {
   /** Cached diff results per session, keyed by sessionId → filePath */
   diffCache: Map<string, Map<string, CachedDiff>>
   detectedPlans: Map<string, DetectedPlan[]>
+  /** SDK init info per session (tools, skills, plugins, MCP servers) */
+  initInfo: Map<string, SessionInitInfo>
 
   setSession: (session: SessionState) => void
   updateSession: (sessionId: string, updates: Partial<SessionState>) => void
@@ -71,6 +81,7 @@ type SessionStore = {
   addDetectedPlan: (sessionId: string, plan: DetectedPlan) => void
   updatePlanStatus: (sessionId: string, filePath: string, status: PlanReviewStatus) => void
   setPlanComments: (sessionId: string, filePath: string, comments: PlanComment[]) => void
+  setInitInfo: (sessionId: string, info: SessionInitInfo) => void
 }
 
 export const useSessionStore = create<SessionStore>((set) => ({
@@ -86,6 +97,7 @@ export const useSessionStore = create<SessionStore>((set) => ({
   changedFiles: new Map(),
   diffCache: new Map(),
   detectedPlans: new Map(),
+  initInfo: new Map(),
 
   setSession: (session) =>
     set((state) => {
@@ -256,9 +268,10 @@ export const useSessionStore = create<SessionStore>((set) => ({
       const next = new Map(state.detectedPlans)
       const existing = next.get(sessionId)
       if (!existing) return state
-      next.set(sessionId, existing.map((p) =>
-        p.filePath === filePath ? { ...p, status } : p
-      ))
+      next.set(
+        sessionId,
+        existing.map((p) => (p.filePath === filePath ? { ...p, status } : p)),
+      )
       return { detectedPlans: next }
     }),
 
@@ -267,10 +280,18 @@ export const useSessionStore = create<SessionStore>((set) => ({
       const next = new Map(state.detectedPlans)
       const existing = next.get(sessionId)
       if (!existing) return state
-      next.set(sessionId, existing.map((p) =>
-        p.filePath === filePath ? { ...p, comments } : p
-      ))
+      next.set(
+        sessionId,
+        existing.map((p) => (p.filePath === filePath ? { ...p, comments } : p)),
+      )
       return { detectedPlans: next }
+    }),
+
+  setInitInfo: (sessionId, info) =>
+    set((state) => {
+      const next = new Map(state.initInfo)
+      next.set(sessionId, info)
+      return { initInfo: next }
     }),
 }))
 

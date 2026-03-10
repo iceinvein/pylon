@@ -4,10 +4,12 @@ import App from './App'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import './styles/globals.css'
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
+const rootEl = document.getElementById('root')
+if (!rootEl) throw new Error('Missing #root element')
+ReactDOM.createRoot(rootEl).render(
   <React.StrictMode>
     <ErrorBoundary>
       <App />
     </ErrorBoundary>
-  </React.StrictMode>
+  </React.StrictMode>,
 )

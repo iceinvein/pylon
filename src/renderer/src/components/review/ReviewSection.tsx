@@ -1,5 +1,5 @@
-import { useState } from 'react'
 import { MessageSquare, X } from 'lucide-react'
+import { useState } from 'react'
 
 type ReviewSectionProps = {
   index: number
@@ -48,17 +48,22 @@ export function ReviewSection({ index, title, body, comment, onSetComment }: Rev
       }`}
     >
       <div className="flex items-start gap-2.5">
-        <span className="min-w-[20px] pt-0.5 text-xs font-semibold text-stone-600">{index + 1}</span>
+        <span className="min-w-[20px] pt-0.5 font-semibold text-stone-600 text-xs">
+          {index + 1}
+        </span>
         <div className="min-w-0 flex-1">
-          <div className="text-[13px] font-medium leading-relaxed text-stone-200">{title}</div>
+          <div className="font-medium text-[13px] text-stone-200 leading-relaxed">{title}</div>
           {body && (
-            <div className="mt-1.5 line-clamp-4 text-xs leading-relaxed text-stone-500">{body}</div>
+            <div className="mt-1.5 line-clamp-4 text-stone-500 text-xs leading-relaxed">{body}</div>
           )}
         </div>
         <button
+          type="button"
           onClick={handleStartComment}
           className={`flex-shrink-0 p-1 transition-colors ${
-            hasComment ? 'text-amber-500 hover:text-amber-400' : 'text-stone-700 hover:text-stone-400'
+            hasComment
+              ? 'text-amber-500 hover:text-amber-400'
+              : 'text-stone-700 hover:text-stone-400'
           }`}
           title="Add comment"
         >
@@ -68,35 +73,36 @@ export function ReviewSection({ index, title, body, comment, onSetComment }: Rev
 
       {/* Comment bubble */}
       {hasComment && !editing && (
-        <div className="ml-[28px] mt-2.5 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2">
+        <div className="mt-2.5 ml-[28px] rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2">
           <div className="mb-1 flex items-center gap-1.5">
             <div className="flex h-4 w-4 items-center justify-center rounded-full bg-amber-500/30">
-              <span className="text-[9px] font-bold text-amber-500">U</span>
+              <span className="font-bold text-[9px] text-amber-500">U</span>
             </div>
-            <span className="text-[10px] font-semibold text-amber-500">COMMENT</span>
-            <button onClick={handleRemove} className="ml-auto text-stone-600 hover:text-stone-400">
+            <span className="font-semibold text-[10px] text-amber-500">COMMENT</span>
+            <button
+              type="button"
+              onClick={handleRemove}
+              className="ml-auto text-stone-600 hover:text-stone-400"
+            >
               <X size={12} />
             </button>
           </div>
-          <p className="text-xs leading-relaxed text-stone-300">{comment}</p>
+          <p className="text-stone-300 text-xs leading-relaxed">{comment}</p>
         </div>
       )}
 
       {/* Comment editor */}
       {editing && (
-        <div className="ml-[28px] mt-2.5">
+        <div className="mt-2.5 ml-[28px]">
           <textarea
-            autoFocus
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Add your feedback..."
-            className="w-full resize-none rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs leading-relaxed text-stone-200 outline-none placeholder:text-stone-600 focus:border-amber-500/50"
+            className="w-full resize-none rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-stone-200 text-xs leading-relaxed outline-none placeholder:text-stone-600 focus:border-amber-500/50"
             rows={2}
           />
-          <div className="mt-1 text-[10px] text-stone-600">
-            Cmd+Enter to save · Esc to cancel
-          </div>
+          <div className="mt-1 text-[10px] text-stone-600">Cmd+Enter to save · Esc to cancel</div>
         </div>
       )}
     </div>

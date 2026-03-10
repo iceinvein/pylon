@@ -5,9 +5,29 @@ let highlighterPromise: Promise<Highlighter> | null = null
 let highlighterInstance: Highlighter | null = null
 
 const PRELOADED_LANGS = [
-  'typescript', 'javascript', 'tsx', 'jsx', 'json', 'html', 'css',
-  'python', 'bash', 'shell', 'markdown', 'yaml', 'toml', 'sql',
-  'rust', 'go', 'c', 'cpp', 'java', 'ruby', 'swift', 'kotlin', 'diff',
+  'typescript',
+  'javascript',
+  'tsx',
+  'jsx',
+  'json',
+  'html',
+  'css',
+  'python',
+  'bash',
+  'shell',
+  'markdown',
+  'yaml',
+  'toml',
+  'sql',
+  'rust',
+  'go',
+  'c',
+  'cpp',
+  'java',
+  'ruby',
+  'swift',
+  'kotlin',
+  'diff',
 ]
 
 function getHighlighter(): Promise<Highlighter> {
@@ -49,7 +69,9 @@ export function useShiki(code: string, language: string): string | null {
       }
     })
 
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [code, language])
 
   return html

@@ -1,16 +1,21 @@
-import { query } from '@anthropic-ai/claude-agent-sdk'
-import { BrowserWindow, app } from 'electron'
-import { randomUUID } from 'crypto'
-import { execFile } from 'child_process'
-import { promisify } from 'util'
-import { readFile, writeFile, mkdir, rm } from 'fs/promises'
-import { existsSync } from 'fs'
-import { join, basename } from 'path'
-import { homedir } from 'os'
-import { getDb } from './db'
+import { execFile } from 'node:child_process'
+import { randomUUID } from 'node:crypto'
+import { existsSync } from 'node:fs'
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { homedir } from 'node:os'
+import { basename, join } from 'node:path'
+import { promisify } from 'node:util'
+import {
+  query,
+  type SDKResultMessage,
+  type Options as SdkOptions,
+} from '@anthropic-ai/claude-agent-sdk'
+import { app, type BrowserWindow } from 'electron'
 import { IPC } from '../shared/ipc-channels'
-import type { PermissionMode, PermissionResponse, QuestionResponse } from '../shared/types'
 import { log } from '../shared/logger'
+import type { PermissionMode, PermissionResponse, QuestionResponse } from '../shared/types'
+import { getDb } from './db'
+
 const logger = log.child('session-manager')
 
 const execFileAsync = promisify(execFile)
@@ -25,7 +30,10 @@ function deriveTitle(message: string): string {
 
   // Strip common conversational prefixes
   title = title
-    .replace(/^(hey,?\s*|hi,?\s*|hello,?\s*|please\s+|can you\s+|could you\s+|i need to\s+|i want to\s+|help me\s+|let's\s+|lets\s+)/i, '')
+    .replace(
+      /^(hey,?\s*|hi,?\s*|hello,?\s*|please\s+|can you\s+|could you\s+|i need to\s+|i want to\s+|help me\s+|let's\s+|lets\s+)/i,
+      '',
+    )
     .trim()
 
   // Capitalize first letter
@@ -33,7 +41,10 @@ function deriveTitle(message: string): string {
 
   // Truncate to ~60 chars on a word boundary
   if (title.length > 60) {
-    title = title.slice(0, 60).replace(/\s+\S*$/, '').trim()
+    title = title
+      .slice(0, 60)
+      .replace(/\s+\S*$/, '')
+      .trim()
   }
 
   // Strip trailing punctuation
@@ -59,12 +70,18 @@ type ActiveSession = {
   permissionMode: PermissionMode
   queryInstance: ReturnType<typeof query> | null
   abortController: AbortController
-  pendingPermissions: Map<string, {
-    resolve: (result: { behavior: 'allow' | 'deny'; message?: string }) => void
-  }>
-  pendingQuestions: Map<string, {
-    resolve: (answers: Record<string, string>) => void
-  }>
+  pendingPermissions: Map<
+    string,
+    {
+      resolve: (result: { behavior: 'allow' | 'deny'; message?: string }) => void
+    }
+  >
+  pendingQuestions: Map<
+    string,
+    {
+      resolve: (answers: Record<string, string>) => void
+    }
+  >
 }
 
 export class SessionManager {
@@ -85,8 +102,8 @@ export class SessionManager {
     }
     set.add(listener)
     return () => {
-      set!.delete(listener)
-      if (set!.size === 0) this.messageListeners.delete(sessionId)
+      set?.delete(listener)
+      if (set?.size === 0) this.messageListeners.delete(sessionId)
     }
   }
 
@@ -94,12 +111,21 @@ export class SessionManager {
     const set = this.messageListeners.get(sessionId)
     if (set) {
       for (const listener of set) {
-        try { listener(message) } catch { /* ignore */ }
+        try {
+          listener(message)
+        } catch {
+          /* ignore */
+        }
       }
     }
   }
 
-  async createSession(cwd: string, model?: string, useWorktree?: boolean, source: string = 'user'): Promise<string> {
+  async createSession(
+    cwd: string,
+    model?: string,
+    useWorktree?: boolean,
+    source: string = 'user',
+  ): Promise<string> {
     const id = randomUUID()
     const now = Date.now()
     const sessionModel = model || 'claude-opus-4-6'
@@ -121,8 +147,21 @@ export class SessionManager {
 
     const db = getDb()
     db.prepare(
-      'INSERT INTO sessions (id, cwd, status, model, title, created_at, updated_at, worktree_path, original_cwd, worktree_branch, original_branch, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-    ).run(id, sessionCwd, 'empty', sessionModel, '', now, now, worktreePath, originalCwd, worktreeBranch, originalBranch, source)
+      'INSERT INTO sessions (id, cwd, status, model, title, created_at, updated_at, worktree_path, original_cwd, worktree_branch, original_branch, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    ).run(
+      id,
+      sessionCwd,
+      'empty',
+      sessionModel,
+      '',
+      now,
+      now,
+      worktreePath,
+      originalCwd,
+      worktreeBranch,
+      originalBranch,
+      source,
+    )
 
     this.sessions.set(id, {
       id,
@@ -143,20 +182,20 @@ export class SessionManager {
   async sendMessage(
     sessionId: string,
     text: string,
-    attachments?: Array<{ type: string; content: string; mediaType?: string; name?: string }>
+    attachments?: Array<{ type: string; content: string; mediaType?: string; name?: string }>,
   ): Promise<void> {
     if (!this.sessions.has(sessionId)) {
       this.resumeSession(sessionId)
     }
     const session = this.sessions.get(sessionId)
-    if (!session) throw new Error('Session not found: ' + sessionId)
+    if (!session) throw new Error(`Session not found: ${sessionId}`)
 
     this.updateStatus(sessionId, 'starting')
 
     const isResume = session.sdkSessionId !== null
 
     try {
-      const options: Record<string, unknown> = {
+      const options: SdkOptions & Record<string, unknown> = {
         cwd: session.cwd,
         model: session.model,
         abortController: session.abortController,
@@ -164,11 +203,7 @@ export class SessionManager {
         promptSuggestions: true,
         enableFileCheckpointing: true,
         settingSources: ['user', 'project', 'local'],
-        canUseTool: async (
-          toolName: string,
-          input: Record<string, unknown>,
-          opts: { suggestions?: Array<{ type: string; pattern: string }>; toolUseID: string }
-        ) => {
+        canUseTool: async (toolName: string, input: Record<string, unknown>, opts) => {
           // Capture git baseline on first file-modifying tool
           if (['Edit', 'Write'].includes(toolName)) {
             this.captureGitBaseline(sessionId).catch(() => {})
@@ -197,11 +232,13 @@ export class SessionManager {
       }
 
       if (isResume) {
-        options.resume = session.sdkSessionId
+        options.resume = session.sdkSessionId ?? undefined
       }
 
       // Handle attachments: images saved to temp files, text files inlined in prompt
-      const imageAttachments = (attachments ?? []).filter((a) => a.type === 'image' && a.content && a.mediaType)
+      const imageAttachments = (attachments ?? []).filter(
+        (a) => a.type === 'image' && a.content && a.mediaType,
+      )
       const fileAttachments = (attachments ?? []).filter((a) => a.type === 'file' && a.content)
 
       const promptParts: string[] = []
@@ -234,7 +271,7 @@ export class SessionManager {
       // Persist the user message so it survives reload from DB
       this.persistMessage(sessionId, { type: 'user', content: text })
 
-      const q = query({ prompt, options: options as any })
+      const q = query({ prompt, options })
       session.queryInstance = q
 
       this.updateStatus(sessionId, 'running')
@@ -243,8 +280,10 @@ export class SessionManager {
         if (message.type === 'system' && 'session_id' in message) {
           session.sdkSessionId = message.session_id as string
           const db = getDb()
-          db.prepare('UPDATE sessions SET sdk_session_id = ? WHERE id = ?')
-            .run(session.sdkSessionId, sessionId)
+          db.prepare('UPDATE sessions SET sdk_session_id = ? WHERE id = ?').run(
+            session.sdkSessionId,
+            sessionId,
+          )
         }
 
         this.persistMessage(sessionId, message)
@@ -252,21 +291,25 @@ export class SessionManager {
         this.notifyMessageListeners(sessionId, message)
 
         if (message.type === 'result') {
-          const result = message as any
+          const result = message as SDKResultMessage
           if (result.total_cost_usd !== undefined) {
             const db = getDb()
             db.prepare(
-              'UPDATE sessions SET total_cost_usd = total_cost_usd + ?, input_tokens = input_tokens + ?, output_tokens = output_tokens + ?, updated_at = ? WHERE id = ?'
+              'UPDATE sessions SET total_cost_usd = total_cost_usd + ?, input_tokens = input_tokens + ?, output_tokens = output_tokens + ?, updated_at = ? WHERE id = ?',
             ).run(
               result.total_cost_usd || 0,
               result.usage?.input_tokens || 0,
               result.usage?.output_tokens || 0,
               Date.now(),
-              sessionId
+              sessionId,
             )
           }
           // Set title after first exchange
-          const currentTitle = (getDb().prepare('SELECT title FROM sessions WHERE id = ?').get(sessionId) as { title: string } | undefined)?.title
+          const currentTitle = (
+            getDb().prepare('SELECT title FROM sessions WHERE id = ?').get(sessionId) as
+              | { title: string }
+              | undefined
+          )?.title
           if (currentTitle === '') {
             this.setTitleFromMessage(sessionId, text)
           }
@@ -280,7 +323,7 @@ export class SessionManager {
       this.updateStatus(sessionId, 'error')
       this.send(IPC.SESSION_MESSAGE, {
         sessionId,
-        message: { type: 'error', error: errorMessage }
+        message: { type: 'error', error: errorMessage },
       })
     } finally {
       session.queryInstance = null
@@ -326,8 +369,22 @@ export class SessionManager {
     if (this.sessions.has(sessionId)) return true
 
     const db = getDb()
-    const row = db.prepare('SELECT id, cwd, sdk_session_id, model, permission_mode, git_baseline_hash, title, worktree_path, original_cwd FROM sessions WHERE id = ?').get(sessionId) as
-      | { id: string; cwd: string; sdk_session_id: string | null; model: string; permission_mode: string; git_baseline_hash: string | null; title: string; worktree_path: string | null; original_cwd: string | null }
+    const row = db
+      .prepare(
+        'SELECT id, cwd, sdk_session_id, model, permission_mode, git_baseline_hash, title, worktree_path, original_cwd FROM sessions WHERE id = ?',
+      )
+      .get(sessionId) as
+      | {
+          id: string
+          cwd: string
+          sdk_session_id: string | null
+          model: string
+          permission_mode: string
+          git_baseline_hash: string | null
+          title: string
+          worktree_path: string | null
+          original_cwd: string | null
+        }
       | undefined
 
     if (!row) return false
@@ -351,17 +408,18 @@ export class SessionManager {
 
     // Backfill title for old sessions that never got one
     if (row.title === '') {
-      const messages = db.prepare(
-        "SELECT sdk_message FROM messages WHERE session_id = ? ORDER BY timestamp ASC LIMIT 10"
-      ).all(sessionId) as { sdk_message: string }[]
+      const messages = db
+        .prepare(
+          'SELECT sdk_message FROM messages WHERE session_id = ? ORDER BY timestamp ASC LIMIT 10',
+        )
+        .all(sessionId) as { sdk_message: string }[]
 
       for (const msg of messages) {
         try {
           const parsed = JSON.parse(msg.sdk_message)
           if (parsed.type === 'user') {
-            const content = typeof parsed.content === 'string'
-              ? parsed.content
-              : (parsed.content?.text ?? '')
+            const content =
+              typeof parsed.content === 'string' ? parsed.content : (parsed.content?.text ?? '')
             if (content) {
               this.setTitleFromMessage(sessionId, content)
               break
@@ -381,7 +439,11 @@ export class SessionManager {
     if (!session) return
     session.permissionMode = mode
     const db = getDb()
-    db.prepare('UPDATE sessions SET permission_mode = ?, updated_at = ? WHERE id = ?').run(mode, Date.now(), sessionId)
+    db.prepare('UPDATE sessions SET permission_mode = ?, updated_at = ? WHERE id = ?').run(
+      mode,
+      Date.now(),
+      sessionId,
+    )
   }
 
   setModel(sessionId: string, model: string): void {
@@ -389,7 +451,11 @@ export class SessionManager {
     if (!session) return
     session.model = model
     const db = getDb()
-    db.prepare('UPDATE sessions SET model = ?, updated_at = ? WHERE id = ?').run(model, Date.now(), sessionId)
+    db.prepare('UPDATE sessions SET model = ?, updated_at = ? WHERE id = ?').run(
+      model,
+      Date.now(),
+      sessionId,
+    )
   }
 
   getSessionInfo(sessionId: string): { model: string; permissionMode: PermissionMode } | null {
@@ -419,16 +485,23 @@ export class SessionManager {
     }
   }
 
-  async createWorktree(repoPath: string, sessionId: string): Promise<{ worktreePath: string; branch: string; originalBranch: string }> {
+  async createWorktree(
+    repoPath: string,
+    sessionId: string,
+  ): Promise<{ worktreePath: string; branch: string; originalBranch: string }> {
     const repoName = basename(repoPath)
     const worktreeBase = join(homedir(), '.pylon', 'worktrees', repoName)
     const worktreePath = join(worktreeBase, sessionId)
     const branch = `claude-session-${sessionId.slice(0, 8)}`
 
-    const { stdout: branchOut } = await execFileAsync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], {
-      cwd: repoPath,
-      timeout: 5000,
-    })
+    const { stdout: branchOut } = await execFileAsync(
+      'git',
+      ['rev-parse', '--abbrev-ref', 'HEAD'],
+      {
+        cwd: repoPath,
+        timeout: 5000,
+      },
+    )
     const originalBranch = branchOut.trim()
 
     await mkdir(worktreeBase, { recursive: true })
@@ -455,8 +528,14 @@ export class SessionManager {
 
   async renameWorktreeBranch(sessionId: string, title: string): Promise<void> {
     const db = getDb()
-    const row = db.prepare('SELECT worktree_path, worktree_branch, original_cwd FROM sessions WHERE id = ?').get(sessionId) as
-      | { worktree_path: string | null; worktree_branch: string | null; original_cwd: string | null }
+    const row = db
+      .prepare('SELECT worktree_path, worktree_branch, original_cwd FROM sessions WHERE id = ?')
+      .get(sessionId) as
+      | {
+          worktree_path: string | null
+          worktree_branch: string | null
+          original_cwd: string | null
+        }
       | undefined
 
     if (!row?.worktree_path || !row.worktree_branch || !row.original_cwd) return
@@ -491,8 +570,14 @@ export class SessionManager {
 
   async removeWorktree(sessionId: string): Promise<void> {
     const db = getDb()
-    const row = db.prepare('SELECT worktree_path, worktree_branch, original_cwd FROM sessions WHERE id = ?').get(sessionId) as
-      | { worktree_path: string | null; worktree_branch: string | null; original_cwd: string | null }
+    const row = db
+      .prepare('SELECT worktree_path, worktree_branch, original_cwd FROM sessions WHERE id = ?')
+      .get(sessionId) as
+      | {
+          worktree_path: string | null
+          worktree_branch: string | null
+          original_cwd: string | null
+        }
       | undefined
 
     if (!row?.worktree_path) return
@@ -527,7 +612,7 @@ export class SessionManager {
 
     // Clear worktree columns in DB
     db.prepare(
-      'UPDATE sessions SET worktree_path = NULL, worktree_branch = NULL, original_branch = NULL WHERE id = ?'
+      'UPDATE sessions SET worktree_path = NULL, worktree_branch = NULL, original_branch = NULL WHERE id = ?',
     ).run(sessionId)
   }
 
@@ -537,14 +622,18 @@ export class SessionManager {
     conflictFiles?: string[]
   }> {
     const db = getDb()
-    const row = db.prepare(
-      'SELECT worktree_path, worktree_branch, original_cwd, original_branch FROM sessions WHERE id = ?'
-    ).get(sessionId) as {
-      worktree_path: string | null
-      worktree_branch: string | null
-      original_cwd: string | null
-      original_branch: string | null
-    } | undefined
+    const row = db
+      .prepare(
+        'SELECT worktree_path, worktree_branch, original_cwd, original_branch FROM sessions WHERE id = ?',
+      )
+      .get(sessionId) as
+      | {
+          worktree_path: string | null
+          worktree_branch: string | null
+          original_cwd: string | null
+          original_branch: string | null
+        }
+      | undefined
 
     if (!row?.worktree_path || !row.worktree_branch || !row.original_cwd) {
       return { success: false, error: 'not-a-worktree' }
@@ -588,8 +677,9 @@ export class SessionManager {
       let conflictFiles: string[] = []
       try {
         const { stdout: conflictOut } = await execFileAsync(
-          'git', ['diff', '--name-only', '--diff-filter=U'],
-          { cwd: row.original_cwd, timeout: 5000 }
+          'git',
+          ['diff', '--name-only', '--diff-filter=U'],
+          { cwd: row.original_cwd, timeout: 5000 },
         )
         conflictFiles = conflictOut.trim().split('\n').filter(Boolean)
       } catch {
@@ -629,7 +719,7 @@ export class SessionManager {
 
     // Clear worktree columns in DB
     db.prepare(
-      'UPDATE sessions SET worktree_path = NULL, worktree_branch = NULL, original_branch = NULL WHERE id = ?'
+      'UPDATE sessions SET worktree_path = NULL, worktree_branch = NULL, original_branch = NULL WHERE id = ?',
     ).run(sessionId)
 
     return { success: true }
@@ -641,13 +731,15 @@ export class SessionManager {
     originalBranch: string | null
   } {
     const db = getDb()
-    const row = db.prepare(
-      'SELECT worktree_path, worktree_branch, original_branch FROM sessions WHERE id = ?'
-    ).get(sessionId) as {
-      worktree_path: string | null
-      worktree_branch: string | null
-      original_branch: string | null
-    } | undefined
+    const row = db
+      .prepare('SELECT worktree_path, worktree_branch, original_branch FROM sessions WHERE id = ?')
+      .get(sessionId) as
+      | {
+          worktree_path: string | null
+          worktree_branch: string | null
+          original_branch: string | null
+        }
+      | undefined
 
     return {
       worktreePath: row?.worktree_path ?? null,
@@ -658,7 +750,8 @@ export class SessionManager {
 
   getProjectFolders(): Array<{ path: string; lastUsed: number }> {
     const db = getDb()
-    const rows = db.prepare(`
+    const rows = db
+      .prepare(`
       SELECT
         COALESCE(original_cwd, cwd) as path,
         MAX(updated_at) as last_used
@@ -666,7 +759,8 @@ export class SessionManager {
       GROUP BY COALESCE(original_cwd, cwd)
       ORDER BY last_used DESC
       LIMIT 20
-    `).all() as Array<{ path: string; last_used: number }>
+    `)
+      .all() as Array<{ path: string; last_used: number }>
 
     return rows.map((r) => ({ path: r.path, lastUsed: r.last_used }))
   }
@@ -678,7 +772,9 @@ export class SessionManager {
 
   getSessionMessages(sessionId: string): unknown[] {
     const db = getDb()
-    return db.prepare('SELECT * FROM messages WHERE session_id = ? ORDER BY timestamp ASC').all(sessionId)
+    return db
+      .prepare('SELECT * FROM messages WHERE session_id = ? ORDER BY timestamp ASC')
+      .all(sessionId)
   }
 
   async deleteSession(sessionId: string): Promise<void> {
@@ -725,7 +821,10 @@ export class SessionManager {
     }
   }
 
-  async getFileDiffs(sessionId: string, filePaths: string[]): Promise<Array<{ filePath: string; status: string; diff: string }>> {
+  async getFileDiffs(
+    sessionId: string,
+    filePaths: string[],
+  ): Promise<Array<{ filePath: string; status: string; diff: string }>> {
     const session = this.sessions.get(sessionId)
     if (!session) return []
 
@@ -779,7 +878,7 @@ export class SessionManager {
 
   async getFileStatuses(
     sessionId: string,
-    filePaths: string[]
+    filePaths: string[],
   ): Promise<Array<{ filePath: string; status: string }>> {
     const session = this.sessions.get(sessionId)
     if (!session) return filePaths.map((fp) => ({ filePath: fp, status: 'modified' }))
@@ -796,7 +895,7 @@ export class SessionManager {
       const { stdout } = await execFileAsync(
         'git',
         ['ls-files', '--others', '--exclude-standard', '--', ...filePaths],
-        { cwd: session.cwd, timeout: 5000 }
+        { cwd: session.cwd, timeout: 5000 },
       )
       for (const line of stdout.trim().split('\n')) {
         if (!line) continue
@@ -804,7 +903,9 @@ export class SessionManager {
         const absPath = line.startsWith('/') ? line : join(session.cwd, line)
         untrackedFiles.add(absPath)
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
 
     // Step 2: Get tracked file change statuses from diff against baseline
     const trackedStatuses = new Map<string, string>()
@@ -813,7 +914,7 @@ export class SessionManager {
         const { stdout } = await execFileAsync(
           'git',
           ['diff', '--name-status', session.gitBaselineHash, '--', ...filePaths],
-          { cwd: session.cwd, timeout: 5000 }
+          { cwd: session.cwd, timeout: 5000 },
         )
         for (const line of stdout.trim().split('\n')) {
           if (!line) continue
@@ -826,14 +927,25 @@ export class SessionManager {
           const absPath = relPath.startsWith('/') ? relPath : join(resolveRoot, relPath)
 
           switch (code?.[0]) {
-            case 'A': trackedStatuses.set(absPath, 'added'); break
-            case 'D': trackedStatuses.set(absPath, 'deleted'); break
-            case 'R': trackedStatuses.set(absPath, 'renamed'); break
-            case 'M': trackedStatuses.set(absPath, 'modified'); break
-            default: trackedStatuses.set(absPath, 'modified')
+            case 'A':
+              trackedStatuses.set(absPath, 'added')
+              break
+            case 'D':
+              trackedStatuses.set(absPath, 'deleted')
+              break
+            case 'R':
+              trackedStatuses.set(absPath, 'renamed')
+              break
+            case 'M':
+              trackedStatuses.set(absPath, 'modified')
+              break
+            default:
+              trackedStatuses.set(absPath, 'modified')
           }
         }
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }
 
     // Step 3: Also check git status for files committed since baseline
@@ -844,7 +956,7 @@ export class SessionManager {
         const { stdout } = await execFileAsync(
           'git',
           ['diff', '--name-status', `${session.gitBaselineHash}..HEAD`, '--', ...filePaths],
-          { cwd: session.cwd, timeout: 5000 }
+          { cwd: session.cwd, timeout: 5000 },
         )
         for (const line of stdout.trim().split('\n')) {
           if (!line) continue
@@ -858,15 +970,26 @@ export class SessionManager {
           // Don't overwrite — first diff (working tree) takes priority
           if (!trackedStatuses.has(absPath)) {
             switch (code?.[0]) {
-              case 'A': trackedStatuses.set(absPath, 'added'); break
-              case 'D': trackedStatuses.set(absPath, 'deleted'); break
-              case 'R': trackedStatuses.set(absPath, 'renamed'); break
-              case 'M': trackedStatuses.set(absPath, 'modified'); break
-              default: trackedStatuses.set(absPath, 'modified')
+              case 'A':
+                trackedStatuses.set(absPath, 'added')
+                break
+              case 'D':
+                trackedStatuses.set(absPath, 'deleted')
+                break
+              case 'R':
+                trackedStatuses.set(absPath, 'renamed')
+                break
+              case 'M':
+                trackedStatuses.set(absPath, 'modified')
+                break
+              default:
+                trackedStatuses.set(absPath, 'modified')
             }
           }
         }
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }
 
     // Step 4: Merge results
@@ -875,7 +998,7 @@ export class SessionManager {
       if (untrackedFiles.has(filePath)) {
         results.push({ filePath, status: 'untracked' })
       } else if (trackedStatuses.has(filePath)) {
-        results.push({ filePath, status: trackedStatuses.get(filePath)! })
+        results.push({ filePath, status: trackedStatuses.get(filePath) ?? 'modified' })
       } else {
         results.push({ filePath, status: 'modified' })
       }
@@ -917,8 +1040,11 @@ export class SessionManager {
     if (!title) return
 
     const db = getDb()
-    db.prepare('UPDATE sessions SET title = ?, updated_at = ? WHERE id = ?')
-      .run(title, Date.now(), sessionId)
+    db.prepare('UPDATE sessions SET title = ?, updated_at = ? WHERE id = ?').run(
+      title,
+      Date.now(),
+      sessionId,
+    )
 
     this.send(IPC.SESSION_TITLE_UPDATED, { sessionId, title })
     this.renameWorktreeBranch(sessionId, title).catch(() => {})
@@ -926,18 +1052,18 @@ export class SessionManager {
 
   private async requestQuestion(
     sessionId: string,
-    input: Record<string, unknown>
+    input: Record<string, unknown>,
   ): Promise<Record<string, string>> {
     const session = this.sessions.get(sessionId)
     if (!session) return {}
 
     const requestId = randomUUID()
     const questions = Array.isArray(input.questions)
-      ? input.questions.map((q: any) => ({
+      ? (input.questions as Array<Record<string, unknown>>).map((q) => ({
           question: String(q?.question ?? ''),
           header: String(q?.header ?? ''),
           options: Array.isArray(q?.options)
-            ? q.options.map((o: any) => ({
+            ? (q.options as Array<Record<string, unknown>>).map((o) => ({
                 label: String(o?.label ?? ''),
                 description: String(o?.description ?? ''),
                 preview: o?.preview ? String(o.preview) : undefined,
@@ -959,7 +1085,7 @@ export class SessionManager {
     sessionId: string,
     toolName: string,
     input: Record<string, unknown>,
-    suggestions?: Array<{ type: string; pattern: string }>
+    suggestions?: unknown[],
   ): Promise<{ behavior: 'allow' | 'deny'; message?: string }> {
     const session = this.sessions.get(sessionId)
     if (!session) return { behavior: 'deny', message: 'Session not found' }
@@ -973,15 +1099,20 @@ export class SessionManager {
   }
 
   private persistMessage(sessionId: string, message: unknown): void {
-    if ((message as any).type === 'stream_event') return
+    if ((message as Record<string, unknown>).type === 'stream_event') return
     const db = getDb()
-    db.prepare('INSERT INTO messages (id, session_id, timestamp, sdk_message) VALUES (?, ?, ?, ?)')
-      .run(randomUUID(), sessionId, Date.now(), JSON.stringify(message))
+    db.prepare(
+      'INSERT INTO messages (id, session_id, timestamp, sdk_message) VALUES (?, ?, ?, ?)',
+    ).run(randomUUID(), sessionId, Date.now(), JSON.stringify(message))
   }
 
   private updateStatus(sessionId: string, status: string): void {
     const db = getDb()
-    db.prepare('UPDATE sessions SET status = ?, updated_at = ? WHERE id = ?').run(status, Date.now(), sessionId)
+    db.prepare('UPDATE sessions SET status = ?, updated_at = ? WHERE id = ?').run(
+      status,
+      Date.now(),
+      sessionId,
+    )
     this.send(IPC.SESSION_STATUS, { sessionId, status })
   }
 

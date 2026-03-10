@@ -1,11 +1,19 @@
+import { DollarSign, FolderOpen, Hash, TrendingUp, Zap } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import {
-  AreaChart, Area, BarChart, Bar,
-  XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell,
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
 } from 'recharts'
-import { TrendingUp, Hash, DollarSign, Zap, FolderOpen } from 'lucide-react'
+import type { UsagePeriod, UsageStats } from '../../../shared/types'
 import { formatCost, formatTokens, timeAgo } from '../lib/utils'
-import type { UsageStats, UsagePeriod } from '../../../shared/types'
 
 const PERIODS: Array<{ id: UsagePeriod; label: string }> = [
   { id: '7d', label: '7 days' },
@@ -32,7 +40,7 @@ function projectName(fullPath: string): string {
 }
 
 function formatDay(day: string): string {
-  const d = new Date(day + 'T00:00:00')
+  const d = new Date(`${day}T00:00:00`)
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
@@ -46,19 +54,28 @@ export function UsageDashboard() {
     let cancelled = false
     setLoading(true)
     setError(false)
-    window.api.getUsageStats(period)
+    window.api
+      .getUsageStats(period)
       .then((data) => {
-        if (!cancelled) { setStats(data); setLoading(false) }
+        if (!cancelled) {
+          setStats(data)
+          setLoading(false)
+        }
       })
       .catch(() => {
-        if (!cancelled) { setError(true); setLoading(false) }
+        if (!cancelled) {
+          setError(true)
+          setLoading(false)
+        }
       })
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [period])
 
   if (error) {
     return (
-      <div className="mt-12 flex items-center justify-center text-sm text-red-400">
+      <div className="mt-12 flex items-center justify-center text-red-400 text-sm">
         Failed to load usage data. Try closing and reopening Settings.
       </div>
     )
@@ -80,6 +97,7 @@ export function UsageDashboard() {
       <div className="flex gap-1.5">
         {PERIODS.map((p) => (
           <button
+            type="button"
             key={p.id}
             onClick={() => setPeriod(p.id)}
             className={`rounded-md px-3 py-1.5 text-xs transition-colors ${
@@ -97,14 +115,22 @@ export function UsageDashboard() {
       <div className="grid grid-cols-4 gap-3">
         <SummaryCard icon={DollarSign} label="Total Spent" value={formatCost(summary.totalCost)} />
         <SummaryCard icon={Hash} label="Sessions" value={String(summary.sessionCount)} />
-        <SummaryCard icon={TrendingUp} label="Avg / Session" value={formatCost(summary.avgCostPerSession)} />
-        <SummaryCard icon={Zap} label="Total Tokens" value={`${formatTokens(summary.totalInput)} in / ${formatTokens(summary.totalOutput)} out`} />
+        <SummaryCard
+          icon={TrendingUp}
+          label="Avg / Session"
+          value={formatCost(summary.avgCostPerSession)}
+        />
+        <SummaryCard
+          icon={Zap}
+          label="Total Tokens"
+          value={`${formatTokens(summary.totalInput)} in / ${formatTokens(summary.totalOutput)} out`}
+        />
       </div>
 
       {/* Cost Over Time */}
       {dailyCosts.length > 0 && (
         <section>
-          <h3 className="mb-3 text-sm font-medium text-stone-300">Cost Over Time</h3>
+          <h3 className="mb-3 font-medium text-sm text-stone-300">Cost Over Time</h3>
           <div className="rounded-lg border border-stone-800 bg-stone-900/50 p-4">
             <ResponsiveContainer width="100%" height={220}>
               <AreaChart data={dailyCosts}>
@@ -115,10 +141,40 @@ export function UsageDashboard() {
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#292524" />
-                <XAxis dataKey="day" tickFormatter={formatDay} tick={{ fill: '#78716c', fontSize: 11 }} axisLine={{ stroke: '#44403c' }} tickLine={false} />
-                <YAxis tickFormatter={(v: number) => '$' + v.toFixed(2)} tick={{ fill: '#78716c', fontSize: 11 }} axisLine={false} tickLine={false} width={60} />
-                <Tooltip cursor={{ stroke: '#78716c', strokeWidth: 1 }} wrapperStyle={{ outline: 'none' }} contentStyle={{ backgroundColor: '#1c1917', border: '1px solid #44403c', borderRadius: '8px', fontSize: '12px', color: '#e7e5e4' }} formatter={(value) => [formatCost(Number(value)), 'Cost']} labelFormatter={(label) => formatDay(String(label))} />
-                <Area type="monotone" dataKey="cost" stroke="#d97706" strokeWidth={2} fill="url(#costGradient)" />
+                <XAxis
+                  dataKey="day"
+                  tickFormatter={formatDay}
+                  tick={{ fill: '#78716c', fontSize: 11 }}
+                  axisLine={{ stroke: '#44403c' }}
+                  tickLine={false}
+                />
+                <YAxis
+                  tickFormatter={(v: number) => `$${v.toFixed(2)}`}
+                  tick={{ fill: '#78716c', fontSize: 11 }}
+                  axisLine={false}
+                  tickLine={false}
+                  width={60}
+                />
+                <Tooltip
+                  cursor={{ stroke: '#78716c', strokeWidth: 1 }}
+                  wrapperStyle={{ outline: 'none' }}
+                  contentStyle={{
+                    backgroundColor: '#1c1917',
+                    border: '1px solid #44403c',
+                    borderRadius: '8px',
+                    fontSize: '12px',
+                    color: '#e7e5e4',
+                  }}
+                  formatter={(value) => [formatCost(Number(value)), 'Cost']}
+                  labelFormatter={(label) => formatDay(String(label))}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="cost"
+                  stroke="#d97706"
+                  strokeWidth={2}
+                  fill="url(#costGradient)"
+                />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -129,14 +185,41 @@ export function UsageDashboard() {
       <div className="grid grid-cols-2 gap-4">
         {costByModel.length > 0 && (
           <section>
-            <h3 className="mb-3 text-sm font-medium text-stone-300">Cost by Model</h3>
+            <h3 className="mb-3 font-medium text-sm text-stone-300">Cost by Model</h3>
             <div className="rounded-lg border border-stone-800 bg-stone-900/50 p-4">
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={costByModel} layout="vertical">
                   <CartesianGrid strokeDasharray="3 3" stroke="#292524" horizontal={false} />
-                  <XAxis type="number" tickFormatter={(v: number) => '$' + v.toFixed(2)} tick={{ fill: '#78716c', fontSize: 11 }} axisLine={false} tickLine={false} />
-                  <YAxis type="category" dataKey="model" tickFormatter={(v: string) => MODEL_LABELS[v] ?? v} tick={{ fill: '#a8a29e', fontSize: 12 }} axisLine={false} tickLine={false} width={80} />
-                  <Tooltip cursor={{ fill: 'rgba(255,255,255,0.05)' }} wrapperStyle={{ outline: 'none' }} contentStyle={{ backgroundColor: '#1c1917', border: '1px solid #44403c', borderRadius: '8px', fontSize: '12px', color: '#e7e5e4' }} itemStyle={{ color: '#d97706' }} formatter={(value) => [formatCost(Number(value)), 'Cost']} labelFormatter={(label) => MODEL_LABELS[String(label)] ?? String(label)} />
+                  <XAxis
+                    type="number"
+                    tickFormatter={(v: number) => `$${v.toFixed(2)}`}
+                    tick={{ fill: '#78716c', fontSize: 11 }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="model"
+                    tickFormatter={(v: string) => MODEL_LABELS[v] ?? v}
+                    tick={{ fill: '#a8a29e', fontSize: 12 }}
+                    axisLine={false}
+                    tickLine={false}
+                    width={80}
+                  />
+                  <Tooltip
+                    cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+                    wrapperStyle={{ outline: 'none' }}
+                    contentStyle={{
+                      backgroundColor: '#1c1917',
+                      border: '1px solid #44403c',
+                      borderRadius: '8px',
+                      fontSize: '12px',
+                      color: '#e7e5e4',
+                    }}
+                    itemStyle={{ color: '#d97706' }}
+                    formatter={(value) => [formatCost(Number(value)), 'Cost']}
+                    labelFormatter={(label) => MODEL_LABELS[String(label)] ?? String(label)}
+                  />
                   <Bar dataKey="cost" radius={[0, 4, 4, 0]}>
                     {costByModel.map((entry) => (
                       <Cell key={entry.model} fill={MODEL_COLORS[entry.model] ?? '#78716c'} />
@@ -150,16 +233,52 @@ export function UsageDashboard() {
 
         {tokensByDay.length > 0 && (
           <section>
-            <h3 className="mb-3 text-sm font-medium text-stone-300">Tokens by Day</h3>
+            <h3 className="mb-3 font-medium text-sm text-stone-300">Tokens by Day</h3>
             <div className="rounded-lg border border-stone-800 bg-stone-900/50 p-4">
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={tokensByDay}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#292524" />
-                  <XAxis dataKey="day" tickFormatter={formatDay} tick={{ fill: '#78716c', fontSize: 11 }} axisLine={{ stroke: '#44403c' }} tickLine={false} />
-                  <YAxis tickFormatter={(v: number) => formatTokens(v)} tick={{ fill: '#78716c', fontSize: 11 }} axisLine={false} tickLine={false} width={50} />
-                  <Tooltip cursor={{ fill: 'rgba(255,255,255,0.05)' }} wrapperStyle={{ outline: 'none' }} contentStyle={{ backgroundColor: '#1c1917', border: '1px solid #44403c', borderRadius: '8px', fontSize: '12px', color: '#e7e5e4' }} formatter={(value) => [formatTokens(Number(value)), '']} labelFormatter={(label) => formatDay(String(label))} />
-                  <Bar dataKey="input" stackId="tokens" fill="#78716c" name="Input" radius={[0, 0, 0, 0]} />
-                  <Bar dataKey="output" stackId="tokens" fill="#d97706" name="Output" radius={[4, 4, 0, 0]} />
+                  <XAxis
+                    dataKey="day"
+                    tickFormatter={formatDay}
+                    tick={{ fill: '#78716c', fontSize: 11 }}
+                    axisLine={{ stroke: '#44403c' }}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    tickFormatter={(v: number) => formatTokens(v)}
+                    tick={{ fill: '#78716c', fontSize: 11 }}
+                    axisLine={false}
+                    tickLine={false}
+                    width={50}
+                  />
+                  <Tooltip
+                    cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+                    wrapperStyle={{ outline: 'none' }}
+                    contentStyle={{
+                      backgroundColor: '#1c1917',
+                      border: '1px solid #44403c',
+                      borderRadius: '8px',
+                      fontSize: '12px',
+                      color: '#e7e5e4',
+                    }}
+                    formatter={(value) => [formatTokens(Number(value)), '']}
+                    labelFormatter={(label) => formatDay(String(label))}
+                  />
+                  <Bar
+                    dataKey="input"
+                    stackId="tokens"
+                    fill="#78716c"
+                    name="Input"
+                    radius={[0, 0, 0, 0]}
+                  />
+                  <Bar
+                    dataKey="output"
+                    stackId="tokens"
+                    fill="#d97706"
+                    name="Output"
+                    radius={[4, 4, 0, 0]}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -170,11 +289,11 @@ export function UsageDashboard() {
       {/* Cost by Project */}
       {costByProject.length > 0 && (
         <section>
-          <h3 className="mb-3 text-sm font-medium text-stone-300">Cost by Project</h3>
-          <div className="rounded-lg border border-stone-800 bg-stone-900/50 overflow-hidden">
+          <h3 className="mb-3 font-medium text-sm text-stone-300">Cost by Project</h3>
+          <div className="overflow-hidden rounded-lg border border-stone-800 bg-stone-900/50">
             <table className="w-full text-xs">
               <thead>
-                <tr className="border-b border-stone-800 text-stone-500">
+                <tr className="border-stone-800 border-b text-stone-500">
                   <th className="px-4 py-2.5 text-left font-medium">Project</th>
                   <th className="px-4 py-2.5 text-right font-medium">Sessions</th>
                   <th className="px-4 py-2.5 text-right font-medium">Tokens</th>
@@ -183,7 +302,10 @@ export function UsageDashboard() {
               </thead>
               <tbody>
                 {costByProject.map((p) => (
-                  <tr key={p.project} className="border-b border-stone-800/50 text-stone-300 last:border-0">
+                  <tr
+                    key={p.project}
+                    className="border-stone-800/50 border-b text-stone-300 last:border-0"
+                  >
                     <td className="px-4 py-2.5">
                       <div className="flex items-center gap-2">
                         <FolderOpen size={12} className="flex-shrink-0 text-stone-500" />
@@ -194,8 +316,12 @@ export function UsageDashboard() {
                       </div>
                     </td>
                     <td className="px-4 py-2.5 text-right text-stone-400">{p.sessions}</td>
-                    <td className="px-4 py-2.5 text-right text-stone-400">{formatTokens(p.inputTokens + p.outputTokens)}</td>
-                    <td className="px-4 py-2.5 text-right font-mono text-amber-400/80">{formatCost(p.cost)}</td>
+                    <td className="px-4 py-2.5 text-right text-stone-400">
+                      {formatTokens(p.inputTokens + p.outputTokens)}
+                    </td>
+                    <td className="px-4 py-2.5 text-right font-mono text-amber-400/80">
+                      {formatCost(p.cost)}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -207,11 +333,11 @@ export function UsageDashboard() {
       {/* Top Sessions Table */}
       {topSessions.length > 0 && (
         <section>
-          <h3 className="mb-3 text-sm font-medium text-stone-300">Most Expensive Sessions</h3>
-          <div className="rounded-lg border border-stone-800 bg-stone-900/50 overflow-hidden">
+          <h3 className="mb-3 font-medium text-sm text-stone-300">Most Expensive Sessions</h3>
+          <div className="overflow-hidden rounded-lg border border-stone-800 bg-stone-900/50">
             <table className="w-full text-xs">
               <thead>
-                <tr className="border-b border-stone-800 text-stone-500">
+                <tr className="border-stone-800 border-b text-stone-500">
                   <th className="px-4 py-2.5 text-left font-medium">Session</th>
                   <th className="px-4 py-2.5 text-left font-medium">Model</th>
                   <th className="px-4 py-2.5 text-right font-medium">Tokens</th>
@@ -221,12 +347,23 @@ export function UsageDashboard() {
               </thead>
               <tbody>
                 {topSessions.map((s) => (
-                  <tr key={s.id} className="border-b border-stone-800/50 text-stone-300 last:border-0">
+                  <tr
+                    key={s.id}
+                    className="border-stone-800/50 border-b text-stone-300 last:border-0"
+                  >
                     <td className="max-w-[200px] truncate px-4 py-2.5">{s.title || 'Untitled'}</td>
-                    <td className="px-4 py-2.5 text-stone-400">{MODEL_LABELS[s.model] ?? s.model}</td>
-                    <td className="px-4 py-2.5 text-right text-stone-400">{formatTokens(s.inputTokens + s.outputTokens)}</td>
-                    <td className="px-4 py-2.5 text-right font-mono text-amber-400/80">{formatCost(s.cost)}</td>
-                    <td className="px-4 py-2.5 text-right text-stone-500">{timeAgo(s.createdAt)}</td>
+                    <td className="px-4 py-2.5 text-stone-400">
+                      {MODEL_LABELS[s.model] ?? s.model}
+                    </td>
+                    <td className="px-4 py-2.5 text-right text-stone-400">
+                      {formatTokens(s.inputTokens + s.outputTokens)}
+                    </td>
+                    <td className="px-4 py-2.5 text-right font-mono text-amber-400/80">
+                      {formatCost(s.cost)}
+                    </td>
+                    <td className="px-4 py-2.5 text-right text-stone-500">
+                      {timeAgo(s.createdAt)}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -245,14 +382,22 @@ export function UsageDashboard() {
   )
 }
 
-function SummaryCard({ icon: Icon, label, value }: { icon: typeof DollarSign; label: string; value: string }) {
+function SummaryCard({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: typeof DollarSign
+  label: string
+  value: string
+}) {
   return (
     <div className="rounded-lg border border-stone-800 bg-stone-900/50 px-4 py-3">
       <div className="flex items-center gap-1.5 text-stone-500">
         <Icon size={12} />
         <span className="text-xs">{label}</span>
       </div>
-      <div className="mt-1 text-sm font-medium text-stone-200">{value}</div>
+      <div className="mt-1 font-medium text-sm text-stone-200">{value}</div>
     </div>
   )
 }

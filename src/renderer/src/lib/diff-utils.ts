@@ -17,7 +17,11 @@ const CONTEXT_LINES = 3
  * @param extraNewLineNos - Additional newLineNo values to include in the visible hunks
  *   (e.g., lines referenced by findings that may be outside the normal context window)
  */
-export function computeDiffHunks(oldStr: string, newStr: string, extraNewLineNos?: Set<number>): DiffHunk[] {
+export function computeDiffHunks(
+  oldStr: string,
+  newStr: string,
+  extraNewLineNos?: Set<number>,
+): DiffHunk[] {
   const changes = diffLines(oldStr, newStr)
   const allLines: DiffLine[] = []
   let oldLine = 1
@@ -31,7 +35,12 @@ export function computeDiffHunks(oldStr: string, newStr: string, extraNewLineNos
       } else if (change.removed) {
         allLines.push({ type: 'removed', content: line, oldLineNo: oldLine++ })
       } else {
-        allLines.push({ type: 'context', content: line, oldLineNo: oldLine++, newLineNo: newLine++ })
+        allLines.push({
+          type: 'context',
+          content: line,
+          oldLineNo: oldLine++,
+          newLineNo: newLine++,
+        })
       }
     }
   }
@@ -54,7 +63,11 @@ export function computeDiffHunks(oldStr: string, newStr: string, extraNewLineNos
 
   const visibleIndices = new Set<number>()
   for (const idx of changedIndices) {
-    for (let i = Math.max(0, idx - CONTEXT_LINES); i <= Math.min(allLines.length - 1, idx + CONTEXT_LINES); i++) {
+    for (
+      let i = Math.max(0, idx - CONTEXT_LINES);
+      i <= Math.min(allLines.length - 1, idx + CONTEXT_LINES);
+      i++
+    ) {
       visibleIndices.add(i)
     }
   }
@@ -135,7 +148,12 @@ export function parseUnifiedDiffToHunks(unifiedDiff: string): DiffHunk[] {
     } else if (line.startsWith('+')) {
       currentLines.push({ type: 'added', content: line.slice(1), newLineNo: newLine++ })
     } else if (line.startsWith(' ')) {
-      currentLines.push({ type: 'context', content: line.slice(1), oldLineNo: oldLine++, newLineNo: newLine++ })
+      currentLines.push({
+        type: 'context',
+        content: line.slice(1),
+        oldLineNo: oldLine++,
+        newLineNo: newLine++,
+      })
     } else if (line === '\\ No newline at end of file') {
       // skip
     }
