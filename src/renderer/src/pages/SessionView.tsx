@@ -9,6 +9,9 @@ import { ThinkingIndicator } from '../components/ThinkingIndicator'
 import { TasksPanel } from '../components/layout/TasksPanel'
 import { ChangesPanel } from '../components/ChangesPanel'
 import { FlowPanel } from '../components/flow/FlowPanel'
+import { ReviewPanel } from '../components/review/ReviewPanel'
+import { useUiStore } from '../store/ui-store'
+import { ClipboardList } from 'lucide-react'
 import type { AppSettings, Tab, Attachment, ImageAttachment, PermissionMode } from '../../../shared/types'
 
 const emptyFiles: string[] = []
@@ -173,6 +176,11 @@ export function SessionView({ tab }: SessionViewProps) {
   const [showFlow, setShowFlow] = useState(false)
   const [panelWidth, setPanelWidth] = useState(360)
   const [flowPanelWidth, setFlowPanelWidth] = useState(280)
+  const reviewPanelPlan = useUiStore((s) => s.reviewPanelPlan)
+  const showReview = reviewPanelPlan !== null && reviewPanelPlan.sessionId === sessionId
+  const [reviewPanelWidth, setReviewPanelWidth] = useState(480)
+  const MIN_REVIEW_WIDTH = 360
+  const MAX_REVIEW_WIDTH = 700
   const dragging = useRef(false)
   const dragStartX = useRef(0)
   const dragStartWidth = useRef(0)
@@ -221,6 +229,10 @@ export function SessionView({ tab }: SessionViewProps) {
   const handleFlowDragStart = useCallback((e: React.MouseEvent) => {
     makeDragHandler(flowPanelWidth, setFlowPanelWidth, MIN_FLOW_WIDTH, MAX_FLOW_WIDTH)(e)
   }, [flowPanelWidth, makeDragHandler])
+
+  const handleReviewDragStart = useCallback((e: React.MouseEvent) => {
+    makeDragHandler(reviewPanelWidth, setReviewPanelWidth, MIN_REVIEW_WIDTH, MAX_REVIEW_WIDTH)(e)
+  }, [reviewPanelWidth, makeDragHandler])
 
   return (
     <div className="flex h-full">
@@ -322,6 +334,28 @@ export function SessionView({ tab }: SessionViewProps) {
                     </button>
                   </div>
                   <ChangesPanel />
+                </div>
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
+
+          {/* Review panel */}
+          <AnimatePresence mode="popLayout" initial={false}>
+            {showReview ? (
+              <motion.div
+                key="review-panel"
+                initial={{ width: 0, opacity: 0 }}
+                animate={{ width: reviewPanelWidth + 5, opacity: 1 }}
+                exit={{ width: 0, opacity: 0 }}
+                transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
+                className="flex flex-shrink-0 overflow-hidden"
+              >
+                <div
+                  onMouseDown={handleReviewDragStart}
+                  className="flex w-1 flex-shrink-0 cursor-col-resize items-center justify-center border-l border-stone-800 bg-stone-950 transition-colors hover:bg-stone-700 active:bg-stone-600"
+                />
+                <div className="flex min-w-0 flex-1 flex-col">
+                  <ReviewPanel />
                 </div>
               </motion.div>
             ) : null}
