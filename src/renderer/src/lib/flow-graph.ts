@@ -35,13 +35,13 @@ type ToolResultBlock = {
 
 function classifyTool(name: string): ActivityType {
   const n = name.toLowerCase()
+  if (n === 'todowrite') return 'task-list'
   if (n.includes('read') || n.includes('view') || n.includes('glob') || n.includes('grep') || n.includes('search')) return 'explore'
   if (n.includes('edit')) return 'edit'
   if (n.includes('write') || n.includes('create')) return 'edit'
   if (n.includes('bash') || n.includes('shell')) return 'execute'
   if (n === 'agent' || n.startsWith('task')) return 'subagent'
   if (n === 'askuserquestion' || n === 'skill') return 'ask-user'
-  if (n === 'todowrite') return 'task-list'
   return 'execute'
 }
 
