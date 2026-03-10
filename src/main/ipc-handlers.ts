@@ -97,6 +97,18 @@ export function registerIpcHandlers(): void {
     return buffer.toString('base64')
   })
 
+  ipcMain.handle(IPC.FILE_READ_PLAN, async (_e, args: { path: string }) => {
+    // Security: only allow reading plan/design files
+    const p = args.path.toLowerCase()
+    const isInPlansDir = p.includes('/plans/') || p.includes('/specs/')
+    const hasPlanSuffix = p.endsWith('-plan.md') || p.endsWith('-design.md')
+    if (!isInPlansDir && !hasPlanSuffix) {
+      throw new Error('Not a plan file path')
+    }
+    const buffer = await readFile(args.path)
+    return buffer.toString('utf-8')
+  })
+
   ipcMain.handle(IPC.PERMISSION_RESPONSE, async (_e, response: PermissionResponse) => {
     sessionManager.resolvePermission(response)
     return true

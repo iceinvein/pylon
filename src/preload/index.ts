@@ -24,6 +24,8 @@ const api = {
     ipcRenderer.invoke(IPC.FOLDER_LIST_PROJECTS),
   readFileBase64: (path: string) =>
     ipcRenderer.invoke(IPC.FILE_READ_BASE64, { path }),
+  readPlanFile: (path: string) =>
+    ipcRenderer.invoke(IPC.FILE_READ_PLAN, { path }),
   respondToPermission: (requestId: string, behavior: 'allow' | 'deny', message?: string) =>
     ipcRenderer.invoke(IPC.PERMISSION_RESPONSE, { requestId, behavior, message }),
   respondToQuestion: (requestId: string, answers: Record<string, string>) =>

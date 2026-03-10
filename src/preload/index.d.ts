@@ -10,6 +10,7 @@ type Api = {
   deleteSession: (sessionId: string) => Promise<boolean>
   openFolder: () => Promise<string | null>
   readFileBase64: (path: string) => Promise<string>
+  readPlanFile: (path: string) => Promise<string>
   respondToPermission: (requestId: string, behavior: 'allow' | 'deny', message?: string) => Promise<boolean>
   respondToQuestion: (requestId: string, answers: Record<string, string>) => Promise<boolean>
   setModel: (sessionId: string, model: string) => Promise<boolean>
