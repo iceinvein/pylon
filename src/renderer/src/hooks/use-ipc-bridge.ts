@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { accumulateDelta, flushPendingDeltas } from '../lib/delta-batcher'
 import { extractTasks } from '../lib/extract-tasks'
+import { isPlanPath, toRelativePath } from '../lib/parse-plan'
 import { useSessionStore } from '../store/session-store'
 import { useTabStore } from '../store/tab-store'
 import type { PermissionRequest, QuestionRequest, SessionStatus } from '../../../shared/types'
@@ -143,6 +144,17 @@ export function useIpcBridge(): void {
               const filePath = block.input?.file_path ?? block.input?.path
               if (typeof filePath === 'string' && filePath) {
                 store().addChangedFile(sessionId, filePath)
+
+                // Detect plan/design files
+                if (isPlanPath(filePath) && (block as { id?: string }).id) {
+                  store().addDetectedPlan(sessionId, {
+                    filePath,
+                    relativePath: toRelativePath(filePath),
+                    toolUseId: (block as { id: string }).id,
+                    status: 'pending',
+                    comments: [],
+                  })
+                }
               }
             }
           }
