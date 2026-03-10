@@ -63,6 +63,9 @@ export function initDatabase(): Database.Database {
   if (!cols.some((c) => c.name === 'original_branch')) {
     db.exec("ALTER TABLE sessions ADD COLUMN original_branch TEXT DEFAULT NULL")
   }
+  if (!cols.some((c) => c.name === 'source')) {
+    db.exec("ALTER TABLE sessions ADD COLUMN source TEXT NOT NULL DEFAULT 'user'")
+  }
 
   // PR Review tables
   db.exec(`

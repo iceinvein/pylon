@@ -503,7 +503,7 @@ class PrReviewManager {
     focus: ReviewFocus,
     active: ActiveReviewSession
   ): Promise<ReviewFinding[]> {
-    const sessionId = await sessionManager.createSession(repo.projectPath)
+    const sessionId = await sessionManager.createSession(repo.projectPath, undefined, undefined, 'pr-review')
     sessionManager.setPermissionMode(sessionId, 'auto-approve')
 
     const agentSession: AgentSession = {

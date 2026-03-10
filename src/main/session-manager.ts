@@ -99,7 +99,7 @@ export class SessionManager {
     }
   }
 
-  async createSession(cwd: string, model?: string, useWorktree?: boolean): Promise<string> {
+  async createSession(cwd: string, model?: string, useWorktree?: boolean, source: string = 'user'): Promise<string> {
     const id = randomUUID()
     const now = Date.now()
     const sessionModel = model || 'claude-opus-4-6'
@@ -121,8 +121,8 @@ export class SessionManager {
 
     const db = getDb()
     db.prepare(
-      'INSERT INTO sessions (id, cwd, status, model, title, created_at, updated_at, worktree_path, original_cwd, worktree_branch, original_branch) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-    ).run(id, sessionCwd, 'empty', sessionModel, '', now, now, worktreePath, originalCwd, worktreeBranch, originalBranch)
+      'INSERT INTO sessions (id, cwd, status, model, title, created_at, updated_at, worktree_path, original_cwd, worktree_branch, original_branch, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    ).run(id, sessionCwd, 'empty', sessionModel, '', now, now, worktreePath, originalCwd, worktreeBranch, originalBranch, source)
 
     this.sessions.set(id, {
       id,
@@ -673,7 +673,7 @@ export class SessionManager {
 
   getStoredSessions(): unknown[] {
     const db = getDb()
-    return db.prepare('SELECT * FROM sessions ORDER BY updated_at DESC').all()
+    return db.prepare("SELECT * FROM sessions WHERE source = 'user' ORDER BY updated_at DESC").all()
   }
 
   getSessionMessages(sessionId: string): unknown[] {
