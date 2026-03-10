@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Home, Clock, FolderOpen, Settings, GitPullRequestDraft, Workflow } from 'lucide-react'
+import { Home, Clock, FolderOpen, Settings, GitPullRequestDraft } from 'lucide-react'
 import { motion } from 'motion/react'
 import { useUiStore } from '../../store/ui-store'
 import { useFolderOpen } from '../../hooks/use-folder-open'
@@ -57,28 +57,6 @@ export function NavRail() {
             />
           )}
           <Clock size={18} className="relative z-10" />
-        </motion.button>
-
-        <motion.button
-          onClick={() => setSidebarView(sidebarView === 'flow' ? 'home' : 'flow')}
-          title="Session Flow"
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          transition={{ duration: 0.1 }}
-          className={`relative flex h-9 w-9 items-center justify-center rounded-lg transition-colors ${
-            sidebarView === 'flow'
-              ? 'text-stone-100'
-              : 'text-stone-400 hover:text-stone-100'
-          }`}
-        >
-          {sidebarView === 'flow' && (
-            <motion.span
-              layoutId="nav-active"
-              className="absolute inset-0 rounded-lg bg-stone-700"
-              transition={{ duration: 0.15, ease: 'easeOut' }}
-            />
-          )}
-          <Workflow size={18} className="relative z-10" />
         </motion.button>
 
         <motion.button

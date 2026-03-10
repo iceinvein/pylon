@@ -3,7 +3,6 @@ import { AnimatePresence, motion } from 'motion/react'
 import { NavRail } from './NavRail'
 import { TabBar } from './TabBar'
 import { HistoryPanel } from '../HistoryPanel'
-import { FlowPanel } from '../flow/FlowPanel'
 import { useUiStore } from '../../store/ui-store'
 
 type LayoutProps = {
@@ -16,7 +15,7 @@ const DEFAULT_WIDTH = 260
 
 export function Layout({ children }: LayoutProps) {
   const sidebarView = useUiStore((s) => s.sidebarView)
-  const showSidebar = sidebarView === 'history' || sidebarView === 'flow'
+  const showSidebar = sidebarView === 'history'
 
   const [panelWidth, setPanelWidth] = useState(DEFAULT_WIDTH)
   const dragging = useRef(false)
@@ -66,8 +65,7 @@ export function Layout({ children }: LayoutProps) {
             className="flex flex-shrink-0 overflow-hidden bg-[var(--color-base-bg)] pt-12"
           >
             <div className="min-w-0 flex-1">
-              {sidebarView === 'history' && <HistoryPanel />}
-              {sidebarView === 'flow' && <FlowPanel />}
+              <HistoryPanel />
             </div>
             {/* Drag handle */}
             <div

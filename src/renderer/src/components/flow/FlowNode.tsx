@@ -6,21 +6,25 @@ import type { FlowNode as FlowNodeType } from '../../lib/flow-types'
 type FlowNodeProps = {
   node: FlowNodeType
   onClick: (messageIndices: number[]) => void
+  /** Render at reduced size inside a parallel sub-lane */
+  isParallel?: boolean
 }
 
-export function FlowNode({ node, onClick }: FlowNodeProps) {
+/** Loud node: background card with border, full label, expand chevron */
+function LoudNode({ node, onClick, isParallel }: FlowNodeProps) {
   const [expanded, setExpanded] = useState(false)
   const style = NODE_STYLES[node.type]
   const Icon = style.icon
 
   return (
     <div
-      className={`flex flex-col rounded-lg border ${style.borderColor} ${style.bgColor} ${node.isActive ? 'animate-flow-pulse' : ''} ${node.isSummary ? 'opacity-60' : ''} cursor-pointer transition-all`}
+      className={`flex flex-col rounded-lg border ${style.borderColor} ${style.bgColor} ${node.isSummary ? 'opacity-60' : ''} cursor-pointer transition-all ${node.isActive ? 'flow-card-glow' : ''}`}
+      style={node.isActive ? { '--glow-color': style.accentHex } as React.CSSProperties : undefined}
       onClick={() => onClick(node.messageIndices)}
     >
-      <div className="flex items-center gap-2 px-3 py-2">
-        <Icon size={14} className={`flex-shrink-0 ${style.color}`} />
-        <span className="min-w-0 flex-1 truncate text-xs font-medium text-stone-200">
+      <div className={`flex items-center gap-2 ${isParallel ? 'px-2 py-1.5' : 'px-3 py-2'}`}>
+        <Icon size={isParallel ? 12 : 14} className={`flex-shrink-0 ${style.color}`} />
+        <span className={`min-w-0 flex-1 truncate font-medium text-stone-200 ${isParallel ? 'text-[10px]' : 'text-xs'}`}>
           {node.label}
         </span>
         {node.details.length > 1 && (
@@ -50,4 +54,32 @@ export function FlowNode({ node, onClick }: FlowNodeProps) {
       )}
     </div>
   )
+}
+
+/** Quiet node: no card background, just muted inline text next to the dot */
+function QuietNode({ node, onClick }: FlowNodeProps) {
+  const isThink = node.type === 'think'
+
+  return (
+    <div
+      className="cursor-pointer py-0.5"
+      onClick={() => onClick(node.messageIndices)}
+    >
+      <span
+        className={`text-[10px] leading-tight ${isThink ? 'italic text-stone-500' : 'text-stone-400'}`}
+      >
+        {node.label}
+      </span>
+    </div>
+  )
+}
+
+export function FlowNode({ node, onClick, isParallel }: FlowNodeProps) {
+  const style = NODE_STYLES[node.type]
+
+  if (style.isQuiet && !isParallel) {
+    return <QuietNode node={node} onClick={onClick} />
+  }
+
+  return <LoudNode node={node} onClick={onClick} isParallel={isParallel} />
 }
