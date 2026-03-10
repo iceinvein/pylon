@@ -1,9 +1,10 @@
-import { CheckCircle2, Send, AlertCircle, AlertTriangle, Lightbulb, Info } from 'lucide-react'
+import { CheckCircle2, Send, AlertCircle, AlertTriangle, Lightbulb, Info, Loader2 } from 'lucide-react'
 import type { ReviewFinding } from '../../../../shared/types'
 
 type Props = {
   finding: ReviewFinding
   checked: boolean
+  isPosting: boolean
   onToggle: () => void
   onPost: () => void
 }
@@ -17,23 +18,28 @@ const DOMAIN_LABELS: Record<string, string> = {
   ux: 'UX',
 }
 
-const SEVERITY_STYLES: Record<string, { icon: typeof AlertCircle; border: string; text: string; label: string; bg: string }> = {
-  critical: { icon: AlertCircle, border: 'border-red-900/40', text: 'text-red-400', label: 'Critical', bg: 'bg-red-500/5' },
-  warning: { icon: AlertTriangle, border: 'border-amber-900/40', text: 'text-amber-400', label: 'Warning', bg: 'bg-amber-500/5' },
-  suggestion: { icon: Lightbulb, border: 'border-blue-900/40', text: 'text-blue-400', label: 'Suggestion', bg: 'bg-blue-500/5' },
-  nitpick: { icon: Info, border: 'border-stone-700/40', text: 'text-stone-500', label: 'Nitpick', bg: 'bg-stone-500/5' },
+const SEVERITY_STYLES: Record<string, { icon: typeof AlertCircle; border: string; text: string; label: string; bg: string; postedBorder: string }> = {
+  critical: { icon: AlertCircle, border: 'border-red-900/40', text: 'text-red-400', label: 'Critical', bg: 'bg-red-500/5', postedBorder: 'border-emerald-900/30' },
+  warning: { icon: AlertTriangle, border: 'border-amber-900/40', text: 'text-amber-400', label: 'Warning', bg: 'bg-amber-500/5', postedBorder: 'border-emerald-900/30' },
+  suggestion: { icon: Lightbulb, border: 'border-blue-900/40', text: 'text-blue-400', label: 'Suggestion', bg: 'bg-blue-500/5', postedBorder: 'border-emerald-900/30' },
+  nitpick: { icon: Info, border: 'border-stone-700/40', text: 'text-stone-500', label: 'Nitpick', bg: 'bg-stone-500/5', postedBorder: 'border-emerald-900/30' },
 }
 
-export function FindingCard({ finding, checked, onToggle, onPost }: Props) {
+export function FindingCard({ finding, checked, isPosting, onToggle, onPost }: Props) {
   const style = SEVERITY_STYLES[finding.severity] ?? SEVERITY_STYLES.suggestion
   const Icon = style.icon
 
+  const borderClass = finding.posted ? style.postedBorder : style.border
+  const bgClass = finding.posted ? 'bg-emerald-500/5' : style.bg
+
   return (
-    <div className={`group rounded-lg border ${style.border} ${style.bg} transition-colors`}>
+    <div className={`group rounded-lg border ${borderClass} ${bgClass} transition-all duration-300`}>
       <div className="flex gap-3 p-3">
-        {/* Checkbox / Posted indicator */}
+        {/* Checkbox / Posting spinner / Posted indicator */}
         <div className="flex flex-shrink-0 flex-col items-center gap-1 pt-0.5">
-          {finding.posted ? (
+          {isPosting ? (
+            <Loader2 size={14} className="animate-spin text-stone-400" />
+          ) : finding.posted ? (
             <CheckCircle2 size={14} className="text-emerald-500" />
           ) : (
             <input
@@ -46,13 +52,13 @@ export function FindingCard({ finding, checked, onToggle, onPost }: Props) {
         </div>
 
         {/* Content */}
-        <div className="min-w-0 flex-1">
+        <div className={`min-w-0 flex-1 ${finding.posted ? 'opacity-60' : ''} transition-opacity duration-300`}>
           <div className="flex items-start gap-2">
-            <Icon size={13} className={`mt-0.5 flex-shrink-0 ${style.text}`} />
+            <Icon size={13} className={`mt-0.5 flex-shrink-0 ${finding.posted ? 'text-emerald-500' : style.text}`} />
             <div className="min-w-0 flex-1">
               <div className="flex items-baseline gap-2">
-                <span className={`text-[10px] font-semibold uppercase tracking-wide ${style.text}`}>
-                  {style.label}
+                <span className={`text-[10px] font-semibold uppercase tracking-wide ${finding.posted ? 'text-emerald-500' : style.text}`}>
+                  {finding.posted ? 'Posted' : style.label}
                 </span>
                 <span className="text-xs font-medium text-stone-200">{finding.title}</span>
                 {finding.domain && (
@@ -74,7 +80,7 @@ export function FindingCard({ finding, checked, onToggle, onPost }: Props) {
         </div>
 
         {/* Post action */}
-        {!finding.posted && (
+        {!finding.posted && !isPosting && (
           <button
             onClick={onPost}
             title="Post this finding"

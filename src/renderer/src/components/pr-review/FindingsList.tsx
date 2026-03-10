@@ -10,7 +10,7 @@ type Props = {
 const SEVERITY_ORDER: Record<string, number> = { critical: 0, warning: 1, suggestion: 2, nitpick: 3 }
 
 export function FindingsList({ repoFullName, prNumber }: Props) {
-  const { activeFindings, selectedFindingIds, toggleFinding, postFinding } = usePrReviewStore()
+  const { activeFindings, selectedFindingIds, postingFindingIds, toggleFinding, postFinding } = usePrReviewStore()
 
   if (activeFindings.length === 0) {
     return (
@@ -69,6 +69,7 @@ export function FindingsList({ repoFullName, prNumber }: Props) {
             key={f.id}
             finding={f}
             checked={selectedFindingIds.has(f.id)}
+            isPosting={postingFindingIds.has(f.id)}
             onToggle={() => toggleFinding(f.id)}
             onPost={() => postFinding(f, repoFullName, prNumber)}
           />

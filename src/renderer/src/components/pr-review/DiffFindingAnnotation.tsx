@@ -1,5 +1,6 @@
-import { CheckCircle2, Send, AlertCircle, AlertTriangle, Lightbulb, Info } from 'lucide-react'
+import { CheckCircle2, Send, AlertCircle, AlertTriangle, Lightbulb, Info, Loader2 } from 'lucide-react'
 import type { ReviewFinding } from '../../../../shared/types'
+import { usePrReviewStore } from '../../store/pr-review-store'
 
 type Props = {
   finding: ReviewFinding
@@ -17,22 +18,29 @@ const DOMAIN_LABELS: Record<string, string> = {
   ux: 'UX',
 }
 
-const SEVERITY_CONFIG: Record<string, { icon: typeof AlertCircle; border: string; text: string; bg: string; label: string }> = {
-  critical: { icon: AlertCircle, border: 'border-l-red-500', text: 'text-red-400', bg: 'bg-red-500/5', label: 'Critical' },
-  warning: { icon: AlertTriangle, border: 'border-l-amber-500', text: 'text-amber-400', bg: 'bg-amber-500/5', label: 'Warning' },
-  suggestion: { icon: Lightbulb, border: 'border-l-blue-500', text: 'text-blue-400', bg: 'bg-blue-500/5', label: 'Suggestion' },
-  nitpick: { icon: Info, border: 'border-l-stone-500', text: 'text-stone-500', bg: 'bg-stone-500/5', label: 'Nitpick' },
+const SEVERITY_CONFIG: Record<string, { icon: typeof AlertCircle; border: string; text: string; bg: string; label: string; postedBorder: string }> = {
+  critical: { icon: AlertCircle, border: 'border-l-red-500', text: 'text-red-400', bg: 'bg-red-500/5', label: 'Critical', postedBorder: 'border-l-emerald-500' },
+  warning: { icon: AlertTriangle, border: 'border-l-amber-500', text: 'text-amber-400', bg: 'bg-amber-500/5', label: 'Warning', postedBorder: 'border-l-emerald-500' },
+  suggestion: { icon: Lightbulb, border: 'border-l-blue-500', text: 'text-blue-400', bg: 'bg-blue-500/5', label: 'Suggestion', postedBorder: 'border-l-emerald-500' },
+  nitpick: { icon: Info, border: 'border-l-stone-500', text: 'text-stone-500', bg: 'bg-stone-500/5', label: 'Nitpick', postedBorder: 'border-l-emerald-500' },
 }
 
 export function DiffFindingAnnotation({ finding, checked, onToggle, onPost }: Props) {
+  const postingFindingIds = usePrReviewStore((s) => s.postingFindingIds)
+  const isPosting = postingFindingIds.has(finding.id)
   const config = SEVERITY_CONFIG[finding.severity] ?? SEVERITY_CONFIG.suggestion
   const Icon = config.icon
 
+  const borderClass = finding.posted ? config.postedBorder : config.border
+  const bgClass = finding.posted ? 'bg-emerald-500/5' : config.bg
+
   return (
-    <div data-finding-id={finding.id} className={`group border-l-2 ${config.border} ${config.bg} mx-2 my-1 rounded-r-md`}>
+    <div data-finding-id={finding.id} className={`group border-l-2 ${borderClass} ${bgClass} mx-2 my-1 rounded-r-md transition-all duration-300`}>
       <div className="flex items-start gap-2 px-3 py-2">
         <div className="flex-shrink-0 pt-0.5">
-          {finding.posted ? (
+          {isPosting ? (
+            <Loader2 size={12} className="animate-spin text-stone-400" />
+          ) : finding.posted ? (
             <CheckCircle2 size={12} className="text-emerald-500" />
           ) : (
             <input
@@ -44,11 +52,11 @@ export function DiffFindingAnnotation({ finding, checked, onToggle, onPost }: Pr
           )}
         </div>
 
-        <div className="min-w-0 flex-1">
+        <div className={`min-w-0 flex-1 ${finding.posted ? 'opacity-60' : ''} transition-opacity duration-300`}>
           <div className="flex items-center gap-1.5">
-            <Icon size={11} className={`flex-shrink-0 ${config.text}`} />
-            <span className={`text-[10px] font-semibold uppercase tracking-wide ${config.text}`}>
-              {config.label}
+            <Icon size={11} className={`flex-shrink-0 ${finding.posted ? 'text-emerald-500' : config.text}`} />
+            <span className={`text-[10px] font-semibold uppercase tracking-wide ${finding.posted ? 'text-emerald-500' : config.text}`}>
+              {finding.posted ? 'Posted' : config.label}
             </span>
             <span className="text-[11px] font-medium text-stone-200">{finding.title}</span>
             {finding.domain && (
@@ -62,7 +70,7 @@ export function DiffFindingAnnotation({ finding, checked, onToggle, onPost }: Pr
           </p>
         </div>
 
-        {!finding.posted && (
+        {!finding.posted && !isPosting && (
           <button
             onClick={onPost}
             title="Post this finding"

@@ -67,6 +67,9 @@ type PrReviewStore = {
   activeFindings: ReviewFinding[]
   reviewStreamingText: string
   selectedFindingIds: Set<string>
+  postingFindingIds: Set<string>
+  postingBatch: 'selected' | 'all' | null
+  lastPostResult: { count: number; timestamp: number } | null
   agentProgress: Array<{ agentId: string; status: string; findingsCount: number; error?: string; currentChunk?: number; totalChunks?: number }>
   _loadPrsSeq: number
   _selectPrSeq: number
@@ -83,6 +86,7 @@ type PrReviewStore = {
   loadReview: (reviewId: string) => Promise<void>
   deleteReview: (reviewId: string) => Promise<void>
   toggleFinding: (findingId: string) => void
+  toggleSeveritySelection: (severity: string) => void
   selectAllFindings: () => void
   clearFindingSelection: () => void
   postFinding: (finding: ReviewFinding, repo: string, prNumber: number) => Promise<void>
@@ -107,6 +111,9 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
   activeFindings: [],
   reviewStreamingText: '',
   selectedFindingIds: new Set(),
+  postingFindingIds: new Set(),
+  postingBatch: null,
+  lastPostResult: null,
   agentProgress: [],
   _loadPrsSeq: 0,
   _selectPrSeq: 0,
@@ -301,6 +308,20 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
     })
   },
 
+  toggleSeveritySelection: (severity) => {
+    set((s) => {
+      const matching = s.activeFindings.filter((f) => f.severity === severity && !f.posted)
+      if (matching.length === 0) return s
+      const allSelected = matching.every((f) => s.selectedFindingIds.has(f.id))
+      const next = new Set(s.selectedFindingIds)
+      for (const f of matching) {
+        if (allSelected) next.delete(f.id)
+        else next.add(f.id)
+      }
+      return { selectedFindingIds: next }
+    })
+  },
+
   selectAllFindings: () => {
     const { activeFindings } = get()
     set({ selectedFindingIds: new Set(activeFindings.filter((f) => !f.posted).map((f) => f.id)) })
@@ -309,49 +330,69 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
   clearFindingSelection: () => set({ selectedFindingIds: new Set() }),
 
   postFinding: async (finding, repo, prNumber) => {
+    set((s) => ({ postingFindingIds: new Set(s.postingFindingIds).add(finding.id) }))
     try {
       const icon = finding.severity === 'critical' ? '🔴' : finding.severity === 'warning' ? '🟡' : finding.severity === 'suggestion' ? '🔵' : '⚪'
       const body = `### ${icon} ${finding.severity.charAt(0).toUpperCase() + finding.severity.slice(1)}: ${finding.title}\n\n${finding.file ? `**File:** \`${finding.file}${finding.line ? `:${finding.line}` : ''}\`\n\n` : ''}${finding.description}\n\n---\n*Reviewed by Pylon*`
       await window.api.postGhComment(repo, prNumber, body)
-      set((s) => ({
-        activeFindings: s.activeFindings.map((f) =>
-          f.id === finding.id ? { ...f, posted: true } : f
-        ),
-      }))
+      set((s) => {
+        const next = new Set(s.postingFindingIds)
+        next.delete(finding.id)
+        return {
+          activeFindings: s.activeFindings.map((f) =>
+            f.id === finding.id ? { ...f, posted: true } : f
+          ),
+          postingFindingIds: next,
+          lastPostResult: { count: 1, timestamp: Date.now() },
+        }
+      })
     } catch (err) {
       logger.error('postFinding failed:', err)
+      set((s) => {
+        const next = new Set(s.postingFindingIds)
+        next.delete(finding.id)
+        return { postingFindingIds: next }
+      })
     }
   },
 
   postSelectedAsReview: async (repo, prNumber) => {
+    const { activeFindings, selectedFindingIds } = get()
+    const selected = activeFindings.filter((f) => selectedFindingIds.has(f.id) && !f.posted)
+    if (selected.length === 0) return
+    set({ postingBatch: 'selected' })
     try {
-      const { activeFindings, selectedFindingIds } = get()
-      const selected = activeFindings.filter((f) => selectedFindingIds.has(f.id) && !f.posted)
-      if (selected.length === 0) return
       await window.api.postGhReview(repo, prNumber, selected, '')
       set((s) => ({
         activeFindings: s.activeFindings.map((f) =>
           selectedFindingIds.has(f.id) ? { ...f, posted: true } : f
         ),
         selectedFindingIds: new Set(),
+        postingBatch: null,
+        lastPostResult: { count: selected.length, timestamp: Date.now() },
       }))
     } catch (err) {
       logger.error('postSelectedAsReview failed:', err)
+      set({ postingBatch: null })
     }
   },
 
   postAllAsReview: async (repo, prNumber) => {
+    const { activeFindings } = get()
+    const unposted = activeFindings.filter((f) => !f.posted)
+    if (unposted.length === 0) return
+    set({ postingBatch: 'all' })
     try {
-      const { activeFindings } = get()
-      const unposted = activeFindings.filter((f) => !f.posted)
-      if (unposted.length === 0) return
       await window.api.postGhReview(repo, prNumber, unposted, '')
       set((s) => ({
         activeFindings: s.activeFindings.map((f) => ({ ...f, posted: true })),
         selectedFindingIds: new Set(),
+        postingBatch: null,
+        lastPostResult: { count: unposted.length, timestamp: Date.now() },
       }))
     } catch (err) {
       logger.error('postAllAsReview failed:', err)
+      set({ postingBatch: null })
     }
   },
 
