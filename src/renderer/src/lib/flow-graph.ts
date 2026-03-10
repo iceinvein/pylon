@@ -41,7 +41,7 @@ function classifyTool(name: string): ActivityType {
   if (n.includes('bash') || n.includes('shell')) return 'execute'
   if (n === 'agent' || n.startsWith('task')) return 'subagent'
   if (n === 'askuserquestion' || n === 'skill') return 'ask-user'
-  if (n === 'todowrite') return 'explore'
+  if (n === 'todowrite') return 'task-list'
   return 'execute'
 }
 
@@ -59,6 +59,14 @@ function toolSummary(name: string, input: Record<string, unknown>): string {
   }
   if (n === 'agent') {
     return String(input.description ?? '').slice(0, 60)
+  }
+  if (n === 'todowrite') {
+    const todos = input.todos as Array<{ status: string }> | undefined
+    if (Array.isArray(todos)) {
+      const done = todos.filter((t) => t.status === 'completed').length
+      return `${done}/${todos.length} done`
+    }
+    return ''
   }
   return ''
 }
@@ -177,6 +185,7 @@ export function buildFlowGraph(messages: unknown[], isStreaming: boolean): FlowG
       case 'edit': return count === 1 ? `Modified ${blocks[0].summary}` : `Modified ${count} files`
       case 'execute': return count === 1 ? blocks[0].summary || 'Ran command' : `Ran ${count} commands`
       case 'subagent': return `Agent: ${blocks[0].summary || 'task'}`
+      case 'task-list': return count === 1 ? `Tasks ${blocks[0].summary || 'updated'}` : `Tasks updated ${count}x`
       case 'ask-user': return 'Asked user'
       case 'error-fix': return `Fixed ${Math.ceil(count / 2)} error${Math.ceil(count / 2) > 1 ? 's' : ''}`
       case 'result': return blocks[0].summary
