@@ -4,11 +4,10 @@ import { getDb } from './db'
 import { sessionManager } from './session-manager'
 import { getPrDetail } from './gh-cli'
 import { IPC } from '../shared/ipc-channels'
+import { chunkDiff, getTokenBudget, type ChunkResult } from './diff-chunker'
 import type { GhRepo, ReviewFocus, ReviewFinding, PrReview, ReviewStatus } from '../shared/types'
 import { log } from '../shared/logger'
 const logger = log.child('pr-review')
-
-const MAX_DIFF_LINES = 50_000
 const STREAM_THROTTLE_MS = 300
 
 const DEFAULT_AGENT_PROMPTS: Record<string, string> = {
@@ -314,6 +313,8 @@ type AgentSession = {
   findings: ReviewFinding[]
   streamedText: string
   error?: string
+  currentChunk?: number
+  totalChunks?: number
 }
 
 type ActiveReviewSession = {
@@ -413,19 +414,32 @@ class PrReviewManager {
 
     const detail = await getPrDetail(repo.fullName, prNumber)
 
-    let diff = detail.diff
-    const diffLineCount = diff.split('\n').length
-    let truncated = false
-    if (diffLineCount > MAX_DIFF_LINES) {
-      diff = diff.split('\n').slice(0, MAX_DIFF_LINES).join('\n')
-      truncated = true
+    const tokenBudget = getTokenBudget()
+    const { chunks, skippedFiles } = chunkDiff(detail.diff, { tokenBudget })
+
+    if (skippedFiles.length > 0) {
+      logger.info(`Skipped ${skippedFiles.length} files:`, skippedFiles)
     }
 
     const active = this.activeReviews.get(reviewId)
     if (!active) return
 
+    // Edge case: all files were skipped (e.g. only lock files changed)
+    if (chunks.length === 0) {
+      this.updateReviewStatus(reviewId, 'done', Date.now())
+      this.send(IPC.GH_REVIEW_UPDATE, {
+        reviewId,
+        status: 'done',
+        findings: [],
+        streamingText: `All changed files were skipped (lockfiles, generated code, etc.):\n${skippedFiles.map((f) => `- ${f}`).join('\n')}`,
+        agentProgress: focusAreas.map((f) => ({ agentId: f, status: 'done' as const, findingsCount: 0 })),
+      })
+      this.activeReviews.delete(reviewId)
+      return
+    }
+
     const agentPromises = focusAreas.map((focus) =>
-      this.runAgentSession(reviewId, repo, detail, diff, truncated, focus, active)
+      this.runAgentSession(reviewId, repo, detail, chunks, skippedFiles, focus, active)
     )
 
     const results = await Promise.allSettled(agentPromises)
@@ -482,8 +496,8 @@ class PrReviewManager {
     reviewId: string,
     repo: GhRepo,
     detail: Awaited<ReturnType<typeof getPrDetail>>,
-    diff: string,
-    truncated: boolean,
+    chunks: ChunkResult['chunks'],
+    skippedFiles: string[],
     focus: ReviewFocus,
     active: ActiveReviewSession
   ): Promise<ReviewFinding[]> {
@@ -496,50 +510,15 @@ class PrReviewManager {
       status: 'running',
       findings: [],
       streamedText: '',
+      currentChunk: 0,
+      totalChunks: chunks.length,
     }
     active.agents.set(focus, agentSession)
 
     this.sendAgentProgress(reviewId, active)
 
     const specialistPrompt = this.getAgentPrompt(focus)
-
-    const prompt = `You are reviewing a GitHub pull request as a **${focus}** specialist.
-
-## Specialist Instructions
-${specialistPrompt}
-
-## PR Information
-- **Title:** ${detail.title}
-- **Author:** ${detail.author}
-- **Branch:** ${detail.headBranch} -> ${detail.baseBranch}
-- **Files changed:** ${detail.files.length}
-
-## PR Description
-${detail.body || '(no description)'}
-
-## Changed Files
-${detail.files.map((f) => `- ${f.path} (+${f.additions} -${f.deletions})`).join('\n')}
-
-## Diff
-${truncated ? 'Diff truncated to 50,000 lines.\n\n' : ''}\`\`\`diff
-${diff}
-\`\`\`
-
-## Output Format
-Output your findings as a JSON array inside a fenced code block tagged \`review-findings\`. Each finding should have:
-- \`file\`: the file path (string)
-- \`line\`: the line number in the new file, or null for general findings (number | null)
-- \`severity\`: one of "critical", "warning", "suggestion", "nitpick"
-- \`title\`: short title (string)
-- \`description\`: detailed explanation (string)
-
-\`\`\`review-findings
-[
-  { "file": "src/main.ts", "line": 42, "severity": "warning", "title": "Potential null dereference", "description": "The variable could be null when..." }
-]
-\`\`\`
-
-Output ONLY the review-findings block. Do not use any tools.`
+    const isMultiChunk = chunks.length > 1
 
     let lastSendTime = 0
     const unsub = sessionManager.onMessage(sessionId, (message: unknown) => {
@@ -559,7 +538,78 @@ Output ONLY the review-findings block. Do not use any tools.`
     })
 
     try {
-      await sessionManager.sendMessage(sessionId, prompt)
+      for (let i = 0; i < chunks.length; i++) {
+        const chunk = chunks[i]
+        agentSession.currentChunk = i + 1
+        agentSession.totalChunks = chunks.length
+        this.sendAgentProgress(reviewId, active)
+
+        let prompt: string
+
+        if (i === 0) {
+          // First chunk: full prompt with specialist instructions, PR info, output format
+          const chunkHeader = isMultiChunk
+            ? `\n\n> **Chunk 1 of ${chunks.length}** — this chunk contains: ${chunk.files.join(', ')}\n`
+            : ''
+          const skippedNote = skippedFiles.length > 0
+            ? `\n\n## Skipped Files (excluded from review)\n${skippedFiles.map((f) => `- ${f}`).join('\n')}\n`
+            : ''
+
+          prompt = `You are reviewing a GitHub pull request as a **${focus}** specialist.
+
+## Specialist Instructions
+${specialistPrompt}
+
+## PR Information
+- **Title:** ${detail.title}
+- **Author:** ${detail.author}
+- **Branch:** ${detail.headBranch} -> ${detail.baseBranch}
+- **Files changed:** ${detail.files.length}
+
+## PR Description
+${detail.body || '(no description)'}
+
+## Changed Files
+${detail.files.map((f) => `- ${f.path} (+${f.additions} -${f.deletions})`).join('\n')}
+${skippedNote}${chunkHeader}
+## Diff
+\`\`\`diff
+${chunk.diff}
+\`\`\`
+
+## Output Format
+Output your findings as a JSON array inside a fenced code block tagged \`review-findings\`. Each finding should have:
+- \`file\`: the file path (string)
+- \`line\`: the line number in the new file, or null for general findings (number | null)
+- \`severity\`: one of "critical", "warning", "suggestion", "nitpick"
+- \`title\`: short title (string)
+- \`description\`: detailed explanation (string)
+
+\`\`\`review-findings
+[
+  { "file": "src/main.ts", "line": 42, "severity": "warning", "title": "Potential null dereference", "description": "The variable could be null when..." }
+]
+\`\`\`
+
+Output ONLY the review-findings block. Do not use any tools.`
+        } else {
+          // Subsequent chunks: continuation prompt
+          prompt = `Here are additional files to review (chunk ${i + 1} of ${chunks.length}). Continue applying your **${focus}** review criteria.
+
+## Files in this chunk
+${chunk.files.map((f) => `- ${f}`).join('\n')}
+
+## Diff
+\`\`\`diff
+${chunk.diff}
+\`\`\`
+
+Output findings in the same \`review-findings\` format.`
+        }
+
+        await sessionManager.sendMessage(sessionId, prompt)
+      }
+
       agentSession.findings = this.parseFindings(agentSession.streamedText).map((f) => ({ ...f, domain: focus }))
       agentSession.status = 'done'
     } catch (err) {
@@ -580,6 +630,8 @@ Output ONLY the review-findings block. Do not use any tools.`
       status: agent.status,
       findingsCount: agent.findings.length,
       error: agent.error,
+      currentChunk: agent.currentChunk,
+      totalChunks: agent.totalChunks,
     }))
 
     const streamingText = Array.from(active.agents.values())
@@ -624,36 +676,38 @@ Output ONLY the review-findings block. Do not use any tools.`
   }
 
   private parseFindings(text: string): ReviewFinding[] {
-    // Try multiple fence patterns: ```review-findings, ````review-findings, ```json, or bare JSON array
-    const fencePatterns = [
-      /`{3,}review-findings\s*\n([\s\S]*?)`{3,}/,
-      /`{3,}json\s*\n(\[[\s\S]*?\])\s*`{3,}/,
-    ]
+    const allFindings: ReviewFinding[] = []
 
-    let jsonStr: string | null = null
-    for (const regex of fencePatterns) {
-      const match = text.match(regex)
-      if (match) {
-        jsonStr = match[1].trim()
-        break
-      }
+    // Find ALL review-findings fence blocks (global regex for multi-chunk support)
+    const fenceRegex = /`{3,}review-findings\s*\n([\s\S]*?)`{3,}/g
+    let match: RegExpExecArray | null
+    while ((match = fenceRegex.exec(text)) !== null) {
+      allFindings.push(...this.parseJsonFindings(match[1].trim()))
     }
 
-    // Fallback: find the outermost JSON array in the text
-    if (!jsonStr) {
-      const arrayStart = text.indexOf('[')
-      const arrayEnd = text.lastIndexOf(']')
-      if (arrayStart !== -1 && arrayEnd > arrayStart) {
-        jsonStr = text.slice(arrayStart, arrayEnd + 1)
-      }
+    // If we found fenced blocks, return those
+    if (allFindings.length > 0) return allFindings
+
+    // Fallback: try ```json blocks
+    const jsonFenceRegex = /`{3,}json\s*\n(\[[\s\S]*?\])\s*`{3,}/g
+    while ((match = jsonFenceRegex.exec(text)) !== null) {
+      allFindings.push(...this.parseJsonFindings(match[1].trim()))
+    }
+    if (allFindings.length > 0) return allFindings
+
+    // Last resort: find outermost JSON array
+    const arrayStart = text.indexOf('[')
+    const arrayEnd = text.lastIndexOf(']')
+    if (arrayStart !== -1 && arrayEnd > arrayStart) {
+      return this.parseJsonFindings(text.slice(arrayStart, arrayEnd + 1))
     }
 
-    if (!jsonStr) {
-      logger.error('No review-findings block found in output. Text length:', text.length)
-      logger.error('First 500 chars:', text.slice(0, 500))
-      return []
-    }
+    logger.error('No review-findings block found in output. Text length:', text.length)
+    logger.error('First 500 chars:', text.slice(0, 500))
+    return []
+  }
 
+  private parseJsonFindings(jsonStr: string): ReviewFinding[] {
     try {
       const raw = JSON.parse(jsonStr) as Array<Record<string, unknown>>
       if (!Array.isArray(raw)) return []
@@ -669,7 +723,6 @@ Output ONLY the review-findings block. Do not use any tools.`
       }))
     } catch (err) {
       logger.error('Failed to parse review findings JSON:', err)
-      logger.error('JSON string (first 500 chars):', jsonStr.slice(0, 500))
       return []
     }
   }

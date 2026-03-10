@@ -23,7 +23,7 @@ type Chunk = {
   total: number
 }
 
-type ChunkResult = {
+export type ChunkResult = {
   chunks: Chunk[]
   skippedFiles: string[]
 }
@@ -143,7 +143,7 @@ function estimateTokens(text: string): number {
 // ── Budget ───────────────────────────────────────────────────────────
 
 export function getTokenBudget(model?: string): number {
-  const limit = (model && MODEL_TOKEN_LIMITS[model]) ?? MODEL_TOKEN_LIMITS.default
+  const limit = (model ? MODEL_TOKEN_LIMITS[model] : undefined) ?? MODEL_TOKEN_LIMITS.default
   return limit - PROMPT_OVERHEAD_TOKENS
 }
 
