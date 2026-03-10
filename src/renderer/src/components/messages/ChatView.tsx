@@ -116,6 +116,23 @@ export const ChatView = memo(function ChatView({ sessionId }: ChatViewProps) {
     }
   }, [mainThreadMessages])
 
+  // Map from visibleMessages index → original sessionMessages index.
+  // The flow graph uses sessionMessages indices, so we need this to set
+  // data-message-index attributes that match flow graph messageIndex values.
+  const originalIndexMap = useMemo(() => {
+    const map = new Map<number, number>()
+    // Build identity map: message object → sessionMessages index
+    const identityMap = new Map<unknown, number>()
+    for (let i = 0; i < sessionMessages.length; i++) {
+      identityMap.set(sessionMessages[i], i)
+    }
+    for (let i = 0; i < visibleMessages.length; i++) {
+      const origIdx = identityMap.get(visibleMessages[i])
+      if (origIdx !== undefined) map.set(i, origIdx)
+    }
+    return map
+  }, [sessionMessages, visibleMessages])
+
   const toolResultMap = useMemo(() => buildToolResultMap(sessionMessages), [sessionMessages])
 
   // Detect skill content messages injected by the SDK after Skill tool invocations.
@@ -258,6 +275,26 @@ export const ChatView = memo(function ChatView({ sessionId }: ChatViewProps) {
       bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
     }
   }, [sessionMessages.length, sessionQuestions.length])
+
+  // Listen for flow-scroll-to-message events from the FlowPanel
+  useEffect(() => {
+    function handleFlowScroll(e: Event) {
+      const detail = (e as CustomEvent).detail as { messageIndex: number }
+      const container = scrollContainerRef.current
+      if (!container) return
+      const messageElements = container.querySelectorAll('[data-message-index]')
+      for (const el of messageElements) {
+        if (Number(el.getAttribute('data-message-index')) === detail.messageIndex) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          el.classList.add('flow-highlight')
+          setTimeout(() => el.classList.remove('flow-highlight'), 1500)
+          break
+        }
+      }
+    }
+    window.addEventListener('flow-scroll-to-message', handleFlowScroll)
+    return () => window.removeEventListener('flow-scroll-to-message', handleFlowScroll)
+  }, [])
 
   async function handlePermissionRespond(requestId: string, behavior: 'allow' | 'deny') {
     await window.api.respondToPermission(requestId, behavior)
@@ -620,7 +657,11 @@ export const ChatView = memo(function ChatView({ sessionId }: ChatViewProps) {
         // Normal turn rendering
         return (
           <div key={turn.userIdx ?? `pre-${turnIdx}`}>
-            {turn.messages.map(({ msg, idx }) => renderMessage(msg, idx))}
+            {turn.messages.map(({ msg, idx }) => {
+              const rendered = renderMessage(msg, idx)
+              if (!rendered) return null
+              return <div key={`flow-${idx}`} data-message-index={originalIndexMap.get(idx) ?? idx}>{rendered}</div>
+            })}
           </div>
         )
       })}
