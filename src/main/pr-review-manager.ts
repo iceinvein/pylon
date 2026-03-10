@@ -607,14 +607,33 @@ ${chunk.diff}
 Output findings in the same \`review-findings\` format.`
         }
 
-        await sessionManager.sendMessage(sessionId, prompt)
+        try {
+          await sessionManager.sendMessage(sessionId, prompt)
+        } catch (chunkErr) {
+          const errMsg = String(chunkErr).toLowerCase()
+          if (errMsg.includes('too long') || errMsg.includes('too_long') || errMsg.includes('prompt is too long')) {
+            // Conversation grew too large — stop sending more chunks.
+            // Parse whatever findings we've collected from prior chunks.
+            logger.warn(`Agent ${focus} hit context limit at chunk ${i + 1}/${chunks.length}, collecting partial results`)
+            break
+          }
+          throw chunkErr
+        }
       }
 
       agentSession.findings = this.parseFindings(agentSession.streamedText).map((f) => ({ ...f, domain: focus }))
       agentSession.status = 'done'
     } catch (err) {
-      agentSession.status = 'error'
-      agentSession.error = String(err)
+      // If we collected some findings before the error, still return them
+      const partialFindings = this.parseFindings(agentSession.streamedText).map((f) => ({ ...f, domain: focus }))
+      if (partialFindings.length > 0) {
+        agentSession.findings = partialFindings
+        agentSession.status = 'done'
+        logger.warn(`Agent ${focus} failed but recovered ${partialFindings.length} findings from partial output`)
+      } else {
+        agentSession.status = 'error'
+        agentSession.error = String(err)
+      }
       logger.error(`Agent ${focus} failed:`, err)
     } finally {
       unsub()

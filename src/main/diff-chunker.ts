@@ -5,14 +5,29 @@
 
 export type FileTier = 'critical' | 'important' | 'low' | 'skip'
 
-export const PROMPT_OVERHEAD_TOKENS = 7_000
+/**
+ * Token overhead breakdown:
+ * - SDK system prompt + tool definitions: ~25-35k tokens
+ * - CLAUDE.md / project instructions: ~2-5k tokens
+ * - Our review prompt template (specialist instructions + PR metadata + output format): ~5k tokens
+ * - Response budget (agent's output): ~8k tokens
+ * Total conservative estimate: ~50k tokens of non-diff overhead
+ */
+export const PROMPT_OVERHEAD_TOKENS = 50_000
 
 export const MODEL_TOKEN_LIMITS: Record<string, number> = {
   'claude-sonnet-4-20250514': 200_000,
   'claude-opus-4-20250514': 200_000,
   'claude-haiku-3-20250307': 200_000,
-  default: 180_000,
+  default: 200_000,
 }
+
+/**
+ * In multi-chunk reviews, each subsequent chunk adds to the conversation history:
+ * the prior chunk's prompt + response accumulate (~15-25k tokens per chunk).
+ * This constant estimates how much budget is lost per additional chunk.
+ */
+export const PER_CHUNK_CONVERSATION_OVERHEAD = 20_000
 
 type FileSegment = { path: string; diff: string }
 
@@ -65,17 +80,56 @@ export function parseDiffIntoFiles(diff: string): FileSegment[] {
 // ── Classification ───────────────────────────────────────────────────
 
 const SKIP_PATTERNS = [
-  /^package-lock\.json$/,
-  /^yarn\.lock$/,
-  /^bun\.lockb$/,
-  /^pnpm-lock\.yaml$/,
+  // ── Lockfiles (every major ecosystem) ──
+  /(^|\/)package-lock\.json$/,
+  /(^|\/)yarn\.lock$/,
+  /(^|\/)bun\.lockb$/,
+  /(^|\/)pnpm-lock\.yaml$/,
+  /(^|\/)Cargo\.lock$/,
+  /(^|\/)Gemfile\.lock$/,
+  /(^|\/)poetry\.lock$/,
+  /(^|\/)Pipfile\.lock$/,
+  /(^|\/)composer\.lock$/,
+  /(^|\/)go\.sum$/,
+  /(^|\/)flake\.lock$/,
+  /(^|\/)pubspec\.lock$/,
+  /(^|\/)Podfile\.lock$/,
+  /(^|\/)mix\.lock$/,
+  /(^|\/)packages\.lock\.json$/,
+  /(^|\/)paket\.lock$/,
+  /(^|\/)shrinkwrap\.yaml$/,
+  // ── Minified / bundled / sourcemaps ──
   /\.min\./,
   /\.map$/,
+  /\.bundle\.\w+$/,
+  // ── Snapshots ──
   /\.snap$/,
+  /\.snapshot$/,
+  // ── Generated / build output ──
   /(^|\/)generated\//,
-  /^coverage\//,
-  /^dist\//,
-  /^node_modules\//,
+  /(^|\/)__generated__\//,
+  /(^|\/)\.next\//,
+  /(^|\/)\.nuxt\//,
+  /(^|\/)coverage\//,
+  /(^|\/)dist\//,
+  /(^|\/)build\//,
+  /(^|\/)out\//,
+  /(^|\/)target\//,
+  /(^|\/)node_modules\//,
+  // ── Binary / asset files ──
+  /\.woff2?$/,
+  /\.ttf$/,
+  /\.eot$/,
+  /\.ico$/,
+  /\.png$/,
+  /\.jpe?g$/,
+  /\.gif$/,
+  /\.webp$/,
+  /\.svg$/,
+  /\.pdf$/,
+  /\.zip$/,
+  /\.tar/,
+  /\.wasm$/,
 ]
 
 const TEST_PATTERNS = [
@@ -142,9 +196,16 @@ function estimateTokens(text: string): number {
 
 // ── Budget ───────────────────────────────────────────────────────────
 
-export function getTokenBudget(model?: string): number {
+/**
+ * Returns available token budget for diff content.
+ * @param model - Model name for context limit lookup
+ * @param chunkIndex - 0-indexed chunk number; later chunks have smaller budgets
+ *                     because the conversation history grows with each chunk
+ */
+export function getTokenBudget(model?: string, chunkIndex = 0): number {
   const limit = (model ? MODEL_TOKEN_LIMITS[model] : undefined) ?? MODEL_TOKEN_LIMITS.default
-  return limit - PROMPT_OVERHEAD_TOKENS
+  const conversationGrowth = chunkIndex * PER_CHUNK_CONVERSATION_OVERHEAD
+  return Math.max(10_000, limit - PROMPT_OVERHEAD_TOKENS - conversationGrowth)
 }
 
 // ── Sorting ──────────────────────────────────────────────────────────
@@ -214,7 +275,9 @@ export function chunkDiff(diff: string, options: { tokenBudget: number }): Chunk
     }
   }
 
-  // Bin-pack into chunks
+  // Bin-pack into chunks with progressive budget reduction.
+  // Each subsequent chunk gets a smaller budget because conversation history
+  // from prior chunks accumulates in the same session.
   const chunks: { files: string[]; diffs: string[] }[] = []
   let currentChunk: { files: string[]; diffs: string[]; tokens: number } = {
     files: [],
@@ -222,23 +285,30 @@ export function chunkDiff(diff: string, options: { tokenBudget: number }): Chunk
     tokens: 0,
   }
 
+  /** Budget for the current chunk, shrinks as more chunks are created */
+  let currentBudget = tokenBudget
+
   for (const file of sorted) {
     const fileTokens = estimateTokens(file.diff)
 
     // If file alone exceeds budget, give it its own chunk
-    if (fileTokens > tokenBudget) {
+    if (fileTokens > currentBudget) {
       if (currentChunk.files.length > 0) {
         chunks.push({ files: currentChunk.files, diffs: currentChunk.diffs })
+        currentBudget = Math.max(10_000, tokenBudget - (chunks.length * PER_CHUNK_CONVERSATION_OVERHEAD))
       }
       chunks.push({ files: [file.path], diffs: [file.diff] })
       currentChunk = { files: [], diffs: [], tokens: 0 }
+      currentBudget = Math.max(10_000, tokenBudget - (chunks.length * PER_CHUNK_CONVERSATION_OVERHEAD))
       continue
     }
 
     // If adding this file would exceed budget, finalize current chunk
-    if (currentChunk.tokens + fileTokens > tokenBudget && currentChunk.files.length > 0) {
+    if (currentChunk.tokens + fileTokens > currentBudget && currentChunk.files.length > 0) {
       chunks.push({ files: currentChunk.files, diffs: currentChunk.diffs })
       currentChunk = { files: [], diffs: [], tokens: 0 }
+      // Reduce budget for the next chunk
+      currentBudget = Math.max(10_000, tokenBudget - (chunks.length * PER_CHUNK_CONVERSATION_OVERHEAD))
     }
 
     currentChunk.files.push(file.path)
