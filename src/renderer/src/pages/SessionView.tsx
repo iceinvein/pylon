@@ -11,7 +11,6 @@ import { ChangesPanel } from '../components/ChangesPanel'
 import { FlowPanel } from '../components/flow/FlowPanel'
 import { ReviewPanel } from '../components/review/ReviewPanel'
 import { useUiStore } from '../store/ui-store'
-import { ClipboardList } from 'lucide-react'
 import type { AppSettings, Tab, Attachment, ImageAttachment, PermissionMode } from '../../../shared/types'
 
 const emptyFiles: string[] = []

@@ -134,8 +134,8 @@ export function useIpcBridge(): void {
         }
 
         // Track changed files from Edit/Write tool calls
-        const messageObj = msg.message as { content?: Array<{ type: string; name?: string; input?: Record<string, unknown> }> } | undefined
-        const content = messageObj?.content ?? (msg.content as Array<{ type: string; name?: string; input?: Record<string, unknown> }> | undefined)
+        const messageObj = msg.message as { content?: Array<{ type: string; id?: string; name?: string; input?: Record<string, unknown> }> } | undefined
+        const content = messageObj?.content ?? (msg.content as Array<{ type: string; id?: string; name?: string; input?: Record<string, unknown> }> | undefined)
         if (Array.isArray(content)) {
           for (const block of content) {
             if (block.type !== 'tool_use' || !block.input) continue
@@ -146,11 +146,11 @@ export function useIpcBridge(): void {
                 store().addChangedFile(sessionId, filePath)
 
                 // Detect plan/design files
-                if (isPlanPath(filePath) && (block as { id?: string }).id) {
+                if (isPlanPath(filePath) && block.id) {
                   store().addDetectedPlan(sessionId, {
                     filePath,
                     relativePath: toRelativePath(filePath),
-                    toolUseId: (block as { id: string }).id,
+                    toolUseId: block.id,
                     status: 'pending',
                     comments: [],
                   })

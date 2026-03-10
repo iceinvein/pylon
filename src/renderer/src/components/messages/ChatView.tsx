@@ -17,7 +17,6 @@ import { detectChoices } from '../../lib/detect-choices'
 import { ChoiceButtons } from './ChoiceButtons'
 import { PlanCard } from '../tools/PlanCard'
 import { parsePlanSections } from '../../lib/parse-plan'
-import type { DetectedPlan } from '../../../../shared/types'
 import { useUiStore } from '../../store/ui-store'
 
 type SdkMessage = {
