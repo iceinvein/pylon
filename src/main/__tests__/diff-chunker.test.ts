@@ -49,12 +49,34 @@ test('classifyFile identifies test files as low priority', () => {
 })
 
 test('classifyFile identifies generated/lock files as skip', () => {
+  // JS/TS lockfiles
   expect(classifyFile('package-lock.json')).toBe('skip')
   expect(classifyFile('yarn.lock')).toBe('skip')
   expect(classifyFile('bun.lockb')).toBe('skip')
+  expect(classifyFile('pnpm-lock.yaml')).toBe('skip')
+  // Other ecosystem lockfiles
+  expect(classifyFile('Cargo.lock')).toBe('skip')
+  expect(classifyFile('Gemfile.lock')).toBe('skip')
+  expect(classifyFile('poetry.lock')).toBe('skip')
+  expect(classifyFile('Pipfile.lock')).toBe('skip')
+  expect(classifyFile('composer.lock')).toBe('skip')
+  expect(classifyFile('go.sum')).toBe('skip')
+  expect(classifyFile('Podfile.lock')).toBe('skip')
+  expect(classifyFile('mix.lock')).toBe('skip')
+  expect(classifyFile('pubspec.lock')).toBe('skip')
+  // Nested lockfiles (monorepo)
+  expect(classifyFile('packages/web/yarn.lock')).toBe('skip')
+  expect(classifyFile('services/api/Cargo.lock')).toBe('skip')
+  // Generated / build
   expect(classifyFile('dist/bundle.min.js')).toBe('skip')
   expect(classifyFile('coverage/lcov.info')).toBe('skip')
   expect(classifyFile('src/generated/schema.ts')).toBe('skip')
+  expect(classifyFile('build/output.js')).toBe('skip')
+  expect(classifyFile('.next/cache/data.json')).toBe('skip')
+  // Binary / assets
+  expect(classifyFile('assets/logo.png')).toBe('skip')
+  expect(classifyFile('fonts/inter.woff2')).toBe('skip')
+  expect(classifyFile('icon.svg')).toBe('skip')
 })
 
 test('chunkDiff returns single chunk when diff fits', () => {
