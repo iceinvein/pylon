@@ -116,6 +116,23 @@ export const ChatView = memo(function ChatView({ sessionId }: ChatViewProps) {
     }
   }, [mainThreadMessages])
 
+  // Map from visibleMessages index → original sessionMessages index.
+  // The flow graph uses sessionMessages indices, so we need this to set
+  // data-message-index attributes that match flow graph messageIndex values.
+  const originalIndexMap = useMemo(() => {
+    const map = new Map<number, number>()
+    // Build identity map: message object → sessionMessages index
+    const identityMap = new Map<unknown, number>()
+    for (let i = 0; i < sessionMessages.length; i++) {
+      identityMap.set(sessionMessages[i], i)
+    }
+    for (let i = 0; i < visibleMessages.length; i++) {
+      const origIdx = identityMap.get(visibleMessages[i])
+      if (origIdx !== undefined) map.set(i, origIdx)
+    }
+    return map
+  }, [sessionMessages, visibleMessages])
+
   const toolResultMap = useMemo(() => buildToolResultMap(sessionMessages), [sessionMessages])
 
   // Detect skill content messages injected by the SDK after Skill tool invocations.
@@ -643,7 +660,7 @@ export const ChatView = memo(function ChatView({ sessionId }: ChatViewProps) {
             {turn.messages.map(({ msg, idx }) => {
               const rendered = renderMessage(msg, idx)
               if (!rendered) return null
-              return <div key={`flow-${idx}`} data-message-index={idx}>{rendered}</div>
+              return <div key={`flow-${idx}`} data-message-index={originalIndexMap.get(idx) ?? idx}>{rendered}</div>
             })}
           </div>
         )
