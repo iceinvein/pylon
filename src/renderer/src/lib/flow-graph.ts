@@ -1,5 +1,4 @@
-import type { ActivityType, FlowNode, FlowEdge, FlowGraph } from './flow-types'
-import { NODE_WIDTH, NODE_HEIGHT, NODE_GAP_Y, PARALLEL_GAP_X, SVG_PADDING } from '../components/flow/flow-constants'
+import type { ActivityType, FlowNode, FlowElement, FlowGraph } from './flow-types'
 
 type SdkMessage = {
   type: string
@@ -73,9 +72,18 @@ type ClassifiedBlock = {
   isError?: boolean
 }
 
+/**
+ * Build a FlowGraph from raw session messages.
+ *
+ * Pass 1: Classify each content block into an activity type
+ * Pass 2: Group consecutive same-type activities
+ * Pass 3: Detect error→fix patterns
+ * Pass 4: Mega-collapse if too many nodes
+ * Pass 5: Build layout elements (nodes, parallel groups, edge connectors)
+ */
 export function buildFlowGraph(messages: unknown[], isStreaming: boolean): FlowGraph {
   const msgs = messages as SdkMessage[]
-  if (msgs.length === 0) return { nodes: [], edges: [] }
+  if (msgs.length === 0) return { elements: [] }
 
   // Collect tool_result error status
   const errorToolUseIds = new Set<string>()
@@ -90,7 +98,7 @@ export function buildFlowGraph(messages: unknown[], isStreaming: boolean): FlowG
     }
   }
 
-  // Pass 1: Classify
+  // ── Pass 1: Classify ──
   const classified: ClassifiedBlock[] = []
 
   for (let i = 0; i < msgs.length; i++) {
@@ -136,9 +144,9 @@ export function buildFlowGraph(messages: unknown[], isStreaming: boolean): FlowG
     }
   }
 
-  if (classified.length === 0) return { nodes: [], edges: [] }
+  if (classified.length === 0) return { elements: [] }
 
-  // Pass 2: Group consecutive same-type
+  // ── Pass 2: Group consecutive same-type ──
   type RawGroup = { type: ActivityType; blocks: ClassifiedBlock[] }
   const groups: RawGroup[] = []
   let currentGroup: RawGroup = { type: classified[0].activityType, blocks: [classified[0]] }
@@ -154,7 +162,7 @@ export function buildFlowGraph(messages: unknown[], isStreaming: boolean): FlowG
   }
   groups.push(currentGroup)
 
-  // Pass 3: Detect error→fix patterns
+  // ── Pass 3: Detect error→fix patterns ──
   const mergedGroups: RawGroup[] = []
   for (let i = 0; i < groups.length; i++) {
     const group = groups[i]
@@ -171,33 +179,8 @@ export function buildFlowGraph(messages: unknown[], isStreaming: boolean): FlowG
     }
   }
 
-  // Convert groups to FlowNodes
+  // ── Convert groups to FlowNodes ──
   let nodeId = 0
-  const nodes: FlowNode[] = []
-
-  // Detect parallel subagent groups
-  const subagentParallelGroups = new Map<number, string>()
-  let parallelId = 0
-  for (let i = 0; i < mergedGroups.length; i++) {
-    const g = mergedGroups[i]
-    if (g.type !== 'subagent') continue
-    const startMsg = g.blocks[0].messageIndex
-    let j = i + 1
-    const batch = [i]
-    while (j < mergedGroups.length && mergedGroups[j].type === 'subagent') {
-      const nextMsg = mergedGroups[j].blocks[0].messageIndex
-      if (Math.abs(nextMsg - startMsg) <= 1) {
-        batch.push(j)
-        j++
-      } else break
-    }
-    if (batch.length > 1) {
-      const pgId = `parallel-${parallelId++}`
-      for (const idx of batch) {
-        subagentParallelGroups.set(idx, pgId)
-      }
-    }
-  }
 
   function makeLabel(type: ActivityType, count: number, blocks: ClassifiedBlock[]): string {
     switch (type) {
@@ -213,30 +196,26 @@ export function buildFlowGraph(messages: unknown[], isStreaming: boolean): FlowG
     }
   }
 
-  for (let i = 0; i < mergedGroups.length; i++) {
-    const g = mergedGroups[i]
+  function groupToNode(g: RawGroup): FlowNode {
     const id = `node-${nodeId++}`
-    const messageIndices = [...new Set(g.blocks.map((b) => b.messageIndex))]
-    const details = g.blocks.map((b) => ({ toolName: b.toolName, summary: b.summary }))
-    nodes.push({
+    return {
       id,
       type: g.type,
       label: makeLabel(g.type, g.blocks.length, g.blocks),
       count: g.blocks.length,
-      messageIndices,
-      details,
-      x: 0,
-      y: 0,
-      parallelGroupId: subagentParallelGroups.get(i),
+      messageIndices: [...new Set(g.blocks.map((b) => b.messageIndex))],
+      details: g.blocks.map((b) => ({ toolName: b.toolName, summary: b.summary })),
       isActive: false,
-    })
+    }
   }
+
+  const nodes = mergedGroups.map(groupToNode)
 
   if (isStreaming && nodes.length > 0) {
     nodes[nodes.length - 1].isActive = true
   }
 
-  // Pass 4: Mega-collapse
+  // ── Pass 4: Mega-collapse ──
   const COLLAPSE_THRESHOLD = 25
   const KEEP_RECENT = 10
   if (nodes.length > COLLAPSE_THRESHOLD) {
@@ -252,8 +231,6 @@ export function buildFlowGraph(messages: unknown[], isStreaming: boolean): FlowG
         count: pair.reduce((sum, n) => sum + n.count, 0),
         messageIndices: pair.flatMap((n) => n.messageIndices),
         details: pair.flatMap((n) => n.details),
-        x: 0,
-        y: 0,
         isSummary: true,
         children: pair,
       })
@@ -261,69 +238,42 @@ export function buildFlowGraph(messages: unknown[], isStreaming: boolean): FlowG
     nodes.unshift(...summaryNodes)
   }
 
-  // Pass 5: Layout positions
-  const parallelGroupNodes = new Map<string, FlowNode[]>()
-  for (const node of nodes) {
-    if (node.parallelGroupId) {
-      const existing = parallelGroupNodes.get(node.parallelGroupId) ?? []
-      existing.push(node)
-      parallelGroupNodes.set(node.parallelGroupId, existing)
-    }
-  }
-
-  let currentY = SVG_PADDING
-  const centerX = SVG_PADDING + NODE_WIDTH / 2
-  const processedParallelGroups = new Set<string>()
-  const edges: FlowEdge[] = []
-  let prevNodeId: string | null = null
-
-  for (let i = 0; i < nodes.length; i++) {
+  // ── Pass 5: Build layout elements ──
+  // Consecutive subagent nodes are treated as parallel groups
+  const elements: FlowElement[] = []
+  let i = 0
+  while (i < nodes.length) {
     const node = nodes[i]
 
-    if (node.parallelGroupId && !processedParallelGroups.has(node.parallelGroupId)) {
-      processedParallelGroups.add(node.parallelGroupId)
-      const siblings = parallelGroupNodes.get(node.parallelGroupId)!
-      const totalWidth = siblings.length * NODE_WIDTH + (siblings.length - 1) * PARALLEL_GAP_X
-      const startX = centerX - totalWidth / 2 + NODE_WIDTH / 2
+    // Collect consecutive subagent runs into a parallel group
+    if (node.type === 'subagent') {
+      const parallelBatch: FlowNode[] = [node]
+      while (i + 1 < nodes.length && nodes[i + 1].type === 'subagent') {
+        i++
+        parallelBatch.push(nodes[i])
+      }
 
-      if (prevNodeId) {
-        for (const sib of siblings) {
-          edges.push({ id: `edge-fork-${sib.id}`, from: prevNodeId, to: sib.id, type: 'parallel-fork' })
+      if (parallelBatch.length > 1) {
+        // Add edge before parallel group
+        if (elements.length > 0) {
+          elements.push({ kind: 'edge', type: 'sequential' })
         }
-      }
-
-      for (let s = 0; s < siblings.length; s++) {
-        siblings[s].x = startX + s * (NODE_WIDTH + PARALLEL_GAP_X)
-        siblings[s].y = currentY
-      }
-      currentY += NODE_HEIGHT + NODE_GAP_Y
-
-      const nextNonParallel = nodes.find((n, idx) => idx > i && !n.parallelGroupId)
-      if (nextNonParallel) {
-        for (const sib of siblings) {
-          edges.push({ id: `edge-join-${sib.id}`, from: sib.id, to: nextNonParallel.id, type: 'parallel-join' })
+        elements.push({ kind: 'parallel', nodes: parallelBatch })
+      } else {
+        // Single subagent — render as normal node
+        if (elements.length > 0) {
+          elements.push({ kind: 'edge', type: 'sequential' })
         }
+        elements.push({ kind: 'node', node })
       }
-      prevNodeId = null
-      continue
+    } else {
+      if (elements.length > 0) {
+        elements.push({ kind: 'edge', type: node.type === 'error-fix' ? 'retry' : 'sequential' })
+      }
+      elements.push({ kind: 'node', node })
     }
-
-    if (node.parallelGroupId) continue
-
-    node.x = centerX
-    node.y = currentY
-    currentY += NODE_HEIGHT + NODE_GAP_Y
-
-    if (prevNodeId) {
-      edges.push({
-        id: `edge-${prevNodeId}-${node.id}`,
-        from: prevNodeId,
-        to: node.id,
-        type: node.type === 'error-fix' ? 'retry' : 'sequential',
-      })
-    }
-    prevNodeId = node.id
+    i++
   }
 
-  return { nodes, edges }
+  return { elements }
 }

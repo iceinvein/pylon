@@ -7,26 +7,19 @@ type FlowNode = {
   count: number
   messageIndices: number[]
   details: { toolName: string; summary: string }[]
-  x: number
-  y: number
-  parallelGroupId?: string
   isActive?: boolean
   isSummary?: boolean
   children?: FlowNode[]
 }
 
-type EdgeType = 'sequential' | 'parallel-fork' | 'parallel-join' | 'retry'
-
-type FlowEdge = {
-  id: string
-  from: string
-  to: string
-  type: EdgeType
-}
+/** A layout element: either a single node, a parallel group, or an edge connector */
+type FlowElement =
+  | { kind: 'node'; node: FlowNode }
+  | { kind: 'parallel'; nodes: FlowNode[] }
+  | { kind: 'edge'; type: 'sequential' | 'retry' }
 
 type FlowGraph = {
-  nodes: FlowNode[]
-  edges: FlowEdge[]
+  elements: FlowElement[]
 }
 
-export type { ActivityType, FlowNode, FlowEdge, EdgeType, FlowGraph }
+export type { ActivityType, FlowNode, FlowElement, FlowGraph }

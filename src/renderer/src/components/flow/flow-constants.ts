@@ -19,11 +19,5 @@ const NODE_STYLES: Record<ActivityType, NodeStyle> = {
   result:     { icon: CheckCircle,   color: 'text-stone-400',  bgColor: 'bg-stone-400/10',  borderColor: 'border-stone-400/30' },
 }
 
-const NODE_WIDTH = 200
-const NODE_HEIGHT = 40
-const NODE_GAP_Y = 16
-const PARALLEL_GAP_X = 24
-const SVG_PADDING = 24
-
-export { NODE_STYLES, NODE_WIDTH, NODE_HEIGHT, NODE_GAP_Y, PARALLEL_GAP_X, SVG_PADDING }
+export { NODE_STYLES }
 export type { NodeStyle }

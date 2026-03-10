@@ -3,10 +3,7 @@ import { useSessionStore } from '../../store/session-store'
 import { useTabStore } from '../../store/tab-store'
 import { buildFlowGraph } from '../../lib/flow-graph'
 import { FlowNode } from './FlowNode'
-import { FlowEdge } from './FlowEdge'
-import { NODE_HEIGHT, SVG_PADDING } from './flow-constants'
 import { Workflow } from 'lucide-react'
-import type { FlowNode as FlowNodeType } from '../../lib/flow-types'
 
 const emptyMessages: unknown[] = []
 
@@ -18,26 +15,7 @@ export function FlowPanel() {
 
   const graph = useMemo(() => buildFlowGraph(messages, isStreaming), [messages, isStreaming])
 
-  const nodeMap = useMemo(() => {
-    const map = new Map<string, FlowNodeType>()
-    for (const node of graph.nodes) {
-      map.set(node.id, node)
-    }
-    return map
-  }, [graph.nodes])
-
-  const svgHeight = useMemo(() => {
-    if (graph.nodes.length === 0) return 200
-    const maxY = Math.max(...graph.nodes.map((n) => n.y))
-    return maxY + NODE_HEIGHT + SVG_PADDING * 2
-  }, [graph.nodes])
-
-  const svgWidth = useMemo(() => {
-    if (graph.nodes.length === 0) return 200
-    const maxX = Math.max(...graph.nodes.map((n) => n.x))
-    return maxX + SVG_PADDING * 2 + 100
-  }, [graph.nodes])
-
+  // Auto-scroll to bottom during streaming
   const scrollRef = useRef<HTMLDivElement>(null)
   const isNearBottomRef = useRef(true)
 
@@ -55,7 +33,7 @@ export function FlowPanel() {
     if (isNearBottomRef.current && scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
-  }, [graph.nodes.length])
+  }, [graph.elements.length])
 
   const handleNodeClick = useCallback((messageIndices: number[]) => {
     if (messageIndices.length === 0) return
@@ -72,7 +50,9 @@ export function FlowPanel() {
     )
   }
 
-  if (graph.nodes.length === 0) {
+  const nodeCount = graph.elements.filter((e) => e.kind === 'node' || e.kind === 'parallel').length
+
+  if (nodeCount === 0) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-2 p-4">
         <Workflow size={20} className="text-stone-700" />
@@ -86,22 +66,38 @@ export function FlowPanel() {
       <div className="flex items-center gap-2 border-b border-stone-800 px-3 py-2">
         <Workflow size={13} className="text-stone-500" />
         <span className="text-xs font-medium text-stone-400">Flow</span>
-        <span className="text-[10px] text-stone-600">{graph.nodes.length} steps</span>
+        <span className="text-[10px] text-stone-600">{nodeCount} steps</span>
       </div>
-      <svg
-        width={svgWidth}
-        height={svgHeight}
-        className="w-full"
-        viewBox={`0 0 ${svgWidth} ${svgHeight}`}
-        preserveAspectRatio="xMidYMin meet"
-      >
-        {graph.edges.map((edge) => (
-          <FlowEdge key={edge.id} edge={edge} nodes={nodeMap} />
-        ))}
-        {graph.nodes.map((node) => (
-          <FlowNode key={node.id} node={node} onClick={handleNodeClick} />
-        ))}
-      </svg>
+      <div className="flex flex-col items-center px-3 py-3">
+        {graph.elements.map((element, i) => {
+          if (element.kind === 'edge') {
+            return (
+              <div
+                key={`edge-${i}`}
+                className={`h-4 w-px ${element.type === 'retry' ? 'border-l border-dashed border-red-500' : 'bg-stone-700'}`}
+              />
+            )
+          }
+
+          if (element.kind === 'parallel') {
+            return (
+              <div key={`par-${i}`} className="flex w-full gap-2">
+                {element.nodes.map((node) => (
+                  <div key={node.id} className="min-w-0 flex-1">
+                    <FlowNode node={node} onClick={handleNodeClick} />
+                  </div>
+                ))}
+              </div>
+            )
+          }
+
+          return (
+            <div key={element.node.id} className="w-full">
+              <FlowNode node={element.node} onClick={handleNodeClick} />
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }
