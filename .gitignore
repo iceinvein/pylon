@@ -6,6 +6,7 @@ dist
 *.tsbuildinfo
 
 docs/plans
+docs/superpowers
 .playwright-mcp
 
 .DS_Store
