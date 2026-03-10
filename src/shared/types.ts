@@ -138,6 +138,40 @@ export type SessionInitInfo = {
   claudeCodeVersion: string
 }
 
+// ── Plugin Management ──────────────────────────
+
+export type InstalledPlugin = {
+  /** Plugin ID in format "name@marketplace" */
+  id: string
+  /** Plugin name (without marketplace) */
+  name: string
+  /** Marketplace ID */
+  marketplace: string
+  /** Whether enabled in user settings */
+  enabled: boolean
+  /** Install scope: user-wide or project-specific */
+  scope: 'user' | 'project'
+  /** Project path for project-scoped plugins */
+  projectPath?: string
+  /** Installed version */
+  version: string
+  /** When the plugin was installed */
+  installedAt: string
+  /** When the plugin was last updated */
+  lastUpdated: string
+}
+
+export type PluginMarketplace = {
+  id: string
+  source: { source: string; repo?: string; url?: string }
+  lastUpdated: string
+}
+
+export type PluginManagementData = {
+  plugins: InstalledPlugin[]
+  marketplaces: PluginMarketplace[]
+}
+
 export type WorktreeMergeResult = {
   success: boolean
   error?: 'conflicts' | 'not-a-worktree' | 'branch-not-found' | 'uncommitted-changes' | string

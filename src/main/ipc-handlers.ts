@@ -1,12 +1,16 @@
-import { readFile } from 'node:fs/promises'
+import { readFile, writeFile } from 'node:fs/promises'
+import { homedir } from 'node:os'
 import path from 'node:path'
 import { BrowserWindow, dialog, ipcMain } from 'electron'
 import { IPC } from '../shared/ipc-channels'
 import { log } from '../shared/logger'
 import type {
   AppSettings,
+  InstalledPlugin,
   PermissionMode,
   PermissionResponse,
+  PluginManagementData,
+  PluginMarketplace,
   QuestionResponse,
   ReviewFinding,
   ReviewFocus,
@@ -43,6 +47,109 @@ function getSettings(): AppSettings {
 function updateSetting(key: string, value: unknown): void {
   const db = getDb()
   db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run(key, String(value))
+}
+
+// ── Plugin Management ──
+
+const CLAUDE_DIR = path.join(homedir(), '.claude')
+const PLUGINS_DIR = path.join(CLAUDE_DIR, 'plugins')
+const CLAUDE_SETTINGS_PATH = path.join(CLAUDE_DIR, 'settings.json')
+
+async function readJsonFile<T>(filePath: string): Promise<T | null> {
+  try {
+    const content = await readFile(filePath, 'utf-8')
+    return JSON.parse(content) as T
+  } catch {
+    return null
+  }
+}
+
+type InstalledPluginsFile = {
+  version: number
+  plugins: Record<
+    string,
+    Array<{
+      scope: 'user' | 'project'
+      projectPath?: string
+      installPath: string
+      version: string
+      installedAt: string
+      lastUpdated: string
+      gitCommitSha?: string
+    }>
+  >
+}
+
+type KnownMarketplacesFile = Record<
+  string,
+  {
+    source: { source: string; repo?: string; url?: string }
+    installLocation: string
+    lastUpdated: string
+  }
+>
+
+type ClaudeSettingsFile = {
+  enabledPlugins?: Record<string, boolean | string[] | Record<string, unknown>>
+  [key: string]: unknown
+}
+
+async function loadPluginData(): Promise<PluginManagementData> {
+  const [installedData, marketplacesData, settingsData] = await Promise.all([
+    readJsonFile<InstalledPluginsFile>(path.join(PLUGINS_DIR, 'installed_plugins.json')),
+    readJsonFile<KnownMarketplacesFile>(path.join(PLUGINS_DIR, 'known_marketplaces.json')),
+    readJsonFile<ClaudeSettingsFile>(CLAUDE_SETTINGS_PATH),
+  ])
+
+  const enabledPlugins = settingsData?.enabledPlugins ?? {}
+
+  const plugins: InstalledPlugin[] = []
+  if (installedData?.plugins) {
+    for (const [pluginId, installs] of Object.entries(installedData.plugins)) {
+      const [name, marketplace] = pluginId.split('@')
+      for (const install of installs) {
+        plugins.push({
+          id: pluginId,
+          name,
+          marketplace,
+          enabled: enabledPlugins[pluginId] === true,
+          scope: install.scope,
+          projectPath: install.projectPath,
+          version: install.version,
+          installedAt: install.installedAt,
+          lastUpdated: install.lastUpdated,
+        })
+      }
+    }
+  }
+
+  const marketplaces: PluginMarketplace[] = []
+  if (marketplacesData) {
+    for (const [id, mp] of Object.entries(marketplacesData)) {
+      marketplaces.push({
+        id,
+        source: mp.source,
+        lastUpdated: mp.lastUpdated,
+      })
+    }
+  }
+
+  return { plugins, marketplaces }
+}
+
+async function togglePlugin(pluginId: string, enabled: boolean): Promise<boolean> {
+  try {
+    const settings = (await readJsonFile<ClaudeSettingsFile>(CLAUDE_SETTINGS_PATH)) ?? {}
+    if (!settings.enabledPlugins) {
+      settings.enabledPlugins = {}
+    }
+    settings.enabledPlugins[pluginId] = enabled
+    await writeFile(CLAUDE_SETTINGS_PATH, JSON.stringify(settings, null, 4), 'utf-8')
+    return true
+  } catch (err) {
+    logger.error('Failed to toggle plugin:', err)
+    return false
+  }
 }
 
 export function registerIpcHandlers(): void {
@@ -185,6 +292,16 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(IPC.SETTINGS_UPDATE, async (_e, args: { key: string; value: unknown }) => {
     updateSetting(args.key, args.value)
     return true
+  })
+
+  // ── Plugins ──
+
+  ipcMain.handle(IPC.PLUGINS_LIST, async () => {
+    return loadPluginData()
+  })
+
+  ipcMain.handle(IPC.PLUGINS_TOGGLE, async (_e, args: { pluginId: string; enabled: boolean }) => {
+    return togglePlugin(args.pluginId, args.enabled)
   })
 
   ipcMain.handle(IPC.WORKTREE_MERGE_CLEANUP, async (_e, args: { sessionId: string }) => {

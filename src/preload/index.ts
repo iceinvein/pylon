@@ -72,6 +72,11 @@ const api = {
     return () => ipcRenderer.removeListener(IPC.GH_REVIEW_UPDATE, handler)
   },
 
+  // Plugins
+  listPlugins: () => ipcRenderer.invoke(IPC.PLUGINS_LIST),
+  togglePlugin: (pluginId: string, enabled: boolean) =>
+    ipcRenderer.invoke(IPC.PLUGINS_TOGGLE, { pluginId, enabled }),
+
   onSessionMessage: (callback: (data: unknown) => void) => {
     const handler = (_event: unknown, data: unknown) => callback(data)
     ipcRenderer.on(IPC.SESSION_MESSAGE, handler)

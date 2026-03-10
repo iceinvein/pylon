@@ -36,6 +36,10 @@ type Api = {
   mergeWorktree: (sessionId: string) => Promise<import('../shared/types').WorktreeMergeResult>
   discardWorktree: (sessionId: string) => Promise<boolean>
   getWorktreeInfo: (sessionId: string) => Promise<import('../shared/types').WorktreeInfo>
+  // Plugins
+  listPlugins: () => Promise<import('../shared/types').PluginManagementData>
+  togglePlugin: (pluginId: string, enabled: boolean) => Promise<boolean>
+
   onSessionMessage: (callback: (data: unknown) => void) => () => void
   onSessionStatus: (callback: (data: unknown) => void) => () => void
   onSessionPermission: (callback: (data: unknown) => void) => () => void

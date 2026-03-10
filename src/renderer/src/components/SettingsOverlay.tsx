@@ -1,6 +1,7 @@
 import {
   ArrowLeft,
   BarChart3,
+  Blocks,
   Bot,
   Info,
   Plug,
@@ -10,7 +11,13 @@ import {
 } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useState } from 'react'
-import type { AppSettings, GhCliStatus } from '../../../shared/types'
+import type {
+  AppSettings,
+  GhCliStatus,
+  InstalledPlugin,
+  PluginManagementData,
+  PluginMarketplace,
+} from '../../../shared/types'
 import { useUiStore } from '../store/ui-store'
 import { UsageDashboard } from './UsageDashboard'
 
@@ -37,12 +44,131 @@ const PERMISSION_MODES = [
 
 const TABS = [
   { id: 'general', label: 'General', icon: Settings },
+  { id: 'plugins', label: 'Plugins', icon: Blocks },
   { id: 'usage', label: 'Usage', icon: BarChart3 },
   { id: 'agents', label: 'Review Agents', icon: Bot },
   { id: 'integrations', label: 'Integrations', icon: Plug },
 ] as const
 
 type SettingsTab = (typeof TABS)[number]['id']
+
+function PluginToggle({
+  enabled,
+  onToggle,
+}: {
+  enabled: boolean
+  onToggle: (enabled: boolean) => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onToggle(!enabled)}
+      className={`relative h-5 w-9 rounded-full transition-colors ${
+        enabled ? 'bg-green-600' : 'bg-stone-700'
+      }`}
+    >
+      <span
+        className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
+          enabled ? 'translate-x-4' : 'translate-x-0'
+        }`}
+      />
+    </button>
+  )
+}
+
+function PluginsTabContent({
+  plugins,
+  marketplaces,
+  onToggle,
+}: {
+  plugins: InstalledPlugin[]
+  marketplaces: PluginMarketplace[]
+  onToggle: (pluginId: string, enabled: boolean) => void
+}) {
+  // Deduplicate: show user-scope install if both user + project exist
+  const deduped = new Map<string, InstalledPlugin>()
+  for (const p of plugins) {
+    const existing = deduped.get(p.id)
+    if (!existing || p.scope === 'user') {
+      deduped.set(p.id, p)
+    }
+  }
+
+  // Group by marketplace
+  const byMarketplace = new Map<string, InstalledPlugin[]>()
+  for (const p of deduped.values()) {
+    const group = byMarketplace.get(p.marketplace) ?? []
+    group.push(p)
+    byMarketplace.set(p.marketplace, group)
+  }
+
+  // Build marketplace display names
+  const mpInfo = new Map(marketplaces.map((m) => [m.id, m]))
+
+  return (
+    <div className="mt-5 space-y-6">
+      {[...byMarketplace.entries()]
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([marketplaceId, marketplacePlugins]) => {
+          const mp = mpInfo.get(marketplaceId)
+          const source = mp?.source
+          const repoLabel =
+            source?.repo ?? source?.url ?? marketplaceId
+
+          return (
+            <section key={marketplaceId}>
+              <div className="flex items-center gap-2 mb-3">
+                <h3 className="font-medium text-sm text-stone-300">
+                  {marketplaceId}
+                </h3>
+                {repoLabel !== marketplaceId && (
+                  <span className="text-[10px] text-stone-600">{repoLabel}</span>
+                )}
+              </div>
+              <div className="space-y-1">
+                {marketplacePlugins
+                  .sort((a, b) => a.name.localeCompare(b.name))
+                  .map((plugin) => (
+                    <div
+                      key={plugin.id}
+                      className="flex items-center gap-3 rounded-lg border border-stone-800/50 bg-stone-900/30 px-4 py-3"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-sm text-stone-200">
+                            {plugin.name}
+                          </span>
+                          <span className="text-[10px] text-stone-600 tabular-nums">
+                            {plugin.version}
+                          </span>
+                          {plugin.scope === 'project' && (
+                            <span className="rounded bg-stone-800 px-1.5 py-0.5 text-[10px] text-stone-500">
+                              project
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <PluginToggle
+                        enabled={plugin.enabled}
+                        onToggle={(enabled) => onToggle(plugin.id, enabled)}
+                      />
+                    </div>
+                  ))}
+              </div>
+            </section>
+          )
+        })}
+
+      <div className="flex items-start gap-2 rounded-md border border-stone-800 bg-stone-900/50 px-3 py-2">
+        <Info size={13} className="mt-0.5 flex-shrink-0 text-stone-600" />
+        <p className="text-stone-500 text-xs">
+          Plugin changes take effect on the next session start. Plugins are managed via{' '}
+          <code className="text-stone-400">~/.claude/settings.json</code>.
+        </p>
+      </div>
+    </div>
+  )
+}
 
 export function SettingsOverlay() {
   const { settingsOpen, setSettingsOpen } = useUiStore()
@@ -55,6 +181,27 @@ export function SettingsOverlay() {
     Array<{ id: string; name: string; prompt: string; isCustom: boolean }>
   >([])
   const [activeAgent, setActiveAgent] = useState<string | null>(null)
+  const [pluginData, setPluginData] = useState<PluginManagementData | null>(null)
+  const [pluginsLoading, setPluginsLoading] = useState(false)
+
+  async function loadPlugins() {
+    setPluginsLoading(true)
+    const data = await window.api.listPlugins()
+    setPluginData(data)
+    setPluginsLoading(false)
+  }
+
+  async function handleTogglePlugin(pluginId: string, enabled: boolean) {
+    const ok = await window.api.togglePlugin(pluginId, enabled)
+    if (ok && pluginData) {
+      setPluginData({
+        ...pluginData,
+        plugins: pluginData.plugins.map((p) =>
+          p.id === pluginId ? { ...p, enabled } : p,
+        ),
+      })
+    }
+  }
 
   async function recheckGh() {
     setGhChecking(true)
@@ -79,6 +226,11 @@ export function SettingsOverlay() {
   // biome-ignore lint/correctness/useExhaustiveDependencies: recheckGh is stable intent
   useEffect(() => {
     if (settingsOpen && activeTab === 'integrations') recheckGh()
+  }, [settingsOpen, activeTab])
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: loadPlugins is stable intent
+  useEffect(() => {
+    if (settingsOpen && activeTab === 'plugins') loadPlugins()
   }, [settingsOpen, activeTab])
 
   useEffect(() => {
@@ -253,6 +405,37 @@ export function SettingsOverlay() {
                         </p>
                       </div>
                     </section>
+                  </div>
+                )}
+
+                {activeTab === 'plugins' && (
+                  <div className="mt-6">
+                    <p className="text-sm text-stone-400">
+                      Manage installed Claude Code plugins. Toggle plugins on/off — changes take
+                      effect on the next session.
+                    </p>
+
+                    {pluginsLoading ? (
+                      <div className="mt-8 flex items-center justify-center text-sm text-stone-600">
+                        Loading plugins...
+                      </div>
+                    ) : !pluginData || pluginData.plugins.length === 0 ? (
+                      <div className="mt-8 text-center">
+                        <p className="text-sm text-stone-500">No plugins installed</p>
+                        <p className="mt-1 text-xs text-stone-600">
+                          Install plugins via Claude Code CLI:{' '}
+                          <code className="text-stone-400">
+                            claude mcp add-marketplace &lt;repo&gt;
+                          </code>
+                        </p>
+                      </div>
+                    ) : (
+                      <PluginsTabContent
+                        plugins={pluginData.plugins}
+                        marketplaces={pluginData.marketplaces}
+                        onToggle={handleTogglePlugin}
+                      />
+                    )}
                   </div>
                 )}
 
