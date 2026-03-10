@@ -5,6 +5,7 @@ import { useUiStore } from '../store/ui-store'
 import { useTabStore } from '../store/tab-store'
 import { useSessionStore } from '../store/session-store'
 import type { SessionState } from '../store/session-store'
+import type { SessionStatus } from '../../../shared/types'
 import { timeAgo } from '../lib/utils'
 import { extractChangedFiles } from '../lib/extract-changed-files'
 
@@ -36,6 +37,7 @@ export function CommandPalette() {
   const setSession = useSessionStore((s) => s.setSession)
   const setMessages = useSessionStore((s) => s.setMessages)
   const addChangedFile = useSessionStore((s) => s.addChangedFile)
+  const updateSession = useSessionStore((s) => s.updateSession)
   const clearTasks = useSessionStore((s) => s.clearTasks)
   const [query, setQuery] = useState('')
   const [selectedIdx, setSelectedIdx] = useState(0)
@@ -87,7 +89,10 @@ export function CommandPalette() {
       addChangedFile(session.id, filePath)
     }
 
-    await window.api.resumeSession(session.id)
+    const result = await window.api.resumeSession(session.id)
+    if (result.status && result.status !== 'done') {
+      updateSession(session.id, { status: result.status as SessionStatus })
+    }
     addTab(session.cwd, session.title || session.cwd.split('/').pop() || session.cwd, session.id)
   }
 

@@ -5,6 +5,7 @@ import { useSessionStore } from '../store/session-store'
 import { formatCost, timeAgo } from '../lib/utils'
 import { extractChangedFiles } from '../lib/extract-changed-files'
 import type { SessionState } from '../store/session-store'
+import type { SessionStatus } from '../../../shared/types'
 
 type StoredSession = {
   id: string
@@ -29,6 +30,7 @@ export function HistoryPanel() {
   const setSession = useSessionStore((s) => s.setSession)
   const setMessages = useSessionStore((s) => s.setMessages)
   const addChangedFile = useSessionStore((s) => s.addChangedFile)
+  const updateSession = useSessionStore((s) => s.updateSession)
 
   const openSessionIds = new Set(tabs.map((t) => t.sessionId).filter(Boolean))
 
@@ -76,7 +78,10 @@ export function HistoryPanel() {
       addChangedFile(session.id, filePath)
     }
 
-    await window.api.resumeSession(session.id)
+    const result = await window.api.resumeSession(session.id)
+    if (result.status && result.status !== 'done') {
+      updateSession(session.id, { status: result.status as SessionStatus })
+    }
     const displayCwd = session.original_cwd ?? session.cwd
     addTab(session.cwd, session.title || displayCwd.split('/').pop() || displayCwd, session.id, session.worktree_path ? true : undefined)
   }

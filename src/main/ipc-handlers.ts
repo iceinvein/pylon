@@ -54,10 +54,10 @@ export function registerIpcHandlers(): void {
     const success = sessionManager.resumeSession(args.sessionId)
     if (success) {
       const db = getDb()
-      const row = db.prepare('SELECT title FROM sessions WHERE id = ?').get(args.sessionId) as { title: string } | undefined
-      return { success: true, title: row?.title ?? '' }
+      const row = db.prepare('SELECT title, status FROM sessions WHERE id = ?').get(args.sessionId) as { title: string; status: string } | undefined
+      return { success: true, title: row?.title ?? '', status: row?.status ?? 'done' }
     }
-    return { success: false, title: '' }
+    return { success: false, title: '', status: 'done' }
   })
 
   ipcMain.handle(IPC.SESSION_LIST, async () => {

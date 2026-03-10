@@ -5,6 +5,7 @@ import { useSessionStore } from '../store/session-store'
 import { formatCost, timeAgo } from '../lib/utils'
 import { extractChangedFiles } from '../lib/extract-changed-files'
 import type { SessionState } from '../store/session-store'
+import type { SessionStatus } from '../../../shared/types'
 
 type StoredSession = {
   id: string
@@ -26,6 +27,7 @@ export function SessionHistory() {
   const setSession = useSessionStore((s) => s.setSession)
   const setMessages = useSessionStore((s) => s.setMessages)
   const addChangedFile = useSessionStore((s) => s.addChangedFile)
+  const updateSession = useSessionStore((s) => s.updateSession)
 
   async function loadSessions() {
     setLoading(true)
@@ -71,6 +73,9 @@ export function SessionHistory() {
     const title = result.title || session.title || session.cwd.split('/').pop() || session.cwd
     if (result.title) {
       setSession({ ...sessionState, title: result.title })
+    }
+    if (result.status && result.status !== 'done') {
+      updateSession(session.id, { status: result.status as SessionStatus })
     }
     addTab(session.cwd, title, session.id)
   }
