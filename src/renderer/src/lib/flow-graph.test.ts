@@ -119,9 +119,7 @@ describe('buildFlowGraph', () => {
   })
 
   test('skips subagent messages (parent_tool_use_id set)', () => {
-    const messages = [
-      assistantMsg([{ name: 'Read', input: { file_path: '/a.ts' } }], 'parent-123'),
-    ]
+    const messages = [assistantMsg([{ name: 'Read', input: { file_path: '/a.ts' } }], 'parent-123')]
     const graph = buildFlowGraph(messages, false)
     expect(graph.elements).toEqual([])
   })

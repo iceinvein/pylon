@@ -112,15 +112,12 @@ function PluginsTabContent({
         .map(([marketplaceId, marketplacePlugins]) => {
           const mp = mpInfo.get(marketplaceId)
           const source = mp?.source
-          const repoLabel =
-            source?.repo ?? source?.url ?? marketplaceId
+          const repoLabel = source?.repo ?? source?.url ?? marketplaceId
 
           return (
             <section key={marketplaceId}>
-              <div className="flex items-center gap-2 mb-3">
-                <h3 className="font-medium text-sm text-stone-300">
-                  {marketplaceId}
-                </h3>
+              <div className="mb-3 flex items-center gap-2">
+                <h3 className="font-medium text-sm text-stone-300">{marketplaceId}</h3>
                 {repoLabel !== marketplaceId && (
                   <span className="text-[10px] text-stone-600">{repoLabel}</span>
                 )}
@@ -133,11 +130,9 @@ function PluginsTabContent({
                       key={plugin.id}
                       className="flex items-center gap-3 rounded-lg border border-stone-800/50 bg-stone-900/30 px-4 py-3"
                     >
-                      <div className="flex-1 min-w-0">
+                      <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <span className="font-medium text-sm text-stone-200">
-                            {plugin.name}
-                          </span>
+                          <span className="font-medium text-sm text-stone-200">{plugin.name}</span>
                           <span className="text-[10px] text-stone-600 tabular-nums">
                             {plugin.version}
                           </span>
@@ -196,9 +191,7 @@ export function SettingsOverlay() {
     if (ok && pluginData) {
       setPluginData({
         ...pluginData,
-        plugins: pluginData.plugins.map((p) =>
-          p.id === pluginId ? { ...p, enabled } : p,
-        ),
+        plugins: pluginData.plugins.map((p) => (p.id === pluginId ? { ...p, enabled } : p)),
       })
     }
   }
@@ -422,7 +415,7 @@ export function SettingsOverlay() {
                     ) : !pluginData || pluginData.plugins.length === 0 ? (
                       <div className="mt-8 text-center">
                         <p className="text-sm text-stone-500">No plugins installed</p>
-                        <p className="mt-1 text-xs text-stone-600">
+                        <p className="mt-1 text-stone-600 text-xs">
                           Install plugins via Claude Code CLI:{' '}
                           <code className="text-stone-400">
                             claude mcp add-marketplace &lt;repo&gt;
