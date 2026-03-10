@@ -57,16 +57,18 @@ function collapseTree(node: DirNode): DirNode {
   return { ...node, dirs: collapsedDirs }
 }
 
-function findingCountForFile(findings: ReviewFinding[], filePath: string): { count: number; maxSeverity: string } {
+const SEVERITY_ORDER = ['critical', 'warning', 'suggestion', 'nitpick'] as const
+
+function findingCountsBySeverity(findings: ReviewFinding[], filePath: string): { severity: string; count: number }[] {
   const fileFindings = findings.filter((f) =>
     f.file === filePath || filePath.endsWith(f.file) || f.file.endsWith(filePath)
   )
-  if (fileFindings.length === 0) return { count: 0, maxSeverity: '' }
-  const order = ['critical', 'warning', 'suggestion', 'nitpick']
-  const maxSeverity = fileFindings.reduce((max, f) => {
-    return order.indexOf(f.severity) < order.indexOf(max) ? f.severity : max
-  }, 'nitpick')
-  return { count: fileFindings.length, maxSeverity }
+  if (fileFindings.length === 0) return []
+  const counts = new Map<string, number>()
+  for (const f of fileFindings) {
+    counts.set(f.severity, (counts.get(f.severity) || 0) + 1)
+  }
+  return SEVERITY_ORDER.filter((s) => counts.has(s)).map((s) => ({ severity: s, count: counts.get(s)! }))
 }
 
 const SEVERITY_COLORS: Record<string, string> = {
@@ -124,7 +126,7 @@ function DirContent({ node, findings, selectedFile, onSelectFile, depth }: {
         .sort((a, b) => a.path.localeCompare(b.path))
         .map((file) => {
           const fileName = file.path.split('/').pop() || file.path
-          const { count, maxSeverity } = findingCountForFile(findings, file.path)
+          const severityCounts = findingCountsBySeverity(findings, file.path)
           return (
             <button
               key={file.path}
@@ -138,9 +140,13 @@ function DirContent({ node, findings, selectedFile, onSelectFile, depth }: {
             >
               <FileText size={11} className="flex-shrink-0 text-stone-600" />
               <span className="min-w-0 flex-1 truncate font-[family-name:var(--font-mono)]">{fileName}</span>
-              {count > 0 && (
-                <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-medium tabular-nums ${SEVERITY_COLORS[maxSeverity] || SEVERITY_COLORS.nitpick}`}>
-                  {count}
+              {severityCounts.length > 0 && (
+                <span className="flex items-center gap-0.5">
+                  {severityCounts.map(({ severity, count }) => (
+                    <span key={severity} className={`rounded-full px-1.5 py-0.5 text-[9px] font-medium tabular-nums ${SEVERITY_COLORS[severity] || SEVERITY_COLORS.nitpick}`}>
+                      {count}
+                    </span>
+                  ))}
                 </span>
               )}
               <span className="flex-shrink-0 font-[family-name:var(--font-mono)] tabular-nums text-[10px]">
