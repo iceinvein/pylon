@@ -415,11 +415,13 @@ class PrReviewManager {
     const detail = await getPrDetail(repo.fullName, prNumber)
 
     const tokenBudget = getTokenBudget()
+    logger.info(`Token budget: ${tokenBudget} tokens (diff length: ${detail.diff.length} chars, ~${Math.ceil(detail.diff.length / 3.3)} tokens)`)
     const { chunks, skippedFiles } = chunkDiff(detail.diff, { tokenBudget })
 
     if (skippedFiles.length > 0) {
       logger.info(`Skipped ${skippedFiles.length} files:`, skippedFiles)
     }
+    logger.info(`Chunked into ${chunks.length} chunks: ${chunks.map((c, i) => `chunk ${i + 1}: ${c.files.length} files, ${c.diff.length} chars (~${Math.ceil(c.diff.length / 3.3)} tokens)`).join('; ')}`)
 
     const active = this.activeReviews.get(reviewId)
     if (!active) return
@@ -606,6 +608,8 @@ ${chunk.diff}
 
 Output findings in the same \`review-findings\` format.`
         }
+
+        logger.info(`Agent ${focus} sending chunk ${i + 1}/${chunks.length}: prompt ${prompt.length} chars (~${Math.ceil(prompt.length / 3.3)} tokens)`)
 
         try {
           await sessionManager.sendMessage(sessionId, prompt)

@@ -7,13 +7,17 @@ export type FileTier = 'critical' | 'important' | 'low' | 'skip'
 
 /**
  * Token overhead breakdown:
- * - SDK system prompt + tool definitions: ~25-35k tokens
+ * - SDK system prompt + tool definitions: ~35-45k tokens
  * - CLAUDE.md / project instructions: ~2-5k tokens
- * - Our review prompt template (specialist instructions + PR metadata + output format): ~5k tokens
- * - Response budget (agent's output): ~8k tokens
- * Total conservative estimate: ~50k tokens of non-diff overhead
+ * - Our review prompt template (specialist instructions + PR metadata + output format): ~8-12k tokens
+ *   (specialist prompts are 60-80 lines each, plus PR info, file list, and output format)
+ * - Response budget (agent's output): ~8-10k tokens
+ * Total conservative estimate: ~80k tokens of non-diff overhead
+ *
+ * Being aggressive here is safer — a too-small budget just means more chunks,
+ * while a too-large budget causes prompt-too-long crashes.
  */
-export const PROMPT_OVERHEAD_TOKENS = 50_000
+export const PROMPT_OVERHEAD_TOKENS = 80_000
 
 export const MODEL_TOKEN_LIMITS: Record<string, number> = {
   'claude-sonnet-4-20250514': 200_000,
@@ -102,7 +106,13 @@ const SKIP_PATTERNS = [
   /\.min\./,
   /\.map$/,
   /\.bundle\.\w+$/,
-  // ── Snapshots ──
+  // ── ORM migrations / snapshots ──
+  /(^|\/)drizzle\/meta\//,              // Drizzle ORM snapshot metadata
+  /(^|\/)drizzle\/.*\.sql$/,            // Drizzle SQL migration files
+  /\.snapshot\.json$/,                   // Drizzle snapshot JSON files
+  /(^|\/)migrations?\//,                // Generic migration directories
+  /(^|\/)prisma\/migrations\//,         // Prisma migration files
+  // ── Test snapshots ──
   /\.snap$/,
   /\.snapshot$/,
   // ── Generated / build output ──
@@ -190,8 +200,14 @@ function getExtension(filename: string): string {
 
 // ── Token estimation ─────────────────────────────────────────────────
 
+/**
+ * Conservative token estimation.
+ * Standard English text averages ~4 chars/token, but diffs contain many
+ * short tokens (symbols like +, -, @, paths, punctuation) that tokenize
+ * less efficiently. Using 3.3 chars/token provides a safety margin.
+ */
 function estimateTokens(text: string): number {
-  return Math.ceil(text.length / 4)
+  return Math.ceil(text.length / 3.3)
 }
 
 // ── Budget ───────────────────────────────────────────────────────────

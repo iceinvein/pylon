@@ -67,6 +67,14 @@ test('classifyFile identifies generated/lock files as skip', () => {
   // Nested lockfiles (monorepo)
   expect(classifyFile('packages/web/yarn.lock')).toBe('skip')
   expect(classifyFile('services/api/Cargo.lock')).toBe('skip')
+  // ORM migrations / snapshots
+  expect(classifyFile('drizzle/meta/0000_snapshot.json')).toBe('skip')
+  expect(classifyFile('drizzle/meta/_journal.json')).toBe('skip')
+  expect(classifyFile('drizzle/0001_initial.sql')).toBe('skip')
+  expect(classifyFile('drizzle/0002_add_users.sql')).toBe('skip')
+  expect(classifyFile('src/db/schema.snapshot.json')).toBe('skip')
+  expect(classifyFile('prisma/migrations/20240101_init/migration.sql')).toBe('skip')
+  expect(classifyFile('migrations/0001_create_tables.sql')).toBe('skip')
   // Generated / build
   expect(classifyFile('dist/bundle.min.js')).toBe('skip')
   expect(classifyFile('coverage/lcov.info')).toBe('skip')
