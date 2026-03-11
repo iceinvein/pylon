@@ -750,17 +750,19 @@ export class SessionManager {
 
   getProjectFolders(): Array<{ path: string; lastUsed: number }> {
     const db = getDb()
+    const worktreeBase = join(homedir(), '.pylon', 'worktrees')
     const rows = db
       .prepare(`
       SELECT
         COALESCE(original_cwd, cwd) as path,
         MAX(updated_at) as last_used
       FROM sessions
+      WHERE COALESCE(original_cwd, cwd) NOT LIKE ? || '%'
       GROUP BY COALESCE(original_cwd, cwd)
       ORDER BY last_used DESC
       LIMIT 20
     `)
-      .all() as Array<{ path: string; last_used: number }>
+      .all(worktreeBase) as Array<{ path: string; last_used: number }>
 
     return rows.map((r) => ({ path: r.path, lastUsed: r.last_used }))
   }
