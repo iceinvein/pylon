@@ -3,6 +3,7 @@ import { type ReactNode, useCallback, useRef, useState } from 'react'
 import { useSessionStore } from '../../store/session-store'
 import { useTabStore } from '../../store/tab-store'
 import { useUiStore } from '../../store/ui-store'
+import { GitBranchPanel } from '../GitBranchPanel'
 import { HistoryPanel } from '../HistoryPanel'
 import { StatusBar } from '../StatusBar'
 import { NavRail } from './NavRail'
@@ -15,6 +16,7 @@ type LayoutProps = {
 const MIN_WIDTH = 200
 const MAX_WIDTH = 500
 const DEFAULT_WIDTH = 260
+const GIT_PANEL_WIDTH = 280
 
 export function Layout({ children }: LayoutProps) {
   const activeTabId = useTabStore((s) => s.activeTabId)
@@ -27,6 +29,11 @@ export function Layout({ children }: LayoutProps) {
 
   const sidebarView = useUiStore((s) => s.sidebarView)
   const showSidebar = sidebarView === 'history'
+  const gitPanelOpen = useUiStore((s) => s.gitPanelOpen)
+  const toggleGitPanel = useUiStore((s) => s.toggleGitPanel)
+
+  const showGitPanel =
+    gitPanelOpen && sidebarView !== 'pr-review' && branchStatus?.isGitRepo && !!branchStatus?.branch
 
   const [panelWidth, setPanelWidth] = useState(DEFAULT_WIDTH)
   const dragging = useRef(false)
@@ -90,6 +97,27 @@ export function Layout({ children }: LayoutProps) {
               onMouseDown={handleDragStart}
               className="flex w-1 flex-shrink-0 cursor-col-resize items-center justify-center border-stone-800 border-r bg-stone-950 transition-colors hover:bg-stone-700 active:bg-stone-600"
             />
+          </motion.div>
+        )}
+      </AnimatePresence>
+      {/* Git branch panel — slides in from left edge of main area */}
+      <AnimatePresence initial={false}>
+        {showGitPanel && branchStatus && (
+          <motion.div
+            key="git-panel"
+            initial={{ width: 0, opacity: 0 }}
+            animate={{ width: GIT_PANEL_WIDTH, opacity: 1 }}
+            exit={{ width: 0, opacity: 0 }}
+            transition={{ duration: 0.15, ease: [0.25, 0.1, 0.25, 1] }}
+            className="flex flex-shrink-0 overflow-hidden border-stone-800 border-r pt-12"
+          >
+            <div className="min-w-0 flex-1">
+              <GitBranchPanel
+                cwd={activeCwd}
+                branchStatus={branchStatus}
+                onClose={toggleGitPanel}
+              />
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

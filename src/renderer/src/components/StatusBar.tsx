@@ -1,7 +1,6 @@
 import { GitBranch } from 'lucide-react'
-import { useState } from 'react'
 import type { GitBranchStatus } from '../../../shared/types'
-import { GitBranchPopover } from './GitBranchPopover'
+import { useUiStore } from '../store/ui-store'
 
 type StatusBarProps = {
   cwd: string
@@ -30,30 +29,24 @@ function BranchIndicator({ status }: { status: GitBranchStatus }) {
   )
 }
 
-export function StatusBar({ cwd, branchStatus }: StatusBarProps) {
-  const [showPopover, setShowPopover] = useState(false)
+export function StatusBar({ cwd: _cwd, branchStatus }: StatusBarProps) {
+  const toggleGitPanel = useUiStore((s) => s.toggleGitPanel)
+  const gitPanelOpen = useUiStore((s) => s.gitPanelOpen)
 
   if (!branchStatus?.isGitRepo || !branchStatus.branch) {
     return <div className="h-6 border-stone-800 border-t bg-stone-950" />
   }
 
   return (
-    <div className="relative flex h-6 items-center border-stone-800 border-t bg-stone-950 px-3">
+    <div className="flex h-6 items-center border-stone-800 border-t bg-stone-950 px-3">
       <button
         type="button"
-        onClick={() => setShowPopover(!showPopover)}
-        className="rounded px-1 py-0.5 transition-colors hover:bg-stone-800"
+        onClick={toggleGitPanel}
+        className={`rounded px-1 py-0.5 transition-colors hover:bg-stone-800 ${gitPanelOpen ? 'bg-stone-800' : ''}`}
       >
         <BranchIndicator status={branchStatus} />
       </button>
       <div className="flex-1" />
-      {showPopover && (
-        <GitBranchPopover
-          cwd={cwd}
-          branchStatus={branchStatus}
-          onClose={() => setShowPopover(false)}
-        />
-      )}
     </div>
   )
 }
