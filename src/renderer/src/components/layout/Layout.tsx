@@ -1,7 +1,10 @@
 import { AnimatePresence, motion } from 'motion/react'
 import { type ReactNode, useCallback, useRef, useState } from 'react'
+import { useSessionStore } from '../../store/session-store'
+import { useTabStore } from '../../store/tab-store'
 import { useUiStore } from '../../store/ui-store'
 import { HistoryPanel } from '../HistoryPanel'
+import { StatusBar } from '../StatusBar'
 import { NavRail } from './NavRail'
 import { TabBar } from './TabBar'
 
@@ -14,6 +17,14 @@ const MAX_WIDTH = 500
 const DEFAULT_WIDTH = 260
 
 export function Layout({ children }: LayoutProps) {
+  const activeTabId = useTabStore((s) => s.activeTabId)
+  const tabs = useTabStore((s) => s.tabs)
+  const activeTab = tabs.find((t) => t.id === activeTabId)
+  const activeCwd = activeTab?.cwd ?? ''
+  const branchStatus = useSessionStore((s) =>
+    activeCwd ? s.branchStatus.get(activeCwd) : undefined,
+  )
+
   const sidebarView = useUiStore((s) => s.sidebarView)
   const showSidebar = sidebarView === 'history'
 
@@ -85,6 +96,7 @@ export function Layout({ children }: LayoutProps) {
       <div className="flex min-w-0 flex-1 flex-col pt-12">
         {sidebarView !== 'pr-review' && <TabBar />}
         <main className="min-h-0 flex-1 overflow-hidden">{children}</main>
+        {sidebarView !== 'pr-review' && <StatusBar cwd={activeCwd} branchStatus={branchStatus} />}
       </div>
     </div>
   )

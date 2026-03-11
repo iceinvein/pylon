@@ -51,6 +51,7 @@ type InputBarProps = {
   onPermissionModeChange: (mode: PermissionMode) => void
   onSend: (text: string, attachments: Attachment[]) => void
   onStop: () => void
+  behindCount?: number
 }
 
 export function InputBar({
@@ -62,6 +63,7 @@ export function InputBar({
   onPermissionModeChange,
   onSend,
   onStop,
+  behindCount,
 }: InputBarProps) {
   const [text, setText] = useState('')
   const [attachments, setAttachments] = useState<Attachment[]>([])
@@ -273,6 +275,14 @@ export function InputBar({
       </AnimatePresence>
 
       <div className="mx-auto max-w-3xl">
+        {behindCount != null && behindCount > 0 && (
+          <div className="flex items-center gap-2 border-amber-800/30 border-b bg-amber-950/20 px-3 py-1.5 text-amber-400 text-xs">
+            <span>⚠</span>
+            <span>
+              Branch is {behindCount} commit{behindCount !== 1 ? 's' : ''} behind origin
+            </span>
+          </div>
+        )}
         {/* biome-ignore lint/a11y/noStaticElementInteractions: drag-and-drop zone does not need keyboard interaction */}
         <div
           onDragOver={handleDragOver}

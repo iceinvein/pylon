@@ -73,6 +73,15 @@ export function SessionView({ tab }: SessionViewProps) {
     }
   }, [sessionId])
 
+  // Check git branch status on mount/tab switch
+  const setBranchStatus = useSessionStore((s) => s.setBranchStatus)
+  const branchStatus = useSessionStore((s) => s.branchStatus.get(tab.cwd))
+  useEffect(() => {
+    window.api.getGitBranchStatus(tab.cwd).then((status) => {
+      setBranchStatus(tab.cwd, status)
+    })
+  }, [tab.cwd, setBranchStatus])
+
   async function ensureSession(): Promise<string> {
     if (sessionId) return sessionId
     if (creatingSession.current) {
@@ -104,6 +113,16 @@ export function SessionView({ tab }: SessionViewProps) {
   }
 
   async function handleSend(text: string, attachments: Attachment[]) {
+    // Re-check branch status before first message
+    if (!sessionId) {
+      try {
+        const freshStatus = await window.api.getGitBranchStatus(tab.cwd)
+        setBranchStatus(tab.cwd, freshStatus)
+      } catch {
+        // ignore — don't block sending
+      }
+    }
+
     const sid = await ensureSession()
     if (!sid) return
 
@@ -287,6 +306,7 @@ export function SessionView({ tab }: SessionViewProps) {
               onPermissionModeChange={handlePermissionModeChange}
               onSend={handleSend}
               onStop={handleStop}
+              behindCount={branchStatus?.behind}
             />
           </div>
         </div>
