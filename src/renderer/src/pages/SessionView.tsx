@@ -266,7 +266,6 @@ export function SessionView({ tab }: SessionViewProps) {
     [infoPanelWidth, makeDragHandler],
   )
 
-  const initInfo = useSessionStore((s) => (sessionId ? s.initInfo.get(sessionId) : undefined))
 
   return (
     <div className="flex h-full">
@@ -488,19 +487,10 @@ export function SessionView({ tab }: SessionViewProps) {
                   title="Show session info"
                   className="group flex w-10 flex-col items-center gap-1.5 py-3 transition-colors hover:bg-stone-800/60"
                 >
-                  <div className="relative">
-                    <Info
-                      size={18}
-                      className="text-stone-500 transition-colors group-hover:text-stone-200"
-                    />
-                    {initInfo && (
-                      <span className="absolute -top-1.5 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-stone-600 px-1 font-medium text-[9px] text-stone-200">
-                        {initInfo.plugins.length +
-                          initInfo.mcpServers.length +
-                          initInfo.skills.length}
-                      </span>
-                    )}
-                  </div>
+                  <Info
+                    size={18}
+                    className="text-stone-500 transition-colors group-hover:text-stone-200"
+                  />
                   <span className="font-medium text-[9px] text-stone-600 transition-colors group-hover:text-stone-300">
                     Info
                   </span>
