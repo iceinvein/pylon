@@ -17,7 +17,8 @@ export function GitBranchPopover({ cwd, branchStatus, onClose }: GitBranchPopove
   const popoverRef = useRef<HTMLDivElement>(null)
   const setBranchStatus = useSessionStore((s) => s.setBranchStatus)
 
-  // Fetch on mount
+  // Fetch on mount — only depends on cwd, not branchStatus (which we update inside)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentionally excludes branchStatus to avoid infinite re-fetch loop
   useEffect(() => {
     setFetching(true)
     window.api
@@ -34,7 +35,7 @@ export function GitBranchPopover({ cwd, branchStatus, onClose }: GitBranchPopove
         // Fetch failed — show whatever we had
       })
       .finally(() => setFetching(false))
-  }, [cwd, branchStatus, setBranchStatus])
+  }, [cwd, setBranchStatus])
 
   // Close on click outside
   useEffect(() => {

@@ -38,15 +38,15 @@ export function StatusBar({ cwd, branchStatus }: StatusBarProps) {
   }
 
   return (
-    <div className="relative">
+    <div className="relative flex h-6 items-center border-stone-800 border-t bg-stone-950 px-3">
       <button
         type="button"
         onClick={() => setShowPopover(!showPopover)}
-        className="flex h-6 w-full items-center gap-3 border-stone-800 border-t bg-stone-950 px-3 transition-colors hover:bg-stone-900"
+        className="rounded px-1 py-0.5 transition-colors hover:bg-stone-800"
       >
         <BranchIndicator status={branchStatus} />
-        <div className="flex-1" />
       </button>
+      <div className="flex-1" />
       {showPopover && (
         <GitBranchPopover
           cwd={cwd}
