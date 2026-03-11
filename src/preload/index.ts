@@ -45,6 +45,12 @@ const api = {
   getGitBranchStatus: (cwd: string) => ipcRenderer.invoke(IPC.GIT_BRANCH_STATUS, { cwd }),
   fetchAndCompare: (cwd: string) => ipcRenderer.invoke(IPC.GIT_FETCH_COMPARE, { cwd }),
   pullBranch: (cwd: string) => ipcRenderer.invoke(IPC.GIT_PULL, { cwd }),
+  watchGitCwd: (cwd: string) => ipcRenderer.invoke(IPC.GIT_WATCH, { cwd }),
+  onGitStatusChanged: (callback: (data: unknown) => void) => {
+    const handler = (_event: unknown, data: unknown) => callback(data)
+    ipcRenderer.on(IPC.GIT_STATUS_CHANGED, handler)
+    return () => ipcRenderer.removeListener(IPC.GIT_STATUS_CHANGED, handler)
+  },
 
   // PR Review
   checkGhStatus: () => ipcRenderer.invoke(IPC.GH_CHECK_STATUS),

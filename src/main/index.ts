@@ -97,6 +97,11 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
 })
 
+app.on('will-quit', async () => {
+  const { unwatchAll } = await import('./git-watcher')
+  unwatchAll()
+})
+
 process.on('uncaughtException', (err) => {
   log.error('Uncaught exception:', err)
 })

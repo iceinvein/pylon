@@ -36,6 +36,8 @@ export const IPC = {
   GIT_BRANCH_STATUS: 'git:branch-status',
   GIT_FETCH_COMPARE: 'git:fetch-compare',
   GIT_PULL: 'git:pull',
+  GIT_STATUS_CHANGED: 'git:status-changed',
+  GIT_WATCH: 'git:watch',
   // PR Review
   GH_CHECK_STATUS: 'gh:check-status',
   GH_SET_PATH: 'gh:set-path',

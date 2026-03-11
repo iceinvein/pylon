@@ -42,6 +42,10 @@ type Api = {
   getGitBranchStatus: (cwd: string) => Promise<import('../shared/types').GitBranchStatus>
   fetchAndCompare: (cwd: string) => Promise<import('../shared/types').GitFetchComparison>
   pullBranch: (cwd: string) => Promise<import('../shared/types').GitPullResult>
+  watchGitCwd: (cwd: string) => Promise<boolean>
+  onGitStatusChanged: (
+    callback: (data: { cwd: string; status: import('../shared/types').GitBranchStatus }) => void,
+  ) => () => void
   // Plugins
   listPlugins: () => Promise<import('../shared/types').PluginManagementData>
   togglePlugin: (pluginId: string, enabled: boolean) => Promise<boolean>

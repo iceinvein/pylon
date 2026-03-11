@@ -344,6 +344,12 @@ export function registerIpcHandlers(): void {
     return pullBranch(args.cwd)
   })
 
+  ipcMain.handle(IPC.GIT_WATCH, async (_e, args: { cwd: string }) => {
+    const { setActiveCwd } = await import('./git-watcher')
+    setActiveCwd(args.cwd)
+    return true
+  })
+
   // ── PR Review ──
 
   ipcMain.handle(IPC.GH_CHECK_STATUS, async () => {

@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { type ReactNode, useCallback, useRef, useState } from 'react'
+import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
+import type { GitBranchStatus } from '../../../../shared/types'
 import { useSessionStore } from '../../store/session-store'
 import { useTabStore } from '../../store/tab-store'
 import { useUiStore } from '../../store/ui-store'
@@ -34,6 +35,25 @@ export function Layout({ children }: LayoutProps) {
 
   const showGitPanel =
     gitPanelOpen && sidebarView !== 'pr-review' && branchStatus?.isGitRepo && !!branchStatus?.branch
+
+  const setBranchStatus = useSessionStore((s) => s.setBranchStatus)
+
+  // Tell main process to watch this cwd + listen for push updates
+  useEffect(() => {
+    if (!activeCwd) return
+
+    // Start watching in main process
+    window.api.watchGitCwd(activeCwd)
+
+    // Listen for status changes pushed from main
+    const unsub = window.api.onGitStatusChanged(
+      (data: { cwd: string; status: GitBranchStatus }) => {
+        setBranchStatus(data.cwd, data.status)
+      },
+    )
+
+    return unsub
+  }, [activeCwd, setBranchStatus])
 
   const [panelWidth, setPanelWidth] = useState(DEFAULT_WIDTH)
   const dragging = useRef(false)
