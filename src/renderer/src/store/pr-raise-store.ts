@@ -1,10 +1,6 @@
 import { create } from 'zustand'
 import { log } from '../../../shared/logger'
-import type {
-  PrRaiseDescription,
-  PrRaiseInfo,
-  PrRaiseResult,
-} from '../../../shared/types'
+import type { PrRaiseDescription, PrRaiseInfo, PrRaiseResult } from '../../../shared/types'
 
 const logger = log.child('pr-raise-store')
 
@@ -120,6 +116,29 @@ export const usePrRaiseStore = create<PrRaiseStore>((set, get) => ({
     try {
       const result = await window.api.raisePr(args)
       get().setResult(result)
+      // On success, append a synthetic message to show PR card in chat
+      if (result.success && result.prUrl && result.prNumber) {
+        const { useSessionStore } = await import('./session-store')
+        const overlay = get().overlay
+        if (overlay) {
+          useSessionStore.getState().appendMessage(args.sessionId, {
+            type: 'assistant',
+            content: [
+              {
+                type: 'text',
+                text: `__PR_CREATED__${JSON.stringify({
+                  prNumber: result.prNumber,
+                  title: args.title,
+                  url: result.prUrl,
+                  baseBranch: args.baseBranch,
+                  headBranch: overlay.info?.headBranch ?? '',
+                  stats: overlay.info?.stats,
+                })}`,
+              },
+            ],
+          })
+        }
+      }
     } catch (err) {
       logger.error('createPr failed:', err)
       get().setResult({

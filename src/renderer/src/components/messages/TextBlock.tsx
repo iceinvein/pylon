@@ -4,6 +4,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { useShiki } from '../../hooks/use-shiki'
 import { ansiToHtml, hasAnsiCodes } from '../../lib/ansi'
+import { PrCreatedCard } from '../pr-raise/PrCreatedCard'
 
 type TextBlockProps = {
   text: string
@@ -206,6 +207,24 @@ const SettledMarkdown = memo(function SettledMarkdown({ text }: { text: string }
 })
 
 export function TextBlock({ text, isStreaming }: TextBlockProps) {
+  if (typeof text === 'string' && text.startsWith('__PR_CREATED__')) {
+    try {
+      const data = JSON.parse(text.replace('__PR_CREATED__', ''))
+      return (
+        <PrCreatedCard
+          prNumber={data.prNumber}
+          title={data.title}
+          url={data.url}
+          baseBranch={data.baseBranch}
+          headBranch={data.headBranch}
+          stats={data.stats}
+        />
+      )
+    } catch {
+      /* fall through to normal rendering */
+    }
+  }
+
   if (isStreaming) {
     const splitIdx = text.lastIndexOf('\n\n')
     const settled = splitIdx > 0 ? text.slice(0, splitIdx) : ''
