@@ -326,3 +326,49 @@ export type PlanSection = {
   body: string
   children?: PlanSection[]
 }
+
+// ── PR Raise ──────────────────────────────────
+
+export type PrRaiseFileInfo = {
+  path: string
+  status: string
+  insertions: number
+  deletions: number
+}
+
+export type PrRaiseCommitInfo = {
+  hash: string
+  message: string
+  timestamp: string
+}
+
+export type PrRaiseInfo = {
+  diff: string
+  files: PrRaiseFileInfo[]
+  commits: PrRaiseCommitInfo[]
+  stats: { insertions: number; deletions: number; filesChanged: number }
+  headBranch: string
+  baseBranch: string
+  remote: string
+  repoFullName: string
+}
+
+export type PrRaiseDescription = {
+  title: string
+  body: string
+}
+
+export type PrRaiseRequest = {
+  sessionId: string
+  title: string
+  body: string
+  baseBranch: string
+  squash: boolean
+}
+
+export type PrRaiseResult = {
+  success: boolean
+  prUrl?: string
+  prNumber?: number
+  error?: string
+}

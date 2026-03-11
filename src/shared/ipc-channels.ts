@@ -49,6 +49,10 @@ export const IPC = {
   GH_REVIEW_UPDATE: 'gh:review-update',
   GH_GET_AGENT_PROMPTS: 'gh:get-agent-prompts',
   GH_RESET_AGENT_PROMPT: 'gh:reset-agent-prompt',
+  // PR Raise
+  GH_RAISE_PR_INFO: 'gh:raise-pr-info',
+  GH_RAISE_PR_GENERATE_DESCRIPTION: 'gh:raise-pr-generate-description',
+  GH_RAISE_PR_CREATE: 'gh:raise-pr-create',
   // Plugins
   PLUGINS_LIST: 'plugins:list',
   PLUGINS_TOGGLE: 'plugins:toggle',
