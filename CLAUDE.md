@@ -116,6 +116,16 @@ Two separate tsconfig projects via project references:
 - `tsconfig.node.json` — main + preload + shared (Node.js target)
 - `tsconfig.web.json` — renderer + shared (browser target, JSX react-jsx)
 
+## Verification
+
+After making changes, always run all three checks before considering work complete:
+
+```bash
+bun run lint             # Must pass with no warnings
+bun run typecheck        # Must pass with no errors
+bun test                 # Must pass with no failures
+```
+
 ## Design Docs
 
 Design documents and implementation plans live in `docs/plans/`. Consult these when working on related features.

@@ -108,10 +108,10 @@ Do another thing.`
     const sections = parsePlanSections(md)
     expect(sections).toHaveLength(1)
     expect(sections[0].children).toHaveLength(2)
-    expect(sections[0].children![0].title).toBe('Task 1')
-    expect(sections[0].children![0].body).toBe('Do the thing.')
-    expect(sections[0].children![1].title).toBe('Task 2')
-    expect(sections[0].children![1].body).toBe('Do another thing.')
+    expect(sections[0].children?.[0].title).toBe('Task 1')
+    expect(sections[0].children?.[0].body).toBe('Do the thing.')
+    expect(sections[0].children?.[1].title).toBe('Task 2')
+    expect(sections[0].children?.[1].body).toBe('Do another thing.')
   })
 
   test('H2 without H3s is a leaf section (no children)', () => {
@@ -129,7 +129,7 @@ Just content, no sub-sections.`
 ### Child`
     const sections = parsePlanSections(md)
     expect(sections[0].level).toBe(2)
-    expect(sections[0].children![0].level).toBe(3)
+    expect(sections[0].children?.[0].level).toBe(3)
   })
 
   test('handles frontmatter + H1 + H2 + H3 together', () => {
@@ -154,7 +154,7 @@ Second phase content.`
     expect(sections).toHaveLength(2)
     expect(sections[0].title).toBe('Phase 1')
     expect(sections[0].children).toHaveLength(1)
-    expect(sections[0].children![0].title).toBe('Step 1')
+    expect(sections[0].children?.[0].title).toBe('Step 1')
     expect(sections[1].title).toBe('Phase 2')
     expect(sections[1].body).toBe('Second phase content.')
   })
