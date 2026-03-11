@@ -278,7 +278,11 @@ export const ChatView = memo(function ChatView({ sessionId }: ChatViewProps) {
     }
   }, [sessionId])
 
-  // rAF scroll pinning during streaming — sets scrollTop directly each frame
+  // rAF scroll pinning during streaming — sets scrollTop directly each frame.
+  // Unlike the old implementation, this loop keeps running every frame for the
+  // entire streaming duration (instead of permanently exiting when the user
+  // briefly scrolls away). This lets auto-scroll resume when the user scrolls
+  // back near the bottom mid-stream.
   const rafIdRef = useRef<number | null>(null)
 
   useEffect(() => {
@@ -292,11 +296,15 @@ export const ChatView = memo(function ChatView({ sessionId }: ChatViewProps) {
     }
 
     function pin() {
-      if (!isNearBottomRef.current || !container) {
+      if (!container) {
         rafIdRef.current = null
         return
       }
-      container.scrollTop = container.scrollHeight
+      if (isNearBottomRef.current) {
+        container.scrollTop = container.scrollHeight
+      }
+      // Always schedule next frame — don't exit the loop just because the
+      // user scrolled away. They may scroll back.
       rafIdRef.current = requestAnimationFrame(pin)
     }
 
@@ -310,12 +318,37 @@ export const ChatView = memo(function ChatView({ sessionId }: ChatViewProps) {
     }
   }, [streaming])
 
-  // Smooth scroll for discrete events (new messages, questions)
+  // Scroll to bottom on discrete events: new messages arriving, new
+  // permission/question prompts, or streaming ending. This covers the gap
+  // between the user sending a message and streaming starting — without this,
+  // the user's own message can render below the viewport with no scroll.
+  const contentCountRef = useRef({
+    messages: visibleMessages.length,
+    permissions: sessionPermissions.length,
+    questions: sessionQuestions.length,
+  })
+
   useEffect(() => {
-    if (isNearBottomRef.current && !streaming) {
-      bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    const prev = contentCountRef.current
+    const grew =
+      visibleMessages.length > prev.messages ||
+      sessionPermissions.length > prev.permissions ||
+      sessionQuestions.length > prev.questions
+    contentCountRef.current = {
+      messages: visibleMessages.length,
+      permissions: sessionPermissions.length,
+      questions: sessionQuestions.length,
     }
-  }, [streaming])
+
+    if (!isNearBottomRef.current) return
+
+    if (grew || !streaming) {
+      // Use rAF to let the DOM update first, then scroll
+      requestAnimationFrame(() => {
+        bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+      })
+    }
+  }, [visibleMessages.length, sessionPermissions.length, sessionQuestions.length, streaming])
 
   // Listen for flow-scroll-to-message events from the FlowPanel
   useEffect(() => {
