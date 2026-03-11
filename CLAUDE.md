@@ -126,6 +126,15 @@ bun run typecheck        # Must pass with no errors
 bun test                 # Must pass with no failures
 ```
 
+## Workflow
+
+Before making changes, use the `code-intelligence` MCP tools to understand the relevant code first. Useful starting points:
+- `search_code` — find symbols, patterns, or usages across the codebase
+- `get_definition` — jump to a symbol's definition
+- `find_references` — find all usages of a symbol
+- `get_call_hierarchy` — understand call chains
+- `trace_data_flow` — follow data through the system
+
 ## Design Docs
 
 Design documents and implementation plans live in `docs/plans/`. Consult these when working on related features.
