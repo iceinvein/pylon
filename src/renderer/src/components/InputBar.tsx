@@ -250,281 +250,283 @@ export function InputBar({
   const canSend = (text.trim().length > 0 || attachments.length > 0) && !isRunning
 
   return (
-    <div className="relative bg-[var(--color-base-bg)] px-4 pt-2 pb-4">
-      <AnimatePresence>
-        {lightboxUrl && (
-          <motion.div
-            className="fixed inset-0 z-[100] flex cursor-zoom-out items-center justify-center bg-black/80 backdrop-blur-sm"
-            onClick={() => setLightboxUrl(null)}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
-          >
-            <motion.img
-              src={lightboxUrl}
-              alt="Preview"
-              className="max-h-[90vh] max-w-[90vw] rounded-lg object-contain shadow-2xl"
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
+    <div className="relative bg-[var(--color-base-bg)]">
+      {behindCount != null && behindCount > 0 && (
+        <div className="flex items-center gap-2 border-amber-800/30 border-b bg-amber-950/20 px-3 py-1.5 text-amber-400 text-xs">
+          <span>⚠</span>
+          <span>
+            Branch is {behindCount} commit{behindCount !== 1 ? 's' : ''} behind origin
+          </span>
+        </div>
+      )}
+      <div className="px-4 pt-2 pb-4">
+        <AnimatePresence>
+          {lightboxUrl && (
+            <motion.div
+              className="fixed inset-0 z-[100] flex cursor-zoom-out items-center justify-center bg-black/80 backdrop-blur-sm"
+              onClick={() => setLightboxUrl(null)}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
               transition={{ duration: 0.15 }}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
+            >
+              <motion.img
+                src={lightboxUrl}
+                alt="Preview"
+                className="max-h-[90vh] max-w-[90vw] rounded-lg object-contain shadow-2xl"
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                transition={{ duration: 0.15 }}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-      <div className="mx-auto max-w-3xl">
-        {behindCount != null && behindCount > 0 && (
-          <div className="flex items-center gap-2 border-amber-800/30 border-b bg-amber-950/20 px-3 py-1.5 text-amber-400 text-xs">
-            <span>⚠</span>
-            <span>
-              Branch is {behindCount} commit{behindCount !== 1 ? 's' : ''} behind origin
-            </span>
-          </div>
-        )}
-        {/* biome-ignore lint/a11y/noStaticElementInteractions: drag-and-drop zone does not need keyboard interaction */}
-        <div
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-          className={`rounded-2xl border border-stone-700/60 bg-[var(--color-base-surface)] transition-colors focus-within:border-stone-600 ${
-            isDragging ? 'border-amber-700/50 bg-amber-950/10' : ''
-          }`}
-        >
-          {/* Attachments */}
-          {attachments.length > 0 && (
-            <div className="flex flex-wrap gap-2 border-stone-800/50 border-b px-4 py-2">
-              <AnimatePresence>
-                {attachments.map((att, i) => (
-                  <motion.div
-                    key={att.name + i}
-                    className={`group relative overflow-hidden rounded-lg border border-stone-700 bg-stone-800 ${
-                      att.type === 'image' ? 'h-16 w-16' : 'flex items-center gap-1.5 px-2 py-1.5'
-                    }`}
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.9 }}
-                    transition={{ duration: 0.15 }}
-                  >
-                    {att.type === 'image' ? (
-                      <button
-                        type="button"
-                        onClick={() => setLightboxUrl(att.previewUrl)}
-                        className="h-full w-full cursor-zoom-in"
-                      >
-                        <img
-                          src={att.previewUrl}
-                          alt={att.name}
-                          className="h-full w-full object-cover"
-                        />
-                        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-1 pt-2 pb-0.5">
-                          <span className="block truncate text-[10px] text-stone-300 leading-tight">
+        <div className="mx-auto max-w-3xl">
+          {/* biome-ignore lint/a11y/noStaticElementInteractions: drag-and-drop zone does not need keyboard interaction */}
+          <div
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            className={`rounded-2xl border border-stone-700/60 bg-[var(--color-base-surface)] transition-colors focus-within:border-stone-600 ${
+              isDragging ? 'border-amber-700/50 bg-amber-950/10' : ''
+            }`}
+          >
+            {/* Attachments */}
+            {attachments.length > 0 && (
+              <div className="flex flex-wrap gap-2 border-stone-800/50 border-b px-4 py-2">
+                <AnimatePresence>
+                  {attachments.map((att, i) => (
+                    <motion.div
+                      key={att.name + i}
+                      className={`group relative overflow-hidden rounded-lg border border-stone-700 bg-stone-800 ${
+                        att.type === 'image' ? 'h-16 w-16' : 'flex items-center gap-1.5 px-2 py-1.5'
+                      }`}
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.9 }}
+                      transition={{ duration: 0.15 }}
+                    >
+                      {att.type === 'image' ? (
+                        <button
+                          type="button"
+                          onClick={() => setLightboxUrl(att.previewUrl)}
+                          className="h-full w-full cursor-zoom-in"
+                        >
+                          <img
+                            src={att.previewUrl}
+                            alt={att.name}
+                            className="h-full w-full object-cover"
+                          />
+                          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-1 pt-2 pb-0.5">
+                            <span className="block truncate text-[10px] text-stone-300 leading-tight">
+                              {att.name}
+                            </span>
+                          </div>
+                        </button>
+                      ) : (
+                        <>
+                          <Image size={14} className="text-stone-500" />
+                          <span className="max-w-[120px] truncate text-stone-400 text-xs">
                             {att.name}
                           </span>
-                        </div>
-                      </button>
-                    ) : (
-                      <>
-                        <Image size={14} className="text-stone-500" />
-                        <span className="max-w-[120px] truncate text-stone-400 text-xs">
-                          {att.name}
-                        </span>
-                        <span className="text-stone-600 text-xs">
-                          {(att.size / 1024).toFixed(0)}KB
-                        </span>
-                      </>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => removeAttachment(i)}
-                      className="absolute top-0.5 right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-black/60 text-stone-300 opacity-0 transition-opacity group-hover:opacity-100"
-                    >
-                      <X size={9} />
-                    </button>
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-            </div>
-          )}
-
-          {/* Textarea */}
-          <textarea
-            ref={textareaRef}
-            value={text}
-            onChange={(e) => handleChange(e.target.value)}
-            onKeyDown={handleKeyDown}
-            onPaste={handlePaste}
-            placeholder={sessionId ? 'Type your message here...' : 'Open a folder to start'}
-            disabled={!sessionId && false}
-            rows={3}
-            className="min-h-[80px] w-full resize-none bg-transparent px-4 pt-3 pb-2 text-sm text-stone-100 placeholder-stone-500 outline-none"
-          />
-
-          {/* Toolbar row */}
-          <div className="flex items-center gap-1 px-3 pb-3">
-            <input
-              ref={fileInputRef}
-              type="file"
-              multiple
-              className="hidden"
-              onChange={handleFilePickerChange}
-              accept="image/*,text/*,.pdf,.json,.ts,.tsx,.js,.jsx,.py,.md,.yaml,.yml,.toml,.csv"
-            />
-
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              title="Attach"
-              className="flex h-7 items-center gap-1.5 rounded-full border border-stone-700/50 px-2.5 text-stone-400 text-xs transition-colors hover:border-stone-600 hover:text-stone-300"
-            >
-              <Paperclip size={13} />
-              <span>Attach</span>
-            </button>
-
-            <div className="relative" ref={modelMenuRef}>
-              <button
-                type="button"
-                onClick={() => setShowModelMenu((v) => !v)}
-                className="flex h-7 items-center gap-1 rounded-full border border-stone-700/50 px-2.5 text-stone-400 text-xs transition-colors hover:border-stone-600 hover:text-stone-300"
-              >
-                <span>{currentModelLabel}</span>
-                <ChevronDown size={12} />
-              </button>
-              <AnimatePresence>
-                {showModelMenu && (
-                  <motion.div
-                    className="absolute bottom-full left-0 z-50 mb-1 min-w-[160px] overflow-hidden rounded-lg border border-stone-700 bg-stone-800 py-1 shadow-xl"
-                    initial={{ opacity: 0, y: 4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 4 }}
-                    transition={{ duration: 0.12 }}
-                  >
-                    {MODELS.map((m) => (
+                          <span className="text-stone-600 text-xs">
+                            {(att.size / 1024).toFixed(0)}KB
+                          </span>
+                        </>
+                      )}
                       <button
                         type="button"
-                        key={m.id}
-                        onClick={() => {
-                          onModelChange(m.id)
-                          setShowModelMenu(false)
-                        }}
-                        className={`flex w-full items-center px-3 py-1.5 text-left text-xs transition-colors hover:bg-stone-700 ${
-                          m.id === model ? 'text-stone-100' : 'text-stone-400'
-                        }`}
+                        onClick={() => removeAttachment(i)}
+                        className="absolute top-0.5 right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-black/60 text-stone-300 opacity-0 transition-opacity group-hover:opacity-100"
                       >
-                        <span
-                          className={`mr-2 h-1.5 w-1.5 rounded-full ${m.id === model ? 'bg-stone-300' : 'bg-transparent'}`}
-                        />
-                        {m.label}
+                        <X size={9} />
                       </button>
-                    ))}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              </div>
+            )}
 
-            <div className="relative" ref={permissionMenuRef}>
-              {(() => {
-                const currentMode =
-                  PERMISSION_MODES.find((m) => m.id === permissionMode) ?? PERMISSION_MODES[0]
-                const ModeIcon = currentMode.icon
-                const isYolo = permissionMode === 'auto-approve'
-                return (
-                  <button
-                    type="button"
-                    onClick={() => setShowPermissionMenu((v) => !v)}
-                    className={`flex h-7 items-center gap-1 rounded-full border px-2.5 text-xs transition-colors ${
-                      isYolo
-                        ? 'border-amber-700/50 text-amber-400 hover:border-amber-600 hover:text-amber-300'
-                        : 'border-stone-700/50 text-stone-400 hover:border-stone-600 hover:text-stone-300'
-                    }`}
-                  >
-                    <ModeIcon size={13} />
-                    <span>{currentMode.label}</span>
-                    <ChevronDown size={12} />
-                  </button>
-                )
-              })()}
-              <AnimatePresence>
-                {showPermissionMenu && (
-                  <motion.div
-                    className="absolute bottom-full left-0 z-50 mb-1 min-w-[220px] overflow-hidden rounded-lg border border-stone-700 bg-stone-800 py-1 shadow-xl"
-                    initial={{ opacity: 0, y: 4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 4 }}
-                    transition={{ duration: 0.12 }}
-                  >
-                    {PERMISSION_MODES.map((m) => {
-                      const Icon = m.icon
-                      return (
+            {/* Textarea */}
+            <textarea
+              ref={textareaRef}
+              value={text}
+              onChange={(e) => handleChange(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onPaste={handlePaste}
+              placeholder={sessionId ? 'Type your message here...' : 'Open a folder to start'}
+              disabled={!sessionId && false}
+              rows={3}
+              className="min-h-[80px] w-full resize-none bg-transparent px-4 pt-3 pb-2 text-sm text-stone-100 placeholder-stone-500 outline-none"
+            />
+
+            {/* Toolbar row */}
+            <div className="flex items-center gap-1 px-3 pb-3">
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                className="hidden"
+                onChange={handleFilePickerChange}
+                accept="image/*,text/*,.pdf,.json,.ts,.tsx,.js,.jsx,.py,.md,.yaml,.yml,.toml,.csv"
+              />
+
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                title="Attach"
+                className="flex h-7 items-center gap-1.5 rounded-full border border-stone-700/50 px-2.5 text-stone-400 text-xs transition-colors hover:border-stone-600 hover:text-stone-300"
+              >
+                <Paperclip size={13} />
+                <span>Attach</span>
+              </button>
+
+              <div className="relative" ref={modelMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => setShowModelMenu((v) => !v)}
+                  className="flex h-7 items-center gap-1 rounded-full border border-stone-700/50 px-2.5 text-stone-400 text-xs transition-colors hover:border-stone-600 hover:text-stone-300"
+                >
+                  <span>{currentModelLabel}</span>
+                  <ChevronDown size={12} />
+                </button>
+                <AnimatePresence>
+                  {showModelMenu && (
+                    <motion.div
+                      className="absolute bottom-full left-0 z-50 mb-1 min-w-[160px] overflow-hidden rounded-lg border border-stone-700 bg-stone-800 py-1 shadow-xl"
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 4 }}
+                      transition={{ duration: 0.12 }}
+                    >
+                      {MODELS.map((m) => (
                         <button
                           type="button"
                           key={m.id}
                           onClick={() => {
-                            onPermissionModeChange(m.id)
-                            setShowPermissionMenu(false)
+                            onModelChange(m.id)
+                            setShowModelMenu(false)
                           }}
-                          className={`flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors hover:bg-stone-700 ${
-                            m.id === permissionMode ? 'text-stone-100' : 'text-stone-400'
+                          className={`flex w-full items-center px-3 py-1.5 text-left text-xs transition-colors hover:bg-stone-700 ${
+                            m.id === model ? 'text-stone-100' : 'text-stone-400'
                           }`}
                         >
                           <span
-                            className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${m.id === permissionMode ? 'bg-stone-300' : 'bg-transparent'}`}
+                            className={`mr-2 h-1.5 w-1.5 rounded-full ${m.id === model ? 'bg-stone-300' : 'bg-transparent'}`}
                           />
-                          <Icon size={13} className="flex-shrink-0" />
-                          <div>
-                            <div>{m.label}</div>
-                            <div className="text-[10px] text-stone-500">{m.description}</div>
-                          </div>
+                          {m.label}
                         </button>
-                      )
-                    })}
-                    <div className="mx-3 mt-1 border-stone-700/50 border-t pt-1.5 pb-1">
-                      <div className="flex items-start gap-1.5 text-[10px] text-stone-500">
-                        <Info size={11} className="mt-0.5 flex-shrink-0 text-stone-600" />
-                        <span>
-                          YOLO mode auto-approves tool permissions but still prompts for questions
-                          that require your input.
-                        </span>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              <div className="relative" ref={permissionMenuRef}>
+                {(() => {
+                  const currentMode =
+                    PERMISSION_MODES.find((m) => m.id === permissionMode) ?? PERMISSION_MODES[0]
+                  const ModeIcon = currentMode.icon
+                  const isYolo = permissionMode === 'auto-approve'
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => setShowPermissionMenu((v) => !v)}
+                      className={`flex h-7 items-center gap-1 rounded-full border px-2.5 text-xs transition-colors ${
+                        isYolo
+                          ? 'border-amber-700/50 text-amber-400 hover:border-amber-600 hover:text-amber-300'
+                          : 'border-stone-700/50 text-stone-400 hover:border-stone-600 hover:text-stone-300'
+                      }`}
+                    >
+                      <ModeIcon size={13} />
+                      <span>{currentMode.label}</span>
+                      <ChevronDown size={12} />
+                    </button>
+                  )
+                })()}
+                <AnimatePresence>
+                  {showPermissionMenu && (
+                    <motion.div
+                      className="absolute bottom-full left-0 z-50 mb-1 min-w-[220px] overflow-hidden rounded-lg border border-stone-700 bg-stone-800 py-1 shadow-xl"
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 4 }}
+                      transition={{ duration: 0.12 }}
+                    >
+                      {PERMISSION_MODES.map((m) => {
+                        const Icon = m.icon
+                        return (
+                          <button
+                            type="button"
+                            key={m.id}
+                            onClick={() => {
+                              onPermissionModeChange(m.id)
+                              setShowPermissionMenu(false)
+                            }}
+                            className={`flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors hover:bg-stone-700 ${
+                              m.id === permissionMode ? 'text-stone-100' : 'text-stone-400'
+                            }`}
+                          >
+                            <span
+                              className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${m.id === permissionMode ? 'bg-stone-300' : 'bg-transparent'}`}
+                            />
+                            <Icon size={13} className="flex-shrink-0" />
+                            <div>
+                              <div>{m.label}</div>
+                              <div className="text-[10px] text-stone-500">{m.description}</div>
+                            </div>
+                          </button>
+                        )
+                      })}
+                      <div className="mx-3 mt-1 border-stone-700/50 border-t pt-1.5 pb-1">
+                        <div className="flex items-start gap-1.5 text-[10px] text-stone-500">
+                          <Info size={11} className="mt-0.5 flex-shrink-0 text-stone-600" />
+                          <span>
+                            YOLO mode auto-approves tool permissions but still prompts for questions
+                            that require your input.
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  </motion.div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              <div className="flex-1" />
+
+              <AnimatePresence mode="wait">
+                {isRunning ? (
+                  <motion.button
+                    key="stop"
+                    onClick={onStop}
+                    title="Stop"
+                    className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-700 text-white transition-colors hover:bg-red-600"
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.8, opacity: 0 }}
+                    transition={{ duration: 0.12 }}
+                  >
+                    <Square size={12} />
+                  </motion.button>
+                ) : (
+                  <motion.button
+                    key="send"
+                    onClick={handleSend}
+                    disabled={!canSend}
+                    title="Send"
+                    className="flex h-7 w-7 items-center justify-center rounded-lg bg-stone-600 text-stone-200 transition-colors hover:bg-stone-500 disabled:cursor-not-allowed disabled:opacity-30"
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.8, opacity: 0 }}
+                    transition={{ duration: 0.12 }}
+                  >
+                    <ArrowUp size={14} strokeWidth={2.5} />
+                  </motion.button>
                 )}
               </AnimatePresence>
             </div>
-
-            <div className="flex-1" />
-
-            <AnimatePresence mode="wait">
-              {isRunning ? (
-                <motion.button
-                  key="stop"
-                  onClick={onStop}
-                  title="Stop"
-                  className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-700 text-white transition-colors hover:bg-red-600"
-                  initial={{ scale: 0.8, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0.8, opacity: 0 }}
-                  transition={{ duration: 0.12 }}
-                >
-                  <Square size={12} />
-                </motion.button>
-              ) : (
-                <motion.button
-                  key="send"
-                  onClick={handleSend}
-                  disabled={!canSend}
-                  title="Send"
-                  className="flex h-7 w-7 items-center justify-center rounded-lg bg-stone-600 text-stone-200 transition-colors hover:bg-stone-500 disabled:cursor-not-allowed disabled:opacity-30"
-                  initial={{ scale: 0.8, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0.8, opacity: 0 }}
-                  transition={{ duration: 0.12 }}
-                >
-                  <ArrowUp size={14} strokeWidth={2.5} />
-                </motion.button>
-              )}
-            </AnimatePresence>
           </div>
         </div>
       </div>
