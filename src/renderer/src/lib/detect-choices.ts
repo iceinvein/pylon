@@ -93,11 +93,36 @@ const SELECTION_QUESTION_RE =
   /\b(which|prefer|choose|pick|select|go with|want to|need|option|approach|sound good|shall (we|i)|ready to|look(s?) right|feel(s?) right|would you like|what do you think|does this|do you want)\b/i
 
 /**
+ * Questions where the assistant is offering to perform an action rather than
+ * asking the user to choose from the list above. These override SELECTION_QUESTION_RE.
+ * e.g. "Want me to also check…?" or "Shall I run the tests?"
+ */
+const ACTION_OFFER_RE =
+  /\b(want me to|shall i|would you like me to|do you want me to|should i|let me know if|i can also|i could also|need me to)\b/i
+
+/**
+ * Preamble text that signals the list is informational (outcomes, steps,
+ * expected results) rather than a set of choices for the user to pick from.
+ */
+const INFORMATIONAL_PREAMBLE_RE =
+  /\b(you (should|will|would|can) see|you('ll| will) (get|have|notice)|expected (results|output|behavior|outcome)|here('s| is| are) (what|the (step|result|output))|the following (will|should|are)|after (deploying|running|doing|applying|completing|installing|updating|merging)|steps to|once (you|this|it)|in order to)\b/i
+
+/**
  * Checks whether a question string indicates the user should SELECT from the
  * list above, as opposed to open-ended follow-ups like "What do you see?"
+ * or action offers like "Want me to also check…?"
  */
 function isSelectionQuestion(question: string): boolean {
+  if (ACTION_OFFER_RE.test(question)) return false
   return SELECTION_QUESTION_RE.test(question)
+}
+
+/**
+ * Checks whether a preamble line indicates the list is informational rather
+ * than a set of selectable choices.
+ */
+function isInformationalPreamble(preamble: string): boolean {
+  return INFORMATIONAL_PREAMBLE_RE.test(preamble)
 }
 
 /**
@@ -251,6 +276,26 @@ export function detectChoices(text: string): DetectedChoices | null {
     }
 
     if (questionText === null || !isSelectionQuestion(questionText)) {
+      i = j
+      continue
+    }
+
+    // Check preamble for informational context (e.g. "you should see:").
+    // If the text right before the list describes expected outcomes/steps,
+    // the list is not a set of choices even if a selection question follows.
+    let hasInformationalPreamble = false
+    for (let p = i - 1; p >= 0 && p >= i - 3; p--) {
+      const preamble = lines[p].trim()
+      if (preamble === '') continue
+      if (isInformationalPreamble(preamble)) {
+        hasInformationalPreamble = true
+        break
+      }
+      // Only check the nearest non-empty line above the list.
+      break
+    }
+
+    if (hasInformationalPreamble) {
       i = j
       continue
     }

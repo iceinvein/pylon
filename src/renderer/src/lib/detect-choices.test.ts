@@ -410,6 +410,94 @@ Shall we go with one of these?`
     })
   })
 
+  describe('informational lists (false positives)', () => {
+    test('returns null for "you should see:" preamble with unrelated question', () => {
+      const text = `After deploying this, you should see:
+
+1. GTM debugger consistently logging events (no more intermittent silence)
+2. Session Start events recovering to pre-Jan-17 levels within 24-48 hours
+3. Game Page View, Prod View, and Purchase events recovering proportionally
+4. The full funnel (session → game view → product view → purchase) should re-align with the expected value bands in your GA anomaly charts
+
+Want me to also check if the reactGA.ts wrapper (which forwards events to the native app via postMessage) in v1.98.0+ has any issues, or would you prefer to deploy this fix first and measure the impact?`
+
+      expect(detectChoices(text)).toBeNull()
+    })
+
+    test('returns null for "you will see" preamble', () => {
+      const text = `After running the migration, you will see:
+
+1. New columns added to the users table
+2. Indexes rebuilt for faster queries
+3. Deprecated fields removed
+
+Want me to run the migration now?`
+
+      expect(detectChoices(text)).toBeNull()
+    })
+
+    test('returns null for "expected results" preamble', () => {
+      const text = `Expected results:
+
+1. Build time reduced by 40%
+2. Bundle size under 200KB
+3. Lighthouse score above 90
+
+Shall I deploy this?`
+
+      expect(detectChoices(text)).toBeNull()
+    })
+
+    test('returns null for "after running" preamble', () => {
+      const text = `After running the tests:
+
+1. Unit tests should all pass
+2. Integration tests may show warnings
+
+Do you want me to fix the warnings?`
+
+      expect(detectChoices(text)).toBeNull()
+    })
+
+    test('returns null for action-offer question "want me to"', () => {
+      const text = `1. Fix the auth bug — Critical severity
+2. Update the deps — Low severity
+
+Want me to start with the auth bug?`
+
+      expect(detectChoices(text)).toBeNull()
+    })
+
+    test('returns null for action-offer question "shall I"', () => {
+      const text = `1. Option A — First approach
+2. Option B — Second approach
+
+Shall I implement option A?`
+
+      expect(detectChoices(text)).toBeNull()
+    })
+
+    test('returns null for action-offer question "would you like me to"', () => {
+      const text = `1. Component refactor — Extract shared logic
+2. API cleanup — Remove deprecated endpoints
+
+Would you like me to start with the refactor?`
+
+      expect(detectChoices(text)).toBeNull()
+    })
+
+    test('still detects real choices with "shall we"', () => {
+      const text = `1. Deploy now — Ship immediately
+2. Wait — Deploy tomorrow
+
+Shall we go with one of these?`
+
+      const result = detectChoices(text)
+      expect(result).not.toBeNull()
+      expect(result?.choices).toHaveLength(2)
+    })
+  })
+
   describe('mixed content', () => {
     test('detects choices embedded in longer text with preamble', () => {
       const text = `I can help you with that. Here are the available options:
