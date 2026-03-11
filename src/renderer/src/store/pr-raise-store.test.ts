@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach } from 'bun:test'
+import { beforeEach, describe, expect, test } from 'bun:test'
 import { usePrRaiseStore } from './pr-raise-store'
 
 describe('pr-raise-store', () => {
@@ -49,7 +49,9 @@ describe('pr-raise-store', () => {
 
   test('setResult updates overlay result', () => {
     usePrRaiseStore.getState().openOverlay('session-123')
-    usePrRaiseStore.getState().setResult({ success: true, prUrl: 'https://github.com/pr/1', prNumber: 1 })
+    usePrRaiseStore
+      .getState()
+      .setResult({ success: true, prUrl: 'https://github.com/pr/1', prNumber: 1 })
     expect(usePrRaiseStore.getState().overlay?.result?.success).toBe(true)
   })
 
@@ -61,7 +63,7 @@ describe('pr-raise-store', () => {
   })
 
   test('setters are no-ops when overlay is null', () => {
-    usePrRaiseStore.getState().setInfo({} as any)
+    usePrRaiseStore.getState().setInfo({} as unknown as import('../../../shared/types').PrRaiseInfo)
     expect(usePrRaiseStore.getState().overlay).toBeNull()
   })
 })

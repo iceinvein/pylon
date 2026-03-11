@@ -1124,13 +1124,15 @@ export class SessionManager {
       .prepare(
         'SELECT worktree_path, worktree_branch, original_branch, git_baseline_hash, original_cwd FROM sessions WHERE id = ?',
       )
-      .get(sessionId) as {
-        worktree_path: string | null
-        worktree_branch: string | null
-        original_branch: string | null
-        git_baseline_hash: string | null
-        original_cwd: string | null
-      } | undefined
+      .get(sessionId) as
+      | {
+          worktree_path: string | null
+          worktree_branch: string | null
+          original_branch: string | null
+          git_baseline_hash: string | null
+          original_cwd: string | null
+        }
+      | undefined
 
     if (!row?.worktree_path || !row.worktree_branch || !row.git_baseline_hash) {
       throw new Error('Session is not a worktree session or has no changes')
@@ -1166,7 +1168,13 @@ export class SessionManager {
       const stat = numstatMap.get(filePath) ?? numstatMap.get(pathParts.join('\t'))
       files.push({
         path: filePath,
-        status: status.startsWith('R') ? 'renamed' : status === 'A' ? 'added' : status === 'D' ? 'deleted' : 'modified',
+        status: status.startsWith('R')
+          ? 'renamed'
+          : status === 'A'
+            ? 'added'
+            : status === 'D'
+              ? 'deleted'
+              : 'modified',
         insertions: stat?.ins ?? 0,
         deletions: stat?.del ?? 0,
       })
@@ -1215,7 +1223,9 @@ export class SessionManager {
         const { stdout } = await execFileAsync('git', ['remote', 'get-url', remote], { cwd })
         const parsed = parseGitHubRemote(stdout.trim())
         if (parsed) repoFullName = `${parsed.owner}/${parsed.repo}`
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }
 
     // Detect default base branch
@@ -1254,12 +1264,16 @@ export class SessionManager {
     }
   }
 
-  async generatePrDescription(sessionId: string): Promise<import('../shared/types').PrRaiseDescription> {
+  async generatePrDescription(
+    sessionId: string,
+  ): Promise<import('../shared/types').PrRaiseDescription> {
     const db = getDb()
 
     // Get session messages for context
     const messages = db
-      .prepare('SELECT sdk_message FROM messages WHERE session_id = ? ORDER BY timestamp ASC LIMIT 50')
+      .prepare(
+        'SELECT sdk_message FROM messages WHERE session_id = ? ORDER BY timestamp ASC LIMIT 50',
+      )
       .all(sessionId) as { sdk_message: string }[]
 
     // Build conversation summary (user messages only, to keep prompt small)
@@ -1271,7 +1285,9 @@ export class SessionManager {
             return `User: ${parsed.content.slice(0, 500)}`
           }
           return null
-        } catch { return null }
+        } catch {
+          return null
+        }
       })
       .filter(Boolean)
       .slice(0, 10)
@@ -1279,14 +1295,19 @@ export class SessionManager {
 
     // Get diff info
     const info = await this.getRaisePrInfo(sessionId)
-    const fileList = info.files.map((f) => `${f.status} ${f.path} (+${f.insertions}/-${f.deletions})`).join('\n')
+    const fileList = info.files
+      .map((f) => `${f.status} ${f.path} (+${f.insertions}/-${f.deletions})`)
+      .join('\n')
 
     // Get session title
-    const session = db.prepare('SELECT title FROM sessions WHERE id = ?').get(sessionId) as { title: string } | undefined
+    const session = db.prepare('SELECT title FROM sessions WHERE id = ?').get(sessionId) as
+      | { title: string }
+      | undefined
     const sessionTitle = session?.title ?? 'Untitled'
 
     // Include truncated diff for better description quality (cap at ~8000 chars to stay under token limits)
-    const diffPreview = info.diff.length > 8000 ? info.diff.slice(0, 8000) + '\n... (diff truncated)' : info.diff
+    const diffPreview =
+      info.diff.length > 8000 ? `${info.diff.slice(0, 8000)}\n... (diff truncated)` : info.diff
 
     const prompt = `Generate a pull request title and description for the following changes.
 
@@ -1328,7 +1349,7 @@ Rules:
         }),
       })
       if (!response.ok) throw new Error(`Anthropic API error: ${response.status}`)
-      const data = await response.json() as { content: { type: string; text: string }[] }
+      const data = (await response.json()) as { content: { type: string; text: string }[] }
 
       const text = data.content
         .filter((b): b is { type: 'text'; text: string } => b.type === 'text')
@@ -1347,17 +1368,21 @@ Rules:
     }
   }
 
-  async raisePr(request: import('../shared/types').PrRaiseRequest): Promise<import('../shared/types').PrRaiseResult> {
+  async raisePr(
+    request: import('../shared/types').PrRaiseRequest,
+  ): Promise<import('../shared/types').PrRaiseResult> {
     const db = getDb()
     const row = db
       .prepare(
         'SELECT worktree_path, worktree_branch, git_baseline_hash FROM sessions WHERE id = ?',
       )
-      .get(request.sessionId) as {
-        worktree_path: string | null
-        worktree_branch: string | null
-        git_baseline_hash: string | null
-      } | undefined
+      .get(request.sessionId) as
+      | {
+          worktree_path: string | null
+          worktree_branch: string | null
+          git_baseline_hash: string | null
+        }
+      | undefined
 
     if (!row?.worktree_path || !row.worktree_branch || !row.git_baseline_hash) {
       return { success: false, error: 'Session is not a worktree session or has no changes' }
@@ -1370,13 +1395,17 @@ Rules:
       // Handle squash if requested
       if (request.squash) {
         // Create backup ref
-        await execFileAsync('git', ['update-ref', `refs/pylon/pre-squash/${branch}`, 'HEAD'], { cwd })
+        await execFileAsync('git', ['update-ref', `refs/pylon/pre-squash/${branch}`, 'HEAD'], {
+          cwd,
+        })
         try {
           await execFileAsync('git', ['reset', '--soft', row.git_baseline_hash], { cwd })
           await execFileAsync('git', ['commit', '-m', request.title], { cwd })
         } catch (squashErr) {
           // Restore from backup
-          await execFileAsync('git', ['reset', '--hard', `refs/pylon/pre-squash/${branch}`], { cwd })
+          await execFileAsync('git', ['reset', '--hard', `refs/pylon/pre-squash/${branch}`], {
+            cwd,
+          })
           throw squashErr
         }
       }
@@ -1410,12 +1439,21 @@ Rules:
       }
 
       if (!repoFullName) {
-        return { success: false, error: 'Could not determine repository. Check git remote configuration.' }
+        return {
+          success: false,
+          error: 'Could not determine repository. Check git remote configuration.',
+        }
       }
 
       // Create PR
       const { createPullRequest } = await import('./gh-cli')
-      const result = await createPullRequest(repoFullName, branch, request.baseBranch, request.title, request.body)
+      const result = await createPullRequest(
+        repoFullName,
+        branch,
+        request.baseBranch,
+        request.title,
+        request.body,
+      )
 
       return { success: true, prUrl: result.url, prNumber: result.number }
     } catch (err) {

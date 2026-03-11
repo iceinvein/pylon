@@ -1,4 +1,4 @@
-import { test, expect, describe, mock } from 'bun:test'
+import { describe, expect, mock, test } from 'bun:test'
 
 // Mock electron and db to avoid Electron runtime dependency in tests
 mock.module('electron', () => ({

@@ -39,7 +39,7 @@ export function PrRaiseMetadata({
             type="text"
             value={baseBranch}
             onChange={(e) => onBaseBranchChange(e.target.value)}
-            className="w-24 bg-transparent text-xs text-stone-200 focus:outline-none"
+            className="w-24 bg-transparent text-stone-200 text-xs focus:outline-none"
           />
         </div>
 
@@ -48,7 +48,7 @@ export function PrRaiseMetadata({
         {/* Head branch (read-only) */}
         <div className="flex items-center gap-2 rounded-md border border-stone-800 bg-stone-900/50 px-3 py-1.5">
           <span className="text-[10px] text-stone-500 uppercase tracking-wider">Head</span>
-          <span className="text-xs text-stone-400">{info?.headBranch ?? '...'}</span>
+          <span className="text-stone-400 text-xs">{info?.headBranch ?? '...'}</span>
         </div>
 
         {/* Squash toggle */}
@@ -57,9 +57,7 @@ export function PrRaiseMetadata({
             type="button"
             onClick={() => onSquashChange(true)}
             className={`rounded px-2 py-1 transition-colors ${
-              squash
-                ? 'bg-blue-600/20 text-blue-400'
-                : 'text-stone-500 hover:text-stone-300'
+              squash ? 'bg-blue-600/20 text-blue-400' : 'text-stone-500 hover:text-stone-300'
             }`}
           >
             Squash
@@ -68,9 +66,7 @@ export function PrRaiseMetadata({
             type="button"
             onClick={() => onSquashChange(false)}
             className={`rounded px-2 py-1 transition-colors ${
-              !squash
-                ? 'bg-blue-600/20 text-blue-400'
-                : 'text-stone-500 hover:text-stone-300'
+              !squash ? 'bg-blue-600/20 text-blue-400' : 'text-stone-500 hover:text-stone-300'
             }`}
           >
             As-is

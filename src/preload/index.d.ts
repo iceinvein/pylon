@@ -88,7 +88,9 @@ type Api = {
   generatePrDescription: (
     sessionId: string,
   ) => Promise<import('../shared/types').PrRaiseDescription>
-  raisePr: (args: import('../shared/types').PrRaiseRequest) => Promise<import('../shared/types').PrRaiseResult>
+  raisePr: (
+    args: import('../shared/types').PrRaiseRequest,
+  ) => Promise<import('../shared/types').PrRaiseResult>
   sendLog: (level: string, source: string, message: string) => void
 }
 

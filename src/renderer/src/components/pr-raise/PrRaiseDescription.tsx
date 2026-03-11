@@ -28,7 +28,7 @@ export function PrRaiseDescription({ body, onBodyChange, generating }: Props) {
             onChange={(e) => onBodyChange(e.target.value)}
             rows={16}
             className="w-full rounded-md border border-stone-700 bg-stone-900 p-4 font-[family-name:var(--font-mono)] text-sm text-stone-200 leading-relaxed placeholder:text-stone-600 focus:border-blue-500/50 focus:outline-none"
-            placeholder={"## Summary\n- describe changes...\n\n## Test Plan\n- [ ] verify..."}
+            placeholder={'## Summary\n- describe changes...\n\n## Test Plan\n- [ ] verify...'}
           />
           <button
             type="button"
@@ -74,7 +74,7 @@ export function PrRaiseDescription({ body, onBodyChange, generating }: Props) {
           <button
             type="button"
             onClick={() => setEditing(true)}
-            className="absolute top-0 right-0 flex items-center gap-1.5 rounded-md border border-stone-700 bg-stone-800 px-2.5 py-1.5 text-[11px] text-stone-400 opacity-0 transition-all group-hover:opacity-100 hover:bg-stone-700 hover:text-stone-200"
+            className="absolute top-0 right-0 flex items-center gap-1.5 rounded-md border border-stone-700 bg-stone-800 px-2.5 py-1.5 text-[11px] text-stone-400 opacity-0 transition-all hover:bg-stone-700 hover:text-stone-200 group-hover:opacity-100"
           >
             <Pencil size={12} />
             Edit

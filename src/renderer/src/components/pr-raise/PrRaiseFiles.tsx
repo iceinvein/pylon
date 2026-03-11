@@ -27,10 +27,7 @@ export function PrRaiseFiles({ info }: Props) {
 
   const activeFile = selectedFile ?? info.files[0]?.path ?? null
   const activeDiff = activeFile ? fileDiffMap.get(activeFile) : null
-  const hunks = useMemo(
-    () => (activeDiff ? parseUnifiedDiffToHunks(activeDiff) : []),
-    [activeDiff],
-  )
+  const hunks = useMemo(() => (activeDiff ? parseUnifiedDiffToHunks(activeDiff) : []), [activeDiff])
 
   return (
     <div className="flex h-full min-h-0">
