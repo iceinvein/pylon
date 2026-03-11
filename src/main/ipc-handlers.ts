@@ -327,6 +327,23 @@ export function registerIpcHandlers(): void {
     return cleanupAllWorktrees()
   })
 
+  // ── Git Branch Status ──
+
+  ipcMain.handle(IPC.GIT_BRANCH_STATUS, async (_e, args: { cwd: string }) => {
+    const { getBranchStatus } = await import('./git-status')
+    return getBranchStatus(args.cwd)
+  })
+
+  ipcMain.handle(IPC.GIT_FETCH_COMPARE, async (_e, args: { cwd: string }) => {
+    const { fetchAndCompare } = await import('./git-status')
+    return fetchAndCompare(args.cwd)
+  })
+
+  ipcMain.handle(IPC.GIT_PULL, async (_e, args: { cwd: string }) => {
+    const { pullBranch } = await import('./git-status')
+    return pullBranch(args.cwd)
+  })
+
   // ── PR Review ──
 
   ipcMain.handle(IPC.GH_CHECK_STATUS, async () => {

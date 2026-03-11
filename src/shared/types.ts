@@ -103,6 +103,32 @@ export type GitRepoStatus = {
   isDirty: boolean
 }
 
+export type GitBranchStatus = {
+  branch: string | null
+  ahead: number
+  behind: number
+  hasUpstream: boolean
+  isGitRepo: boolean
+}
+
+export type GitFetchCompareCommit = {
+  hash: string
+  message: string
+}
+
+export type GitFetchComparison = {
+  branch: string
+  ahead: number
+  behind: number
+  behindCommits: GitFetchCompareCommit[]
+  filesChanged: number
+}
+
+export type GitPullResult = {
+  success: boolean
+  error?: string
+}
+
 export type FileDiff = {
   filePath: string
   status: 'modified' | 'added' | 'deleted' | 'renamed'

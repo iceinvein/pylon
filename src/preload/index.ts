@@ -41,6 +41,11 @@ const api = {
   getWorktreeUsage: () => ipcRenderer.invoke(IPC.WORKTREE_GET_USAGE),
   cleanupAllWorktrees: () => ipcRenderer.invoke(IPC.WORKTREE_CLEANUP_ALL),
 
+  // Git Branch Status
+  getGitBranchStatus: (cwd: string) => ipcRenderer.invoke(IPC.GIT_BRANCH_STATUS, { cwd }),
+  fetchAndCompare: (cwd: string) => ipcRenderer.invoke(IPC.GIT_FETCH_COMPARE, { cwd }),
+  pullBranch: (cwd: string) => ipcRenderer.invoke(IPC.GIT_PULL, { cwd }),
+
   // PR Review
   checkGhStatus: () => ipcRenderer.invoke(IPC.GH_CHECK_STATUS),
   setGhPath: (path: string) => ipcRenderer.invoke(IPC.GH_SET_PATH, { path }),

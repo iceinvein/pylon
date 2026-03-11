@@ -32,6 +32,10 @@ export const IPC = {
   WORKTREE_INFO: 'worktree:info',
   WORKTREE_GET_USAGE: 'worktree:get-usage',
   WORKTREE_CLEANUP_ALL: 'worktree:cleanup-all',
+  // Git Branch Status
+  GIT_BRANCH_STATUS: 'git:branch-status',
+  GIT_FETCH_COMPARE: 'git:fetch-compare',
+  GIT_PULL: 'git:pull',
   // PR Review
   GH_CHECK_STATUS: 'gh:check-status',
   GH_SET_PATH: 'gh:set-path',

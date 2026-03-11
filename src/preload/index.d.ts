@@ -38,6 +38,10 @@ type Api = {
   getWorktreeInfo: (sessionId: string) => Promise<import('../shared/types').WorktreeInfo>
   getWorktreeUsage: () => Promise<{ count: number; sizeBytes: number }>
   cleanupAllWorktrees: () => Promise<{ removed: number; freedBytes: number }>
+  // Git Branch Status
+  getGitBranchStatus: (cwd: string) => Promise<import('../shared/types').GitBranchStatus>
+  fetchAndCompare: (cwd: string) => Promise<import('../shared/types').GitFetchComparison>
+  pullBranch: (cwd: string) => Promise<import('../shared/types').GitPullResult>
   // Plugins
   listPlugins: () => Promise<import('../shared/types').PluginManagementData>
   togglePlugin: (pluginId: string, enabled: boolean) => Promise<boolean>
