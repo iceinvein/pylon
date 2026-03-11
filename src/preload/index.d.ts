@@ -36,6 +36,8 @@ type Api = {
   mergeWorktree: (sessionId: string) => Promise<import('../shared/types').WorktreeMergeResult>
   discardWorktree: (sessionId: string) => Promise<boolean>
   getWorktreeInfo: (sessionId: string) => Promise<import('../shared/types').WorktreeInfo>
+  getWorktreeUsage: () => Promise<{ count: number; sizeBytes: number }>
+  cleanupAllWorktrees: () => Promise<{ removed: number; freedBytes: number }>
   // Plugins
   listPlugins: () => Promise<import('../shared/types').PluginManagementData>
   togglePlugin: (pluginId: string, enabled: boolean) => Promise<boolean>

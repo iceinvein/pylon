@@ -38,6 +38,8 @@ const api = {
   discardWorktree: (sessionId: string) =>
     ipcRenderer.invoke(IPC.WORKTREE_DISCARD_CLEANUP, { sessionId }),
   getWorktreeInfo: (sessionId: string) => ipcRenderer.invoke(IPC.WORKTREE_INFO, { sessionId }),
+  getWorktreeUsage: () => ipcRenderer.invoke(IPC.WORKTREE_GET_USAGE),
+  cleanupAllWorktrees: () => ipcRenderer.invoke(IPC.WORKTREE_CLEANUP_ALL),
 
   // PR Review
   checkGhStatus: () => ipcRenderer.invoke(IPC.GH_CHECK_STATUS),

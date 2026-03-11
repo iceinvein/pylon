@@ -317,6 +317,16 @@ export function registerIpcHandlers(): void {
     return sessionManager.getWorktreeInfo(args.sessionId)
   })
 
+  ipcMain.handle(IPC.WORKTREE_GET_USAGE, async () => {
+    const { getWorktreeUsage } = await import('./worktree-cleanup')
+    return getWorktreeUsage()
+  })
+
+  ipcMain.handle(IPC.WORKTREE_CLEANUP_ALL, async () => {
+    const { cleanupAllWorktrees } = await import('./worktree-cleanup')
+    return cleanupAllWorktrees()
+  })
+
   // ── PR Review ──
 
   ipcMain.handle(IPC.GH_CHECK_STATUS, async () => {

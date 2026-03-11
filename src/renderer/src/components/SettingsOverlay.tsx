@@ -3,6 +3,7 @@ import {
   BarChart3,
   Blocks,
   Bot,
+  HardDrive,
   Info,
   Plug,
   Settings,
@@ -48,9 +49,17 @@ const TABS = [
   { id: 'usage', label: 'Usage', icon: BarChart3 },
   { id: 'agents', label: 'Review Agents', icon: Bot },
   { id: 'integrations', label: 'Integrations', icon: Plug },
+  { id: 'storage', label: 'Storage', icon: HardDrive },
 ] as const
 
 type SettingsTab = (typeof TABS)[number]['id']
+
+function formatBytes(bytes: number): string {
+  if (bytes === 0) return '0 B'
+  const units = ['B', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(1024))
+  return `${(bytes / 1024 ** i).toFixed(i === 0 ? 0 : 1)} ${units[i]}`
+}
 
 function PluginToggle({
   enabled,
@@ -178,6 +187,14 @@ export function SettingsOverlay() {
   const [activeAgent, setActiveAgent] = useState<string | null>(null)
   const [pluginData, setPluginData] = useState<PluginManagementData | null>(null)
   const [pluginsLoading, setPluginsLoading] = useState(false)
+  const [worktreeUsage, setWorktreeUsage] = useState<{ count: number; sizeBytes: number } | null>(
+    null,
+  )
+  const [cleanupResult, setCleanupResult] = useState<{
+    removed: number
+    freedBytes: number
+  } | null>(null)
+  const [cleaning, setCleaning] = useState(false)
 
   async function loadPlugins() {
     setPluginsLoading(true)
@@ -227,6 +244,13 @@ export function SettingsOverlay() {
   }, [settingsOpen, activeTab])
 
   useEffect(() => {
+    if (settingsOpen && activeTab === 'storage') {
+      setCleanupResult(null)
+      window.api.getWorktreeUsage().then(setWorktreeUsage)
+    }
+  }, [settingsOpen, activeTab])
+
+  useEffect(() => {
     if (settingsOpen && activeTab === 'agents') {
       window.api.getAgentPrompts().then((prompts) => {
         setAgentPrompts(prompts)
@@ -236,6 +260,16 @@ export function SettingsOverlay() {
       })
     }
   }, [settingsOpen, activeTab])
+
+  async function handleCleanupWorktrees() {
+    setCleaning(true)
+    setCleanupResult(null)
+    const result = await window.api.cleanupAllWorktrees()
+    setCleanupResult(result)
+    const usage = await window.api.getWorktreeUsage()
+    setWorktreeUsage(usage)
+    setCleaning(false)
+  }
 
   async function updateAgentPrompt(id: string, prompt: string) {
     await window.api.updateSettings(`reviewAgent.${id}`, prompt)
@@ -573,6 +607,66 @@ export function SettingsOverlay() {
                         >
                           {ghChecking ? 'Checking...' : 'Re-check'}
                         </button>
+                      </div>
+                    </section>
+                  </div>
+                )}
+
+                {activeTab === 'storage' && (
+                  <div className="mt-8 space-y-8">
+                    <section>
+                      <span className="block font-medium text-sm text-stone-300">
+                        Git Worktrees
+                      </span>
+                      <p className="mt-0.5 text-stone-500 text-xs">
+                        Isolated git worktrees created for sessions. Worktrees older than 7 days are
+                        automatically cleaned up on app startup.
+                      </p>
+
+                      <div className="mt-3 space-y-3 rounded-lg border border-stone-800 bg-stone-900/50 p-4">
+                        {worktreeUsage ? (
+                          <>
+                            <div className="flex items-center justify-between">
+                              <div className="space-y-1">
+                                <div className="text-sm text-stone-300">
+                                  {worktreeUsage.count}{' '}
+                                  {worktreeUsage.count === 1 ? 'worktree' : 'worktrees'}
+                                </div>
+                                <div className="text-stone-500 text-xs">
+                                  {formatBytes(worktreeUsage.sizeBytes)} on disk
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={handleCleanupWorktrees}
+                                disabled={cleaning || worktreeUsage.count === 0}
+                                className="rounded bg-stone-800 px-3 py-1.5 text-stone-300 text-xs hover:bg-stone-700 disabled:opacity-30"
+                              >
+                                {cleaning ? 'Cleaning...' : 'Clean up all'}
+                              </button>
+                            </div>
+
+                            {cleanupResult && (
+                              <div className="rounded-md border border-green-900/50 bg-green-950/30 px-3 py-2 text-green-400 text-xs">
+                                Removed {cleanupResult.removed}{' '}
+                                {cleanupResult.removed === 1 ? 'worktree' : 'worktrees'}, freed{' '}
+                                {formatBytes(cleanupResult.freedBytes)}
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <div className="text-sm text-stone-600">Loading...</div>
+                        )}
+                      </div>
+
+                      <div className="mt-3 flex items-start gap-2 rounded-md border border-stone-800 bg-stone-900/50 px-3 py-2">
+                        <Info size={13} className="mt-0.5 flex-shrink-0 text-stone-600" />
+                        <p className="text-stone-500 text-xs">
+                          Worktrees are created in{' '}
+                          <code className="text-stone-400">~/.pylon/worktrees/</code> when sessions
+                          use git isolation. Stale worktrees older than 7 days are automatically
+                          removed on app startup.
+                        </p>
                       </div>
                     </section>
                   </div>

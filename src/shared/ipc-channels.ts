@@ -30,6 +30,8 @@ export const IPC = {
   WORKTREE_MERGE_CLEANUP: 'worktree:merge-cleanup',
   WORKTREE_DISCARD_CLEANUP: 'worktree:discard-cleanup',
   WORKTREE_INFO: 'worktree:info',
+  WORKTREE_GET_USAGE: 'worktree:get-usage',
+  WORKTREE_CLEANUP_ALL: 'worktree:cleanup-all',
   // PR Review
   GH_CHECK_STATUS: 'gh:check-status',
   GH_SET_PATH: 'gh:set-path',

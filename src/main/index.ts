@@ -67,6 +67,11 @@ app.whenReady().then(() => {
   initDatabase()
   registerIpcHandlers()
 
+  // Auto-cleanup stale worktrees (>7 days old)
+  import('./worktree-cleanup')
+    .then(({ cleanupStaleWorktrees }) => cleanupStaleWorktrees(7))
+    .catch((err) => log.warn('Stale worktree cleanup failed:', err))
+
   const mainWindow = createWindow()
   sessionManager.setWindow(mainWindow)
   prReviewManager.setWindow(mainWindow)
