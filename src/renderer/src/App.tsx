@@ -15,18 +15,19 @@ export default function App() {
   usePrReviewBridge()
   const sidebarView = useUiStore((s) => s.sidebarView)
 
-  const { tabs, activeTabId, setActiveTab, addTab } = useTabStore()
+  const { tabs, activeTabId, setActiveTab } = useTabStore()
+  const setNewTabPopoverOpen = useUiStore((s) => s.setNewTabPopoverOpen)
   const activeTab = tabs.find((t) => t.id === activeTabId)
 
-  // Cmd+1..9 to switch tabs, Cmd+N to open new tab
+  // Cmd+1..9 to switch tabs, Cmd+N to open new tab popover
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (!e.metaKey || e.shiftKey || e.altKey || e.ctrlKey) return
 
-      // Cmd+N — new blank tab (shows HomePage)
+      // Cmd+N — open the new tab project picker
       if (e.key === 'n') {
         e.preventDefault()
-        addTab('', 'New Tab')
+        setNewTabPopoverOpen(true)
         return
       }
 
@@ -42,7 +43,7 @@ export default function App() {
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [tabs, setActiveTab, addTab])
+  }, [tabs, setActiveTab, setNewTabPopoverOpen])
 
   return (
     <>

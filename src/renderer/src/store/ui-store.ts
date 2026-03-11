@@ -8,6 +8,7 @@ type UiStore = {
   sidebarView: SidebarView
   draftText: string | null
   reviewPanelPlan: { sessionId: string; filePath: string } | null
+  newTabPopoverOpen: boolean
 
   toggleCommandPalette: () => void
   setSettingsOpen: (open: boolean) => void
@@ -15,6 +16,7 @@ type UiStore = {
   setDraftText: (text: string | null) => void
   openReviewPanel: (sessionId: string, filePath: string) => void
   closeReviewPanel: () => void
+  setNewTabPopoverOpen: (open: boolean) => void
 }
 
 export const useUiStore = create<UiStore>((set) => ({
@@ -23,6 +25,7 @@ export const useUiStore = create<UiStore>((set) => ({
   sidebarView: 'home',
   draftText: null,
   reviewPanelPlan: null,
+  newTabPopoverOpen: false,
 
   toggleCommandPalette: () => set((state) => ({ commandPaletteOpen: !state.commandPaletteOpen })),
 
@@ -34,4 +37,6 @@ export const useUiStore = create<UiStore>((set) => ({
 
   openReviewPanel: (sessionId, filePath) => set({ reviewPanelPlan: { sessionId, filePath } }),
   closeReviewPanel: () => set({ reviewPanelPlan: null }),
+
+  setNewTabPopoverOpen: (open) => set({ newTabPopoverOpen: open }),
 }))

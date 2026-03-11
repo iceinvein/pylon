@@ -14,6 +14,8 @@ type ProjectsPopoverProps = {
   onSelectProject: (path: string) => void
   onBrowse: () => void
   anchorRef: React.RefObject<HTMLButtonElement | null>
+  /** Where to place the popover relative to the anchor. Default: 'right' */
+  position?: 'right' | 'below'
 }
 
 export function ProjectsPopover({
@@ -22,6 +24,7 @@ export function ProjectsPopover({
   onSelectProject,
   onBrowse,
   anchorRef,
+  position = 'right',
 }: ProjectsPopoverProps) {
   const [projects, setProjects] = useState<Project[]>([])
   const popoverRef = useRef<HTMLDivElement>(null)
@@ -72,10 +75,23 @@ export function ProjectsPopover({
           exit={{ opacity: 0, x: -4 }}
           transition={{ duration: 0.12 }}
           className="fixed z-50 w-72 rounded-xl border border-stone-700 bg-stone-900 py-1.5 shadow-2xl"
-          style={{
-            left: anchorRef.current ? anchorRef.current.getBoundingClientRect().right + 6 : 56,
-            top: anchorRef.current ? anchorRef.current.getBoundingClientRect().top : 120,
-          }}
+          style={
+            position === 'below'
+              ? {
+                  right: anchorRef.current
+                    ? window.innerWidth - anchorRef.current.getBoundingClientRect().right
+                    : 8,
+                  top: anchorRef.current
+                    ? anchorRef.current.getBoundingClientRect().bottom + 6
+                    : 44,
+                }
+              : {
+                  left: anchorRef.current
+                    ? anchorRef.current.getBoundingClientRect().right + 6
+                    : 56,
+                  top: anchorRef.current ? anchorRef.current.getBoundingClientRect().top : 120,
+                }
+          }
         >
           <div className="px-3 py-1.5">
             <p className="font-medium text-[10px] text-stone-500 uppercase tracking-wider">

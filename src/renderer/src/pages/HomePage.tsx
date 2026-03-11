@@ -5,6 +5,7 @@ import { SessionHistory } from '../components/SessionHistory'
 import { WorktreeDialog } from '../components/WorktreeDialog'
 import { useFolderOpen } from '../hooks/use-folder-open'
 import { timeAgo } from '../lib/utils'
+import { useTabStore } from '../store/tab-store'
 
 type Project = {
   path: string
@@ -12,7 +13,14 @@ type Project = {
 }
 
 export function HomePage() {
-  const { dialogState, openFolder, openPath, confirmDialog, cancelDialog } = useFolderOpen()
+  // If the active tab has no cwd, we're inside a blank "New Tab" — reuse it
+  const activeTab = useTabStore((s) => {
+    const tab = s.tabs.find((t) => t.id === s.activeTabId)
+    return tab && !tab.cwd ? tab : undefined
+  })
+  const { dialogState, openFolder, openPath, confirmDialog, cancelDialog } = useFolderOpen(
+    activeTab?.id,
+  )
   const [projects, setProjects] = useState<Project[]>([])
 
   useEffect(() => {

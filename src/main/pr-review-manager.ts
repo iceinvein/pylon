@@ -1,4 +1,10 @@
+import { execFile } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
+import { existsSync } from 'node:fs'
+import { mkdir, rm } from 'node:fs/promises'
+import { homedir } from 'node:os'
+import { basename, join } from 'node:path'
+import { promisify } from 'node:util'
 import type { BrowserWindow } from 'electron'
 import { IPC } from '../shared/ipc-channels'
 import { log } from '../shared/logger'
@@ -7,6 +13,8 @@ import { getDb } from './db'
 import { type ChunkResult, chunkDiff, getTokenBudget } from './diff-chunker'
 import { getPrDetail } from './gh-cli'
 import { sessionManager } from './session-manager'
+
+const execFileAsync = promisify(execFile)
 
 const logger = log.child('pr-review')
 const STREAM_THROTTLE_MS = 300
@@ -327,6 +335,7 @@ type ActiveReviewSession = {
 
 class PrReviewManager {
   private activeReviews = new Map<string, ActiveReviewSession>()
+  private prWorktrees = new Map<string, { path: string; repoPath: string }>()
   private window: BrowserWindow | null = null
 
   setWindow(window: BrowserWindow): void {
@@ -463,11 +472,31 @@ class PrReviewManager {
       return
     }
 
+    // Create a worktree checked out to the PR's head branch so agents
+    // explore the actual PR code, not whatever branch is checked out locally
+    let sessionCwd = repo.projectPath
+    try {
+      sessionCwd = await this.createPrWorktree(
+        repo.projectPath,
+        prNumber,
+        detail.headBranch,
+        reviewId,
+      )
+    } catch (err) {
+      logger.warn('Failed to create PR worktree, falling back to project path:', err)
+    }
+
     const agentPromises = focusAreas.map((focus) =>
-      this.runAgentSession(reviewId, repo, detail, chunks, skippedFiles, focus, active),
+      this.runAgentSession(reviewId, sessionCwd, detail, chunks, skippedFiles, focus, active),
     )
 
-    const results = await Promise.allSettled(agentPromises)
+    let results: PromiseSettledResult<ReviewFinding[]>[]
+    try {
+      results = await Promise.allSettled(agentPromises)
+    } finally {
+      // Always clean up the worktree when agents finish
+      await this.removePrWorktree(reviewId)
+    }
 
     // Merge findings from all agents
     const allFindings: ReviewFinding[] = []
@@ -532,19 +561,14 @@ class PrReviewManager {
 
   private async runAgentSession(
     reviewId: string,
-    repo: GhRepo,
+    cwd: string,
     detail: Awaited<ReturnType<typeof getPrDetail>>,
     chunks: ChunkResult['chunks'],
     skippedFiles: string[],
     focus: ReviewFocus,
     active: ActiveReviewSession,
   ): Promise<ReviewFinding[]> {
-    const sessionId = await sessionManager.createSession(
-      repo.projectPath,
-      undefined,
-      undefined,
-      'pr-review',
-    )
+    const sessionId = await sessionManager.createSession(cwd, undefined, undefined, 'pr-review')
     sessionManager.setPermissionMode(sessionId, 'auto-approve')
 
     const agentSession: AgentSession = {
@@ -635,7 +659,17 @@ Output your findings as a JSON array inside a fenced code block tagged \`review-
 ]
 \`\`\`
 
-Output ONLY the review-findings block. Do not use any tools.`
+## Tools — Code Intelligence (use first!)
+Before analyzing the diff, use code-intelligence MCP tools to build context around the changed code:
+- \`search_code\` — find related symbols, patterns, or usages across the codebase
+- \`get_definition\` — jump to a symbol's definition to understand its contract
+- \`find_references\` — find all call sites of changed functions to assess blast radius
+- \`get_call_hierarchy\` — understand upstream/downstream call chains
+- \`trace_data_flow\` — follow data through the system to spot issues the diff alone won't reveal
+
+Use these tools to understand the surrounding code before making judgments. This ensures your findings account for the full context, not just the diff in isolation.
+
+After your analysis, output ONLY the review-findings block.`
         } else {
           // Subsequent chunks: continuation prompt
           prompt = `Here are additional files to review (chunk ${i + 1} of ${chunks.length}). Continue applying your **${focus}** review criteria.
@@ -703,6 +737,111 @@ Output findings in the same \`review-findings\` format.`
 
     this.sendAgentProgress(reviewId, active)
     return agentSession.findings
+  }
+
+  /**
+   * Create a temporary git worktree checked out to the PR's head branch.
+   * Uses `gh pr checkout` inside the worktree to handle fork PRs gracefully.
+   */
+  private async createPrWorktree(
+    repoPath: string,
+    prNumber: number,
+    headBranch: string,
+    reviewId: string,
+  ): Promise<string> {
+    const repoName = basename(repoPath)
+    const worktreeBase = join(homedir(), '.pylon', 'worktrees', repoName)
+    const worktreeDir = `pr-${prNumber}-${reviewId.slice(0, 8)}`
+    const worktreePath = join(worktreeBase, worktreeDir)
+
+    await mkdir(worktreeBase, { recursive: true })
+
+    // Clean up if path already exists from a previous failed review
+    if (existsSync(worktreePath)) {
+      try {
+        await execFileAsync('git', ['worktree', 'remove', '--force', worktreePath], {
+          cwd: repoPath,
+          timeout: 10000,
+        })
+      } catch {
+        await rm(worktreePath, { recursive: true, force: true })
+      }
+    }
+
+    // Fetch the PR's head ref so the branch is available locally
+    try {
+      await execFileAsync(
+        'git',
+        ['fetch', 'origin', `pull/${prNumber}/head:pr-review/${prNumber}`],
+        { cwd: repoPath, timeout: 30000 },
+      )
+      // Create worktree on the fetched PR ref
+      await execFileAsync('git', ['worktree', 'add', worktreePath, `pr-review/${prNumber}`], {
+        cwd: repoPath,
+        timeout: 30000,
+      })
+    } catch {
+      // Fallback: if fetch by PR ref fails (e.g. non-GitHub remote), try the branch name directly
+      logger.warn(`Failed to fetch PR ref, falling back to branch: ${headBranch}`)
+      try {
+        await execFileAsync('git', ['fetch', 'origin', headBranch], {
+          cwd: repoPath,
+          timeout: 30000,
+        })
+      } catch {
+        // Branch may already exist locally
+      }
+      await execFileAsync('git', ['worktree', 'add', worktreePath, `origin/${headBranch}`], {
+        cwd: repoPath,
+        timeout: 30000,
+      })
+    }
+
+    this.prWorktrees.set(reviewId, { path: worktreePath, repoPath })
+    logger.info(`Created PR worktree at ${worktreePath} for PR #${prNumber} (${headBranch})`)
+    return worktreePath
+  }
+
+  /**
+   * Remove the temporary worktree and its tracking branch after a review completes.
+   */
+  private async removePrWorktree(reviewId: string): Promise<void> {
+    const entry = this.prWorktrees.get(reviewId)
+    if (!entry) return
+
+    try {
+      await execFileAsync('git', ['worktree', 'remove', '--force', entry.path], {
+        cwd: entry.repoPath,
+        timeout: 10000,
+      })
+    } catch {
+      // Force-remove if git worktree remove fails
+      try {
+        await rm(entry.path, { recursive: true, force: true })
+        await execFileAsync('git', ['worktree', 'prune'], {
+          cwd: entry.repoPath,
+          timeout: 10000,
+        })
+      } catch (err) {
+        logger.warn(`Failed to clean up PR worktree at ${entry.path}:`, err)
+      }
+    }
+
+    // Clean up the temporary branch
+    try {
+      const prNumber = entry.path.match(/pr-(\d+)-/)?.[1]
+      if (prNumber) {
+        await execFileAsync('git', ['branch', '-D', `pr-review/${prNumber}`], {
+          cwd: entry.repoPath,
+          timeout: 5000,
+        })
+      }
+    } catch {
+      // Branch may not exist or already cleaned up
+    }
+
+    this.prWorktrees.delete(reviewId)
+    logger.info(`Removed PR worktree for review ${reviewId}`)
   }
 
   private sendAgentProgress(reviewId: string, active: ActiveReviewSession): void {
@@ -860,6 +999,9 @@ Output findings in the same \`review-findings\` format.`
     }
     this.updateReviewStatus(reviewId, 'error', Date.now())
     this.activeReviews.delete(reviewId)
+    this.removePrWorktree(reviewId).catch((err) => {
+      logger.warn('Failed to clean up PR worktree on stop:', err)
+    })
     this.send(IPC.GH_REVIEW_UPDATE, { reviewId, status: 'error', error: 'Review stopped by user' })
   }
 
