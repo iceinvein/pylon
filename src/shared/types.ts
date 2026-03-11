@@ -120,6 +120,7 @@ export type GitFetchComparison = {
   branch: string
   ahead: number
   behind: number
+  aheadCommits: GitFetchCompareCommit[]
   behindCommits: GitFetchCompareCommit[]
   filesChanged: number
 }

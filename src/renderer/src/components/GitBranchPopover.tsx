@@ -116,11 +116,30 @@ export function GitBranchPopover({ cwd, branchStatus, onClose }: GitBranchPopove
               )}
             </div>
 
+            {/* Ahead commits */}
+            {comparison && comparison.aheadCommits.length > 0 && (
+              <div className="mt-2">
+                <div className="mb-1 text-[10px] text-blue-500/70 uppercase tracking-wider">
+                  ↑ Local commits
+                </div>
+                <div className="max-h-32 overflow-y-auto">
+                  {comparison.aheadCommits.map((commit) => (
+                    <div key={commit.hash} className="flex items-start gap-2 py-0.5 text-xs">
+                      <span className="flex-shrink-0 font-mono text-stone-600">
+                        {commit.hash.slice(0, 7)}
+                      </span>
+                      <span className="truncate text-stone-400">{commit.message}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Behind commits */}
             {comparison && comparison.behindCommits.length > 0 && (
               <div className="mt-2">
-                <div className="mb-1 text-[10px] text-stone-600 uppercase tracking-wider">
-                  Missing commits
+                <div className="mb-1 text-[10px] text-amber-500/70 uppercase tracking-wider">
+                  ↓ Missing commits
                 </div>
                 <div className="max-h-32 overflow-y-auto">
                   {comparison.behindCommits.map((commit) => (

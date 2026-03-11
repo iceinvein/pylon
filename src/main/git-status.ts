@@ -89,6 +89,20 @@ export async function fetchAndCompare(cwd: string): Promise<GitFetchComparison> 
     // No upstream
   }
 
+  let aheadCommits: GitFetchCompareCommit[] = []
+  if (ahead > 0) {
+    try {
+      const { stdout } = await execFileAsync(
+        'git',
+        ['log', '@{upstream}..HEAD', '--oneline', '--no-decorate'],
+        { cwd, timeout: 5000 },
+      )
+      aheadCommits = parseLogOneline(stdout)
+    } catch {
+      // ignore
+    }
+  }
+
   let behindCommits: GitFetchCompareCommit[] = []
   if (behind > 0) {
     try {
@@ -119,7 +133,7 @@ export async function fetchAndCompare(cwd: string): Promise<GitFetchComparison> 
     }
   }
 
-  return { branch, ahead, behind, behindCommits, filesChanged }
+  return { branch, ahead, behind, aheadCommits, behindCommits, filesChanged }
 }
 
 export async function pullBranch(cwd: string): Promise<GitPullResult> {
