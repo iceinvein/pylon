@@ -1,5 +1,23 @@
-import { MessageSquare, X } from 'lucide-react'
+import { ChevronDown, ChevronRight, MessageSquare, X } from 'lucide-react'
 import { useState } from 'react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+
+const sectionProseClasses = [
+  'prose prose-invert prose-sm max-w-none',
+  'prose-p:text-stone-300 prose-li:text-stone-300',
+  'prose-headings:text-stone-200 prose-strong:text-stone-200',
+  'prose-a:text-violet-400 prose-a:no-underline hover:prose-a:underline',
+  'prose-pre:bg-stone-900 prose-pre:border prose-pre:border-stone-800 prose-pre:rounded-lg prose-pre:my-2',
+  'prose-code:text-amber-300 prose-code:bg-stone-800 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-xs prose-code:font-[family-name:var(--font-mono)]',
+  'prose-code:before:content-none prose-code:after:content-none',
+  'prose-table:border-collapse',
+  'prose-th:border prose-th:border-stone-700 prose-th:bg-stone-800/50 prose-th:px-3 prose-th:py-1.5 prose-th:text-stone-200',
+  'prose-td:border prose-td:border-stone-800 prose-td:px-3 prose-td:py-1.5 prose-td:text-stone-300',
+  'prose-blockquote:border-stone-600 prose-blockquote:text-stone-400',
+  'prose-hr:border-stone-800',
+  'prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5',
+].join(' ')
 
 type ReviewSectionProps = {
   index: number
@@ -11,6 +29,7 @@ type ReviewSectionProps = {
 
 export function ReviewSection({ index, title, body, comment, onSetComment }: ReviewSectionProps) {
   const [editing, setEditing] = useState(false)
+  const [collapsed, setCollapsed] = useState(false)
   const [draft, setDraft] = useState(comment ?? '')
   const hasComment = comment !== null && comment.length > 0
 
@@ -43,18 +62,33 @@ export function ReviewSection({ index, title, body, comment, onSetComment }: Rev
 
   return (
     <div
-      className={`border-l-[3px] px-4 py-3 transition-colors ${
+      className={`border-l-[3px] px-5 py-4 transition-colors ${
         hasComment ? 'border-l-amber-500 bg-amber-500/5' : 'border-l-transparent'
       }`}
     >
-      <div className="flex items-start gap-2.5">
-        <span className="min-w-[20px] pt-0.5 font-semibold text-stone-600 text-xs">
+      <div className="flex items-start gap-3">
+        <button
+          type="button"
+          onClick={() => setCollapsed(!collapsed)}
+          className="mt-0.5 flex-shrink-0 text-stone-600 transition-colors hover:text-stone-400"
+        >
+          {collapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+        </button>
+        <span className="min-w-[24px] pt-0.5 font-semibold text-stone-500 text-xs tabular-nums">
           {index + 1}
         </span>
         <div className="min-w-0 flex-1">
-          <div className="font-medium text-[13px] text-stone-200 leading-relaxed">{title}</div>
-          {body && (
-            <div className="mt-1.5 line-clamp-4 text-stone-500 text-xs leading-relaxed">{body}</div>
+          <button
+            type="button"
+            onClick={() => setCollapsed(!collapsed)}
+            className="text-left font-medium text-[13px] text-stone-200 leading-relaxed transition-colors hover:text-stone-100"
+          >
+            {title}
+          </button>
+          {body && !collapsed && (
+            <div className={`mt-2 ${sectionProseClasses}`}>
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{body}</ReactMarkdown>
+            </div>
           )}
         </div>
         <button
@@ -72,8 +106,8 @@ export function ReviewSection({ index, title, body, comment, onSetComment }: Rev
       </div>
 
       {/* Comment bubble */}
-      {hasComment && !editing && (
-        <div className="mt-2.5 ml-[28px] rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2">
+      {hasComment && !editing && !collapsed && (
+        <div className="mt-3 ml-[44px] rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2">
           <div className="mb-1 flex items-center gap-1.5">
             <div className="flex h-4 w-4 items-center justify-center rounded-full bg-amber-500/30">
               <span className="font-bold text-[9px] text-amber-500">U</span>
@@ -92,15 +126,15 @@ export function ReviewSection({ index, title, body, comment, onSetComment }: Rev
       )}
 
       {/* Comment editor */}
-      {editing && (
-        <div className="mt-2.5 ml-[28px]">
+      {editing && !collapsed && (
+        <div className="mt-3 ml-[44px]">
           <textarea
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Add your feedback..."
             className="w-full resize-none rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-stone-200 text-xs leading-relaxed outline-none placeholder:text-stone-600 focus:border-amber-500/50"
-            rows={2}
+            rows={3}
           />
           <div className="mt-1 text-[10px] text-stone-600">Cmd+Enter to save · Esc to cancel</div>
         </div>

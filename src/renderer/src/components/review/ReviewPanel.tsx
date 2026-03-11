@@ -1,4 +1,5 @@
 import { ClipboardList, X } from 'lucide-react'
+import { AnimatePresence, motion } from 'motion/react'
 import { useCallback, useEffect, useState } from 'react'
 import type { PlanComment, PlanSection } from '../../../../shared/types'
 import { parsePlanSections } from '../../lib/parse-plan'
@@ -115,95 +116,131 @@ export function ReviewPanel() {
     closeReviewPanel()
   }
 
-  if (!reviewPlanRef) return null
+  // Close on Escape key
+  useEffect(() => {
+    if (!reviewPlanRef) return
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') closeReviewPanel()
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [reviewPlanRef, closeReviewPanel])
+
+  const isOpen = reviewPlanRef !== null
 
   return (
-    <div className="flex h-full flex-col bg-[var(--color-base-bg)]">
-      {/* Header */}
-      <div className="flex items-center justify-between border-stone-800 border-b px-4 py-3">
-        <div>
-          <div className="flex items-center gap-2 font-semibold text-sm text-stone-200">
-            <ClipboardList size={15} className="text-violet-400" />
-            Review Plan
-          </div>
-          <div className="mt-0.5 text-[11px] text-stone-500">
-            {relativePath} · {flatSections.length} section{flatSections.length !== 1 ? 's' : ''}
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={closeReviewPanel}
-          className="rounded p-1 text-stone-600 transition-colors hover:bg-stone-800 hover:text-stone-300"
-          aria-label="Close review panel"
-        >
-          <X size={16} />
-        </button>
-      </div>
-
-      {/* Scrollable sections */}
-      <div className="flex-1 overflow-y-auto">
-        {loading ? (
-          <div className="flex items-center justify-center py-12 text-stone-600 text-xs">
-            Loading plan...
-          </div>
-        ) : error ? (
-          <div className="flex flex-col items-center justify-center gap-2 px-4 py-12">
-            <span className="text-red-400 text-xs">Failed to load plan</span>
-            <span className="text-[11px] text-stone-600">{error}</span>
-          </div>
-        ) : flatSections.length === 0 ? (
-          <div className="flex items-center justify-center py-12 text-stone-600 text-xs">
-            No sections found in plan file
-          </div>
-        ) : (
-          <div className="divide-y divide-stone-800/60">
-            {flatSections.map((section, i) => (
-              <ReviewSection
-                key={`${section.level}-${section.title}`}
-                index={i}
-                title={section.title}
-                body={section.body}
-                comment={comments.get(i) ?? null}
-                onSetComment={(c) => handleSetComment(i, c)}
-              />
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Footer action bar */}
-      <div className="flex items-center gap-2.5 border-stone-800 border-t px-4 py-3">
-        <div className="flex-1 text-stone-500 text-xs">
-          {commentCount > 0 ? (
-            <span className="text-amber-500">
-              {commentCount} comment{commentCount !== 1 ? 's' : ''} on {flatSections.length} section
-              {flatSections.length !== 1 ? 's' : ''}
-            </span>
-          ) : (
-            <span>
-              {flatSections.length} section{flatSections.length !== 1 ? 's' : ''}
-            </span>
-          )}
-        </div>
-        <button
-          type="button"
-          onClick={handleApprove}
-          disabled={!canAct}
-          className="rounded-md border border-stone-700 bg-stone-800 px-4 py-2 text-[13px] text-stone-300 transition-colors hover:bg-stone-700 disabled:opacity-40"
-        >
-          Approve
-        </button>
-        {commentCount > 0 && (
-          <button
-            type="button"
-            onClick={handleRequestChanges}
-            disabled={!canAct}
-            className="rounded-md bg-amber-600 px-4 py-2 font-semibold text-[13px] text-stone-950 transition-colors hover:bg-amber-500 disabled:opacity-40"
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          {/* Backdrop */}
+          <motion.div
+            key="review-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-40 bg-black/60"
+            onClick={closeReviewPanel}
+          />
+          {/* Slide-over panel */}
+          <motion.div
+            key="review-slider"
+            initial={{ x: '100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '100%' }}
+            transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
+            className="fixed top-0 right-0 bottom-0 z-50 flex w-[70vw] min-w-[480px] max-w-[900px] flex-col border-stone-800 border-l bg-stone-950 shadow-2xl"
           >
-            Request Changes
-          </button>
-        )}
-      </div>
-    </div>
+            {/* Header */}
+            <div className="flex items-center justify-between border-stone-800 border-b px-6 py-4">
+              <div>
+                <div className="flex items-center gap-2.5 font-semibold text-base text-stone-200">
+                  <ClipboardList size={18} className="text-violet-400" />
+                  Review Plan
+                </div>
+                <div className="mt-1 text-[12px] text-stone-500">
+                  {relativePath} · {flatSections.length} section
+                  {flatSections.length !== 1 ? 's' : ''}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={closeReviewPanel}
+                className="rounded-md p-1.5 text-stone-500 transition-colors hover:bg-stone-800 hover:text-stone-300"
+                aria-label="Close review panel"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Scrollable sections */}
+            <div className="flex-1 overflow-y-auto">
+              {loading ? (
+                <div className="flex items-center justify-center py-16 text-sm text-stone-600">
+                  Loading plan...
+                </div>
+              ) : error ? (
+                <div className="flex flex-col items-center justify-center gap-2 px-6 py-16">
+                  <span className="text-red-400 text-sm">Failed to load plan</span>
+                  <span className="text-[12px] text-stone-600">{error}</span>
+                </div>
+              ) : flatSections.length === 0 ? (
+                <div className="flex items-center justify-center py-16 text-sm text-stone-600">
+                  No sections found in plan file
+                </div>
+              ) : (
+                <div className="divide-y divide-stone-800/60">
+                  {flatSections.map((section, i) => (
+                    <ReviewSection
+                      key={`${section.level}-${section.title}`}
+                      index={i}
+                      title={section.title}
+                      body={section.body}
+                      comment={comments.get(i) ?? null}
+                      onSetComment={(c) => handleSetComment(i, c)}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Footer action bar */}
+            <div className="flex items-center gap-3 border-stone-800 border-t px-6 py-4">
+              <div className="flex-1 text-stone-500 text-xs">
+                {commentCount > 0 ? (
+                  <span className="text-amber-500">
+                    {commentCount} comment{commentCount !== 1 ? 's' : ''} on {flatSections.length}{' '}
+                    section
+                    {flatSections.length !== 1 ? 's' : ''}
+                  </span>
+                ) : (
+                  <span>
+                    {flatSections.length} section{flatSections.length !== 1 ? 's' : ''}
+                  </span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={handleApprove}
+                disabled={!canAct}
+                className="rounded-md border border-stone-700 bg-stone-800 px-5 py-2 text-[13px] text-stone-300 transition-colors hover:bg-stone-700 disabled:opacity-40"
+              >
+                Approve
+              </button>
+              {commentCount > 0 && (
+                <button
+                  type="button"
+                  onClick={handleRequestChanges}
+                  disabled={!canAct}
+                  className="rounded-md bg-amber-600 px-5 py-2 font-semibold text-[13px] text-stone-950 transition-colors hover:bg-amber-500 disabled:opacity-40"
+                >
+                  Request Changes
+                </button>
+              )}
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
   )
 }

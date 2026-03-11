@@ -18,11 +18,8 @@ import { SessionInfoPanel } from '../components/SessionInfoPanel'
 import { ThinkingIndicator } from '../components/ThinkingIndicator'
 import { useSessionStore } from '../store/session-store'
 import { useTabStore } from '../store/tab-store'
-import { useUiStore } from '../store/ui-store'
 
 const emptyFiles: string[] = []
-const MIN_REVIEW_WIDTH = 360
-const MAX_REVIEW_WIDTH = 700
 
 type SessionViewProps = {
   tab: Tab
@@ -193,9 +190,6 @@ export function SessionView({ tab }: SessionViewProps) {
   const [panelWidth, setPanelWidth] = useState(360)
   const [flowPanelWidth, setFlowPanelWidth] = useState(280)
   const [infoPanelWidth, setInfoPanelWidth] = useState(260)
-  const reviewPanelPlan = useUiStore((s) => s.reviewPanelPlan)
-  const showReview = reviewPanelPlan !== null && reviewPanelPlan.sessionId === sessionId
-  const [reviewPanelWidth, setReviewPanelWidth] = useState(480)
   const dragging = useRef(false)
   const dragStartX = useRef(0)
   const dragStartWidth = useRef(0)
@@ -252,13 +246,6 @@ export function SessionView({ tab }: SessionViewProps) {
     [flowPanelWidth, makeDragHandler],
   )
 
-  const handleReviewDragStart = useCallback(
-    (e: React.MouseEvent) => {
-      makeDragHandler(reviewPanelWidth, setReviewPanelWidth, MIN_REVIEW_WIDTH, MAX_REVIEW_WIDTH)(e)
-    },
-    [reviewPanelWidth, makeDragHandler],
-  )
-
   const handleInfoDragStart = useCallback(
     (e: React.MouseEvent) => {
       makeDragHandler(infoPanelWidth, setInfoPanelWidth, MIN_INFO_WIDTH, MAX_INFO_WIDTH)(e)
@@ -266,240 +253,222 @@ export function SessionView({ tab }: SessionViewProps) {
     [infoPanelWidth, makeDragHandler],
   )
 
-
   return (
-    <div className="flex h-full">
-      {/* Main chat column */}
-      <div className="flex min-w-0 flex-1 flex-col">
-        <div className="min-h-0 flex-1">
-          {sessionId ? (
-            <ChatView sessionId={sessionId} />
-          ) : (
-            <div className="flex h-full items-center justify-center">
-              <p className="text-sm text-stone-600">Send a message to start</p>
+    <>
+      <div className="flex h-full">
+        {/* Main chat column */}
+        <div className="flex min-w-0 flex-1 flex-col">
+          <div className="min-h-0 flex-1">
+            {sessionId ? (
+              <ChatView sessionId={sessionId} />
+            ) : (
+              <div className="flex h-full items-center justify-center">
+                <p className="text-sm text-stone-600">Send a message to start</p>
+              </div>
+            )}
+          </div>
+          <div className="overflow-hidden">
+            <div
+              className={`transition-opacity duration-150 ${isProcessing ? 'opacity-100' : 'opacity-0'}`}
+            >
+              <ThinkingIndicator isCompacting={isCompacting} />
             </div>
-          )}
-        </div>
-        <div className="overflow-hidden">
-          <div
-            className={`transition-opacity duration-150 ${isProcessing ? 'opacity-100' : 'opacity-0'}`}
-          >
-            <ThinkingIndicator isCompacting={isCompacting} />
+          </div>
+          <TasksPanel sessionId={sessionId ?? null} />
+          <div>
+            <InputBar
+              sessionId={sessionId}
+              isRunning={isRunning}
+              model={currentModel}
+              onModelChange={handleModelChange}
+              permissionMode={permissionMode}
+              onPermissionModeChange={handlePermissionModeChange}
+              onSend={handleSend}
+              onStop={handleStop}
+            />
           </div>
         </div>
-        <TasksPanel sessionId={sessionId ?? null} />
-        <div>
-          <InputBar
-            sessionId={sessionId}
-            isRunning={isRunning}
-            model={currentModel}
-            onModelChange={handleModelChange}
-            permissionMode={permissionMode}
-            onPermissionModeChange={handlePermissionModeChange}
-            onSend={handleSend}
-            onStop={handleStop}
-          />
-        </div>
-      </div>
-      {/* Right-edge panels */}
-      {sessionId && (
-        <>
-          {/* Flow panel */}
-          <AnimatePresence mode="popLayout" initial={false}>
-            {showFlow ? (
-              <motion.div
-                key="flow-panel"
-                initial={{ width: 0, opacity: 0 }}
-                animate={{ width: flowPanelWidth + 5, opacity: 1 }}
-                exit={{ width: 0, opacity: 0 }}
-                transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
-                className="flex flex-shrink-0 overflow-hidden"
-              >
-                {/* biome-ignore lint/a11y/noStaticElementInteractions: mouse-only resize handle */}
-                <div
-                  onMouseDown={handleFlowDragStart}
-                  className="flex w-1 flex-shrink-0 cursor-col-resize items-center justify-center border-stone-800 border-l bg-stone-950 transition-colors hover:bg-stone-700 active:bg-stone-600"
-                />
-                <div className="flex min-w-0 flex-1 flex-col bg-[var(--color-base-bg)]">
-                  <div className="flex items-center justify-between border-stone-800 border-b px-3 py-2">
-                    <div className="flex items-center gap-2 font-medium text-stone-400 text-xs">
-                      <Workflow size={13} />
-                      Flow
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setShowFlow(false)}
-                      className="rounded p-0.5 text-stone-600 transition-colors hover:bg-stone-800 hover:text-stone-300"
-                      title="Collapse flow"
-                    >
-                      <ChevronRight size={14} />
-                    </button>
-                  </div>
-                  <FlowPanel />
-                </div>
-              </motion.div>
-            ) : null}
-          </AnimatePresence>
-
-          {/* Changes panel */}
-          <AnimatePresence mode="popLayout" initial={false}>
-            {showChanges ? (
-              <motion.div
-                key="changes-panel"
-                initial={{ width: 0, opacity: 0 }}
-                animate={{ width: panelWidth + 5, opacity: 1 }}
-                exit={{ width: 0, opacity: 0 }}
-                transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
-                className="flex flex-shrink-0 overflow-hidden"
-              >
-                {/* biome-ignore lint/a11y/noStaticElementInteractions: mouse-only resize handle */}
-                <div
-                  onMouseDown={handleChangesDragStart}
-                  className="flex w-1 flex-shrink-0 cursor-col-resize items-center justify-center border-stone-800 border-l bg-stone-950 transition-colors hover:bg-stone-700 active:bg-stone-600"
-                />
-                <div className="flex min-w-0 flex-1 flex-col bg-[var(--color-base-bg)]">
-                  <div className="flex items-center justify-between border-stone-800 border-b px-3 py-2">
-                    <div className="flex items-center gap-2 font-medium text-stone-400 text-xs">
-                      <GitCompareArrows size={13} />
-                      Changes
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setShowChanges(false)}
-                      className="rounded p-0.5 text-stone-600 transition-colors hover:bg-stone-800 hover:text-stone-300"
-                      title="Collapse changes"
-                    >
-                      <ChevronRight size={14} />
-                    </button>
-                  </div>
-                  <ChangesPanel />
-                </div>
-              </motion.div>
-            ) : null}
-          </AnimatePresence>
-
-          {/* Review panel */}
-          <AnimatePresence mode="popLayout" initial={false}>
-            {showReview ? (
-              <motion.div
-                key="review-panel"
-                initial={{ width: 0, opacity: 0 }}
-                animate={{ width: reviewPanelWidth + 5, opacity: 1 }}
-                exit={{ width: 0, opacity: 0 }}
-                transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
-                className="flex flex-shrink-0 overflow-hidden"
-              >
-                {/* biome-ignore lint/a11y/noStaticElementInteractions: mouse-only resize handle */}
-                <div
-                  onMouseDown={handleReviewDragStart}
-                  className="flex w-1 flex-shrink-0 cursor-col-resize items-center justify-center border-stone-800 border-l bg-stone-950 transition-colors hover:bg-stone-700 active:bg-stone-600"
-                />
-                <div className="flex min-w-0 flex-1 flex-col">
-                  <ReviewPanel />
-                </div>
-              </motion.div>
-            ) : null}
-          </AnimatePresence>
-
-          {/* Info panel */}
-          <AnimatePresence mode="popLayout" initial={false}>
-            {showInfo ? (
-              <motion.div
-                key="info-panel"
-                initial={{ width: 0, opacity: 0 }}
-                animate={{ width: infoPanelWidth + 5, opacity: 1 }}
-                exit={{ width: 0, opacity: 0 }}
-                transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
-                className="flex flex-shrink-0 overflow-hidden"
-              >
-                {/* biome-ignore lint/a11y/noStaticElementInteractions: mouse-only resize handle */}
-                <div
-                  onMouseDown={handleInfoDragStart}
-                  className="flex w-1 flex-shrink-0 cursor-col-resize items-center justify-center border-stone-800 border-l bg-stone-950 transition-colors hover:bg-stone-700 active:bg-stone-600"
-                />
-                <div className="flex min-w-0 flex-1 flex-col bg-[var(--color-base-bg)]">
-                  <div className="flex items-center justify-between border-stone-800 border-b px-3 py-2">
-                    <div className="flex items-center gap-2 font-medium text-stone-400 text-xs">
-                      <Info size={13} />
-                      Session
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setShowInfo(false)}
-                      className="rounded p-0.5 text-stone-600 transition-colors hover:bg-stone-800 hover:text-stone-300"
-                      title="Collapse session info"
-                    >
-                      <ChevronRight size={14} />
-                    </button>
-                  </div>
-                  <SessionInfoPanel sessionId={sessionId} />
-                </div>
-              </motion.div>
-            ) : null}
-          </AnimatePresence>
-
-          {/* Collapsed tabs (shown when any panel is collapsed) */}
-          {(!showFlow || !showChanges || !showInfo) && (
-            <div className="flex flex-shrink-0 flex-col border-stone-800 border-l bg-[var(--color-base-bg)]">
-              {!showFlow && (
-                <button
-                  type="button"
-                  onClick={() => setShowFlow(true)}
-                  title="Show flow"
-                  className="group flex w-10 flex-col items-center gap-1.5 py-3 transition-colors hover:bg-stone-800/60"
+        {/* Right-edge panels */}
+        {sessionId && (
+          <>
+            {/* Flow panel */}
+            <AnimatePresence mode="popLayout" initial={false}>
+              {showFlow ? (
+                <motion.div
+                  key="flow-panel"
+                  initial={{ width: 0, opacity: 0 }}
+                  animate={{ width: flowPanelWidth + 5, opacity: 1 }}
+                  exit={{ width: 0, opacity: 0 }}
+                  transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
+                  className="flex flex-shrink-0 overflow-hidden"
                 >
-                  <Workflow
-                    size={18}
-                    className="text-stone-500 transition-colors group-hover:text-stone-200"
+                  {/* biome-ignore lint/a11y/noStaticElementInteractions: mouse-only resize handle */}
+                  <div
+                    onMouseDown={handleFlowDragStart}
+                    className="flex w-1 flex-shrink-0 cursor-col-resize items-center justify-center border-stone-800 border-l bg-stone-950 transition-colors hover:bg-stone-700 active:bg-stone-600"
                   />
-                  <span className="font-medium text-[9px] text-stone-600 transition-colors group-hover:text-stone-300">
-                    Flow
-                  </span>
-                </button>
-              )}
-              {!showChanges && (
-                <button
-                  type="button"
-                  onClick={() => setShowChanges(true)}
-                  title="Show changed files"
-                  className="group flex w-10 flex-col items-center gap-1.5 py-3 transition-colors hover:bg-stone-800/60"
+                  <div className="flex min-w-0 flex-1 flex-col bg-[var(--color-base-bg)]">
+                    <div className="flex items-center justify-between border-stone-800 border-b px-3 py-2">
+                      <div className="flex items-center gap-2 font-medium text-stone-400 text-xs">
+                        <Workflow size={13} />
+                        Flow
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowFlow(false)}
+                        className="rounded p-0.5 text-stone-600 transition-colors hover:bg-stone-800 hover:text-stone-300"
+                        title="Collapse flow"
+                      >
+                        <ChevronRight size={14} />
+                      </button>
+                    </div>
+                    <FlowPanel />
+                  </div>
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
+
+            {/* Changes panel */}
+            <AnimatePresence mode="popLayout" initial={false}>
+              {showChanges ? (
+                <motion.div
+                  key="changes-panel"
+                  initial={{ width: 0, opacity: 0 }}
+                  animate={{ width: panelWidth + 5, opacity: 1 }}
+                  exit={{ width: 0, opacity: 0 }}
+                  transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
+                  className="flex flex-shrink-0 overflow-hidden"
                 >
-                  <div className="relative">
-                    <GitCompareArrows
+                  {/* biome-ignore lint/a11y/noStaticElementInteractions: mouse-only resize handle */}
+                  <div
+                    onMouseDown={handleChangesDragStart}
+                    className="flex w-1 flex-shrink-0 cursor-col-resize items-center justify-center border-stone-800 border-l bg-stone-950 transition-colors hover:bg-stone-700 active:bg-stone-600"
+                  />
+                  <div className="flex min-w-0 flex-1 flex-col bg-[var(--color-base-bg)]">
+                    <div className="flex items-center justify-between border-stone-800 border-b px-3 py-2">
+                      <div className="flex items-center gap-2 font-medium text-stone-400 text-xs">
+                        <GitCompareArrows size={13} />
+                        Changes
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowChanges(false)}
+                        className="rounded p-0.5 text-stone-600 transition-colors hover:bg-stone-800 hover:text-stone-300"
+                        title="Collapse changes"
+                      >
+                        <ChevronRight size={14} />
+                      </button>
+                    </div>
+                    <ChangesPanel />
+                  </div>
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
+
+            {/* Review panel — rendered as overlay (see bottom of component) */}
+
+            {/* Info panel */}
+            <AnimatePresence mode="popLayout" initial={false}>
+              {showInfo ? (
+                <motion.div
+                  key="info-panel"
+                  initial={{ width: 0, opacity: 0 }}
+                  animate={{ width: infoPanelWidth + 5, opacity: 1 }}
+                  exit={{ width: 0, opacity: 0 }}
+                  transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
+                  className="flex flex-shrink-0 overflow-hidden"
+                >
+                  {/* biome-ignore lint/a11y/noStaticElementInteractions: mouse-only resize handle */}
+                  <div
+                    onMouseDown={handleInfoDragStart}
+                    className="flex w-1 flex-shrink-0 cursor-col-resize items-center justify-center border-stone-800 border-l bg-stone-950 transition-colors hover:bg-stone-700 active:bg-stone-600"
+                  />
+                  <div className="flex min-w-0 flex-1 flex-col bg-[var(--color-base-bg)]">
+                    <div className="flex items-center justify-between border-stone-800 border-b px-3 py-2">
+                      <div className="flex items-center gap-2 font-medium text-stone-400 text-xs">
+                        <Info size={13} />
+                        Session
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowInfo(false)}
+                        className="rounded p-0.5 text-stone-600 transition-colors hover:bg-stone-800 hover:text-stone-300"
+                        title="Collapse session info"
+                      >
+                        <ChevronRight size={14} />
+                      </button>
+                    </div>
+                    <SessionInfoPanel sessionId={sessionId} />
+                  </div>
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
+
+            {/* Collapsed tabs (shown when any panel is collapsed) */}
+            {(!showFlow || !showChanges || !showInfo) && (
+              <div className="flex flex-shrink-0 flex-col border-stone-800 border-l bg-[var(--color-base-bg)]">
+                {!showFlow && (
+                  <button
+                    type="button"
+                    onClick={() => setShowFlow(true)}
+                    title="Show flow"
+                    className="group flex w-10 flex-col items-center gap-1.5 py-3 transition-colors hover:bg-stone-800/60"
+                  >
+                    <Workflow
                       size={18}
                       className="text-stone-500 transition-colors group-hover:text-stone-200"
                     />
-                    {changedFiles.length > 0 && (
-                      <span className="absolute -top-1.5 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-stone-600 px-1 font-medium text-[9px] text-stone-200">
-                        {changedFiles.length}
-                      </span>
-                    )}
-                  </div>
-                  <span className="font-medium text-[9px] text-stone-600 transition-colors group-hover:text-stone-300">
-                    Files
-                  </span>
-                </button>
-              )}
-              {!showInfo && (
-                <button
-                  type="button"
-                  onClick={() => setShowInfo(true)}
-                  title="Show session info"
-                  className="group flex w-10 flex-col items-center gap-1.5 py-3 transition-colors hover:bg-stone-800/60"
-                >
-                  <Info
-                    size={18}
-                    className="text-stone-500 transition-colors group-hover:text-stone-200"
-                  />
-                  <span className="font-medium text-[9px] text-stone-600 transition-colors group-hover:text-stone-300">
-                    Info
-                  </span>
-                </button>
-              )}
-            </div>
-          )}
-        </>
-      )}
-    </div>
+                    <span className="font-medium text-[9px] text-stone-600 transition-colors group-hover:text-stone-300">
+                      Flow
+                    </span>
+                  </button>
+                )}
+                {!showChanges && (
+                  <button
+                    type="button"
+                    onClick={() => setShowChanges(true)}
+                    title="Show changed files"
+                    className="group flex w-10 flex-col items-center gap-1.5 py-3 transition-colors hover:bg-stone-800/60"
+                  >
+                    <div className="relative">
+                      <GitCompareArrows
+                        size={18}
+                        className="text-stone-500 transition-colors group-hover:text-stone-200"
+                      />
+                      {changedFiles.length > 0 && (
+                        <span className="absolute -top-1.5 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-stone-600 px-1 font-medium text-[9px] text-stone-200">
+                          {changedFiles.length}
+                        </span>
+                      )}
+                    </div>
+                    <span className="font-medium text-[9px] text-stone-600 transition-colors group-hover:text-stone-300">
+                      Files
+                    </span>
+                  </button>
+                )}
+                {!showInfo && (
+                  <button
+                    type="button"
+                    onClick={() => setShowInfo(true)}
+                    title="Show session info"
+                    className="group flex w-10 flex-col items-center gap-1.5 py-3 transition-colors hover:bg-stone-800/60"
+                  >
+                    <Info
+                      size={18}
+                      className="text-stone-500 transition-colors group-hover:text-stone-200"
+                    />
+                    <span className="font-medium text-[9px] text-stone-600 transition-colors group-hover:text-stone-300">
+                      Info
+                    </span>
+                  </button>
+                )}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+      {/* Review panel overlay — rendered outside the flex layout for full-width slide-over */}
+      <ReviewPanel />
+    </>
   )
 }
