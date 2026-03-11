@@ -1,4 +1,4 @@
-import { ChevronRight, GitCompareArrows, Info, Workflow } from 'lucide-react'
+import { ChevronRight, GitCompareArrows, GitPullRequestArrow, Info, Workflow } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type {
@@ -13,9 +13,11 @@ import { FlowPanel } from '../components/flow/FlowPanel'
 import { InputBar } from '../components/InputBar'
 import { TasksPanel } from '../components/layout/TasksPanel'
 import { ChatView } from '../components/messages/ChatView'
+import { PrRaiseOverlay } from '../components/pr-raise/PrRaiseOverlay'
 import { ReviewPanel } from '../components/review/ReviewPanel'
 import { SessionInfoPanel } from '../components/SessionInfoPanel'
 import { ThinkingIndicator } from '../components/ThinkingIndicator'
+import { usePrRaiseStore } from '../store/pr-raise-store'
 import { useSessionStore } from '../store/session-store'
 import { useTabStore } from '../store/tab-store'
 
@@ -462,6 +464,22 @@ export function SessionView({ tab }: SessionViewProps) {
                     </span>
                   </button>
                 )}
+                {sessionId && tab.useWorktree && changedFiles.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => usePrRaiseStore.getState().openOverlay(sessionId)}
+                    title="Raise pull request"
+                    className="group flex w-10 flex-col items-center gap-1.5 py-3 transition-colors hover:bg-stone-800/60"
+                  >
+                    <GitPullRequestArrow
+                      size={18}
+                      className="text-blue-500/70 transition-colors group-hover:text-blue-400"
+                    />
+                    <span className="font-medium text-[9px] text-stone-600 transition-colors group-hover:text-stone-300">
+                      PR
+                    </span>
+                  </button>
+                )}
               </div>
             )}
           </>
@@ -469,6 +487,8 @@ export function SessionView({ tab }: SessionViewProps) {
       </div>
       {/* Review panel overlay — rendered outside the flex layout for full-width slide-over */}
       <ReviewPanel />
+      {/* PR raise overlay */}
+      <PrRaiseOverlay />
     </>
   )
 }
