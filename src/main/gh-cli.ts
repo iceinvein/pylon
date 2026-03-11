@@ -278,3 +278,33 @@ export async function getHeadCommitSha(repoFullName: string, prNumber: number): 
   const parsed = JSON.parse(json)
   return parsed.headRefOid as string
 }
+
+export async function createPullRequest(
+  repoFullName: string,
+  headBranch: string,
+  baseBranch: string,
+  title: string,
+  body: string,
+): Promise<{ url: string; number: number }> {
+  // gh pr create outputs the PR URL to stdout
+  const prUrl = await execGh([
+    'pr',
+    'create',
+    '--repo',
+    repoFullName,
+    '--head',
+    headBranch,
+    '--base',
+    baseBranch,
+    '--title',
+    title,
+    '--body',
+    body,
+  ])
+
+  // Extract PR number from URL (e.g., https://github.com/owner/repo/pull/42)
+  const numberMatch = prUrl.match(/\/pull\/(\d+)/)
+  const prNumber = numberMatch ? parseInt(numberMatch[1], 10) : 0
+
+  return { url: prUrl.trim(), number: prNumber }
+}
