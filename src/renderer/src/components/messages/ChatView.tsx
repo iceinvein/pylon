@@ -144,6 +144,17 @@ export const ChatView = memo(function ChatView({ sessionId }: ChatViewProps) {
 
   const toolResultMap = useMemo(() => buildToolResultMap(sessionMessages), [sessionMessages])
 
+  // For each plan file path, only show the PlanCard on the LAST Write/Edit.
+  // When the agent iterates on a plan (e.g. due to review feedback), intermediate
+  // writes should not render cards — only the final version matters.
+  const finalPlanToolUseIds = useMemo(() => {
+    const lastByPath = new Map<string, string>() // filePath → toolUseId (last wins)
+    for (const plan of detectedPlans) {
+      lastByPath.set(plan.filePath, plan.toolUseId)
+    }
+    return new Set(lastByPath.values())
+  }, [detectedPlans])
+
   const planSectionTitles = useMemo(() => {
     const map = new Map<string, string[]>()
     for (const plan of detectedPlans) {
@@ -397,7 +408,7 @@ export const ChatView = memo(function ChatView({ sessionId }: ChatViewProps) {
     const hasAgentBlocks = content.some((b) => b.type === 'tool_use' && b.name === 'Agent')
 
     const hasPlanBlocks = content.some(
-      (b) => b.type === 'tool_use' && b.id && detectedPlans.some((p) => p.toolUseId === b.id),
+      (b) => b.type === 'tool_use' && b.id && finalPlanToolUseIds.has(b.id),
     )
 
     if (!hasAgentBlocks && !hasPlanBlocks) {
@@ -433,9 +444,13 @@ export const ChatView = memo(function ChatView({ sessionId }: ChatViewProps) {
             return null
           }
           if (block.type === 'tool_use') {
-            const matchedPlan = block.id
-              ? detectedPlans.find((p) => p.toolUseId === block.id)
-              : undefined
+            // Only render PlanCard for the final write of each plan file.
+            // Intermediate writes (from agent review iterations) are rendered
+            // as normal tool blocks so the chat isn't cluttered with duplicates.
+            const matchedPlan =
+              block.id && finalPlanToolUseIds.has(block.id)
+                ? detectedPlans.find((p) => p.toolUseId === block.id)
+                : undefined
             if (matchedPlan) {
               return (
                 <PlanCard

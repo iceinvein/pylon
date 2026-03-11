@@ -42,6 +42,10 @@ export function parsePlanSections(markdown: string): PlanSection[] {
   let skipH1 = true
   let inFrontmatter = false
   let seenFrontmatterStart = false
+  // Track whether we've seen any non-blank content. YAML frontmatter
+  // only appears at the very start of a file — a `---` after real content
+  // is just a markdown horizontal rule, not a frontmatter delimiter.
+  let seenContent = false
 
   function flushBody() {
     const text = bodyLines.join('\n').trim()
@@ -54,8 +58,8 @@ export function parsePlanSections(markdown: string): PlanSection[] {
   }
 
   for (const line of lines) {
-    // Track YAML frontmatter block (delimited by two --- lines)
-    if (line.startsWith('---') && sections.length === 0 && !current) {
+    // Track YAML frontmatter block (delimited by two --- lines at file start)
+    if (line.startsWith('---') && !seenContent) {
       if (!seenFrontmatterStart) {
         seenFrontmatterStart = true
         inFrontmatter = true
@@ -66,6 +70,9 @@ export function parsePlanSections(markdown: string): PlanSection[] {
       }
     }
     if (inFrontmatter) continue
+
+    // Any non-blank line after frontmatter means subsequent --- are horizontal rules
+    if (line.trim() !== '') seenContent = true
 
     // H1 — skip the document title (first H1 only)
     if (line.startsWith('# ') && !line.startsWith('## ')) {

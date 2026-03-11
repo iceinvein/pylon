@@ -1,26 +1,11 @@
 import { Archive, DollarSign, Eraser, FolderOpen, GitCommit, RotateCcw, Search } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { SessionStatus } from '../../../shared/types'
-import { extractChangedFiles } from '../lib/extract-changed-files'
+import { resumeStoredSession, type StoredSession } from '../lib/resume-session'
 import { timeAgo } from '../lib/utils'
-import type { SessionState } from '../store/session-store'
 import { useSessionStore } from '../store/session-store'
 import { useTabStore } from '../store/tab-store'
 import { useUiStore } from '../store/ui-store'
-
-type StoredSession = {
-  id: string
-  cwd: string
-  status: string
-  model: string
-  title: string
-  total_cost_usd: number
-  input_tokens: number
-  output_tokens: number
-  created_at: number
-  updated_at: number
-}
 
 type Command = {
   id: string
@@ -34,10 +19,7 @@ type Command = {
 export function CommandPalette() {
   const { commandPaletteOpen, toggleCommandPalette } = useUiStore()
   const { tabs, activeTabId, addTab, updateTab } = useTabStore()
-  const setSession = useSessionStore((s) => s.setSession)
   const setMessages = useSessionStore((s) => s.setMessages)
-  const addChangedFile = useSessionStore((s) => s.addChangedFile)
-  const updateSession = useSessionStore((s) => s.updateSession)
   const clearTasks = useSessionStore((s) => s.clearTasks)
   const [query, setQuery] = useState('')
   const [selectedIdx, setSelectedIdx] = useState(0)
@@ -61,45 +43,8 @@ export function CommandPalette() {
 
   async function handleResumeSession(session: StoredSession) {
     toggleCommandPalette()
-
-    const sessionState: SessionState = {
-      id: session.id,
-      cwd: session.cwd,
-      status: 'done',
-      model: session.model,
-      title: session.title,
-      cost: {
-        inputTokens: session.input_tokens ?? 0,
-        outputTokens: session.output_tokens ?? 0,
-        totalUsd: session.total_cost_usd ?? 0,
-      },
-      createdAt: session.created_at,
-      updatedAt: session.updated_at,
-    }
-    setSession(sessionState)
-
-    const msgs = await window.api.getMessages(session.id)
-    const parsed = (msgs as { sdk_message: string }[])
-      .map((m) => {
-        try {
-          return JSON.parse(m.sdk_message)
-        } catch {
-          return null
-        }
-      })
-      .filter(Boolean)
-    setMessages(session.id, parsed)
-
-    // Rebuild changed files list from historical messages
-    for (const filePath of extractChangedFiles(parsed)) {
-      addChangedFile(session.id, filePath)
-    }
-
-    const result = await window.api.resumeSession(session.id)
-    if (result.status && result.status !== 'done') {
-      updateSession(session.id, { status: result.status as SessionStatus })
-    }
-    addTab(session.cwd, session.title || session.cwd.split('/').pop() || session.cwd, session.id)
+    const { title } = await resumeStoredSession(session)
+    addTab(session.cwd, title, session.id)
   }
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: handleResumeSession is an async function that would need complex useCallback wrapping; recentSessions already captures the data dependency
