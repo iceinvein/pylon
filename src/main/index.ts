@@ -34,6 +34,14 @@ function createWindow(): BrowserWindow {
     return { action: 'deny' }
   })
 
+  // Intercept regular link clicks that would navigate the app away
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    // Allow dev server HMR reloads
+    if (is.dev && url.startsWith(process.env.ELECTRON_RENDERER_URL ?? '')) return
+    event.preventDefault()
+    shell.openExternal(url)
+  })
+
   if (is.dev && process.env.ELECTRON_RENDERER_URL) {
     mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL)
   } else {
