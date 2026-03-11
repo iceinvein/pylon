@@ -1,4 +1,6 @@
 import {
+  ChevronDown,
+  ChevronUp,
   ExternalLink,
   GitBranch,
   GitPullRequest,
@@ -8,7 +10,11 @@ import {
   RotateCw,
   User,
 } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import ReactMarkdown from 'react-markdown'
+import rehypeRaw from 'rehype-raw'
+import rehypeSanitize from 'rehype-sanitize'
+import remarkGfm from 'remark-gfm'
 import type { ReviewFocus } from '../../../../shared/types'
 import { usePrReviewStore } from '../../store/pr-review-store'
 import { DiffFileTree } from './DiffFileTree'
@@ -18,6 +24,59 @@ import { PrFilesChanged } from './PrFilesChanged'
 import { ReviewHistory } from './ReviewHistory'
 import { ReviewModal } from './ReviewModal'
 import { ReviewProgress } from './ReviewProgress'
+
+const COLLAPSED_HEIGHT = 96 // ~6 lines of text
+
+function PrBody({ body }: { body: string }) {
+  const contentRef = useRef<HTMLDivElement>(null)
+  const [expanded, setExpanded] = useState(false)
+  const [needsTruncation, setNeedsTruncation] = useState(false)
+
+  // Re-measure whenever body changes — useLayoutEffect ensures we measure
+  // after React commits the new DOM but before the browser paints
+  // biome-ignore lint/correctness/useExhaustiveDependencies: body drives content height changes
+  useLayoutEffect(() => {
+    if (contentRef.current) {
+      setNeedsTruncation(contentRef.current.scrollHeight > COLLAPSED_HEIGHT + 8)
+    }
+  }, [body])
+
+  return (
+    <div className="relative rounded-lg bg-stone-900/60">
+      <div
+        ref={contentRef}
+        className={`prose prose-invert prose-xs max-w-none overflow-hidden prose-img:rounded prose-blockquote:border-stone-700 p-3 prose-a:text-blue-400 prose-blockquote:text-stone-500 prose-code:text-stone-300 prose-headings:text-stone-300 prose-strong:text-stone-300 text-stone-400 text-xs leading-relaxed prose-a:no-underline hover:prose-a:underline ${!expanded && needsTruncation ? 'pr-body-collapsed' : ''}`}
+        style={!expanded && needsTruncation ? { maxHeight: COLLAPSED_HEIGHT } : undefined}
+      >
+        <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw, rehypeSanitize]}>
+          {body}
+        </ReactMarkdown>
+      </div>
+      {needsTruncation && (
+        <>
+          {!expanded && (
+            <div className="pointer-events-none absolute right-0 bottom-7 left-0 h-8 bg-gradient-to-t from-stone-900/60 to-transparent" />
+          )}
+          <button
+            type="button"
+            onClick={() => setExpanded((e) => !e)}
+            className="flex w-full cursor-pointer items-center justify-center gap-1 rounded-b-lg py-1 text-stone-500 text-xs transition-colors hover:text-stone-300"
+          >
+            {expanded ? (
+              <>
+                Show less <ChevronUp size={12} />
+              </>
+            ) : (
+              <>
+                Read more <ChevronDown size={12} />
+              </>
+            )}
+          </button>
+        </>
+      )}
+    </div>
+  )
+}
 
 function splitDiffByFile(fullDiff: string): Map<string, string> {
   const map = new Map<string, string>()
@@ -187,11 +246,7 @@ export function PrDetail() {
           {/* Collapsible top section */}
           {!isRunning && (
             <div className="space-y-4 overflow-y-auto px-5 py-4">
-              {prDetail?.body && (
-                <div className="max-h-24 overflow-y-auto rounded-lg bg-stone-900/60 p-3 text-stone-400 text-xs leading-relaxed">
-                  {prDetail.body}
-                </div>
-              )}
+              {prDetail?.body && <PrBody body={prDetail.body} />}
 
               {prDetail?.files && prDetail.files.length > 0 && (
                 <PrFilesChanged files={prDetail.files} diff={prDetail.diff} />
