@@ -3,8 +3,8 @@ import { promisify } from 'node:util'
 import { log } from '../shared/logger'
 import type {
   GitBranchStatus,
-  GitFetchComparison,
   GitFetchCompareCommit,
+  GitFetchComparison,
   GitPullResult,
 } from '../shared/types'
 
@@ -106,11 +106,10 @@ export async function fetchAndCompare(cwd: string): Promise<GitFetchComparison> 
   let filesChanged = 0
   if (behind > 0) {
     try {
-      const { stdout } = await execFileAsync(
-        'git',
-        ['diff', '--stat', 'HEAD...@{upstream}'],
-        { cwd, timeout: 5000 },
-      )
+      const { stdout } = await execFileAsync('git', ['diff', '--stat', 'HEAD...@{upstream}'], {
+        cwd,
+        timeout: 5000,
+      })
       const lines = stdout.trim().split('\n')
       const summaryLine = lines[lines.length - 1] ?? ''
       const match = summaryLine.match(/(\d+)\s+files?\s+changed/)

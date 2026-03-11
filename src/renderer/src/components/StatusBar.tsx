@@ -1,55 +1,59 @@
-import { formatCost, formatTokens } from '../lib/utils'
-import type { SessionState } from '../store/session-store'
+import { GitBranch } from 'lucide-react'
+import { useState } from 'react'
+import type { GitBranchStatus } from '../../../shared/types'
+import { GitBranchPopover } from './GitBranchPopover'
 
 type StatusBarProps = {
-  session: SessionState | undefined
+  cwd: string
+  branchStatus: GitBranchStatus | undefined
 }
 
-function StatusDot({ status }: { status: string | undefined }) {
-  const base = 'h-2 w-2 rounded-full flex-shrink-0'
-  if (!status || status === 'empty') return <span className={`${base} bg-stone-600`} />
-  if (status === 'running' || status === 'starting' || status === 'waiting') {
-    return <span className={`${base} animate-pulse bg-green-500`} />
+function BranchIndicator({ status }: { status: GitBranchStatus }) {
+  if (!status.branch) return null
+
+  const parts: string[] = [status.branch]
+
+  if (status.hasUpstream) {
+    if (status.ahead > 0) parts.push(`↑${status.ahead}`)
+    if (status.behind > 0) parts.push(`↓${status.behind}`)
+    if (status.ahead === 0 && status.behind === 0) parts.push('✓')
   }
-  if (status === 'done') return <span className={`${base} bg-stone-500`} />
-  if (status === 'error') return <span className={`${base} bg-red-500`} />
-  return <span className={`${base} bg-stone-600`} />
+
+  const isBehind = status.behind > 0
+  const textColor = isBehind ? 'text-amber-400' : 'text-stone-500'
+
+  return (
+    <span className={`flex items-center gap-1.5 text-xs ${textColor}`}>
+      <GitBranch size={12} className="flex-shrink-0" />
+      {parts.join(' ')}
+    </span>
+  )
 }
 
-export function StatusBar({ session }: StatusBarProps) {
+export function StatusBar({ cwd, branchStatus }: StatusBarProps) {
+  const [showPopover, setShowPopover] = useState(false)
+
+  if (!branchStatus?.isGitRepo || !branchStatus.branch) {
+    return <div className="h-6 border-stone-800 border-t bg-stone-950" />
+  }
+
   return (
-    <div className="flex h-6 items-center gap-3 border-stone-800 border-t bg-stone-950 px-3">
-      <StatusDot status={session?.status} />
-
-      {session && (
-        <>
-          <span className="text-stone-500 text-xs">{session.status}</span>
-          {session.model && (
-            <>
-              <span className="text-stone-700">·</span>
-              <span className="text-stone-500 text-xs">{session.model}</span>
-            </>
-          )}
-
-          {session.cost.totalUsd > 0 && (
-            <>
-              <span className="text-stone-700">·</span>
-              <span className="text-stone-500 text-xs">{formatCost(session.cost.totalUsd)}</span>
-            </>
-          )}
-
-          {(session.cost.inputTokens > 0 || session.cost.outputTokens > 0) && (
-            <>
-              <span className="text-stone-700">·</span>
-              <span className="text-stone-600 text-xs">
-                {formatTokens(session.cost.inputTokens)} / {formatTokens(session.cost.outputTokens)}
-              </span>
-            </>
-          )}
-        </>
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setShowPopover(!showPopover)}
+        className="flex h-6 w-full items-center gap-3 border-stone-800 border-t bg-stone-950 px-3 transition-colors hover:bg-stone-900"
+      >
+        <BranchIndicator status={branchStatus} />
+        <div className="flex-1" />
+      </button>
+      {showPopover && (
+        <GitBranchPopover
+          cwd={cwd}
+          branchStatus={branchStatus}
+          onClose={() => setShowPopover(false)}
+        />
       )}
-
-      <div className="flex-1" />
     </div>
   )
 }
