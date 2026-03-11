@@ -449,6 +449,32 @@ export function registerIpcHandlers(): void {
     },
   )
 
+  // ── PR Raise ──
+
+  ipcMain.handle(IPC.GH_RAISE_PR_INFO, async (_e, args: { sessionId: string }) => {
+    return sessionManager.getRaisePrInfo(args.sessionId)
+  })
+
+  ipcMain.handle(IPC.GH_RAISE_PR_GENERATE_DESCRIPTION, async (_e, args: { sessionId: string }) => {
+    return sessionManager.generatePrDescription(args.sessionId)
+  })
+
+  ipcMain.handle(
+    IPC.GH_RAISE_PR_CREATE,
+    async (
+      _e,
+      args: {
+        sessionId: string
+        title: string
+        body: string
+        baseBranch: string
+        squash: boolean
+      },
+    ) => {
+      return sessionManager.raisePr(args)
+    },
+  )
+
   ipcMain.handle(IPC.USAGE_STATS, async (_e, args: { period: string }) => {
     const db = getDb()
     const now = Date.now()

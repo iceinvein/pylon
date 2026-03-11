@@ -74,6 +74,18 @@ const api = {
     return () => ipcRenderer.removeListener(IPC.GH_REVIEW_UPDATE, handler)
   },
 
+  // PR Raise
+  getRaisePrInfo: (sessionId: string) => ipcRenderer.invoke(IPC.GH_RAISE_PR_INFO, { sessionId }),
+  generatePrDescription: (sessionId: string) =>
+    ipcRenderer.invoke(IPC.GH_RAISE_PR_GENERATE_DESCRIPTION, { sessionId }),
+  raisePr: (args: {
+    sessionId: string
+    title: string
+    body: string
+    baseBranch: string
+    squash: boolean
+  }) => ipcRenderer.invoke(IPC.GH_RAISE_PR_CREATE, args),
+
   // Plugins
   listPlugins: () => ipcRenderer.invoke(IPC.PLUGINS_LIST),
   togglePlugin: (pluginId: string, enabled: boolean) =>
