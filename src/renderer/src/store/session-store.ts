@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type {
   DetectedPlan,
+  GitBranchStatus,
   PermissionRequest,
   PlanComment,
   PlanReviewStatus,
@@ -56,6 +57,8 @@ type SessionStore = {
   detectedPlans: Map<string, DetectedPlan[]>
   /** SDK init info per session (tools, skills, plugins, MCP servers) */
   initInfo: Map<string, SessionInitInfo>
+  /** Git branch status per cwd (keyed by cwd path, not session id) */
+  branchStatus: Map<string, GitBranchStatus>
 
   setSession: (session: SessionState) => void
   updateSession: (sessionId: string, updates: Partial<SessionState>) => void
@@ -82,6 +85,7 @@ type SessionStore = {
   updatePlanStatus: (sessionId: string, filePath: string, status: PlanReviewStatus) => void
   setPlanComments: (sessionId: string, filePath: string, comments: PlanComment[]) => void
   setInitInfo: (sessionId: string, info: SessionInitInfo) => void
+  setBranchStatus: (cwd: string, status: GitBranchStatus) => void
 }
 
 export const useSessionStore = create<SessionStore>((set) => ({
@@ -98,6 +102,7 @@ export const useSessionStore = create<SessionStore>((set) => ({
   diffCache: new Map(),
   detectedPlans: new Map(),
   initInfo: new Map(),
+  branchStatus: new Map(),
 
   setSession: (session) =>
     set((state) => {
@@ -292,6 +297,13 @@ export const useSessionStore = create<SessionStore>((set) => ({
       const next = new Map(state.initInfo)
       next.set(sessionId, info)
       return { initInfo: next }
+    }),
+
+  setBranchStatus: (cwd, status) =>
+    set((state) => {
+      const next = new Map(state.branchStatus)
+      next.set(cwd, status)
+      return { branchStatus: next }
     }),
 }))
 
