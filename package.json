@@ -27,6 +27,7 @@
     "better-sqlite3": "^12.6.2",
     "diff": "^8.0.3",
     "lucide-react": "^0.575.0",
+    "motion": "^12.35.2",
     "react": "^19.2.1",
     "react-dom": "^19.2.1",
     "react-markdown": "^10.1.0",
