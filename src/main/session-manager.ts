@@ -268,8 +268,25 @@ export class SessionManager {
 
       const prompt = promptParts.join('\n\n')
 
-      // Persist the user message so it survives reload from DB
-      this.persistMessage(sessionId, { type: 'user', content: text })
+      // Persist the user message (with image content blocks) so it survives reload from DB
+      const userContent: Array<Record<string, unknown>> = []
+      for (const att of imageAttachments) {
+        userContent.push({
+          type: 'image',
+          source: {
+            type: 'base64',
+            media_type: att.mediaType,
+            data: att.content,
+          },
+        })
+      }
+      if (text) {
+        userContent.push({ type: 'text', text })
+      }
+      this.persistMessage(sessionId, {
+        type: 'user',
+        content: userContent.length === 1 && userContent[0]?.type === 'text' ? text : userContent,
+      })
 
       const q = query({ prompt, options })
       session.queryInstance = q
