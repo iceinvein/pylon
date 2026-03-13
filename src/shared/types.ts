@@ -458,3 +458,31 @@ export type ExplorationUpdate = {
   outputTokens?: number
   totalCostUsd?: number
 }
+
+export type ProjectScan = {
+  framework: string | null
+  devCommand: string | null
+  detectedPort: number | null
+  detectedUrl: string | null
+  packageManager: string | null
+  serverRunning: boolean
+  routeFiles: string[]
+  hasPlaywrightConfig: boolean
+  docsFiles: string[]
+  error: string | null
+}
+
+export type SuggestedGoal = {
+  id: string
+  title: string
+  description: string
+  area?: string
+  selected: boolean
+}
+
+export type GoalSuggestionUpdate = {
+  cwd: string
+  goals: Array<{ id: string; title: string; description: string; area?: string }>
+  status: 'loading' | 'done' | 'error'
+  error?: string
+}
