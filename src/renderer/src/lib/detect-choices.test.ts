@@ -512,4 +512,92 @@ Which would you prefer?`
       expect(result?.choices).toHaveLength(2)
     })
   })
+
+  describe('confirmation/approval questions (false positives)', () => {
+    test('returns null for recap list with "does this look right, or adjust" question', () => {
+      const text = `That covers the full design. To recap the key changes from current state:
+
+1. **Project picker** — explicit dropdown, reuses \`listProjects()\`
+2. **Multi-exploration** — per-exploration Maps in store, concurrent runs
+3. **Server auto-detection** — deterministic \`project-scanner.ts\`, agent handles starting
+4. **AI goal suggestions** — background Claude call analyzes repo, presents checkable goals
+5. **Progressive form** — defaults are automated, every field has manual override
+6. **Two launch modes** — guided (review goals) and full auto (one-click)
+
+Does this design look right, or do you want to adjust anything before I write it up as a spec?`
+
+      expect(detectChoices(text)).toBeNull()
+    })
+
+    test('returns null for "to summarize" preamble', () => {
+      const text = `To summarize:
+
+1. Auth system — JWT with refresh tokens
+2. Database — PostgreSQL with Prisma
+3. Cache — Redis for sessions
+
+Does this sound good, or do you want to change anything?`
+
+      expect(detectChoices(text)).toBeNull()
+    })
+
+    test('returns null for "adjust anything before I" pattern', () => {
+      const text = `1. Component A — Handles auth
+2. Component B — Handles routing
+3. Component C — Handles state
+
+Does this look right, or do you want to adjust anything before I implement it?`
+
+      expect(detectChoices(text)).toBeNull()
+    })
+
+    test('returns null for "before I write" without adjustment language', () => {
+      const text = `1. Feature A — First feature
+2. Feature B — Second feature
+
+Looks right? Want to tweak anything before I start building?`
+
+      expect(detectChoices(text)).toBeNull()
+    })
+
+    test('returns null for "change anything" in question', () => {
+      const text = `1. Step one — First
+2. Step two — Second
+3. Step three — Third
+
+Would you like to change anything?`
+
+      expect(detectChoices(text)).toBeNull()
+    })
+
+    test('returns null for "modify any of these" in question', () => {
+      const text = `1. Config A — Setting one
+2. Config B — Setting two
+
+Do you want to modify any of these before we proceed?`
+
+      expect(detectChoices(text)).toBeNull()
+    })
+
+    test('still detects real choices with "does this look right" when no adjustment clause', () => {
+      const text = `1. Approach A — Conservative
+2. Approach B — Aggressive
+
+Does this look right?`
+
+      const result = detectChoices(text)
+      expect(result).not.toBeNull()
+    })
+
+    test('returns null for "key changes" preamble', () => {
+      const text = `Here are the key changes:
+
+1. New auth flow — OAuth2 integration
+2. Updated API — REST to GraphQL
+
+Does this look right?`
+
+      expect(detectChoices(text)).toBeNull()
+    })
+  })
 })

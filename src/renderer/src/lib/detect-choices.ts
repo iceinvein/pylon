@@ -103,17 +103,31 @@ const ACTION_OFFER_RE =
 /**
  * Preamble text that signals the list is informational (outcomes, steps,
  * expected results) rather than a set of choices for the user to pick from.
+ * Also matches recap/summary language where the list reviews prior decisions.
  */
 const INFORMATIONAL_PREAMBLE_RE =
-  /\b(you (should|will|would|can) see|you('ll| will) (get|have|notice)|expected (results|output|behavior|outcome)|here('s| is| are) (what|the (step|result|output))|the following (will|should|are)|after (deploying|running|doing|applying|completing|installing|updating|merging)|steps to|once (you|this|it)|in order to)\b/i
+  /\b(you (should|will|would|can) see|you('ll| will) (get|have|notice)|expected (results|output|behavior|outcome)|here('s| is| are) (what|the (step|result|output))|the following (will|should|are)|after (deploying|running|doing|applying|completing|installing|updating|merging)|steps to|once (you|this|it)|in order to|to recap|to summarize|in summary|here('s| is) a summary|that covers|key changes|changes from|overview of)\b/i
+
+/**
+ * Questions that seek confirmation or approval of the entire set rather than
+ * asking the user to pick a single item. These override SELECTION_QUESTION_RE.
+ * e.g. "Does this design look right, or do you want to adjust anything before I write it up?"
+ *
+ * Pattern: a "looks right / sound good" confirmation combined with an "or adjust/change" clause,
+ * or a "before I [verb]" clause that signals the assistant is about to act on the whole set.
+ */
+const CONFIRMATION_QUESTION_RE =
+  /\b(adjust|modify|tweak|change) (anything|something|any of (these|this|them))\b|\bbefore I (write|implement|proceed|start|begin|create|build|draft|send|submit|deploy|push|merge|ship)\b/i
 
 /**
  * Checks whether a question string indicates the user should SELECT from the
- * list above, as opposed to open-ended follow-ups like "What do you see?"
- * or action offers like "Want me to also check…?"
+ * list above, as opposed to open-ended follow-ups like "What do you see?",
+ * action offers like "Want me to also check…?", or confirmation questions
+ * like "Does this look right, or do you want to adjust anything?"
  */
 function isSelectionQuestion(question: string): boolean {
   if (ACTION_OFFER_RE.test(question)) return false
+  if (CONFIRMATION_QUESTION_RE.test(question)) return false
   return SELECTION_QUESTION_RE.test(question)
 }
 
@@ -283,16 +297,19 @@ export function detectChoices(text: string): DetectedChoices | null {
     // Check preamble for informational context (e.g. "you should see:").
     // If the text right before the list describes expected outcomes/steps,
     // the list is not a set of choices even if a selection question follows.
+    // We scan up to 2 non-empty preamble lines to catch cases where the
+    // recap language is separated by a short introductory sentence.
     let hasInformationalPreamble = false
-    for (let p = i - 1; p >= 0 && p >= i - 3; p--) {
+    let nonEmptyPreambleLinesChecked = 0
+    for (let p = i - 1; p >= 0 && p >= i - 4; p--) {
       const preamble = lines[p].trim()
       if (preamble === '') continue
+      nonEmptyPreambleLinesChecked++
       if (isInformationalPreamble(preamble)) {
         hasInformationalPreamble = true
         break
       }
-      // Only check the nearest non-empty line above the list.
-      break
+      if (nonEmptyPreambleLinesChecked >= 2) break
     }
 
     if (hasInformationalPreamble) {
