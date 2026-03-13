@@ -1,18 +1,28 @@
 import {
   AlertTriangle,
   Bug,
+  ChevronDown,
   ChevronRight,
   FileCode2,
   Info,
   Loader2,
   Play,
+  Plus,
   Square,
   Trash2,
+  X,
+  Zap,
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import type { ExplorationMode, FindingSeverity, TestExploration } from '../../../shared/types'
-import { useTabStore } from '../store/tab-store'
+import type {
+  ExplorationMode,
+  FindingSeverity,
+  SuggestedGoal,
+  TestExploration,
+} from '../../../shared/types'
 import { useTestStore } from '../store/test-store'
+
+// ── Constants ────────────────────────────────────────────────────────────────
 
 const SEVERITY_COLORS: Record<FindingSeverity, string> = {
   critical: 'bg-red-500/20 text-red-400',
@@ -38,6 +48,8 @@ const SEVERITY_ICONS: Record<FindingSeverity, typeof Bug> = {
   info: Info,
 }
 
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
 function formatCost(usd: number): string {
   if (usd < 0.01) return `$${usd.toFixed(4)}`
   return `$${usd.toFixed(2)}`
@@ -52,342 +64,728 @@ function formatDate(ts: number): string {
   })
 }
 
-function truncateUrl(url: string, maxLen = 30): string {
-  try {
-    const u = new URL(url)
-    const display = u.hostname + u.pathname
-    return display.length > maxLen ? `${display.slice(0, maxLen)}...` : display
-  } catch {
-    return url.length > maxLen ? `${url.slice(0, maxLen)}...` : url
-  }
+function basename(p: string): string {
+  return p.split('/').filter(Boolean).pop() ?? p
 }
 
+function truncateGoal(goal: string, maxLen = 40): string {
+  return goal.length > maxLen ? `${goal.slice(0, maxLen)}…` : goal
+}
+
+// ── Root Component ───────────────────────────────────────────────────────────
+
 export function TestView() {
-  const [url, setUrl] = useState('')
-  const [goal, setGoal] = useState('')
-  const [mode, setMode] = useState<ExplorationMode>('manual')
-  const [requirements, setRequirements] = useState('')
   const [e2ePath, setE2ePath] = useState('e2e')
   const [e2eReason, setE2eReason] = useState('')
-
-  const activeTab = useTabStore((s) => s.tabs.find((t) => t.id === s.activeTabId))
-  const cwd = activeTab?.cwd ?? ''
+  const [mode, setMode] = useState<ExplorationMode>('manual')
+  const [customGoalInput, setCustomGoalInput] = useState('')
 
   const {
+    selectedProject,
+    projects,
+    projectScan,
+    scanLoading,
+    suggestedGoals,
+    goalsLoading,
+    customGoals,
+    customUrl,
     selectedExplorationId,
     explorations,
     streamingTexts,
     findingsByExploration,
     testsByExploration,
+    loadProjects,
+    selectProject,
+    toggleGoal,
+    addCustomGoal,
+    removeCustomGoal,
+    setCustomUrl,
     startExploration,
     stopExploration,
-    loadExplorations,
     selectExploration,
     deleteExploration,
     resolveE2ePath,
   } = useTestStore()
 
-  const activeExploration = explorations.find((e) => e.id === selectedExplorationId) ?? null
-  const explorationStreamingText = selectedExplorationId
-    ? (streamingTexts[selectedExplorationId] ?? '')
-    : ''
-  const explorationFindings = selectedExplorationId
-    ? (findingsByExploration[selectedExplorationId] ?? [])
-    : []
-  const generatedTests = selectedExplorationId
-    ? (testsByExploration[selectedExplorationId] ?? [])
-    : []
-
+  // Load projects on mount
   useEffect(() => {
-    if (!cwd) return
-    resolveE2ePath(cwd).then((res) => {
+    loadProjects()
+  }, [loadProjects])
+
+  // When project changes, resolve e2e path
+  useEffect(() => {
+    if (!selectedProject) return
+    resolveE2ePath(selectedProject).then((res) => {
       setE2ePath(res.path)
       setE2eReason(res.reason)
     })
-    loadExplorations(cwd)
-  }, [cwd, resolveE2ePath, loadExplorations])
+  }, [selectedProject, resolveE2ePath])
 
-  const isRunning = activeExploration?.status === 'running'
-  const canStart = url.trim() !== '' && goal.trim() !== '' && !isRunning
+  const selectedExploration = explorations.find((e) => e.id === selectedExplorationId) ?? null
+  const streamingText = selectedExplorationId ? (streamingTexts[selectedExplorationId] ?? '') : ''
+  const findings = selectedExplorationId ? (findingsByExploration[selectedExplorationId] ?? []) : []
+  const tests = selectedExplorationId ? (testsByExploration[selectedExplorationId] ?? []) : []
+
+  // Effective URL: custom override takes precedence over detected URL
+  const effectiveUrl = customUrl ?? projectScan?.detectedUrl ?? null
+
+  // canStart: project selected AND url available AND at least one goal
+  const hasGoals = suggestedGoals.some((g) => g.selected) || customGoals.length > 0
+  const canStart = !!selectedProject && !!effectiveUrl && hasGoals
 
   const handleStart = () => {
-    if (!canStart || !cwd) return
-    startExploration(cwd, {
-      url,
+    if (!canStart || !selectedProject || !effectiveUrl) return
+    const selectedGoalTexts = suggestedGoals.filter((g) => g.selected).map((g) => g.title)
+    const allGoals = [...selectedGoalTexts, ...customGoals]
+    const goal = allGoals.join('; ')
+    startExploration(selectedProject, {
+      url: effectiveUrl,
       goal,
       mode,
-      requirements: mode === 'requirements' ? requirements : undefined,
       e2eOutputPath: e2ePath,
       e2ePathReason: e2eReason,
     })
   }
 
-  const handleStop = () => {
-    if (activeExploration) {
-      stopExploration(activeExploration.id)
+  const handleAutoExplore = () => {
+    if (!selectedProject || !effectiveUrl) return
+    startExploration(selectedProject, {
+      url: effectiveUrl,
+      goal: 'Explore the entire application freely, testing all accessible pages and interactions',
+      mode: 'manual',
+      e2eOutputPath: e2ePath,
+      e2ePathReason: e2eReason,
+    })
+  }
+
+  const handleAddCustomGoal = () => {
+    const trimmed = customGoalInput.trim()
+    if (!trimmed) return
+    addCustomGoal(trimmed)
+    setCustomGoalInput('')
+  }
+
+  const handleCustomGoalKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      handleAddCustomGoal()
     }
   }
 
   return (
     <div className="flex h-full">
       {/* Left panel */}
-      <div className="flex w-[320px] flex-shrink-0 flex-col border-stone-800 border-r">
-        <ConfigForm
-          url={url}
-          setUrl={setUrl}
-          goal={goal}
-          setGoal={setGoal}
-          mode={mode}
-          setMode={setMode}
-          requirements={requirements}
-          setRequirements={setRequirements}
-          e2ePath={e2ePath}
-          setE2ePath={setE2ePath}
-          e2eReason={e2eReason}
-          isRunning={isRunning}
-          canStart={canStart}
-          onStart={handleStart}
-          onStop={handleStop}
+      <div className="flex w-[300px] flex-shrink-0 flex-col overflow-y-auto border-stone-800 border-r">
+        {/* Project Picker */}
+        <ProjectPicker
+          projects={projects}
+          selectedProject={selectedProject}
+          onSelect={selectProject}
         />
-        <ExplorationHistory
+
+        {/* Server Section */}
+        <ServerSection
+          projectScan={projectScan}
+          scanLoading={scanLoading}
+          customUrl={customUrl}
+          onSetCustomUrl={setCustomUrl}
+        />
+
+        {/* What to Test Section */}
+        <GoalSection
+          goalsLoading={goalsLoading}
+          suggestedGoals={suggestedGoals}
+          customGoals={customGoals}
+          customGoalInput={customGoalInput}
+          onCustomGoalInputChange={setCustomGoalInput}
+          onToggleGoal={toggleGoal}
+          onAddCustomGoal={handleAddCustomGoal}
+          onRemoveCustomGoal={removeCustomGoal}
+          onKeyDown={handleCustomGoalKeyDown}
+        />
+
+        {/* Advanced Section */}
+        <AdvancedSection
+          e2ePath={e2ePath}
+          e2eReason={e2eReason}
+          onE2ePathChange={setE2ePath}
+          mode={mode}
+          onModeChange={setMode}
+        />
+
+        {/* Launch Buttons */}
+        <LaunchButtons
+          canStart={canStart}
+          hasProject={!!selectedProject}
+          hasUrl={!!effectiveUrl}
+          onStart={handleStart}
+          onAutoExplore={handleAutoExplore}
+        />
+
+        {/* Exploration List */}
+        <ExplorationList
           explorations={explorations}
-          activeId={activeExploration?.id ?? null}
+          selectedId={selectedExplorationId}
           onSelect={selectExploration}
           onDelete={deleteExploration}
+          onStop={stopExploration}
         />
       </div>
 
       {/* Right panel */}
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        {activeExploration ? (
+        {selectedExploration ? (
           <ExplorationDetail
-            exploration={activeExploration}
-            streamingText={explorationStreamingText}
-            findings={explorationFindings}
-            tests={generatedTests}
-            cwd={cwd}
+            exploration={selectedExploration}
+            streamingText={streamingText}
+            findings={findings}
+            tests={tests}
+            cwd={selectedProject ?? ''}
           />
         ) : (
-          <EmptyState />
+          <EmptyState hasProject={!!selectedProject} />
         )}
       </div>
     </div>
   )
 }
 
-// -- Config Form --
+// ── Project Picker ───────────────────────────────────────────────────────────
 
-type ConfigFormProps = {
-  url: string
-  setUrl: (v: string) => void
-  goal: string
-  setGoal: (v: string) => void
-  mode: ExplorationMode
-  setMode: (v: ExplorationMode) => void
-  requirements: string
-  setRequirements: (v: string) => void
-  e2ePath: string
-  setE2ePath: (v: string) => void
-  e2eReason: string
-  isRunning: boolean
-  canStart: boolean
-  onStart: () => void
-  onStop: () => void
+type ProjectPickerProps = {
+  projects: Array<{ path: string; lastUsed: number }>
+  selectedProject: string | null
+  onSelect: (cwd: string) => void
 }
 
-function ConfigForm({
-  url,
-  setUrl,
-  goal,
-  setGoal,
-  mode,
-  setMode,
-  requirements,
-  setRequirements,
-  e2ePath,
-  setE2ePath,
-  e2eReason,
-  isRunning,
-  canStart,
-  onStart,
-  onStop,
-}: ConfigFormProps) {
+function ProjectPicker({ projects, selectedProject, onSelect }: ProjectPickerProps) {
   return (
-    <div className="space-y-3 border-stone-800 border-b p-4">
-      <h2 className="font-semibold text-sm text-stone-100">New Exploration</h2>
-
+    <div className="border-stone-800 border-b p-3">
       <label className="block">
-        <span className="mb-1 block text-stone-400 text-xs">URL</span>
+        <span className="mb-1 block text-stone-400 text-xs">Project</span>
+        <div className="relative">
+          <select
+            value={selectedProject ?? ''}
+            onChange={(e) => {
+              if (e.target.value) onSelect(e.target.value)
+            }}
+            className="w-full appearance-none rounded-lg border border-stone-700 bg-stone-800 py-2 pr-8 pl-3 text-sm text-stone-100 focus:border-blue-500 focus:outline-none"
+          >
+            <option value="" disabled>
+              Select a project…
+            </option>
+            {projects.map((p) => (
+              <option key={p.path} value={p.path}>
+                {p.path}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute top-1/2 right-2.5 h-4 w-4 -translate-y-1/2 text-stone-500" />
+        </div>
+        {selectedProject && (
+          <p className="mt-1 truncate text-stone-500 text-xs">{basename(selectedProject)}</p>
+        )}
+      </label>
+    </div>
+  )
+}
+
+// ── Server Section ───────────────────────────────────────────────────────────
+
+type ServerSectionProps = {
+  projectScan: import('../../../shared/types').ProjectScan | null
+  scanLoading: boolean
+  customUrl: string | null
+  onSetCustomUrl: (url: string | null) => void
+}
+
+function ServerSection({
+  projectScan,
+  scanLoading,
+  customUrl,
+  onSetCustomUrl,
+}: ServerSectionProps) {
+  const [showCustomInput, setShowCustomInput] = useState(false)
+  const [inputValue, setInputValue] = useState(customUrl ?? '')
+
+  const handleToggleCustom = () => {
+    if (showCustomInput) {
+      // Cancel override
+      setShowCustomInput(false)
+      onSetCustomUrl(null)
+      setInputValue('')
+    } else {
+      setShowCustomInput(true)
+      setInputValue(customUrl ?? '')
+    }
+  }
+
+  const handleCustomUrlChange = (v: string) => {
+    setInputValue(v)
+    onSetCustomUrl(v || null)
+  }
+
+  return (
+    <div className="border-stone-800 border-b p-3">
+      <h3 className="mb-2 font-semibold text-stone-400 text-xs uppercase tracking-wider">Server</h3>
+
+      {scanLoading && (
+        <div className="flex items-center gap-2 text-stone-400 text-xs">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          <span>Scanning project…</span>
+        </div>
+      )}
+
+      {!scanLoading && !showCustomInput && projectScan && !projectScan.error && (
+        <div className="space-y-1">
+          {projectScan.framework && (
+            <div className="flex items-center gap-2 text-xs">
+              <span className="text-stone-300">{projectScan.framework}</span>
+              {projectScan.detectedUrl && (
+                <span className="truncate text-stone-500">{projectScan.detectedUrl}</span>
+              )}
+            </div>
+          )}
+          <div className="flex items-center gap-1.5 text-xs">
+            <span
+              className={`h-2 w-2 flex-shrink-0 rounded-full ${
+                projectScan.serverRunning ? 'bg-green-500' : 'bg-yellow-500'
+              }`}
+            />
+            {projectScan.serverRunning ? (
+              <span className="text-green-400">Running</span>
+            ) : (
+              <span className="text-yellow-400">
+                {projectScan.devCommand ? `Start with: ${projectScan.devCommand}` : 'Not running'}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {!scanLoading && !showCustomInput && (!projectScan || projectScan.error) && (
+        <p className="text-stone-500 text-xs">
+          {projectScan?.error ? projectScan.error : 'No project selected'}
+        </p>
+      )}
+
+      {showCustomInput && (
         <input
           type="url"
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          placeholder="https://example.com"
-          className="w-full rounded-lg border border-stone-700 bg-stone-800 px-3 py-2 text-sm text-stone-100 placeholder:text-stone-500 focus:border-blue-500 focus:outline-none"
-          disabled={isRunning}
+          value={inputValue}
+          onChange={(e) => handleCustomUrlChange(e.target.value)}
+          placeholder="https://localhost:3000"
+          className="w-full rounded-lg border border-stone-700 bg-stone-800 px-3 py-1.5 text-sm text-stone-100 placeholder:text-stone-500 focus:border-blue-500 focus:outline-none"
         />
-      </label>
-
-      <label className="block">
-        <span className="mb-1 block text-stone-400 text-xs">Goal</span>
-        <textarea
-          value={goal}
-          onChange={(e) => setGoal(e.target.value)}
-          placeholder="Describe what to explore and test..."
-          rows={3}
-          className="w-full resize-none rounded-lg border border-stone-700 bg-stone-800 px-3 py-2 text-sm text-stone-100 placeholder:text-stone-500 focus:border-blue-500 focus:outline-none"
-          disabled={isRunning}
-        />
-      </label>
-
-      <div>
-        <span className="mb-1 block text-stone-400 text-xs">Mode</span>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => setMode('manual')}
-            className={`flex-1 rounded-lg border px-3 py-1.5 text-sm transition-colors ${
-              mode === 'manual'
-                ? 'border-blue-500 bg-blue-600/20 text-blue-400'
-                : 'border-stone-700 bg-stone-800 text-stone-400 hover:text-stone-300'
-            }`}
-            disabled={isRunning}
-          >
-            Manual
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode('requirements')}
-            className={`flex-1 rounded-lg border px-3 py-1.5 text-sm transition-colors ${
-              mode === 'requirements'
-                ? 'border-blue-500 bg-blue-600/20 text-blue-400'
-                : 'border-stone-700 bg-stone-800 text-stone-400 hover:text-stone-300'
-            }`}
-            disabled={isRunning}
-          >
-            Requirements
-          </button>
-        </div>
-      </div>
-
-      {mode === 'requirements' && (
-        <label className="block">
-          <span className="mb-1 block text-stone-400 text-xs">Requirements</span>
-          <textarea
-            value={requirements}
-            onChange={(e) => setRequirements(e.target.value)}
-            placeholder="List requirements to verify..."
-            rows={4}
-            className="w-full resize-none rounded-lg border border-stone-700 bg-stone-800 px-3 py-2 text-sm text-stone-100 placeholder:text-stone-500 focus:border-blue-500 focus:outline-none"
-            disabled={isRunning}
-          />
-        </label>
       )}
 
-      <label className="block">
-        <span className="mb-1 block text-stone-400 text-xs">E2E Output Path</span>
+      <button
+        type="button"
+        onClick={handleToggleCustom}
+        className="mt-2 text-blue-400 text-xs transition-colors hover:text-blue-300"
+      >
+        {showCustomInput ? 'Use auto-detected URL' : 'Use custom URL'}
+      </button>
+    </div>
+  )
+}
+
+// ── Goal Section ─────────────────────────────────────────────────────────────
+
+type GoalSectionProps = {
+  goalsLoading: boolean
+  suggestedGoals: SuggestedGoal[]
+  customGoals: string[]
+  customGoalInput: string
+  onCustomGoalInputChange: (v: string) => void
+  onToggleGoal: (id: string) => void
+  onAddCustomGoal: () => void
+  onRemoveCustomGoal: (index: number) => void
+  onKeyDown: (e: React.KeyboardEvent) => void
+}
+
+function GoalSection({
+  goalsLoading,
+  suggestedGoals,
+  customGoals,
+  customGoalInput,
+  onCustomGoalInputChange,
+  onToggleGoal,
+  onAddCustomGoal,
+  onRemoveCustomGoal,
+  onKeyDown,
+}: GoalSectionProps) {
+  return (
+    <div className="border-stone-800 border-b p-3">
+      <h3 className="mb-2 font-semibold text-stone-400 text-xs uppercase tracking-wider">
+        What to Test
+      </h3>
+
+      {goalsLoading && (
+        <div className="mb-2 flex items-center gap-2 text-stone-400 text-xs">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          <span>Analyzing project…</span>
+        </div>
+      )}
+
+      {suggestedGoals.length > 0 && (
+        <div className="mb-2 space-y-1.5">
+          {suggestedGoals.map((goal) => (
+            <label key={goal.id} className="flex cursor-pointer items-start gap-2">
+              <input
+                type="checkbox"
+                checked={goal.selected}
+                onChange={() => onToggleGoal(goal.id)}
+                className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 cursor-pointer accent-blue-500"
+              />
+              <div className="min-w-0">
+                <span className="block text-stone-200 text-xs leading-tight">{goal.title}</span>
+                {goal.area && <span className="text-stone-500 text-xs">{goal.area}</span>}
+              </div>
+            </label>
+          ))}
+        </div>
+      )}
+
+      {customGoals.length > 0 && (
+        <div className="mb-2 space-y-1">
+          {customGoals.map((goal, i) => (
+            <div key={i} className="flex items-center gap-1.5">
+              <span className="min-w-0 flex-1 truncate text-stone-300 text-xs">{goal}</span>
+              <button
+                type="button"
+                onClick={() => onRemoveCustomGoal(i)}
+                className="flex-shrink-0 text-stone-500 transition-colors hover:text-red-400"
+                aria-label="Remove goal"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Custom goal input */}
+      <div className="flex gap-1.5">
         <input
           type="text"
-          value={e2ePath}
-          onChange={(e) => setE2ePath(e.target.value)}
-          className="w-full rounded-lg border border-stone-700 bg-stone-800 px-3 py-2 text-sm text-stone-100 focus:border-blue-500 focus:outline-none"
-          disabled={isRunning}
+          value={customGoalInput}
+          onChange={(e) => onCustomGoalInputChange(e.target.value)}
+          onKeyDown={onKeyDown}
+          placeholder="Add custom goal…"
+          className="min-w-0 flex-1 rounded-lg border border-stone-700 bg-stone-800 px-2.5 py-1.5 text-stone-100 text-xs placeholder:text-stone-500 focus:border-blue-500 focus:outline-none"
         />
-        {e2eReason && <p className="mt-1 text-stone-500 text-xs">{e2eReason}</p>}
-      </label>
-
-      {isRunning ? (
         <button
           type="button"
-          onClick={onStop}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-red-600/20 px-3 py-2 font-medium text-red-400 text-sm transition-colors hover:bg-red-600/30"
+          onClick={onAddCustomGoal}
+          disabled={!customGoalInput.trim()}
+          className="flex-shrink-0 rounded-lg border border-stone-700 bg-stone-800 p-1.5 text-stone-400 transition-colors hover:text-stone-200 disabled:opacity-40"
+          aria-label="Add goal"
         >
-          <Square className="h-4 w-4" />
-          Stop Exploration
+          <Plus className="h-3.5 w-3.5" />
         </button>
-      ) : (
-        <button
-          type="button"
-          onClick={onStart}
-          disabled={!canStart}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-3 py-2 font-medium text-sm text-white transition-colors hover:bg-blue-500 disabled:bg-stone-700 disabled:text-stone-500"
-        >
-          <Play className="h-4 w-4" />
-          Start Exploration
-        </button>
-      )}
-    </div>
-  )
-}
-
-// -- Exploration History --
-
-type ExplorationHistoryProps = {
-  explorations: TestExploration[]
-  activeId: string | null
-  onSelect: (id: string) => void
-  onDelete: (id: string) => void
-}
-
-function ExplorationHistory({
-  explorations,
-  activeId,
-  onSelect,
-  onDelete,
-}: ExplorationHistoryProps) {
-  return (
-    <div className="flex-1 overflow-y-auto">
-      <div className="p-3">
-        <h3 className="mb-2 font-semibold text-stone-400 text-xs uppercase tracking-wider">
-          History
-        </h3>
-        {explorations.length === 0 ? (
-          <p className="py-2 text-stone-500 text-xs">No explorations yet</p>
-        ) : (
-          <div className="space-y-1">
-            {explorations.map((exp) => (
-              <button
-                key={exp.id}
-                type="button"
-                onClick={() => onSelect(exp.id)}
-                className={`group w-full rounded-lg px-3 py-2 text-left text-sm transition-colors ${
-                  activeId === exp.id
-                    ? 'bg-stone-700/50 text-stone-100'
-                    : 'text-stone-300 hover:bg-stone-800/50'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <span
-                    className={`h-2 w-2 flex-shrink-0 rounded-full ${STATUS_COLORS[exp.status] ?? 'bg-stone-500'}`}
-                  />
-                  <span className="flex-1 truncate">{truncateUrl(exp.url)}</span>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onDelete(exp.id)
-                    }}
-                    className="text-stone-500 opacity-0 transition-all hover:text-red-400 group-hover:opacity-100"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-                <div className="mt-1 flex items-center gap-2 text-stone-500 text-xs">
-                  <span>{formatDate(exp.createdAt)}</span>
-                  {exp.findingsCount > 0 && (
-                    <span className="text-yellow-500">{exp.findingsCount} findings</span>
-                  )}
-                </div>
-              </button>
-            ))}
-          </div>
-        )}
       </div>
     </div>
   )
 }
 
-// -- Exploration Detail (Right Panel) --
+// ── Advanced Section ──────────────────────────────────────────────────────────
+
+type AdvancedSectionProps = {
+  e2ePath: string
+  e2eReason: string
+  onE2ePathChange: (v: string) => void
+  mode: ExplorationMode
+  onModeChange: (v: ExplorationMode) => void
+}
+
+function AdvancedSection({
+  e2ePath,
+  e2eReason,
+  onE2ePathChange,
+  mode,
+  onModeChange,
+}: AdvancedSectionProps) {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <div className="border-stone-800 border-b">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center gap-1.5 px-3 py-2.5 text-left text-stone-400 text-xs transition-colors hover:text-stone-300"
+      >
+        <ChevronRight
+          className={`h-3.5 w-3.5 flex-shrink-0 transition-transform ${open ? 'rotate-90' : ''}`}
+        />
+        <span className="font-semibold uppercase tracking-wider">Advanced</span>
+      </button>
+
+      {open && (
+        <div className="space-y-3 px-3 pb-3">
+          <label className="block">
+            <span className="mb-1 block text-stone-400 text-xs">E2E Output Path</span>
+            <input
+              type="text"
+              value={e2ePath}
+              onChange={(e) => onE2ePathChange(e.target.value)}
+              className="w-full rounded-lg border border-stone-700 bg-stone-800 px-3 py-1.5 text-sm text-stone-100 focus:border-blue-500 focus:outline-none"
+            />
+            {e2eReason && <p className="mt-1 text-stone-500 text-xs">{e2eReason}</p>}
+          </label>
+
+          <div>
+            <span className="mb-1 block text-stone-400 text-xs">Strategy</span>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => onModeChange('manual')}
+                className={`flex-1 rounded-lg border px-3 py-1.5 text-xs transition-colors ${
+                  mode === 'manual'
+                    ? 'border-blue-500 bg-blue-600/20 text-blue-400'
+                    : 'border-stone-700 bg-stone-800 text-stone-400 hover:text-stone-300'
+                }`}
+              >
+                Manual
+              </button>
+              <button
+                type="button"
+                onClick={() => onModeChange('requirements')}
+                className={`flex-1 rounded-lg border px-3 py-1.5 text-xs transition-colors ${
+                  mode === 'requirements'
+                    ? 'border-blue-500 bg-blue-600/20 text-blue-400'
+                    : 'border-stone-700 bg-stone-800 text-stone-400 hover:text-stone-300'
+                }`}
+              >
+                Requirements
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Launch Buttons ────────────────────────────────────────────────────────────
+
+type LaunchButtonsProps = {
+  canStart: boolean
+  hasProject: boolean
+  hasUrl: boolean
+  onStart: () => void
+  onAutoExplore: () => void
+}
+
+function LaunchButtons({
+  canStart,
+  hasProject,
+  hasUrl,
+  onStart,
+  onAutoExplore,
+}: LaunchButtonsProps) {
+  const autoExploreEnabled = hasProject && hasUrl
+
+  return (
+    <div className="space-y-2 border-stone-800 border-b p-3">
+      <button
+        type="button"
+        onClick={onStart}
+        disabled={!canStart}
+        className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-3 py-2 font-medium text-sm text-white transition-colors hover:bg-blue-500 disabled:bg-stone-700 disabled:text-stone-500"
+      >
+        <Play className="h-4 w-4" />
+        Start Exploration
+      </button>
+      <button
+        type="button"
+        onClick={onAutoExplore}
+        disabled={!autoExploreEnabled}
+        className="flex w-full items-center justify-center gap-2 rounded-lg border border-stone-700 bg-stone-800 px-3 py-2 font-medium text-sm text-stone-300 transition-colors hover:bg-stone-700 disabled:opacity-40"
+      >
+        <Zap className="h-4 w-4 text-yellow-400" />
+        Auto-explore everything
+      </button>
+    </div>
+  )
+}
+
+// ── Exploration List ──────────────────────────────────────────────────────────
+
+type ExplorationListProps = {
+  explorations: TestExploration[]
+  selectedId: string | null
+  onSelect: (id: string) => void
+  onDelete: (id: string) => void
+  onStop: (id: string) => void
+}
+
+function ExplorationList({
+  explorations,
+  selectedId,
+  onSelect,
+  onDelete,
+  onStop,
+}: ExplorationListProps) {
+  const running = explorations.filter((e) => e.status === 'running')
+  const finished = explorations.filter((e) => e.status !== 'running')
+
+  if (explorations.length === 0) {
+    return (
+      <div className="p-3">
+        <p className="text-stone-500 text-xs">No explorations yet</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex-1 overflow-y-auto">
+      {running.length > 0 && (
+        <ExplorationGroup
+          label="Running"
+          count={running.length}
+          items={running}
+          selectedId={selectedId}
+          onSelect={onSelect}
+          onDelete={onDelete}
+          onStop={onStop}
+        />
+      )}
+      {finished.length > 0 && (
+        <ExplorationGroup
+          label="Completed"
+          count={finished.length}
+          items={finished}
+          selectedId={selectedId}
+          onSelect={onSelect}
+          onDelete={onDelete}
+          onStop={onStop}
+        />
+      )}
+    </div>
+  )
+}
+
+type ExplorationGroupProps = {
+  label: string
+  count: number
+  items: TestExploration[]
+  selectedId: string | null
+  onSelect: (id: string) => void
+  onDelete: (id: string) => void
+  onStop: (id: string) => void
+}
+
+function ExplorationGroup({
+  label,
+  count,
+  items,
+  selectedId,
+  onSelect,
+  onDelete,
+  onStop,
+}: ExplorationGroupProps) {
+  const [open, setOpen] = useState(true)
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center gap-1.5 px-3 py-2 text-left text-stone-400 text-xs transition-colors hover:text-stone-300"
+      >
+        <ChevronRight
+          className={`h-3 w-3 flex-shrink-0 transition-transform ${open ? 'rotate-90' : ''}`}
+        />
+        <span className="font-semibold uppercase tracking-wider">
+          {label} ({count})
+        </span>
+      </button>
+      {open && (
+        <div className="space-y-0.5 px-2 pb-1">
+          {items.map((exp) => (
+            <ExplorationRow
+              key={exp.id}
+              exploration={exp}
+              isSelected={exp.id === selectedId}
+              onSelect={onSelect}
+              onDelete={onDelete}
+              onStop={onStop}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+type ExplorationRowProps = {
+  exploration: TestExploration
+  isSelected: boolean
+  onSelect: (id: string) => void
+  onDelete: (id: string) => void
+  onStop: (id: string) => void
+}
+
+function ExplorationRow({
+  exploration,
+  isSelected,
+  onSelect,
+  onDelete,
+  onStop,
+}: ExplorationRowProps) {
+  const isRunning = exploration.status === 'running'
+
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(exploration.id)}
+      className={`group w-full rounded-lg px-2.5 py-2 text-left text-xs transition-colors ${
+        isSelected ? 'bg-stone-700/50 text-stone-100' : 'text-stone-300 hover:bg-stone-800/50'
+      }`}
+    >
+      <div className="flex items-center gap-2">
+        <span
+          className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${STATUS_COLORS[exploration.status] ?? 'bg-stone-500'}`}
+        />
+        <span className="min-w-0 flex-1 truncate">{truncateGoal(exploration.goal)}</span>
+        {exploration.findingsCount > 0 && (
+          <span className="flex-shrink-0 text-xs text-yellow-500">{exploration.findingsCount}</span>
+        )}
+        {isRunning ? (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              onStop(exploration.id)
+            }}
+            className="flex-shrink-0 text-stone-500 opacity-0 transition-all hover:text-red-400 group-hover:opacity-100"
+            aria-label="Stop exploration"
+          >
+            <Square className="h-3 w-3" />
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              onDelete(exploration.id)
+            }}
+            className="flex-shrink-0 text-stone-500 opacity-0 transition-all hover:text-red-400 group-hover:opacity-100"
+            aria-label="Delete exploration"
+          >
+            <Trash2 className="h-3 w-3" />
+          </button>
+        )}
+      </div>
+      <div className="mt-0.5 ml-3.5 text-stone-500 text-xs">
+        {formatDate(exploration.createdAt)}
+      </div>
+    </button>
+  )
+}
+
+// ── Exploration Detail ────────────────────────────────────────────────────────
 
 type ExplorationDetailProps = {
   exploration: TestExploration
@@ -456,7 +854,7 @@ function ExplorationDetail({
   )
 }
 
-// -- Status Bar --
+// ── Status Bar ────────────────────────────────────────────────────────────────
 
 type StatusBarProps = {
   exploration: TestExploration
@@ -486,7 +884,7 @@ function StatusBar({ exploration, findingsCount, testsCount }: StatusBarProps) {
   )
 }
 
-// -- Streaming Panel --
+// ── Streaming Panel ───────────────────────────────────────────────────────────
 
 function StreamingPanel({ text }: { text: string }) {
   const ref = useRef<HTMLPreElement>(null)
@@ -503,7 +901,7 @@ function StreamingPanel({ text }: { text: string }) {
     <div className="px-4 pt-3">
       <div className="mb-2 flex items-center gap-2">
         <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
-        <span className="text-stone-400 text-xs">Exploring...</span>
+        <span className="text-stone-400 text-xs">Exploring…</span>
       </div>
       <pre
         ref={ref}
@@ -515,7 +913,7 @@ function StreamingPanel({ text }: { text: string }) {
   )
 }
 
-// -- Finding Card --
+// ── Finding Card ──────────────────────────────────────────────────────────────
 
 function FindingCard({ finding }: { finding: import('../../../shared/types').TestFinding }) {
   const [expanded, setExpanded] = useState(false)
@@ -561,7 +959,7 @@ function FindingCard({ finding }: { finding: import('../../../shared/types').Tes
   )
 }
 
-// -- Generated Test Item --
+// ── Generated Test Item ───────────────────────────────────────────────────────
 
 function GeneratedTestItem({ path, cwd }: { path: string; cwd: string }) {
   const [expanded, setExpanded] = useState(false)
@@ -598,17 +996,28 @@ function GeneratedTestItem({ path, cwd }: { path: string; cwd: string }) {
   )
 }
 
-// -- Empty State --
+// ── Empty State ───────────────────────────────────────────────────────────────
 
-function EmptyState() {
+function EmptyState({ hasProject }: { hasProject: boolean }) {
   return (
     <div className="flex flex-1 items-center justify-center">
       <div className="text-center">
         <Bug className="mx-auto mb-3 h-12 w-12 text-stone-600" />
-        <p className="text-sm text-stone-400">No exploration selected</p>
-        <p className="mt-1 text-stone-500 text-xs">
-          Configure an exploration on the left to get started
-        </p>
+        {hasProject ? (
+          <>
+            <p className="text-sm text-stone-400">No exploration selected</p>
+            <p className="mt-1 text-stone-500 text-xs">
+              Configure goals on the left and start an exploration
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="text-sm text-stone-400">Select a project to get started</p>
+            <p className="mt-1 text-stone-500 text-xs">
+              Choose a project from the dropdown to scan for server details and generate test goals
+            </p>
+          </>
+        )}
       </div>
     </div>
   )
