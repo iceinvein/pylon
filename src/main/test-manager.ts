@@ -9,12 +9,19 @@ import type {
   ExplorationMode,
   ExplorationStatus,
   ExplorationUpdate,
+  GoalSuggestionUpdate,
+  ProjectScan,
   TestExploration,
   TestFinding,
 } from '../shared/types'
 import { getDb } from './db'
 import { resolveE2eOutputPath } from './e2e-path-resolver'
-import { createReportFindingTool, createSavePlaywrightTestTool } from './test-tools'
+import { checkPortInUse, scanProject as runProjectScan } from './project-scanner'
+import {
+  createReportFindingTool,
+  createReportGoalsTool,
+  createSavePlaywrightTestTool,
+} from './test-tools'
 
 const logger = log.child('test-manager')
 const STREAM_THROTTLE_MS = 300
@@ -28,6 +35,7 @@ class TestManager {
       streamedText: string
     }
   >()
+  private goalSuggestionAbort: AbortController | null = null
   private window: BrowserWindow | null = null
 
   setWindow(window: BrowserWindow): void {
@@ -42,6 +50,98 @@ class TestManager {
     return resolveE2eOutputPath(cwd)
   }
 
+  async scanProject(cwd: string): Promise<ProjectScan> {
+    const scan = runProjectScan(cwd)
+    if (scan.detectedPort) {
+      scan.serverRunning = await checkPortInUse(scan.detectedPort)
+    }
+    return scan
+  }
+
+  async suggestGoals(cwd: string): Promise<void> {
+    // Abort any in-flight suggestion
+    if (this.goalSuggestionAbort) {
+      this.goalSuggestionAbort.abort()
+    }
+
+    const abortController = new AbortController()
+    this.goalSuggestionAbort = abortController
+
+    // Send loading state
+    this.send(IPC.TEST_GOAL_SUGGESTION, {
+      cwd,
+      goals: [],
+      status: 'loading',
+    } satisfies GoalSuggestionUpdate)
+
+    let goalToolCalled = false
+
+    try {
+      const scan = runProjectScan(cwd)
+
+      const goalToolCtx = { cwd, window: this.window }
+      const reportGoalsTool = createReportGoalsTool(goalToolCtx)
+
+      // Wrap the tool to track if it was called
+      const wrappedExecute = async (args: Record<string, unknown>) => {
+        goalToolCalled = true
+        return reportGoalsTool.execute(args)
+      }
+
+      const toolsServer = createSdkMcpServer({
+        name: 'pylon-goal-analysis',
+        tools: [
+          {
+            name: reportGoalsTool.name,
+            description: reportGoalsTool.description,
+            inputSchema: {},
+            handler: (args: Record<string, unknown>) => wrappedExecute(args),
+          },
+        ],
+      })
+
+      const prompt = this.buildGoalSuggestionPrompt(cwd, scan)
+
+      for await (const _message of query({
+        prompt,
+        options: {
+          maxTurns: 5,
+          permissionMode: 'bypassPermissions',
+          allowDangerouslySkipPermissions: true,
+          abortController,
+          mcpServers: {
+            'pylon-goal-analysis': toolsServer,
+          },
+        },
+      })) {
+        // Just consume messages — the report_goals tool call sends goals via IPC
+      }
+
+      // If the tool wasn't called, send done with empty goals
+      if (!abortController.signal.aborted && !goalToolCalled) {
+        this.send(IPC.TEST_GOAL_SUGGESTION, {
+          cwd,
+          goals: [],
+          status: 'done',
+        } satisfies GoalSuggestionUpdate)
+      }
+    } catch (err) {
+      if (!abortController.signal.aborted) {
+        logger.error('Goal suggestion failed:', err)
+        this.send(IPC.TEST_GOAL_SUGGESTION, {
+          cwd,
+          goals: [],
+          status: 'error',
+          error: String(err),
+        } satisfies GoalSuggestionUpdate)
+      }
+    } finally {
+      if (this.goalSuggestionAbort === abortController) {
+        this.goalSuggestionAbort = null
+      }
+    }
+  }
+
   async startExploration(config: {
     cwd: string
     url: string
@@ -50,6 +150,7 @@ class TestManager {
     requirements?: string
     e2eOutputPath: string
     e2ePathReason?: string
+    projectScan?: ProjectScan
   }): Promise<TestExploration> {
     const id = randomUUID()
     const now = Date.now()
@@ -118,6 +219,7 @@ class TestManager {
       mode: ExplorationMode
       requirements?: string
       e2eOutputPath: string
+      projectScan?: ProjectScan
     },
   ): Promise<void> {
     const abortController = new AbortController()
@@ -156,7 +258,7 @@ class TestManager {
       ],
     })
 
-    const prompt = this.buildPrompt(config)
+    const prompt = this.buildPrompt({ ...config, projectScan: config.projectScan })
     let inputTokens = 0
     let outputTokens = 0
     let lastSendTime = 0
@@ -249,17 +351,47 @@ class TestManager {
     }
   }
 
+  private buildGoalSuggestionPrompt(cwd: string, scan: ProjectScan): string {
+    const prompt = `You are analyzing a web application project to suggest testing goals.
+
+Project path: ${cwd}
+${scan.framework ? `Framework: ${scan.framework}` : 'Framework: unknown'}
+${scan.devCommand ? `Dev command: ${scan.devCommand}` : ''}
+${scan.routeFiles.length > 0 ? `Route files found:\n${scan.routeFiles.map((f) => `  - ${f}`).join('\n')}` : ''}
+${scan.docsFiles.length > 0 ? `Documentation files:\n${scan.docsFiles.map((f) => `  - ${f}`).join('\n')}` : ''}
+
+Instructions:
+1. Read the project's README and any documentation files listed above
+2. Examine the route/page structure to understand the application's features
+3. Call report_goals with a list of 3-8 testable areas of the application
+4. Each goal should be specific and actionable (not generic like "test everything")
+5. Focus on user-facing features and critical user flows
+6. Prioritize: authentication, forms, data display, navigation, error states`
+
+    return prompt
+  }
+
   private buildPrompt(config: {
     url: string
     goal: string
     mode: ExplorationMode
     requirements?: string
+    projectScan?: ProjectScan
   }): string {
     let prompt = `You are an expert QA engineer performing exploratory testing on a web application.
 
 Target: ${config.url}
 Goal: ${config.goal}
-
+${
+  config.projectScan
+    ? `
+Project Info:
+${config.projectScan.framework ? `Framework: ${config.projectScan.framework}` : ''}
+${config.projectScan.devCommand ? `Dev command: ${config.projectScan.devCommand}` : ''}
+${config.projectScan.serverRunning ? 'Server status: running' : config.projectScan.devCommand ? `Server status: not running — start it with: ${config.projectScan.devCommand}` : ''}
+`
+    : ''
+}
 Instructions:
 1. Navigate to the target URL using the browser
 2. Systematically explore the application guided by the goal
