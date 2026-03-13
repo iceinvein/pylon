@@ -114,6 +114,47 @@ export function initDatabase(): Database.Database {
     db.exec('ALTER TABLE pr_review_findings ADD COLUMN domain TEXT')
   }
 
+  // AI Exploration Testing tables
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS test_explorations (
+      id TEXT PRIMARY KEY,
+      cwd TEXT NOT NULL,
+      url TEXT NOT NULL,
+      goal TEXT NOT NULL,
+      mode TEXT NOT NULL DEFAULT 'manual',
+      requirements TEXT,
+      e2e_output_path TEXT NOT NULL DEFAULT 'e2e',
+      e2e_path_reason TEXT,
+      status TEXT NOT NULL DEFAULT 'pending',
+      error_message TEXT,
+      findings_count INTEGER NOT NULL DEFAULT 0,
+      tests_generated INTEGER NOT NULL DEFAULT 0,
+      generated_test_paths TEXT NOT NULL DEFAULT '[]',
+      input_tokens INTEGER NOT NULL DEFAULT 0,
+      output_tokens INTEGER NOT NULL DEFAULT 0,
+      total_cost_usd REAL NOT NULL DEFAULT 0,
+      started_at INTEGER,
+      completed_at INTEGER,
+      created_at INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS test_findings (
+      id TEXT PRIMARY KEY,
+      exploration_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      description TEXT NOT NULL,
+      severity TEXT NOT NULL DEFAULT 'medium',
+      url TEXT NOT NULL DEFAULT '',
+      screenshot_path TEXT,
+      reproduction_steps TEXT NOT NULL DEFAULT '[]',
+      created_at INTEGER NOT NULL,
+      FOREIGN KEY (exploration_id) REFERENCES test_explorations(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_test_explorations_cwd ON test_explorations(cwd);
+    CREATE INDEX IF NOT EXISTS idx_test_findings_exploration ON test_findings(exploration_id);
+  `)
+
   return db
 }
 
