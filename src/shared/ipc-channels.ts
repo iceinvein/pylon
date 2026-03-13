@@ -75,4 +75,7 @@ export const IPC = {
   TEST_RESOLVE_E2E_PATH: 'test:resolve-e2e-path',
   TEST_READ_GENERATED_TEST: 'test:read-generated-test',
   TEST_EXPLORATION_UPDATE: 'test:exploration-update',
+  TEST_SCAN_PROJECT: 'test:scan-project',
+  TEST_SUGGEST_GOALS: 'test:suggest-goals',
+  TEST_GOAL_SUGGESTION: 'test:goal-suggestion',
 } as const
