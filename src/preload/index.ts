@@ -122,6 +122,13 @@ const api = {
     ipcRenderer.on(IPC.TEST_EXPLORATION_UPDATE, handler)
     return () => ipcRenderer.removeListener(IPC.TEST_EXPLORATION_UPDATE, handler)
   },
+  scanProject: (cwd: string) => ipcRenderer.invoke(IPC.TEST_SCAN_PROJECT, { cwd }),
+  suggestGoals: (cwd: string) => ipcRenderer.invoke(IPC.TEST_SUGGEST_GOALS, { cwd }),
+  onGoalSuggestion: (callback: (data: unknown) => void) => {
+    const handler = (_event: unknown, data: unknown) => callback(data)
+    ipcRenderer.on(IPC.TEST_GOAL_SUGGESTION, handler)
+    return () => ipcRenderer.removeListener(IPC.TEST_GOAL_SUGGESTION, handler)
+  },
 
   // Plugins
   listPlugins: () => ipcRenderer.invoke(IPC.PLUGINS_LIST),

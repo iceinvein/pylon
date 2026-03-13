@@ -108,6 +108,7 @@ type Api = {
     requirements?: string
     e2eOutputPath: string
     e2ePathReason?: string
+    projectScan?: import('../shared/types').ProjectScan
   }) => Promise<import('../shared/types').TestExploration>
   stopExploration: (explorationId: string) => Promise<boolean>
   listExplorations: (cwd: string) => Promise<import('../shared/types').TestExploration[]>
@@ -121,6 +122,11 @@ type Api = {
   resolveE2ePath: (cwd: string) => Promise<import('../shared/types').E2ePathResolution>
   readGeneratedTest: (cwd: string, relativePath: string) => Promise<string | null>
   onExplorationUpdate: (callback: (data: unknown) => void) => () => void
+  scanProject: (cwd: string) => Promise<import('../shared/types').ProjectScan>
+  suggestGoals: (cwd: string) => Promise<void>
+  onGoalSuggestion: (
+    callback: (data: import('../shared/types').GoalSuggestionUpdate) => void,
+  ) => () => void
   sendLog: (level: string, source: string, message: string) => void
 }
 

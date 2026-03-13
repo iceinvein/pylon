@@ -512,6 +512,7 @@ export function registerIpcHandlers(): void {
         requirements?: string
         e2eOutputPath: string
         e2ePathReason?: string
+        projectScan?: import('../shared/types').ProjectScan
       },
     ) => {
       const { testManager } = await import('./test-manager')
@@ -553,6 +554,20 @@ export function registerIpcHandlers(): void {
       return testManager.readGeneratedTest(args.cwd, args.relativePath)
     },
   )
+
+  ipcMain.handle(IPC.TEST_SCAN_PROJECT, async (_e, args: { cwd: string }) => {
+    const { testManager } = await import('./test-manager')
+    return testManager.scanProject(args.cwd)
+  })
+
+  ipcMain.handle(IPC.TEST_SUGGEST_GOALS, async (_e, args: { cwd: string }) => {
+    const { testManager } = await import('./test-manager')
+    // Fire and forget — results come back via TEST_GOAL_SUGGESTION channel
+    testManager.suggestGoals(args.cwd).catch((err) => {
+      console.error('suggestGoals failed:', err)
+    })
+    return true
+  })
 
   ipcMain.handle(IPC.USAGE_STATS, async (_e, args: { period: string }) => {
     const db = getDb()
