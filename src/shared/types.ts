@@ -399,3 +399,62 @@ export type PrRaiseResult = {
   prNumber?: number
   error?: string
 }
+
+// -- AI Exploration Testing --
+
+export type ExplorationMode = 'manual' | 'requirements'
+export type ExplorationStatus = 'pending' | 'running' | 'done' | 'stopped' | 'error'
+export type FindingSeverity = 'critical' | 'high' | 'medium' | 'low' | 'info'
+
+export type E2ePathResolution = {
+  path: string
+  reason: string
+}
+
+export type TestExploration = {
+  id: string
+  cwd: string
+  url: string
+  goal: string
+  mode: ExplorationMode
+  requirements: string | null
+  e2eOutputPath: string
+  e2ePathReason: string | null
+  status: ExplorationStatus
+  errorMessage: string | null
+  findingsCount: number
+  testsGenerated: number
+  generatedTestPaths: string[]
+  inputTokens: number
+  outputTokens: number
+  totalCostUsd: number
+  startedAt: number | null
+  completedAt: number | null
+  createdAt: number
+}
+
+export type TestFinding = {
+  id: string
+  explorationId: string
+  title: string
+  description: string
+  severity: FindingSeverity
+  url: string
+  screenshotPath: string | null
+  reproductionSteps: string[]
+  createdAt: number
+}
+
+export type ExplorationUpdate = {
+  explorationId: string
+  status: ExplorationStatus
+  findings?: TestFinding[]
+  generatedTests?: string[]
+  streamingText?: string
+  findingsCount?: number
+  testsGenerated?: number
+  error?: string
+  inputTokens?: number
+  outputTokens?: number
+  totalCostUsd?: number
+}
