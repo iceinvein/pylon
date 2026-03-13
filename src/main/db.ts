@@ -106,6 +106,11 @@ export function initDatabase(): Database.Database {
     db.exec('ALTER TABLE pr_reviews ADD COLUMN raw_output TEXT')
   }
 
+  // Migration: add cost_usd column to pr_reviews
+  if (!prCols.some((c) => c.name === 'cost_usd')) {
+    db.exec('ALTER TABLE pr_reviews ADD COLUMN cost_usd REAL NOT NULL DEFAULT 0')
+  }
+
   // Migration: add domain column to pr_review_findings
   const findingCols = db.prepare('PRAGMA table_info(pr_review_findings)').all() as Array<{
     name: string

@@ -346,17 +346,33 @@ class PrReviewManager {
     this.window?.webContents.send(channel, data)
   }
 
-  private updateReviewStatus(reviewId: string, status: ReviewStatus, completedAt?: number): void {
+  private updateReviewStatus(
+    reviewId: string,
+    status: ReviewStatus,
+    completedAt?: number,
+    costUsd?: number,
+  ): void {
     const db = getDb()
     if (completedAt) {
-      db.prepare('UPDATE pr_reviews SET status = ?, completed_at = ? WHERE id = ?').run(
-        status,
-        completedAt,
-        reviewId,
-      )
+      db.prepare(
+        'UPDATE pr_reviews SET status = ?, completed_at = ?, cost_usd = ? WHERE id = ?',
+      ).run(status, completedAt, costUsd ?? 0, reviewId)
     } else {
       db.prepare('UPDATE pr_reviews SET status = ? WHERE id = ?').run(status, reviewId)
     }
+  }
+
+  /** Sum cost across all agent sessions for a review */
+  private sumAgentCosts(active: ActiveReviewSession): number {
+    const db = getDb()
+    let total = 0
+    for (const agent of active.agents.values()) {
+      const row = db
+        .prepare('SELECT total_cost_usd FROM sessions WHERE id = ?')
+        .get(agent.sessionId) as { total_cost_usd: number } | undefined
+      if (row) total += row.total_cost_usd
+    }
+    return total
   }
 
   async startReview(
@@ -404,6 +420,7 @@ class PrReviewManager {
       startedAt: now,
       completedAt: null,
       createdAt: now,
+      costUsd: 0,
     }
 
     this.send(IPC.GH_REVIEW_UPDATE, {
@@ -540,12 +557,15 @@ class PrReviewManager {
       )
     }
 
-    this.updateReviewStatus(reviewId, 'done', Date.now())
+    // Sum cost from all agent sessions
+    const totalCost = this.sumAgentCosts(active)
+    this.updateReviewStatus(reviewId, 'done', Date.now(), totalCost)
 
     this.send(IPC.GH_REVIEW_UPDATE, {
       reviewId,
       status: 'done',
       findings: deduped,
+      costUsd: totalCost,
       agentProgress: focusAreas.map((f) => {
         const agent = active.agents.get(f)
         return {
@@ -1108,6 +1128,7 @@ Output findings in the same \`review-findings\` format.`
       startedAt: row.started_at as number,
       completedAt: row.completed_at as number | null,
       createdAt: row.created_at as number,
+      costUsd: (row.cost_usd as number) ?? 0,
     }
   }
 }

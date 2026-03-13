@@ -111,6 +111,7 @@ type PrReviewStore = {
     findings?: ReviewFinding[]
     streamingText?: string
     error?: string
+    costUsd?: number
     agentProgress?: PrReviewStore['agentProgress']
   }) => void
 }
@@ -443,7 +444,11 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
     set((s) => {
       if (s.activeReview?.id !== data.reviewId) return s
 
-      const updatedReview = { ...s.activeReview, status: data.status as PrReview['status'] }
+      const updatedReview = {
+        ...s.activeReview,
+        status: data.status as PrReview['status'],
+        ...(data.costUsd !== undefined && { costUsd: data.costUsd }),
+      }
       const updates: Partial<PrReviewStore> = {
         activeReview: updatedReview,
       }
@@ -485,7 +490,13 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
       // Update the review in the reviews list
       if (data.status === 'done' || data.status === 'error') {
         updates.reviews = s.reviews.map((r) =>
-          r.id === data.reviewId ? { ...r, status: data.status as PrReview['status'] } : r,
+          r.id === data.reviewId
+            ? {
+                ...r,
+                status: data.status as PrReview['status'],
+                ...(data.costUsd !== undefined && { costUsd: data.costUsd }),
+              }
+            : r,
         )
       }
 

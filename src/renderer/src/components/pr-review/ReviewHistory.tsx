@@ -1,4 +1,5 @@
 import { CheckCircle2, Clock, Loader2, Trash2, XCircle } from 'lucide-react'
+import { formatCost } from '../../lib/utils'
 import { usePrReviewStore } from '../../store/pr-review-store'
 
 const STATUS_CONFIG: Record<
@@ -77,6 +78,11 @@ export function ReviewHistory() {
                 <StatusIcon size={12} className={`flex-shrink-0 ${config.color}`} />
                 <span className="text-[11px] text-stone-400">{timeAgo(r.createdAt)}</span>
                 <span className="truncate text-[11px] text-stone-600">{r.focus.join(', ')}</span>
+                {r.costUsd > 0 && (
+                  <span className="flex-shrink-0 font-mono text-[10px] text-stone-600">
+                    {formatCost(r.costUsd)}
+                  </span>
+                )}
                 <span className={`ml-auto flex-shrink-0 font-medium text-[11px] ${config.color}`}>
                   {config.label(findingsCount)}
                 </span>

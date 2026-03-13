@@ -310,6 +310,7 @@ export type PrReview = {
   startedAt: number
   completedAt: number | null
   createdAt: number
+  costUsd: number
 }
 
 export type ReviewAgentConfig = {
