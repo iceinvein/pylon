@@ -97,6 +97,29 @@ const api = {
     squash: boolean
   }) => ipcRenderer.invoke(IPC.GH_RAISE_PR_CREATE, args),
 
+  // AI Exploration Testing
+  startExploration: (args: {
+    cwd: string; url: string; goal: string; mode: string
+    requirements?: string; e2eOutputPath: string; e2ePathReason?: string
+  }) => ipcRenderer.invoke(IPC.TEST_START_EXPLORATION, args),
+  stopExploration: (explorationId: string) =>
+    ipcRenderer.invoke(IPC.TEST_STOP_EXPLORATION, { explorationId }),
+  listExplorations: (cwd: string) =>
+    ipcRenderer.invoke(IPC.TEST_LIST_EXPLORATIONS, { cwd }),
+  getExploration: (explorationId: string) =>
+    ipcRenderer.invoke(IPC.TEST_GET_EXPLORATION, { explorationId }),
+  deleteExploration: (explorationId: string) =>
+    ipcRenderer.invoke(IPC.TEST_DELETE_EXPLORATION, { explorationId }),
+  resolveE2ePath: (cwd: string) =>
+    ipcRenderer.invoke(IPC.TEST_RESOLVE_E2E_PATH, { cwd }),
+  readGeneratedTest: (cwd: string, relativePath: string) =>
+    ipcRenderer.invoke(IPC.TEST_READ_GENERATED_TEST, { cwd, relativePath }),
+  onExplorationUpdate: (callback: (data: unknown) => void) => {
+    const handler = (_event: unknown, data: unknown) => callback(data)
+    ipcRenderer.on(IPC.TEST_EXPLORATION_UPDATE, handler)
+    return () => ipcRenderer.removeListener(IPC.TEST_EXPLORATION_UPDATE, handler)
+  },
+
   // Plugins
   listPlugins: () => ipcRenderer.invoke(IPC.PLUGINS_LIST),
   togglePlugin: (pluginId: string, enabled: boolean) =>
