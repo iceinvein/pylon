@@ -74,18 +74,29 @@ export function TestView() {
   const cwd = activeTab?.cwd ?? ''
 
   const {
-    activeExploration,
-    explorationStreamingText,
-    explorationFindings,
-    generatedTests,
+    selectedExplorationId,
     explorations,
+    streamingTexts,
+    findingsByExploration,
+    testsByExploration,
     startExploration,
     stopExploration,
     loadExplorations,
-    loadExploration,
+    selectExploration,
     deleteExploration,
     resolveE2ePath,
   } = useTestStore()
+
+  const activeExploration = explorations.find((e) => e.id === selectedExplorationId) ?? null
+  const explorationStreamingText = selectedExplorationId
+    ? (streamingTexts[selectedExplorationId] ?? '')
+    : ''
+  const explorationFindings = selectedExplorationId
+    ? (findingsByExploration[selectedExplorationId] ?? [])
+    : []
+  const generatedTests = selectedExplorationId
+    ? (testsByExploration[selectedExplorationId] ?? [])
+    : []
 
   useEffect(() => {
     if (!cwd) return
@@ -141,7 +152,7 @@ export function TestView() {
         <ExplorationHistory
           explorations={explorations}
           activeId={activeExploration?.id ?? null}
-          onSelect={loadExploration}
+          onSelect={selectExploration}
           onDelete={deleteExploration}
         />
       </div>

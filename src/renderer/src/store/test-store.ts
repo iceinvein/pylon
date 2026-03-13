@@ -3,53 +3,167 @@ import type {
   E2ePathResolution,
   ExplorationMode,
   ExplorationUpdate,
+  GoalSuggestionUpdate,
+  ProjectScan,
+  SuggestedGoal,
   TestExploration,
   TestFinding,
 } from '../../../shared/types'
 
-type TestStore = {
-  activeExploration: TestExploration | null
-  explorationStreamingText: string
-  explorationFindings: TestFinding[]
-  generatedTests: string[]
-  explorations: TestExploration[]
+type ExplorationConfig = {
+  url: string
+  goal: string
+  mode: ExplorationMode
+  requirements?: string
+  e2eOutputPath: string
+  e2ePathReason?: string
+  projectScan?: ProjectScan
+}
 
-  startExploration: (
-    cwd: string,
-    config: {
-      url: string
-      goal: string
-      mode: ExplorationMode
-      requirements?: string
-      e2eOutputPath: string
-      e2ePathReason?: string
-    },
-  ) => Promise<void>
+type TestStore = {
+  // Project context
+  selectedProject: string | null
+  projects: Array<{ path: string; lastUsed: number }>
+
+  // Project scan
+  projectScan: ProjectScan | null
+  scanLoading: boolean
+
+  // Goal suggestions
+  suggestedGoals: SuggestedGoal[]
+  goalsLoading: boolean
+  customGoals: string[]
+
+  // Server override
+  customUrl: string | null
+
+  // Multi-exploration
+  selectedExplorationId: string | null
+  explorations: TestExploration[]
+  streamingTexts: Record<string, string>
+  findingsByExploration: Record<string, TestFinding[]>
+  testsByExploration: Record<string, string[]>
+
+  // Actions
+  loadProjects: () => Promise<void>
+  selectProject: (cwd: string) => void
+  scanProject: (cwd: string) => Promise<void>
+  suggestGoals: (cwd: string) => Promise<void>
+  toggleGoal: (goalId: string) => void
+  addCustomGoal: (goal: string) => void
+  removeCustomGoal: (index: number) => void
+  setCustomUrl: (url: string | null) => void
+  startExploration: (cwd: string, config: ExplorationConfig) => Promise<void>
   stopExploration: (id: string) => Promise<void>
+  selectExploration: (id: string) => void
   loadExplorations: (cwd: string) => Promise<void>
   loadExploration: (id: string) => Promise<void>
   deleteExploration: (id: string) => Promise<void>
   resolveE2ePath: (cwd: string) => Promise<E2ePathResolution>
   readGeneratedTest: (cwd: string, path: string) => Promise<string | null>
   handleExplorationUpdate: (data: ExplorationUpdate) => void
+  handleGoalSuggestion: (data: GoalSuggestionUpdate) => void
 }
 
-export const useTestStore = create<TestStore>((set) => ({
-  activeExploration: null,
-  explorationStreamingText: '',
-  explorationFindings: [],
-  generatedTests: [],
+export const useTestStore = create<TestStore>((set, get) => ({
+  // Initial state
+  selectedProject: null,
+  projects: [],
+  projectScan: null,
+  scanLoading: false,
+  suggestedGoals: [],
+  goalsLoading: false,
+  customGoals: [],
+  customUrl: null,
+  selectedExplorationId: null,
   explorations: [],
+  streamingTexts: {},
+  findingsByExploration: {},
+  testsByExploration: {},
+
+  loadProjects: async () => {
+    try {
+      const projects = await window.api.listProjects()
+      set({ projects })
+    } catch (err) {
+      console.error('loadProjects failed:', err)
+    }
+  },
+
+  selectProject: (cwd) => {
+    set({
+      selectedProject: cwd,
+      projectScan: null,
+      scanLoading: false,
+      suggestedGoals: [],
+      goalsLoading: false,
+      customGoals: [],
+      customUrl: null,
+      selectedExplorationId: null,
+    })
+    // Trigger async operations
+    get().scanProject(cwd)
+    get().suggestGoals(cwd)
+    get().loadExplorations(cwd)
+  },
+
+  scanProject: async (cwd) => {
+    set({ scanLoading: true })
+    try {
+      const scan = await window.api.scanProject(cwd)
+      // Only apply if still same project
+      if (get().selectedProject === cwd) {
+        set({ projectScan: scan, scanLoading: false })
+      }
+    } catch (err) {
+      console.error('scanProject failed:', err)
+      if (get().selectedProject === cwd) {
+        set({ scanLoading: false })
+      }
+    }
+  },
+
+  suggestGoals: async (cwd) => {
+    set({ goalsLoading: true })
+    try {
+      await window.api.suggestGoals(cwd)
+      // Results arrive via handleGoalSuggestion
+    } catch (err) {
+      console.error('suggestGoals failed:', err)
+      if (get().selectedProject === cwd) {
+        set({ goalsLoading: false })
+      }
+    }
+  },
+
+  toggleGoal: (goalId) => {
+    set((s) => ({
+      suggestedGoals: s.suggestedGoals.map((g) =>
+        g.id === goalId ? { ...g, selected: !g.selected } : g,
+      ),
+    }))
+  },
+
+  addCustomGoal: (goal) => {
+    set((s) => ({ customGoals: [...s.customGoals, goal] }))
+  },
+
+  removeCustomGoal: (index) => {
+    set((s) => ({ customGoals: s.customGoals.filter((_, i) => i !== index) }))
+  },
+
+  setCustomUrl: (url) => set({ customUrl: url }),
 
   startExploration: async (cwd, config) => {
     try {
       const exploration = await window.api.startExploration({ cwd, ...config })
-      set({
-        activeExploration: exploration,
-        explorationStreamingText: '',
-        explorationFindings: [],
-        generatedTests: [],
-      })
+      set((s) => ({
+        explorations: [exploration, ...s.explorations],
+        selectedExplorationId: exploration.id,
+        streamingTexts: { ...s.streamingTexts, [exploration.id]: '' },
+        findingsByExploration: { ...s.findingsByExploration, [exploration.id]: [] },
+        testsByExploration: { ...s.testsByExploration, [exploration.id]: [] },
+      }))
     } catch (err) {
       console.error('startExploration failed:', err)
     }
@@ -60,6 +174,15 @@ export const useTestStore = create<TestStore>((set) => ({
       await window.api.stopExploration(id)
     } catch (err) {
       console.error('stopExploration failed:', err)
+    }
+  },
+
+  selectExploration: (id) => {
+    set({ selectedExplorationId: id })
+    // Load full data if not already in Records
+    const state = get()
+    if (!state.findingsByExploration[id]) {
+      get().loadExploration(id)
     }
   },
 
@@ -76,12 +199,14 @@ export const useTestStore = create<TestStore>((set) => ({
     try {
       const result = await window.api.getExploration(id)
       if (!result) return
-      set({
-        activeExploration: result,
-        explorationFindings: result.findings,
-        generatedTests: result.generatedTestPaths,
-        explorationStreamingText: '',
-      })
+      set((s) => ({
+        selectedExplorationId: id,
+        findingsByExploration: { ...s.findingsByExploration, [id]: result.findings },
+        testsByExploration: { ...s.testsByExploration, [id]: result.generatedTestPaths },
+        streamingTexts: { ...s.streamingTexts, [id]: '' },
+        // Update the exploration in the list if it exists
+        explorations: s.explorations.map((e) => (e.id === id ? { ...e, ...result } : e)),
+      }))
     } catch (err) {
       console.error('loadExploration failed:', err)
     }
@@ -89,14 +214,25 @@ export const useTestStore = create<TestStore>((set) => ({
 
   deleteExploration: async (id) => {
     try {
+      // Stop if running
+      const exploration = get().explorations.find((e) => e.id === id)
+      if (exploration?.status === 'running') {
+        await get().stopExploration(id)
+      }
+
       await window.api.deleteExploration(id)
-      set((s) => ({
-        explorations: s.explorations.filter((e) => e.id !== id),
-        activeExploration: s.activeExploration?.id === id ? null : s.activeExploration,
-        explorationFindings: s.activeExploration?.id === id ? [] : s.explorationFindings,
-        generatedTests: s.activeExploration?.id === id ? [] : s.generatedTests,
-        explorationStreamingText: s.activeExploration?.id === id ? '' : s.explorationStreamingText,
-      }))
+      set((s) => {
+        const { [id]: _st, ...restStreaming } = s.streamingTexts
+        const { [id]: _fi, ...restFindings } = s.findingsByExploration
+        const { [id]: _te, ...restTests } = s.testsByExploration
+        return {
+          explorations: s.explorations.filter((e) => e.id !== id),
+          selectedExplorationId: s.selectedExplorationId === id ? null : s.selectedExplorationId,
+          streamingTexts: restStreaming,
+          findingsByExploration: restFindings,
+          testsByExploration: restTests,
+        }
+      })
     } catch (err) {
       console.error('deleteExploration failed:', err)
     }
@@ -112,53 +248,85 @@ export const useTestStore = create<TestStore>((set) => ({
 
   handleExplorationUpdate: (data) => {
     set((s) => {
-      // Only update if this is for the active exploration
-      if (s.activeExploration?.id !== data.explorationId) return s
-
+      const id = data.explorationId
       const updates: Partial<TestStore> = {}
-
-      // Update exploration status and counts
-      const updatedExploration = { ...s.activeExploration }
-      if (data.status) updatedExploration.status = data.status
-      if (data.findingsCount !== undefined) updatedExploration.findingsCount = data.findingsCount
-      if (data.testsGenerated !== undefined) updatedExploration.testsGenerated = data.testsGenerated
-      if (data.inputTokens !== undefined) updatedExploration.inputTokens = data.inputTokens
-      if (data.outputTokens !== undefined) updatedExploration.outputTokens = data.outputTokens
-      if (data.totalCostUsd !== undefined) updatedExploration.totalCostUsd = data.totalCostUsd
-      if (data.error) updatedExploration.errorMessage = data.error
-      updates.activeExploration = updatedExploration
 
       // Update streaming text
       if (data.streamingText !== undefined) {
-        updates.explorationStreamingText = data.streamingText
+        updates.streamingTexts = { ...s.streamingTexts, [id]: data.streamingText }
       }
 
-      // Append new findings (don't replace — findings arrive incrementally)
+      // Append new findings
       if (data.findings && data.findings.length > 0) {
-        const existingIds = new Set(s.explorationFindings.map((f) => f.id))
+        const existing = s.findingsByExploration[id] ?? []
+        const existingIds = new Set(existing.map((f) => f.id))
         const newFindings = data.findings.filter((f) => !existingIds.has(f.id))
         if (newFindings.length > 0) {
-          updates.explorationFindings = [...s.explorationFindings, ...newFindings]
+          updates.findingsByExploration = {
+            ...s.findingsByExploration,
+            [id]: [...existing, ...newFindings],
+          }
         }
       }
 
-      // Append new generated test paths
+      // Append new test paths
       if (data.generatedTests && data.generatedTests.length > 0) {
-        const existingPaths = new Set(s.generatedTests)
-        const newPaths = data.generatedTests.filter((p) => !existingPaths.has(p))
+        const existing = s.testsByExploration[id] ?? []
+        const existingSet = new Set(existing)
+        const newPaths = data.generatedTests.filter((p) => !existingSet.has(p))
         if (newPaths.length > 0) {
-          updates.generatedTests = [...s.generatedTests, ...newPaths]
+          updates.testsByExploration = {
+            ...s.testsByExploration,
+            [id]: [...existing, ...newPaths],
+          }
         }
       }
 
-      // On terminal status, update the explorations list too
-      if (data.status === 'done' || data.status === 'stopped' || data.status === 'error') {
-        updates.explorations = s.explorations.map((e) =>
-          e.id === data.explorationId ? { ...e, ...updatedExploration } : e,
-        )
-      }
+      // Update exploration in the list
+      updates.explorations = s.explorations.map((e) => {
+        if (e.id !== id) return e
+        const updated = { ...e }
+        if (data.status) updated.status = data.status
+        if (data.findingsCount !== undefined) updated.findingsCount = data.findingsCount
+        if (data.testsGenerated !== undefined) updated.testsGenerated = data.testsGenerated
+        if (data.inputTokens !== undefined) updated.inputTokens = data.inputTokens
+        if (data.outputTokens !== undefined) updated.outputTokens = data.outputTokens
+        if (data.totalCostUsd !== undefined) updated.totalCostUsd = data.totalCostUsd
+        if (data.error) updated.errorMessage = data.error
+        return updated
+      })
 
       return updates
+    })
+  },
+
+  handleGoalSuggestion: (data) => {
+    set((s) => {
+      // Guard against stale updates from a different project
+      if (s.selectedProject !== data.cwd) return s
+
+      if (data.status === 'loading') {
+        return { goalsLoading: true }
+      }
+
+      if (data.status === 'error') {
+        return { goalsLoading: false }
+      }
+
+      // status === 'done'
+      const goals: SuggestedGoal[] = data.goals.map((g) => ({
+        ...g,
+        selected: true, // default all selected
+      }))
+
+      // Merge with any existing goals (in case tool was called multiple times)
+      const existingIds = new Set(s.suggestedGoals.map((g) => g.id))
+      const newGoals = goals.filter((g) => !existingIds.has(g.id))
+
+      return {
+        goalsLoading: false,
+        suggestedGoals: newGoals.length > 0 ? [...s.suggestedGoals, ...newGoals] : s.suggestedGoals,
+      }
     })
   },
 }))
