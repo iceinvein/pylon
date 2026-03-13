@@ -34,7 +34,11 @@ export function Layout({ children }: LayoutProps) {
   const toggleGitPanel = useUiStore((s) => s.toggleGitPanel)
 
   const showGitPanel =
-    gitPanelOpen && sidebarView !== 'pr-review' && branchStatus?.isGitRepo && !!branchStatus?.branch
+    gitPanelOpen &&
+    sidebarView !== 'pr-review' &&
+    sidebarView !== 'testing' &&
+    branchStatus?.isGitRepo &&
+    !!branchStatus?.branch
 
   const setBranchStatus = useSessionStore((s) => s.setBranchStatus)
 
@@ -142,9 +146,11 @@ export function Layout({ children }: LayoutProps) {
         )}
       </AnimatePresence>
       <div className="flex min-w-0 flex-1 flex-col pt-12">
-        {sidebarView !== 'pr-review' && <TabBar />}
+        {sidebarView !== 'pr-review' && sidebarView !== 'testing' && <TabBar />}
         <main className="min-h-0 flex-1 overflow-hidden">{children}</main>
-        {sidebarView !== 'pr-review' && <StatusBar cwd={activeCwd} branchStatus={branchStatus} />}
+        {sidebarView !== 'pr-review' && sidebarView !== 'testing' && (
+          <StatusBar cwd={activeCwd} branchStatus={branchStatus} />
+        )}
       </div>
     </div>
   )

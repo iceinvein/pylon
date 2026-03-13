@@ -4,6 +4,7 @@ import {
   ChevronDown,
   ChevronRight,
   FileCode2,
+  Folder,
   Info,
   Loader2,
   Play,
@@ -13,6 +14,7 @@ import {
   X,
   Zap,
 } from 'lucide-react'
+import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
 import type {
   ExplorationMode,
@@ -20,6 +22,7 @@ import type {
   SuggestedGoal,
   TestExploration,
 } from '../../../shared/types'
+import { timeAgo } from '../lib/utils'
 import { useTestStore } from '../store/test-store'
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -259,33 +262,91 @@ type ProjectPickerProps = {
 }
 
 function ProjectPicker({ projects, selectedProject, onSelect }: ProjectPickerProps) {
+  const [open, setOpen] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function handleClickOutside(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false)
+      }
+    }
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [open])
+
   return (
-    <div className="border-stone-800 border-b p-3">
-      <label className="block">
-        <span className="mb-1 block text-stone-400 text-xs">Project</span>
-        <div className="relative">
-          <select
-            value={selectedProject ?? ''}
-            onChange={(e) => {
-              if (e.target.value) onSelect(e.target.value)
-            }}
-            className="w-full appearance-none rounded-lg border border-stone-700 bg-stone-800 py-2 pr-8 pl-3 text-sm text-stone-100 focus:border-blue-500 focus:outline-none"
-          >
-            <option value="" disabled>
-              Select a project…
-            </option>
-            {projects.map((p) => (
-              <option key={p.path} value={p.path}>
-                {p.path}
-              </option>
-            ))}
-          </select>
-          <ChevronDown className="pointer-events-none absolute top-1/2 right-2.5 h-4 w-4 -translate-y-1/2 text-stone-500" />
-        </div>
-        {selectedProject && (
-          <p className="mt-1 truncate text-stone-500 text-xs">{basename(selectedProject)}</p>
+    <div ref={containerRef} className="relative border-stone-800 border-b p-3">
+      <span className="mb-1 block text-stone-400 text-xs">Project</span>
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="flex w-full items-center gap-2 rounded-lg border border-stone-700 bg-stone-800 px-3 py-2 text-left text-sm transition-colors hover:border-stone-600"
+      >
+        {selectedProject ? (
+          <>
+            <Folder size={14} className="flex-shrink-0 text-stone-500" />
+            <span className="min-w-0 flex-1 truncate text-stone-100">
+              {basename(selectedProject)}
+            </span>
+          </>
+        ) : (
+          <span className="flex-1 text-stone-500">Select a project…</span>
         )}
-      </label>
+        <ChevronDown
+          className={`h-4 w-4 flex-shrink-0 text-stone-500 transition-transform ${open ? 'rotate-180' : ''}`}
+        />
+      </button>
+      {selectedProject && (
+        <p className="mt-1 truncate text-[11px] text-stone-600">{selectedProject}</p>
+      )}
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.12 }}
+            className="absolute right-3 left-3 z-50 mt-1 max-h-64 overflow-y-auto rounded-xl border border-stone-700 bg-stone-900 py-1 shadow-2xl"
+          >
+            {projects.length === 0 ? (
+              <div className="px-3 py-3 text-center text-stone-600 text-xs">No recent projects</div>
+            ) : (
+              projects.map((p) => (
+                <button
+                  type="button"
+                  key={p.path}
+                  onClick={() => {
+                    onSelect(p.path)
+                    setOpen(false)
+                  }}
+                  className={`flex w-full items-start gap-2.5 px-3 py-2 text-left transition-colors hover:bg-stone-800/60 ${
+                    selectedProject === p.path ? 'bg-stone-800/40' : ''
+                  }`}
+                >
+                  <Folder size={13} className="mt-0.5 flex-shrink-0 text-stone-600" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium text-stone-300 text-xs">
+                      {basename(p.path)}
+                    </p>
+                    <p className="truncate text-[11px] text-stone-600">{p.path}</p>
+                    <p className="text-[10px] text-stone-700">{timeAgo(p.lastUsed)}</p>
+                  </div>
+                </button>
+              ))
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
