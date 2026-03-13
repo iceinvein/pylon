@@ -4,15 +4,18 @@ import { Layout } from './components/layout/Layout'
 import { SettingsOverlay } from './components/SettingsOverlay'
 import { useIpcBridge } from './hooks/use-ipc-bridge'
 import { usePrReviewBridge } from './hooks/use-pr-review-bridge'
+import { useTestBridge } from './hooks/use-test-bridge'
 import { HomePage } from './pages/HomePage'
 import { PrReviewView } from './pages/PrReviewView'
 import { SessionView } from './pages/SessionView'
+import { TestView } from './pages/TestView'
 import { useTabStore } from './store/tab-store'
 import { useUiStore } from './store/ui-store'
 
 export default function App() {
   useIpcBridge()
   usePrReviewBridge()
+  useTestBridge()
   const sidebarView = useUiStore((s) => s.sidebarView)
 
   const { tabs, activeTabId, setActiveTab } = useTabStore()
@@ -50,6 +53,8 @@ export default function App() {
       <Layout>
         {sidebarView === 'pr-review' ? (
           <PrReviewView />
+        ) : sidebarView === 'testing' ? (
+          <TestView />
         ) : activeTab?.cwd ? (
           <SessionView key={activeTab.id} tab={activeTab} />
         ) : (
