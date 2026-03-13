@@ -54,7 +54,7 @@ export function SessionHistory() {
       <p className="mb-2 font-medium text-stone-600 text-xs uppercase tracking-wider">
         Recent Sessions
       </p>
-      {storedSessions.slice(0, 20).map((session) => (
+      {storedSessions.slice(0, 5).map((session) => (
         <button
           type="button"
           key={session.id}
