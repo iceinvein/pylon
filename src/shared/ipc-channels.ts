@@ -66,4 +66,13 @@ export const IPC = {
   FILE_READ_PLAN: 'file:read-plan',
   // Logging
   LOG_FROM_RENDERER: 'log:from-renderer',
+  // AI Exploration Testing
+  TEST_START_EXPLORATION: 'test:start-exploration',
+  TEST_STOP_EXPLORATION: 'test:stop-exploration',
+  TEST_LIST_EXPLORATIONS: 'test:list-explorations',
+  TEST_GET_EXPLORATION: 'test:get-exploration',
+  TEST_DELETE_EXPLORATION: 'test:delete-exploration',
+  TEST_RESOLVE_E2E_PATH: 'test:resolve-e2e-path',
+  TEST_READ_GENERATED_TEST: 'test:read-generated-test',
+  TEST_EXPLORATION_UPDATE: 'test:exploration-update',
 } as const
