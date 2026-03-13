@@ -169,3 +169,60 @@ export function createSavePlaywrightTestTool(ctx: ToolContext) {
     },
   }
 }
+
+type GoalToolContext = {
+  cwd: string
+  window: BrowserWindow | null
+}
+
+export function createReportGoalsTool(ctx: GoalToolContext) {
+  return {
+    name: 'report_goals',
+    description:
+      'Report suggested testing goals based on your analysis of the project. Call this once after analyzing the codebase structure, README, docs, and route files.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        goals: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'string', description: 'Unique ID for this goal' },
+              title: { type: 'string', description: 'Short title (e.g. "Authentication flow")' },
+              description: {
+                type: 'string',
+                description:
+                  'What to test (e.g. "Login, signup, password reset, session handling")',
+              },
+              area: {
+                type: 'string',
+                description: 'Category (e.g. "auth", "dashboard", "api")',
+              },
+            },
+            required: ['id', 'title', 'description'],
+          },
+        },
+      },
+      required: ['goals'],
+    },
+    execute: async (args: Record<string, unknown>) => {
+      const goals = args.goals as Array<{
+        id: string
+        title: string
+        description: string
+        area?: string
+      }>
+
+      ctx.window?.webContents.send(IPC.TEST_GOAL_SUGGESTION, {
+        cwd: ctx.cwd,
+        goals,
+        status: 'done',
+      })
+
+      return {
+        content: [{ type: 'text', text: `Reported ${goals.length} testing goals` }],
+      }
+    },
+  }
+}
