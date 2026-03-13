@@ -101,13 +101,21 @@ type Api = {
   ) => Promise<import('../shared/types').PrRaiseResult>
   // AI Exploration Testing
   startExploration: (args: {
-    cwd: string; url: string; goal: string; mode: string
-    requirements?: string; e2eOutputPath: string; e2ePathReason?: string
+    cwd: string
+    url: string
+    goal: string
+    mode: string
+    requirements?: string
+    e2eOutputPath: string
+    e2ePathReason?: string
   }) => Promise<import('../shared/types').TestExploration>
   stopExploration: (explorationId: string) => Promise<boolean>
   listExplorations: (cwd: string) => Promise<import('../shared/types').TestExploration[]>
   getExploration: (explorationId: string) => Promise<
-    (import('../shared/types').TestExploration & { findings: import('../shared/types').TestFinding[] }) | null
+    | (import('../shared/types').TestExploration & {
+        findings: import('../shared/types').TestFinding[]
+      })
+    | null
   >
   deleteExploration: (explorationId: string) => Promise<boolean>
   resolveE2ePath: (cwd: string) => Promise<import('../shared/types').E2ePathResolution>

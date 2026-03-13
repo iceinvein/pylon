@@ -502,10 +502,18 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(
     IPC.TEST_START_EXPLORATION,
-    async (_e, args: {
-      cwd: string; url: string; goal: string; mode: string
-      requirements?: string; e2eOutputPath: string; e2ePathReason?: string
-    }) => {
+    async (
+      _e,
+      args: {
+        cwd: string
+        url: string
+        goal: string
+        mode: string
+        requirements?: string
+        e2eOutputPath: string
+        e2ePathReason?: string
+      },
+    ) => {
       const { testManager } = await import('./test-manager')
       return testManager.startExploration({ ...args, mode: args.mode as 'manual' | 'requirements' })
     },
@@ -538,10 +546,13 @@ export function registerIpcHandlers(): void {
     return testManager.resolveE2ePath(args.cwd)
   })
 
-  ipcMain.handle(IPC.TEST_READ_GENERATED_TEST, async (_e, args: { cwd: string; relativePath: string }) => {
-    const { testManager } = await import('./test-manager')
-    return testManager.readGeneratedTest(args.cwd, args.relativePath)
-  })
+  ipcMain.handle(
+    IPC.TEST_READ_GENERATED_TEST,
+    async (_e, args: { cwd: string; relativePath: string }) => {
+      const { testManager } = await import('./test-manager')
+      return testManager.readGeneratedTest(args.cwd, args.relativePath)
+    },
+  )
 
   ipcMain.handle(IPC.USAGE_STATS, async (_e, args: { period: string }) => {
     const db = getDb()

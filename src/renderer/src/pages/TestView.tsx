@@ -1,4 +1,3 @@
-import { useEffect, useRef, useState } from 'react'
 import {
   AlertTriangle,
   Bug,
@@ -10,9 +9,10 @@ import {
   Square,
   Trash2,
 } from 'lucide-react'
-import { useTestStore } from '../store/test-store'
-import { useTabStore } from '../store/tab-store'
+import { useEffect, useRef, useState } from 'react'
 import type { ExplorationMode, FindingSeverity, TestExploration } from '../../../shared/types'
+import { useTabStore } from '../store/tab-store'
+import { useTestStore } from '../store/test-store'
 
 const SEVERITY_COLORS: Record<FindingSeverity, string> = {
   critical: 'bg-red-500/20 text-red-400',
@@ -120,7 +120,7 @@ export function TestView() {
   return (
     <div className="flex h-full">
       {/* Left panel */}
-      <div className="w-[320px] flex-shrink-0 border-r border-stone-800 flex flex-col">
+      <div className="flex w-[320px] flex-shrink-0 flex-col border-stone-800 border-r">
         <ConfigForm
           url={url}
           setUrl={setUrl}
@@ -147,7 +147,7 @@ export function TestView() {
       </div>
 
       {/* Right panel */}
-      <div className="min-w-0 flex-1 flex flex-col overflow-hidden">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         {activeExploration ? (
           <ExplorationDetail
             exploration={activeExploration}
@@ -202,43 +202,43 @@ function ConfigForm({
   onStop,
 }: ConfigFormProps) {
   return (
-    <div className="p-4 space-y-3 border-b border-stone-800">
-      <h2 className="text-sm font-semibold text-stone-100">New Exploration</h2>
+    <div className="space-y-3 border-stone-800 border-b p-4">
+      <h2 className="font-semibold text-sm text-stone-100">New Exploration</h2>
 
-      <div>
-        <label className="block text-xs text-stone-400 mb-1">URL</label>
+      <label className="block">
+        <span className="mb-1 block text-stone-400 text-xs">URL</span>
         <input
           type="url"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           placeholder="https://example.com"
-          className="w-full bg-stone-800 border border-stone-700 text-stone-100 rounded-lg px-3 py-2 text-sm placeholder:text-stone-500 focus:outline-none focus:border-blue-500"
+          className="w-full rounded-lg border border-stone-700 bg-stone-800 px-3 py-2 text-sm text-stone-100 placeholder:text-stone-500 focus:border-blue-500 focus:outline-none"
           disabled={isRunning}
         />
-      </div>
+      </label>
 
-      <div>
-        <label className="block text-xs text-stone-400 mb-1">Goal</label>
+      <label className="block">
+        <span className="mb-1 block text-stone-400 text-xs">Goal</span>
         <textarea
           value={goal}
           onChange={(e) => setGoal(e.target.value)}
           placeholder="Describe what to explore and test..."
           rows={3}
-          className="w-full bg-stone-800 border border-stone-700 text-stone-100 rounded-lg px-3 py-2 text-sm placeholder:text-stone-500 focus:outline-none focus:border-blue-500 resize-none"
+          className="w-full resize-none rounded-lg border border-stone-700 bg-stone-800 px-3 py-2 text-sm text-stone-100 placeholder:text-stone-500 focus:border-blue-500 focus:outline-none"
           disabled={isRunning}
         />
-      </div>
+      </label>
 
       <div>
-        <label className="block text-xs text-stone-400 mb-1">Mode</label>
+        <span className="mb-1 block text-stone-400 text-xs">Mode</span>
         <div className="flex gap-2">
           <button
             type="button"
             onClick={() => setMode('manual')}
-            className={`flex-1 px-3 py-1.5 text-sm rounded-lg border transition-colors ${
+            className={`flex-1 rounded-lg border px-3 py-1.5 text-sm transition-colors ${
               mode === 'manual'
-                ? 'bg-blue-600/20 border-blue-500 text-blue-400'
-                : 'bg-stone-800 border-stone-700 text-stone-400 hover:text-stone-300'
+                ? 'border-blue-500 bg-blue-600/20 text-blue-400'
+                : 'border-stone-700 bg-stone-800 text-stone-400 hover:text-stone-300'
             }`}
             disabled={isRunning}
           >
@@ -247,10 +247,10 @@ function ConfigForm({
           <button
             type="button"
             onClick={() => setMode('requirements')}
-            className={`flex-1 px-3 py-1.5 text-sm rounded-lg border transition-colors ${
+            className={`flex-1 rounded-lg border px-3 py-1.5 text-sm transition-colors ${
               mode === 'requirements'
-                ? 'bg-blue-600/20 border-blue-500 text-blue-400'
-                : 'bg-stone-800 border-stone-700 text-stone-400 hover:text-stone-300'
+                ? 'border-blue-500 bg-blue-600/20 text-blue-400'
+                : 'border-stone-700 bg-stone-800 text-stone-400 hover:text-stone-300'
             }`}
             disabled={isRunning}
           >
@@ -260,40 +260,38 @@ function ConfigForm({
       </div>
 
       {mode === 'requirements' && (
-        <div>
-          <label className="block text-xs text-stone-400 mb-1">Requirements</label>
+        <label className="block">
+          <span className="mb-1 block text-stone-400 text-xs">Requirements</span>
           <textarea
             value={requirements}
             onChange={(e) => setRequirements(e.target.value)}
             placeholder="List requirements to verify..."
             rows={4}
-            className="w-full bg-stone-800 border border-stone-700 text-stone-100 rounded-lg px-3 py-2 text-sm placeholder:text-stone-500 focus:outline-none focus:border-blue-500 resize-none"
+            className="w-full resize-none rounded-lg border border-stone-700 bg-stone-800 px-3 py-2 text-sm text-stone-100 placeholder:text-stone-500 focus:border-blue-500 focus:outline-none"
             disabled={isRunning}
           />
-        </div>
+        </label>
       )}
 
-      <div>
-        <label className="block text-xs text-stone-400 mb-1">E2E Output Path</label>
+      <label className="block">
+        <span className="mb-1 block text-stone-400 text-xs">E2E Output Path</span>
         <input
           type="text"
           value={e2ePath}
           onChange={(e) => setE2ePath(e.target.value)}
-          className="w-full bg-stone-800 border border-stone-700 text-stone-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+          className="w-full rounded-lg border border-stone-700 bg-stone-800 px-3 py-2 text-sm text-stone-100 focus:border-blue-500 focus:outline-none"
           disabled={isRunning}
         />
-        {e2eReason && (
-          <p className="mt-1 text-xs text-stone-500">{e2eReason}</p>
-        )}
-      </div>
+        {e2eReason && <p className="mt-1 text-stone-500 text-xs">{e2eReason}</p>}
+      </label>
 
       {isRunning ? (
         <button
           type="button"
           onClick={onStop}
-          className="w-full flex items-center justify-center gap-2 bg-red-600/20 text-red-400 hover:bg-red-600/30 rounded-lg px-3 py-2 text-sm font-medium transition-colors"
+          className="flex w-full items-center justify-center gap-2 rounded-lg bg-red-600/20 px-3 py-2 font-medium text-red-400 text-sm transition-colors hover:bg-red-600/30"
         >
-          <Square className="w-4 h-4" />
+          <Square className="h-4 w-4" />
           Stop Exploration
         </button>
       ) : (
@@ -301,9 +299,9 @@ function ConfigForm({
           type="button"
           onClick={onStart}
           disabled={!canStart}
-          className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 disabled:bg-stone-700 disabled:text-stone-500 text-white rounded-lg px-3 py-2 text-sm font-medium transition-colors"
+          className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-3 py-2 font-medium text-sm text-white transition-colors hover:bg-blue-500 disabled:bg-stone-700 disabled:text-stone-500"
         >
-          <Play className="w-4 h-4" />
+          <Play className="h-4 w-4" />
           Start Exploration
         </button>
       )}
@@ -320,15 +318,20 @@ type ExplorationHistoryProps = {
   onDelete: (id: string) => void
 }
 
-function ExplorationHistory({ explorations, activeId, onSelect, onDelete }: ExplorationHistoryProps) {
+function ExplorationHistory({
+  explorations,
+  activeId,
+  onSelect,
+  onDelete,
+}: ExplorationHistoryProps) {
   return (
     <div className="flex-1 overflow-y-auto">
       <div className="p-3">
-        <h3 className="text-xs font-semibold text-stone-400 uppercase tracking-wider mb-2">
+        <h3 className="mb-2 font-semibold text-stone-400 text-xs uppercase tracking-wider">
           History
         </h3>
         {explorations.length === 0 ? (
-          <p className="text-xs text-stone-500 py-2">No explorations yet</p>
+          <p className="py-2 text-stone-500 text-xs">No explorations yet</p>
         ) : (
           <div className="space-y-1">
             {explorations.map((exp) => (
@@ -336,7 +339,7 @@ function ExplorationHistory({ explorations, activeId, onSelect, onDelete }: Expl
                 key={exp.id}
                 type="button"
                 onClick={() => onSelect(exp.id)}
-                className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors group ${
+                className={`group w-full rounded-lg px-3 py-2 text-left text-sm transition-colors ${
                   activeId === exp.id
                     ? 'bg-stone-700/50 text-stone-100'
                     : 'text-stone-300 hover:bg-stone-800/50'
@@ -344,21 +347,21 @@ function ExplorationHistory({ explorations, activeId, onSelect, onDelete }: Expl
               >
                 <div className="flex items-center gap-2">
                   <span
-                    className={`w-2 h-2 rounded-full flex-shrink-0 ${STATUS_COLORS[exp.status] ?? 'bg-stone-500'}`}
+                    className={`h-2 w-2 flex-shrink-0 rounded-full ${STATUS_COLORS[exp.status] ?? 'bg-stone-500'}`}
                   />
-                  <span className="truncate flex-1">{truncateUrl(exp.url)}</span>
+                  <span className="flex-1 truncate">{truncateUrl(exp.url)}</span>
                   <button
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation()
                       onDelete(exp.id)
                     }}
-                    className="opacity-0 group-hover:opacity-100 text-stone-500 hover:text-red-400 transition-all"
+                    className="text-stone-500 opacity-0 transition-all hover:text-red-400 group-hover:opacity-100"
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
+                    <Trash2 className="h-3.5 w-3.5" />
                   </button>
                 </div>
-                <div className="flex items-center gap-2 mt-1 text-xs text-stone-500">
+                <div className="mt-1 flex items-center gap-2 text-stone-500 text-xs">
                   <span>{formatDate(exp.createdAt)}</span>
                   {exp.findingsCount > 0 && (
                     <span className="text-yellow-500">{exp.findingsCount} findings</span>
@@ -383,29 +386,37 @@ type ExplorationDetailProps = {
   cwd: string
 }
 
-function ExplorationDetail({ exploration, streamingText, findings, tests, cwd }: ExplorationDetailProps) {
+function ExplorationDetail({
+  exploration,
+  streamingText,
+  findings,
+  tests,
+  cwd,
+}: ExplorationDetailProps) {
   return (
-    <div className="flex flex-col h-full overflow-y-auto">
+    <div className="flex h-full flex-col overflow-y-auto">
       {/* Status bar */}
-      <StatusBar exploration={exploration} findingsCount={findings.length} testsCount={tests.length} />
+      <StatusBar
+        exploration={exploration}
+        findingsCount={findings.length}
+        testsCount={tests.length}
+      />
 
       {/* Error banner */}
       {exploration.errorMessage && (
-        <div className="mx-4 mt-3 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">
+        <div className="mx-4 mt-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-red-400 text-sm">
           {exploration.errorMessage}
         </div>
       )}
 
       {/* Streaming text */}
-      {exploration.status === 'running' && streamingText && (
-        <StreamingPanel text={streamingText} />
-      )}
+      {exploration.status === 'running' && streamingText && <StreamingPanel text={streamingText} />}
 
       {/* Findings */}
       {findings.length > 0 && (
         <div className="px-4 py-3">
-          <h3 className="text-sm font-semibold text-stone-100 mb-2 flex items-center gap-2">
-            <Bug className="w-4 h-4 text-yellow-400" />
+          <h3 className="mb-2 flex items-center gap-2 font-semibold text-sm text-stone-100">
+            <Bug className="h-4 w-4 text-yellow-400" />
             Findings ({findings.length})
           </h3>
           <div className="space-y-2">
@@ -419,8 +430,8 @@ function ExplorationDetail({ exploration, streamingText, findings, tests, cwd }:
       {/* Generated tests */}
       {tests.length > 0 && (
         <div className="px-4 py-3">
-          <h3 className="text-sm font-semibold text-stone-100 mb-2 flex items-center gap-2">
-            <FileCode2 className="w-4 h-4 text-green-400" />
+          <h3 className="mb-2 flex items-center gap-2 font-semibold text-sm text-stone-100">
+            <FileCode2 className="h-4 w-4 text-green-400" />
             Generated Tests ({tests.length})
           </h3>
           <div className="space-y-1">
@@ -444,9 +455,11 @@ type StatusBarProps = {
 
 function StatusBar({ exploration, findingsCount, testsCount }: StatusBarProps) {
   return (
-    <div className="px-4 py-3 border-b border-stone-800 flex items-center gap-4 text-sm">
+    <div className="flex items-center gap-4 border-stone-800 border-b px-4 py-3 text-sm">
       <div className="flex items-center gap-2">
-        <span className={`w-2.5 h-2.5 rounded-full ${STATUS_COLORS[exploration.status] ?? 'bg-stone-500'}`} />
+        <span
+          className={`h-2.5 w-2.5 rounded-full ${STATUS_COLORS[exploration.status] ?? 'bg-stone-500'}`}
+        />
         <span className="text-stone-100 capitalize">{exploration.status}</span>
       </div>
       <div className="text-stone-400">
@@ -456,7 +469,7 @@ function StatusBar({ exploration, findingsCount, testsCount }: StatusBarProps) {
         {testsCount} {testsCount === 1 ? 'test' : 'tests'}
       </div>
       {exploration.totalCostUsd > 0 && (
-        <div className="text-stone-500 ml-auto">{formatCost(exploration.totalCostUsd)}</div>
+        <div className="ml-auto text-stone-500">{formatCost(exploration.totalCostUsd)}</div>
       )}
     </div>
   )
@@ -468,6 +481,8 @@ function StreamingPanel({ text }: { text: string }) {
   const ref = useRef<HTMLPreElement>(null)
 
   useEffect(() => {
+    // Re-run when text changes to auto-scroll
+    void text
     if (ref.current) {
       ref.current.scrollTop = ref.current.scrollHeight
     }
@@ -475,13 +490,13 @@ function StreamingPanel({ text }: { text: string }) {
 
   return (
     <div className="px-4 pt-3">
-      <div className="flex items-center gap-2 mb-2">
-        <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
-        <span className="text-xs text-stone-400">Exploring...</span>
+      <div className="mb-2 flex items-center gap-2">
+        <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
+        <span className="text-stone-400 text-xs">Exploring...</span>
       </div>
       <pre
         ref={ref}
-        className="bg-stone-900/50 rounded-lg p-3 text-xs text-stone-300 whitespace-pre-wrap overflow-auto max-h-[300px] border border-stone-800"
+        className="max-h-[300px] overflow-auto whitespace-pre-wrap rounded-lg border border-stone-800 bg-stone-900/50 p-3 text-stone-300 text-xs"
       >
         {text}
       </pre>
@@ -496,36 +511,34 @@ function FindingCard({ finding }: { finding: import('../../../shared/types').Tes
   const Icon = SEVERITY_ICONS[finding.severity]
 
   return (
-    <div className="bg-stone-800/50 rounded-lg p-3 border border-stone-700">
+    <div className="rounded-lg border border-stone-700 bg-stone-800/50 p-3">
       <div className="flex items-start gap-2">
-        <Icon className="w-4 h-4 mt-0.5 flex-shrink-0 text-stone-400" />
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
+        <Icon className="mt-0.5 h-4 w-4 flex-shrink-0 text-stone-400" />
+        <div className="min-w-0 flex-1">
+          <div className="mb-1 flex items-center gap-2">
             <span
-              className={`px-1.5 py-0.5 rounded text-xs font-medium ${SEVERITY_COLORS[finding.severity]}`}
+              className={`rounded px-1.5 py-0.5 font-medium text-xs ${SEVERITY_COLORS[finding.severity]}`}
             >
               {finding.severity}
             </span>
-            <span className="text-sm font-medium text-stone-100 truncate">{finding.title}</span>
+            <span className="truncate font-medium text-sm text-stone-100">{finding.title}</span>
           </div>
-          <p className="text-xs text-stone-400 mb-1">{finding.description}</p>
-          {finding.url && (
-            <p className="text-xs text-blue-400 truncate mb-1">{finding.url}</p>
-          )}
+          <p className="mb-1 text-stone-400 text-xs">{finding.description}</p>
+          {finding.url && <p className="mb-1 truncate text-blue-400 text-xs">{finding.url}</p>}
           {finding.reproductionSteps.length > 0 && (
             <button
               type="button"
               onClick={() => setExpanded(!expanded)}
-              className="flex items-center gap-1 text-xs text-stone-500 hover:text-stone-300 transition-colors mt-1"
+              className="mt-1 flex items-center gap-1 text-stone-500 text-xs transition-colors hover:text-stone-300"
             >
               <ChevronRight
-                className={`w-3 h-3 transition-transform ${expanded ? 'rotate-90' : ''}`}
+                className={`h-3 w-3 transition-transform ${expanded ? 'rotate-90' : ''}`}
               />
               Reproduction steps ({finding.reproductionSteps.length})
             </button>
           )}
           {expanded && (
-            <ol className="mt-2 space-y-1 text-xs text-stone-400 list-decimal list-inside">
+            <ol className="mt-2 list-inside list-decimal space-y-1 text-stone-400 text-xs">
               {finding.reproductionSteps.map((step, i) => (
                 <li key={i}>{step}</li>
               ))}
@@ -553,20 +566,20 @@ function GeneratedTestItem({ path, cwd }: { path: string; cwd: string }) {
   }
 
   return (
-    <div className="bg-stone-800/50 rounded-lg border border-stone-700">
+    <div className="rounded-lg border border-stone-700 bg-stone-800/50">
       <button
         type="button"
         onClick={handleExpand}
-        className="w-full flex items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-stone-700/30"
+        className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-stone-700/30"
       >
         <ChevronRight
-          className={`w-3.5 h-3.5 text-stone-500 transition-transform flex-shrink-0 ${expanded ? 'rotate-90' : ''}`}
+          className={`h-3.5 w-3.5 flex-shrink-0 text-stone-500 transition-transform ${expanded ? 'rotate-90' : ''}`}
         />
-        <FileCode2 className="w-4 h-4 text-green-400 flex-shrink-0" />
-        <span className="text-stone-300 truncate">{path}</span>
+        <FileCode2 className="h-4 w-4 flex-shrink-0 text-green-400" />
+        <span className="truncate text-stone-300">{path}</span>
       </button>
       {expanded && content !== null && (
-        <pre className="px-3 pb-3 text-xs text-stone-400 whitespace-pre-wrap overflow-x-auto max-h-[400px] border-t border-stone-700">
+        <pre className="max-h-[400px] overflow-x-auto whitespace-pre-wrap border-stone-700 border-t px-3 pb-3 text-stone-400 text-xs">
           {content}
         </pre>
       )}
@@ -578,11 +591,11 @@ function GeneratedTestItem({ path, cwd }: { path: string; cwd: string }) {
 
 function EmptyState() {
   return (
-    <div className="flex-1 flex items-center justify-center">
+    <div className="flex flex-1 items-center justify-center">
       <div className="text-center">
-        <Bug className="w-12 h-12 text-stone-600 mx-auto mb-3" />
-        <p className="text-stone-400 text-sm">No exploration selected</p>
-        <p className="text-stone-500 text-xs mt-1">
+        <Bug className="mx-auto mb-3 h-12 w-12 text-stone-600" />
+        <p className="text-sm text-stone-400">No exploration selected</p>
+        <p className="mt-1 text-stone-500 text-xs">
           Configure an exploration on the left to get started
         </p>
       </div>
