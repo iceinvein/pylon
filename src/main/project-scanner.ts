@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { createConnection } from 'node:net'
 import { join, relative } from 'node:path'
-import type { ProjectScan } from '../shared/types'
+import type { PortOverrideMethod, ProjectScan } from '../shared/types'
 
 const FRAMEWORK_DEPS: Record<string, { name: string; defaultPort: number }> = {
   next: { name: 'next', defaultPort: 3000 },
@@ -14,6 +14,18 @@ const FRAMEWORK_DEPS: Record<string, { name: string; defaultPort: number }> = {
   '@angular/core': { name: 'angular', defaultPort: 4200 },
   svelte: { name: 'svelte', defaultPort: 5173 },
   '@sveltejs/kit': { name: 'sveltekit', defaultPort: 5173 },
+}
+
+export const PORT_OVERRIDE_MAP: Record<string, PortOverrideMethod> = {
+  next: { type: 'cli-flag', flag: '-p' },
+  vite: { type: 'cli-flag', flag: '--port' },
+  remix: { type: 'cli-flag', flag: '--port' },
+  cra: { type: 'env' },
+  angular: { type: 'cli-flag', flag: '--port' },
+  nuxt: { type: 'cli-flag', flag: '--port' },
+  svelte: { type: 'cli-flag', flag: '--port' },
+  sveltekit: { type: 'cli-flag', flag: '--port' },
+  astro: { type: 'cli-flag', flag: '--port' },
 }
 
 const ROUTE_PATTERNS: Record<string, string[]> = {
@@ -72,6 +84,7 @@ export function scanProject(cwd: string): ProjectScan {
       if (deps[depName]) {
         result.framework = info.name
         result.detectedPort = info.defaultPort
+        result.portOverrideMethod = PORT_OVERRIDE_MAP[info.name] ?? { type: 'env' }
         break
       }
     }
