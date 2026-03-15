@@ -10,6 +10,17 @@ import type {
   TestFinding,
 } from '../../../shared/types'
 
+type BatchConfig = {
+  goals: string[]
+  agentCount: number
+  mode: ExplorationMode
+  requirements?: string
+  e2eOutputPath: string
+  e2ePathReason?: string
+  autoStartServer: boolean
+  projectScan?: ProjectScan
+}
+
 type ExplorationConfig = {
   url: string
   goal: string
@@ -37,6 +48,10 @@ type TestStore = {
   // Server override
   customUrl: string | null
 
+  // Concurrency
+  agentCount: number
+  autoStartServer: boolean
+
   // Multi-exploration
   selectedExplorationId: string | null
   explorations: TestExploration[]
@@ -53,6 +68,9 @@ type TestStore = {
   addCustomGoal: (goal: string) => void
   removeCustomGoal: (index: number) => void
   setCustomUrl: (url: string | null) => void
+  setAgentCount: (count: number) => void
+  setAutoStartServer: (enabled: boolean) => void
+  startBatch: (cwd: string, config: BatchConfig) => Promise<void>
   startExploration: (cwd: string, config: ExplorationConfig) => Promise<void>
   stopExploration: (id: string) => Promise<void>
   selectExploration: (id: string) => void
@@ -75,6 +93,8 @@ export const useTestStore = create<TestStore>((set, get) => ({
   goalsLoading: false,
   customGoals: [],
   customUrl: null,
+  agentCount: 1,
+  autoStartServer: true,
   selectedExplorationId: null,
   explorations: [],
   streamingTexts: {},
@@ -153,6 +173,48 @@ export const useTestStore = create<TestStore>((set, get) => ({
   },
 
   setCustomUrl: (url) => set({ customUrl: url }),
+
+  setAgentCount: (count) => set({ agentCount: Math.max(1, Math.min(5, count)) }),
+
+  setAutoStartServer: (enabled) => set({ autoStartServer: enabled }),
+
+  startBatch: async (cwd, config) => {
+    try {
+      const explorations = await window.api.startBatch({
+        cwd,
+        goals: config.goals,
+        agentCount: config.agentCount,
+        mode: config.mode,
+        requirements: config.requirements,
+        e2eOutputPath: config.e2eOutputPath,
+        e2ePathReason: config.e2ePathReason,
+        autoStartServer: config.autoStartServer,
+        projectScan: config.projectScan,
+      })
+
+      set((s) => {
+        const newStreamingTexts = { ...s.streamingTexts }
+        const newFindings = { ...s.findingsByExploration }
+        const newTests = { ...s.testsByExploration }
+
+        for (const exp of explorations) {
+          newStreamingTexts[exp.id] = ''
+          newFindings[exp.id] = []
+          newTests[exp.id] = []
+        }
+
+        return {
+          explorations: [...explorations, ...s.explorations],
+          selectedExplorationId: explorations[0]?.id ?? s.selectedExplorationId,
+          streamingTexts: newStreamingTexts,
+          findingsByExploration: newFindings,
+          testsByExploration: newTests,
+        }
+      })
+    } catch (err) {
+      console.error('startBatch failed:', err)
+    }
+  },
 
   startExploration: async (cwd, config) => {
     try {
