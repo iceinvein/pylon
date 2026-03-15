@@ -80,6 +80,7 @@ type TestStore = {
   resolveE2ePath: (cwd: string) => Promise<E2ePathResolution>
   readGeneratedTest: (cwd: string, path: string) => Promise<string | null>
   handleExplorationUpdate: (data: ExplorationUpdate) => void
+  getBatchFindings: (batchId: string) => Array<TestFinding & { goalText: string }>
   handleGoalSuggestion: (data: GoalSuggestionUpdate) => void
 }
 
@@ -306,6 +307,24 @@ export const useTestStore = create<TestStore>((set, get) => ({
 
   readGeneratedTest: async (cwd, path) => {
     return window.api.readGeneratedTest(cwd, path)
+  },
+
+  getBatchFindings: (batchId: string) => {
+    const state = get()
+    const batchExplorations = state.explorations.filter((e) => e.batchId === batchId)
+    const allFindings: Array<TestFinding & { goalText: string }> = []
+
+    for (const exp of batchExplorations) {
+      const findings = state.findingsByExploration[exp.id] ?? []
+      for (const f of findings) {
+        allFindings.push({
+          ...f,
+          goalText: exp.goal.length > 50 ? `${exp.goal.slice(0, 50)}...` : exp.goal,
+        })
+      }
+    }
+
+    return allFindings
   },
 
   handleExplorationUpdate: (data) => {

@@ -900,6 +900,23 @@ function ExplorationDetail({
   tests,
   cwd,
 }: ExplorationDetailProps) {
+  const [viewMode, setViewMode] = useState<'single' | 'batch'>('single')
+
+  // Use reactive selectors so batch findings update as explorations complete
+  const batchFindings = useTestStore((s) => {
+    if (!exploration.batchId) return null
+    return s.getBatchFindings(exploration.batchId)
+  })
+  const batchExplorationCount = useTestStore((s) => {
+    if (!exploration.batchId) return 0
+    return s.explorations.filter((e) => e.batchId === exploration.batchId).length
+  })
+
+  // Show toggle only if this exploration belongs to a batch with multiple explorations
+  const showBatchToggle = exploration.batchId && batchExplorationCount > 1
+
+  const displayFindings = viewMode === 'batch' && batchFindings ? batchFindings : findings
+
   return (
     <div className="flex h-full flex-col overflow-y-auto">
       {/* Status bar */}
@@ -920,21 +937,49 @@ function ExplorationDetail({
       {exploration.status === 'running' && streamingText && <StreamingPanel text={streamingText} />}
 
       {/* Findings */}
-      {findings.length > 0 && (
+      {displayFindings.length > 0 && (
         <div className="px-4 py-3">
           <h3 className="mb-2 flex items-center gap-2 font-semibold text-sm text-stone-100">
             <Bug className="h-4 w-4 text-yellow-400" />
-            Findings ({findings.length})
+            Findings ({displayFindings.length})
           </h3>
+          {showBatchToggle && (
+            <div className="mb-2 flex items-center gap-1 rounded-lg bg-stone-800 p-0.5">
+              <button
+                type="button"
+                onClick={() => setViewMode('single')}
+                className={`rounded px-2 py-1 text-xs ${
+                  viewMode === 'single'
+                    ? 'bg-stone-700 text-stone-100'
+                    : 'text-stone-400 hover:text-stone-300'
+                }`}
+              >
+                This exploration
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('batch')}
+                className={`rounded px-2 py-1 text-xs ${
+                  viewMode === 'batch'
+                    ? 'bg-stone-700 text-stone-100'
+                    : 'text-stone-400 hover:text-stone-300'
+                }`}
+              >
+                All in batch ({batchFindings?.length ?? 0})
+              </button>
+            </div>
+          )}
           <div className="space-y-2">
-            {findings.map((f) => (
+            {displayFindings.map((f) => (
               <FindingCard
                 key={f.id}
                 finding={f}
                 goalText={
-                  exploration.goal.length > 50
-                    ? `${exploration.goal.slice(0, 50)}...`
-                    : exploration.goal
+                  'goalText' in f
+                    ? (f.goalText as string)
+                    : exploration.goal.length > 50
+                      ? `${exploration.goal.slice(0, 50)}...`
+                      : exploration.goal
                 }
               />
             ))}
