@@ -97,17 +97,21 @@ export function TestView() {
     streamingTexts,
     findingsByExploration,
     testsByExploration,
+    autoStartServer,
+    agentCount,
     loadProjects,
     selectProject,
     toggleGoal,
     addCustomGoal,
     removeCustomGoal,
     setCustomUrl,
-    startExploration,
     stopExploration,
     selectExploration,
     deleteExploration,
     resolveE2ePath,
+    setAutoStartServer,
+    setAgentCount,
+    startBatch,
   } = useTestStore()
 
   // Load projects on mount
@@ -140,24 +144,30 @@ export function TestView() {
     if (!canStart || !selectedProject || !effectiveUrl) return
     const selectedGoalTexts = suggestedGoals.filter((g) => g.selected).map((g) => g.title)
     const allGoals = [...selectedGoalTexts, ...customGoals]
-    const goal = allGoals.join('; ')
-    startExploration(selectedProject, {
-      url: effectiveUrl,
-      goal,
+    if (allGoals.length === 0) return
+    startBatch(selectedProject, {
+      goals: allGoals,
+      agentCount,
       mode,
       e2eOutputPath: e2ePath,
       e2ePathReason: e2eReason,
+      autoStartServer,
+      projectScan: projectScan ?? undefined,
     })
   }
 
   const handleAutoExplore = () => {
     if (!selectedProject || !effectiveUrl) return
-    startExploration(selectedProject, {
-      url: effectiveUrl,
-      goal: 'Explore the entire application freely, testing all accessible pages and interactions',
+    startBatch(selectedProject, {
+      goals: [
+        'Explore the entire application freely, testing all accessible pages and interactions',
+      ],
+      agentCount: 1,
       mode: 'manual',
       e2eOutputPath: e2ePath,
       e2ePathReason: e2eReason,
+      autoStartServer,
+      projectScan: projectScan ?? undefined,
     })
   }
 
@@ -190,6 +200,8 @@ export function TestView() {
         <ServerSection
           projectScan={projectScan}
           scanLoading={scanLoading}
+          autoStartServer={autoStartServer}
+          onSetAutoStartServer={setAutoStartServer}
           customUrl={customUrl}
           onSetCustomUrl={setCustomUrl}
         />
@@ -221,6 +233,8 @@ export function TestView() {
           canStart={canStart}
           hasProject={!!selectedProject}
           hasUrl={!!effectiveUrl}
+          agentCount={agentCount}
+          onSetAgentCount={setAgentCount}
           onStart={handleStart}
           onAutoExplore={handleAutoExplore}
         />
@@ -356,6 +370,8 @@ function ProjectPicker({ projects, selectedProject, onSelect }: ProjectPickerPro
 type ServerSectionProps = {
   projectScan: import('../../../shared/types').ProjectScan | null
   scanLoading: boolean
+  autoStartServer: boolean
+  onSetAutoStartServer: (enabled: boolean) => void
   customUrl: string | null
   onSetCustomUrl: (url: string | null) => void
 }
@@ -363,6 +379,8 @@ type ServerSectionProps = {
 function ServerSection({
   projectScan,
   scanLoading,
+  autoStartServer,
+  onSetAutoStartServer,
   customUrl,
   onSetCustomUrl,
 }: ServerSectionProps) {
@@ -371,12 +389,13 @@ function ServerSection({
 
   const handleToggleCustom = () => {
     if (showCustomInput) {
-      // Cancel override
       setShowCustomInput(false)
       onSetCustomUrl(null)
+      onSetAutoStartServer(true)
       setInputValue('')
     } else {
       setShowCustomInput(true)
+      onSetAutoStartServer(false)
       setInputValue(customUrl ?? '')
     }
   }
@@ -393,7 +412,7 @@ function ServerSection({
       {scanLoading && (
         <div className="flex items-center gap-2 text-stone-400 text-xs">
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          <span>Scanning project…</span>
+          <span>Scanning project...</span>
         </div>
       )}
 
@@ -407,20 +426,18 @@ function ServerSection({
               )}
             </div>
           )}
-          <div className="flex items-center gap-1.5 text-xs">
-            <span
-              className={`h-2 w-2 flex-shrink-0 rounded-full ${
-                projectScan.serverRunning ? 'bg-green-500' : 'bg-yellow-500'
-              }`}
-            />
-            {projectScan.serverRunning ? (
-              <span className="text-green-400">Running</span>
-            ) : (
-              <span className="text-yellow-400">
-                {projectScan.devCommand ? `Start with: ${projectScan.devCommand}` : 'Not running'}
-              </span>
-            )}
-          </div>
+          {autoStartServer && projectScan.devCommand && (
+            <div className="flex items-center gap-1.5 text-xs">
+              <span className="h-2 w-2 flex-shrink-0 rounded-full bg-blue-500" />
+              <span className="text-blue-400">Auto-start enabled</span>
+            </div>
+          )}
+          {!autoStartServer && !showCustomInput && (
+            <div className="flex items-center gap-1.5 text-xs">
+              <span className="h-2 w-2 flex-shrink-0 rounded-full bg-stone-500" />
+              <span className="text-stone-400">Manual mode</span>
+            </div>
+          )}
         </div>
       )}
 
@@ -445,7 +462,7 @@ function ServerSection({
         onClick={handleToggleCustom}
         className="mt-2 text-blue-400 text-xs transition-colors hover:text-blue-300"
       >
-        {showCustomInput ? 'Use auto-detected URL' : 'Use custom URL'}
+        {showCustomInput ? 'Use auto-start server' : 'Use custom URL'}
       </button>
     </div>
   )
@@ -634,6 +651,8 @@ type LaunchButtonsProps = {
   canStart: boolean
   hasProject: boolean
   hasUrl: boolean
+  agentCount: number
+  onSetAgentCount: (count: number) => void
   onStart: () => void
   onAutoExplore: () => void
 }
@@ -642,6 +661,8 @@ function LaunchButtons({
   canStart,
   hasProject,
   hasUrl,
+  agentCount,
+  onSetAgentCount,
   onStart,
   onAutoExplore,
 }: LaunchButtonsProps) {
@@ -649,15 +670,31 @@ function LaunchButtons({
 
   return (
     <div className="space-y-2 border-stone-800 border-b p-3">
-      <button
-        type="button"
-        onClick={onStart}
-        disabled={!canStart}
-        className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-3 py-2 font-medium text-sm text-white transition-colors hover:bg-blue-500 disabled:bg-stone-700 disabled:text-stone-500"
-      >
-        <Play className="h-4 w-4" />
-        Start Exploration
-      </button>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={onStart}
+          disabled={!canStart}
+          className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-blue-600 px-3 py-2 font-medium text-sm text-white transition-colors hover:bg-blue-500 disabled:bg-stone-700 disabled:text-stone-500"
+        >
+          <Play className="h-4 w-4" />
+          Start
+        </button>
+        <div className="flex items-center gap-1.5 rounded-lg border border-stone-700 bg-stone-800 px-2 py-1.5">
+          <span className="text-stone-500 text-xs">Agents</span>
+          <select
+            value={agentCount}
+            onChange={(e) => onSetAgentCount(Number(e.target.value))}
+            className="appearance-none bg-transparent pr-1 text-center text-sm text-stone-100 focus:outline-none"
+          >
+            {[1, 2, 3, 4, 5].map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
       <button
         type="button"
         onClick={onAutoExplore}
@@ -891,7 +928,15 @@ function ExplorationDetail({
           </h3>
           <div className="space-y-2">
             {findings.map((f) => (
-              <FindingCard key={f.id} finding={f} />
+              <FindingCard
+                key={f.id}
+                finding={f}
+                goalText={
+                  exploration.goal.length > 50
+                    ? `${exploration.goal.slice(0, 50)}...`
+                    : exploration.goal
+                }
+              />
             ))}
           </div>
         </div>
@@ -976,7 +1021,13 @@ function StreamingPanel({ text }: { text: string }) {
 
 // ── Finding Card ──────────────────────────────────────────────────────────────
 
-function FindingCard({ finding }: { finding: import('../../../shared/types').TestFinding }) {
+function FindingCard({
+  finding,
+  goalText,
+}: {
+  finding: import('../../../shared/types').TestFinding
+  goalText?: string
+}) {
   const [expanded, setExpanded] = useState(false)
   const Icon = SEVERITY_ICONS[finding.severity]
 
@@ -991,6 +1042,11 @@ function FindingCard({ finding }: { finding: import('../../../shared/types').Tes
             >
               {finding.severity}
             </span>
+            {goalText && (
+              <span className="truncate rounded bg-stone-700/60 px-1.5 py-0.5 text-[10px] text-stone-400">
+                {goalText}
+              </span>
+            )}
             <span className="truncate font-medium text-sm text-stone-100">{finding.title}</span>
           </div>
           <p className="mb-1 text-stone-400 text-xs">{finding.description}</p>
