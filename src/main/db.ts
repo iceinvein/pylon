@@ -123,6 +123,7 @@ export function initDatabase(): Database.Database {
   db.exec(`
     CREATE TABLE IF NOT EXISTS test_explorations (
       id TEXT PRIMARY KEY,
+      batch_id TEXT,
       cwd TEXT NOT NULL,
       url TEXT NOT NULL,
       goal TEXT NOT NULL,
@@ -159,6 +160,12 @@ export function initDatabase(): Database.Database {
     CREATE INDEX IF NOT EXISTS idx_test_explorations_cwd ON test_explorations(cwd);
     CREATE INDEX IF NOT EXISTS idx_test_findings_exploration ON test_findings(exploration_id);
   `)
+
+  // Migration: add batch_id column to test_explorations
+  const explorationCols = db.pragma('table_info(test_explorations)') as Array<{ name: string }>
+  if (!explorationCols.some((c) => c.name === 'batch_id')) {
+    db.exec('ALTER TABLE test_explorations ADD COLUMN batch_id TEXT')
+  }
 
   return db
 }

@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { createSdkMcpServer, query } from '@anthropic-ai/claude-agent-sdk'
-import type { BrowserWindow } from 'electron'
+import { app, type BrowserWindow } from 'electron'
 import { z } from 'zod'
 import { IPC } from '../shared/ipc-channels'
 import { log } from '../shared/logger'
@@ -18,6 +18,7 @@ import type {
 import { getDb } from './db'
 import { resolveE2eOutputPath } from './e2e-path-resolver'
 import { checkPortInUse, scanProject as runProjectScan } from './project-scanner'
+import { serverManager } from './server-manager'
 import {
   createReportFindingTool,
   createReportGoalsTool,
@@ -39,9 +40,19 @@ class TestManager {
   >()
   private goalSuggestionAbort: AbortController | null = null
   private window: BrowserWindow | null = null
+  private batchCompletionCallbacks = new Map<string, { remaining: number; cwd: string }>()
+  private serverCleanupRegistered = false
 
   setWindow(window: BrowserWindow): void {
     this.window = window
+
+    // Clean up servers on app quit (guard against multiple registrations)
+    if (!this.serverCleanupRegistered) {
+      this.serverCleanupRegistered = true
+      app.on('before-quit', () => {
+        serverManager.killAll()
+      })
+    }
   }
 
   private send(channel: string, data: unknown): void {
@@ -187,13 +198,15 @@ class TestManager {
     e2eOutputPath: string
     e2ePathReason?: string
     projectScan?: ProjectScan
+    batchId?: string
+    autoStartServer?: boolean
   }): Promise<TestExploration> {
     const id = randomUUID()
     const now = Date.now()
 
     const exploration: TestExploration = {
       id,
-      batchId: null,
+      batchId: config.batchId ?? null,
       cwd: config.cwd,
       url: config.url,
       goal: config.goal,
@@ -217,10 +230,11 @@ class TestManager {
     // Insert into DB
     const db = getDb()
     db.prepare(
-      `INSERT INTO test_explorations (id, cwd, url, goal, mode, requirements, e2e_output_path, e2e_path_reason, status, started_at, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO test_explorations (id, batch_id, cwd, url, goal, mode, requirements, e2e_output_path, e2e_path_reason, status, started_at, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(
       id,
+      config.batchId ?? null,
       config.cwd,
       config.url,
       config.goal,
@@ -247,6 +261,149 @@ class TestManager {
     return exploration
   }
 
+  async startBatch(config: {
+    cwd: string
+    goals: string[]
+    agentCount: number
+    mode: ExplorationMode
+    requirements?: string
+    e2eOutputPath: string
+    e2ePathReason?: string
+    autoStartServer: boolean
+    projectScan?: ProjectScan
+  }): Promise<TestExploration[]> {
+    const batchId = randomUUID()
+    const { goals, agentCount } = config
+
+    // Start server if auto-start is on
+    let serverUrl = ''
+    if (config.autoStartServer && config.projectScan) {
+      try {
+        const { url } = await serverManager.acquire(config.cwd, config.projectScan)
+        serverUrl = url
+      } catch (err) {
+        logger.error('Failed to start server:', err)
+        throw new Error(`Server startup failed: ${String(err)}`)
+      }
+    }
+
+    const effectiveUrl = serverUrl || config.projectScan?.detectedUrl || `http://localhost:3000`
+
+    // Create exploration records (but don't run yet — we control concurrency)
+    const explorations: TestExploration[] = []
+    for (const goal of goals) {
+      const id = randomUUID()
+      const now = Date.now()
+      const exploration: TestExploration = {
+        id,
+        batchId,
+        cwd: config.cwd,
+        url: effectiveUrl,
+        goal,
+        mode: config.mode,
+        requirements: config.requirements || null,
+        e2eOutputPath: config.e2eOutputPath,
+        e2ePathReason: config.e2ePathReason || null,
+        status: 'pending',
+        errorMessage: null,
+        findingsCount: 0,
+        testsGenerated: 0,
+        generatedTestPaths: [],
+        inputTokens: 0,
+        outputTokens: 0,
+        totalCostUsd: 0,
+        startedAt: null,
+        completedAt: null,
+        createdAt: now,
+      }
+
+      // Insert into DB
+      const db = getDb()
+      db.prepare(
+        `INSERT INTO test_explorations (id, batch_id, cwd, url, goal, mode, requirements, e2e_output_path, e2e_path_reason, status, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ).run(
+        id,
+        batchId,
+        config.cwd,
+        effectiveUrl,
+        goal,
+        config.mode,
+        config.requirements || null,
+        config.e2eOutputPath,
+        config.e2ePathReason || null,
+        'pending',
+        now,
+      )
+
+      explorations.push(exploration)
+    }
+
+    // Track batch for server release
+    if (config.autoStartServer && config.projectScan) {
+      this.batchCompletionCallbacks.set(batchId, { remaining: goals.length, cwd: config.cwd })
+    }
+
+    // Semaphore-based concurrency: run up to agentCount simultaneously
+    const queue = [...explorations]
+    const running = new Set<Promise<void>>()
+
+    const runNext = async () => {
+      const exploration = queue.shift()
+      if (!exploration) return
+
+      this.updateStatus(exploration.id, 'running', 0, 0)
+      this.send(IPC.TEST_EXPLORATION_UPDATE, { explorationId: exploration.id, status: 'running' })
+
+      const promise = this.runExploration(exploration.id, {
+        cwd: config.cwd,
+        url: effectiveUrl,
+        goal: exploration.goal,
+        mode: config.mode,
+        requirements: config.requirements,
+        e2eOutputPath: config.e2eOutputPath,
+        projectScan: config.projectScan,
+        autoStartServer: config.autoStartServer,
+      })
+        .catch((err) => {
+          logger.error(`Exploration ${exploration.id} failed:`, err)
+        })
+        .finally(() => {
+          running.delete(promise)
+          // Notify batch completion tracker
+          this.onExplorationComplete(batchId)
+          // Start next in queue
+          if (queue.length > 0) {
+            const next = runNext()
+            if (next) running.add(next)
+          }
+        })
+
+      running.add(promise)
+      return promise
+    }
+
+    // Kick off initial batch up to agentCount
+    const initialCount = Math.min(agentCount, queue.length)
+    for (let i = 0; i < initialCount; i++) {
+      runNext()
+    }
+
+    return explorations
+  }
+
+  private onExplorationComplete(batchId: string): void {
+    const tracker = this.batchCompletionCallbacks.get(batchId)
+    if (!tracker) return
+
+    tracker.remaining--
+    if (tracker.remaining <= 0) {
+      this.batchCompletionCallbacks.delete(batchId)
+      serverManager.release(tracker.cwd)
+      logger.info(`Batch ${batchId} complete, released server for ${tracker.cwd}`)
+    }
+  }
+
   private async runExploration(
     explorationId: string,
     config: {
@@ -257,6 +414,7 @@ class TestManager {
       requirements?: string
       e2eOutputPath: string
       projectScan?: ProjectScan
+      autoStartServer?: boolean
     },
   ): Promise<void> {
     const abortController = new AbortController()
@@ -306,7 +464,11 @@ class TestManager {
       ],
     })
 
-    const prompt = this.buildPrompt({ ...config, projectScan: config.projectScan })
+    const prompt = this.buildPrompt({
+      ...config,
+      projectScan: config.projectScan,
+      autoStartServer: config.autoStartServer,
+    })
     let inputTokens = 0
     let outputTokens = 0
     let lastSendTime = 0
@@ -425,6 +587,7 @@ Instructions:
     mode: ExplorationMode
     requirements?: string
     projectScan?: ProjectScan
+    autoStartServer?: boolean
   }): string {
     let prompt = `You are an expert QA engineer performing exploratory testing on a web application.
 
@@ -436,7 +599,7 @@ ${
 Project Info:
 ${config.projectScan.framework ? `Framework: ${config.projectScan.framework}` : ''}
 ${config.projectScan.devCommand ? `Dev command: ${config.projectScan.devCommand}` : ''}
-${config.projectScan.serverRunning ? 'Server status: running' : config.projectScan.devCommand ? `Server status: not running — start it with: ${config.projectScan.devCommand}` : ''}
+${config.autoStartServer ? `The dev server has been started for you at ${config.url}. Do not attempt to start or stop the server.` : `Navigate to ${config.url} to test the application. The server is managed externally.`}
 `
     : ''
 }
