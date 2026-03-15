@@ -21,9 +21,11 @@ A new module `src/main/server-manager.ts` that starts, health-checks, and stops 
 1. `startServer(cwd, projectScan)` reads `devCommand` from the scan result
 2. Finds a free port: starts from `detectedPort`, increments if taken, max 10 attempts
 3. Spawns the dev server process with the port override (env var or CLI flag depending on framework)
-4. Polls `http://localhost:<port>` with retries (max ~30s, exponential backoff) until it gets an HTTP response
+4. Polls `http://localhost:<port>` with retries until it gets an HTTP response. Polling schedule: initial 500ms, doubling each attempt, capped at 4s per attempt, 30s total timeout.
 5. Returns `{ port, url, childProcess }`
 6. `stopServer(port)` kills the child process and confirms the port is freed
+
+**Reference counting:** The ServerManager tracks how many active explorations use each server via a `Map<string, { refCount: number, port: number, process: ChildProcess }>` keyed by `cwd`. When `refCount` drops to 0, the server is stopped. This handles both batch completion and overlapping batches naturally — a second batch reuses the existing server and increments `refCount`.
 
 **Framework-specific port override:**
 
@@ -35,20 +37,35 @@ A new module `src/main/server-manager.ts` that starts, health-checks, and stops 
 | cra | `PORT=<N>` env var |
 | angular | `--port <N>` CLI flag |
 | nuxt | `--port <N>` CLI flag |
+| svelte | `--port <N>` CLI flag |
+| sveltekit | `--port <N>` CLI flag |
+| astro | `--port <N>` CLI flag |
 | default | `PORT=<N>` env var |
 
 **Cleanup guarantees:**
 
-- Server processes tracked in a `Map<number, ChildProcess>` keyed by port
-- Killed in `finally` blocks when explorations end (done/stopped/error)
-- Killed on Electron `before-quit` event as a safety net
+- Single tracking map: `Map<string, { refCount: number, port: number, process: ChildProcess }>` keyed by `cwd`. This consolidates lifecycle management (refcount), port tracking, and process cleanup into one structure.
+- When `refCount` drops to 0, the server is stopped
+- On Electron `before-quit`, all entries are killed as a safety net
 - `SIGTERM` first, `SIGKILL` after 5s timeout
 
 ### 2. Parallel Exploration with Concurrency Slider
 
 **Concurrency model:** Simple fan-out. The user selects 1-5 agents via a dropdown next to the Launch buttons. Clicking "Start Exploration" spawns one exploration per selected goal, up to the agent count concurrently. Excess goals queue and start as earlier ones finish.
 
-**Shared server:** All parallel agents share one dev server instance. Exploratory testing is read-only (navigating, clicking, observing), so concurrent access is safe. The Server Manager starts one server before the first exploration and stops it after all explorations in the batch complete.
+**Batch orchestration:** A new IPC method `startBatch` is added. The renderer sends the full list of goals and the agent count in a single IPC call to `test-manager.ts`. The TestManager:
+
+1. Calls `serverManager.startServer(cwd, projectScan)` once (or reuses existing server via refcount)
+2. Creates a concurrency-limited runner: takes the goal list, creates explorations for each, runs up to `agentCount` simultaneously using a simple semaphore (array of promises, `Promise.race` to fill slots as they complete)
+3. When all explorations finish (or are stopped), decrements the server refcount
+
+This keeps orchestration in the main process where it belongs. The renderer calls one IPC method and receives individual `ExplorationUpdate` events per exploration as they stream.
+
+**Overlapping batches:** If the user starts a second batch while the first is running, the server is reused (refcount increments). Both batches' explorations run independently. Each batch's concurrency limit applies only to its own goals.
+
+**Shared server:** All parallel agents share one dev server instance. Exploratory testing is read-only (navigating, clicking, observing), so concurrent access is safe.
+
+**Each agent gets its own Playwright browser.** Each `runExploration` spawns its own Playwright MCP server (`bunx @playwright/mcp@latest --headless`), meaning each agent gets an independent headless Chromium instance. This is intentional — agents navigate independently and would conflict if sharing a browser. With 5 agents, expect ~5 headless browser processes.
 
 **UI placement:** The agent count selector sits next to the "Start Exploration" button:
 
@@ -59,16 +76,17 @@ A new module `src/main/server-manager.ts` that starts, health-checks, and stops 
 
 Dropdown offers 1-5. Default is 1 (backward compatible).
 
-**Store changes:** `test-store.ts` gains `agentCount: number` (default 1) and `setAgentCount` action. The existing `startExploration` action is called N times from the renderer — one per goal. No new IPC channels needed.
+**Store changes:** `test-store.ts` gains `agentCount: number` (default 1) and `setAgentCount` action. A new `startBatch` action calls the `startBatch` IPC method, passing all goals and the agent count. The old `startExploration` still works for single-goal runs.
 
-**Unified findings view:** All parallel explorations' findings appear in a single combined list in the right panel. Each finding gets a small pill showing its source goal text. The exploration list on the left still shows individual runs for drill-down.
+**Unified findings view:** All parallel explorations' findings appear in a single combined list in the right panel. Each finding gets a small pill showing its source goal text. This is a renderer-side merge: the component collects all `findingsByExploration` entries whose exploration IDs are in the current batch, flattening them into one list sorted by creation time. The exploration list on the left still shows individual runs for drill-down.
 
 ### 3. Prompt and Server Section Updates
 
 **Prompt changes in `buildPrompt()`:**
 
 - The URL passed to the prompt is the real verified URL from the Server Manager (e.g., `http://localhost:5847`)
-- New line added: `"The dev server has been started for you. Do not attempt to start or stop the server."`
+- When auto-start is on: `"The dev server has been started for you at {url}. Do not attempt to start or stop the server."`
+- When manual mode is on: `"Navigate to {url} to test the application. The server is managed externally."` (no mention of starting/stopping)
 
 **Server section UI simplification:**
 
@@ -91,9 +109,11 @@ The current Server section shows a green/yellow "Running/Not running" dot based 
 |------|--------|
 | `src/main/test-manager.ts` | Integrate ServerManager: start server before `runExploration`, pass real URL to prompt, stop server in `finally`. Update `buildPrompt()` to tell agent not to manage servers. Support batch of concurrent explorations sharing one server. |
 | `src/main/project-scanner.ts` | Export framework-to-port-flag mapping for ServerManager to consume. |
-| `src/shared/types.ts` | Add `portOverrideMethod` field to `ProjectScan` (either `'env'` or `'cli-flag'` with the flag string). |
-| `src/renderer/src/store/test-store.ts` | Add `agentCount` state (default 1) and `setAgentCount` action. Update `startExploration` to fan out one call per goal up to `agentCount`. |
+| `src/shared/types.ts` | Add `portOverrideMethod` to `ProjectScan` as a discriminated union: `{ type: 'env' } \| { type: 'cli-flag'; flag: string }`. Add `autoStartServer: boolean` to exploration config. Add `batchId: string \| null` to `TestExploration` for grouping parallel runs. Make `ExplorationUpdate.status` optional (tool-originated updates like `report_finding` send updates without status). |
+| `src/renderer/src/store/test-store.ts` | Add `agentCount` state (default 1) and `setAgentCount` action. Add `startBatch` action that calls the `startBatch` IPC method with all goals and agent count. Existing `startExploration` retained for single-goal runs. |
 | `src/renderer/src/pages/TestView.tsx` | Add agent count dropdown next to Launch buttons. Simplify Server section with auto-start toggle. Add goal-source pill to findings in detail view. |
+| `src/preload/index.ts` | Expose `startBatch` IPC method via contextBridge. |
+| `src/main/ipc-handlers.ts` | Add `startBatch` IPC handler that delegates to TestManager's batch orchestration. |
 
 ### Unchanged files
 
@@ -102,7 +122,6 @@ The current Server section shows a green/yellow "Running/Not running" dot based 
 | `src/main/test-tools.ts` | Each exploration already gets its own tool context |
 | `src/renderer/src/hooks/use-test-bridge.ts` | Already handles updates keyed by exploration ID |
 | `src/main/e2e-path-resolver.ts` | Unrelated to server/port management |
-| `src/main/ipc-handlers.ts` | No new IPC channels — fan-out happens renderer-side |
 
 ## Key Decisions
 
