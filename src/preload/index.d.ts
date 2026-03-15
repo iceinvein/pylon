@@ -110,6 +110,17 @@ type Api = {
     e2ePathReason?: string
     projectScan?: import('../shared/types').ProjectScan
   }) => Promise<import('../shared/types').TestExploration>
+  startBatch: (args: {
+    cwd: string
+    goals: string[]
+    agentCount: number
+    mode: string
+    requirements?: string
+    e2eOutputPath: string
+    e2ePathReason?: string
+    autoStartServer: boolean
+    projectScan?: unknown
+  }) => Promise<import('../shared/types').TestExploration[]>
   stopExploration: (explorationId: string) => Promise<boolean>
   listExplorations: (cwd: string) => Promise<import('../shared/types').TestExploration[]>
   getExploration: (explorationId: string) => Promise<

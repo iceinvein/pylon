@@ -107,6 +107,17 @@ const api = {
     e2eOutputPath: string
     e2ePathReason?: string
   }) => ipcRenderer.invoke(IPC.TEST_START_EXPLORATION, args),
+  startBatch: (args: {
+    cwd: string
+    goals: string[]
+    agentCount: number
+    mode: string
+    requirements?: string
+    e2eOutputPath: string
+    e2ePathReason?: string
+    autoStartServer: boolean
+    projectScan?: unknown
+  }) => ipcRenderer.invoke(IPC.TEST_START_BATCH, args),
   stopExploration: (explorationId: string) =>
     ipcRenderer.invoke(IPC.TEST_STOP_EXPLORATION, { explorationId }),
   listExplorations: (cwd: string) => ipcRenderer.invoke(IPC.TEST_LIST_EXPLORATIONS, { cwd }),

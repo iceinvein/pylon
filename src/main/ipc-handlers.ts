@@ -520,6 +520,30 @@ export function registerIpcHandlers(): void {
     },
   )
 
+  ipcMain.handle(
+    IPC.TEST_START_BATCH,
+    async (
+      _e,
+      args: {
+        cwd: string
+        goals: string[]
+        agentCount: number
+        mode: string
+        requirements?: string
+        e2eOutputPath: string
+        e2ePathReason?: string
+        autoStartServer: boolean
+        projectScan?: import('../shared/types').ProjectScan
+      },
+    ) => {
+      const { testManager } = await import('./test-manager')
+      return testManager.startBatch({
+        ...args,
+        mode: args.mode as 'manual' | 'requirements',
+      })
+    },
+  )
+
   ipcMain.handle(IPC.TEST_STOP_EXPLORATION, async (_e, args: { explorationId: string }) => {
     const { testManager } = await import('./test-manager')
     testManager.stopExploration(args.explorationId)
