@@ -412,9 +412,7 @@ export type E2ePathResolution = {
   reason: string
 }
 
-export type PortOverrideMethod =
-  | { type: 'env' }
-  | { type: 'cli-flag'; flag: string }
+export type PortOverrideMethod = { type: 'env' } | { type: 'cli-flag'; flag: string }
 
 export type TestExploration = {
   id: string
