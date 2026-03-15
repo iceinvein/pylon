@@ -78,4 +78,5 @@ export const IPC = {
   TEST_SCAN_PROJECT: 'test:scan-project',
   TEST_SUGGEST_GOALS: 'test:suggest-goals',
   TEST_GOAL_SUGGESTION: 'test:goal-suggestion',
+  TEST_START_BATCH: 'test:start-batch',
 } as const

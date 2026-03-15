@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { createSdkMcpServer, query } from '@anthropic-ai/claude-agent-sdk'
 import type { BrowserWindow } from 'electron'
+import { z } from 'zod'
 import { IPC } from '../shared/ipc-channels'
 import { log } from '../shared/logger'
 import type {
@@ -25,6 +26,7 @@ import {
 
 const logger = log.child('test-manager')
 const STREAM_THROTTLE_MS = 300
+const GOAL_SUGGESTION_TIMEOUT_MS = 60_000 // 60s max for goal suggestion
 
 class TestManager {
   private activeExplorations = new Map<
@@ -94,7 +96,23 @@ class TestManager {
           {
             name: reportGoalsTool.name,
             description: reportGoalsTool.description,
-            inputSchema: {},
+            inputSchema: {
+              goals: z.array(
+                z.object({
+                  id: z.string().describe('Unique ID for this goal'),
+                  title: z.string().describe('Short title (e.g. "Authentication flow")'),
+                  description: z
+                    .string()
+                    .describe(
+                      'What to test (e.g. "Login, signup, password reset, session handling")',
+                    ),
+                  area: z
+                    .string()
+                    .optional()
+                    .describe('Category (e.g. "auth", "dashboard", "api")'),
+                }),
+              ),
+            },
             handler: (args: Record<string, unknown>) => wrappedExecute(args),
           },
         ],
@@ -102,19 +120,29 @@ class TestManager {
 
       const prompt = this.buildGoalSuggestionPrompt(cwd, scan)
 
-      for await (const _message of query({
-        prompt,
-        options: {
-          maxTurns: 5,
-          permissionMode: 'bypassPermissions',
-          allowDangerouslySkipPermissions: true,
-          abortController,
-          mcpServers: {
-            'pylon-goal-analysis': toolsServer,
+      // Race against a timeout to prevent indefinite hangs
+      const timeoutId = setTimeout(() => {
+        logger.warn('Goal suggestion timed out, aborting')
+        abortController.abort()
+      }, GOAL_SUGGESTION_TIMEOUT_MS)
+
+      try {
+        for await (const _message of query({
+          prompt,
+          options: {
+            maxTurns: 5,
+            permissionMode: 'bypassPermissions',
+            allowDangerouslySkipPermissions: true,
+            abortController,
+            mcpServers: {
+              'pylon-goal-analysis': toolsServer,
+            },
           },
-        },
-      })) {
-        // Just consume messages — the report_goals tool call sends goals via IPC
+        })) {
+          // Just consume messages — the report_goals tool call sends goals via IPC
+        }
+      } finally {
+        clearTimeout(timeoutId)
       }
 
       // If the tool wasn't called, send done with empty goals
@@ -126,7 +154,15 @@ class TestManager {
         } satisfies GoalSuggestionUpdate)
       }
     } catch (err) {
-      if (!abortController.signal.aborted) {
+      if (abortController.signal.aborted) {
+        // Aborted by timeout or user — send done with whatever we have
+        logger.warn('Goal suggestion aborted (timeout or user cancel)')
+        this.send(IPC.TEST_GOAL_SUGGESTION, {
+          cwd,
+          goals: [],
+          status: 'done',
+        } satisfies GoalSuggestionUpdate)
+      } else {
         logger.error('Goal suggestion failed:', err)
         this.send(IPC.TEST_GOAL_SUGGESTION, {
           cwd,
@@ -157,6 +193,7 @@ class TestManager {
 
     const exploration: TestExploration = {
       id,
+      batchId: null,
       cwd: config.cwd,
       url: config.url,
       goal: config.goal,
@@ -246,13 +283,24 @@ class TestManager {
         {
           name: reportFindingTool.name,
           description: reportFindingTool.description,
-          inputSchema: {},
+          inputSchema: {
+            title: z.string().describe('Short descriptive title'),
+            description: z.string().describe('Detailed description'),
+            severity: z
+              .enum(['critical', 'high', 'medium', 'low', 'info'])
+              .describe('Severity level'),
+            url: z.string().describe('URL where found'),
+            reproduction_steps: z.array(z.string()).describe('Steps to reproduce'),
+          },
           handler: (args: Record<string, unknown>) => reportFindingTool.execute(args),
         },
         {
           name: savePlaywrightTestTool.name,
           description: savePlaywrightTestTool.description,
-          inputSchema: {},
+          inputSchema: {
+            filename: z.string().describe('Test file name (must end with .spec.ts)'),
+            content: z.string().describe('Full Playwright test file content'),
+          },
           handler: (args: Record<string, unknown>) => savePlaywrightTestTool.execute(args),
         },
       ],
@@ -489,6 +537,7 @@ Generated test file conventions:
   private rowToExploration(row: Record<string, unknown>): TestExploration {
     return {
       id: row.id as string,
+      batchId: (row.batch_id as string | null) ?? null,
       cwd: row.cwd as string,
       url: row.url as string,
       goal: row.goal as string,

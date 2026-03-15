@@ -412,8 +412,13 @@ export type E2ePathResolution = {
   reason: string
 }
 
+export type PortOverrideMethod =
+  | { type: 'env' }
+  | { type: 'cli-flag'; flag: string }
+
 export type TestExploration = {
   id: string
+  batchId: string | null
   cwd: string
   url: string
   goal: string
@@ -466,6 +471,7 @@ export type ProjectScan = {
   detectedPort: number | null
   detectedUrl: string | null
   packageManager: string | null
+  portOverrideMethod: PortOverrideMethod | null
   serverRunning: boolean
   routeFiles: string[]
   hasPlaywrightConfig: boolean

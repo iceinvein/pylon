@@ -43,6 +43,7 @@ export function scanProject(cwd: string): ProjectScan {
     detectedPort: null,
     detectedUrl: null,
     packageManager: null,
+    portOverrideMethod: null,
     serverRunning: false,
     routeFiles: [],
     hasPlaywrightConfig: false,
