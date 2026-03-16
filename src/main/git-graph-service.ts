@@ -78,22 +78,46 @@ export function assignLanes(commits: GraphCommit[]): GraphCommit[] {
         lanes.push(null)
       }
     }
+    // Snapshot which lanes are active BEFORE processing this commit.
+    // Needed so continuation lines only apply to pre-existing lanes,
+    // not lanes freshly created by this commit's fork-outs.
+    const activeBefore = new Set<number>()
+    for (let l = 0; l < lanes.length; l++) {
+      if (lanes[l] !== null) activeBefore.add(l)
+    }
+
     lanes[col] = null
     commit.graphColumns = col
 
     const lines: GraphLine[] = []
 
+    // First parent: if it's already assigned to another lane (from a prior fork),
+    // merge into that lane instead of overwriting the assignment. This prevents
+    // lane conflicts where two branches both claim the same parent hash.
     if (commit.parents[0]) {
-      lanes[col] = commit.parents[0]
-      hashToLane.set(commit.parents[0], col)
-      lines.push({
-        fromColumn: col,
-        toColumn: col,
-        type: 'straight',
-        color: LANE_COLORS[col % LANE_COLORS.length],
-      })
+      const existingLane = hashToLane.get(commit.parents[0])
+      if (existingLane !== undefined && existingLane !== col) {
+        // Parent already lives in another lane — merge into it
+        lines.push({
+          fromColumn: col,
+          toColumn: existingLane,
+          type: 'merge-in',
+          color: LANE_COLORS[existingLane % LANE_COLORS.length],
+        })
+      } else {
+        // Continue first parent down our lane
+        lanes[col] = commit.parents[0]
+        hashToLane.set(commit.parents[0], col)
+        lines.push({
+          fromColumn: col,
+          toColumn: col,
+          type: 'straight',
+          color: LANE_COLORS[col % LANE_COLORS.length],
+        })
+      }
     }
 
+    // Additional parents (merge sources)
     for (let i = 1; i < commit.parents.length; i++) {
       const parent = commit.parents[i]
       const existingLane = hashToLane.get(parent)
@@ -119,6 +143,28 @@ export function assignLanes(commits: GraphCommit[]): GraphCommit[] {
           color: LANE_COLORS[newLane % LANE_COLORS.length],
         })
       }
+    }
+
+    // Pass-through (continuation) lines: active lanes that pass through this
+    // row without being the commit's own lane need a vertical line so branches
+    // don't visually disappear between rows.
+    //
+    // Two key rules:
+    //  1. Use fromColumn (not toColumn) to check coverage. A merge-in line
+    //     targets a lane but doesn't replace that lane's vertical backbone.
+    //  2. Only continue lanes that were active BEFORE this commit. Lanes
+    //     created by fork-out during this commit are already handled by the
+    //     fork-out curve — adding a continuation would create an orphan line.
+    const lineFromColumns = new Set(lines.map((l) => l.fromColumn))
+    for (const laneIdx of activeBefore) {
+      if (lanes[laneIdx] === null) continue // lane was freed (commit consumed it)
+      if (lineFromColumns.has(laneIdx)) continue // already has a line from here
+      lines.push({
+        fromColumn: laneIdx,
+        toColumn: laneIdx,
+        type: 'straight',
+        color: LANE_COLORS[laneIdx % LANE_COLORS.length],
+      })
     }
 
     commit.graphLines = lines
