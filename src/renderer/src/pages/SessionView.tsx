@@ -369,8 +369,8 @@ export function SessionView({ tab, isActive }: SessionViewProps) {
         {sessionId && (
           <>
             {/* Flow panel */}
-            <AnimatePresence mode="popLayout" initial={false}>
-              {showFlow ? (
+            <AnimatePresence initial={false}>
+              {showFlow && (
                 <motion.div
                   key="flow-panel"
                   initial={{ width: 0, opacity: 0 }}
@@ -402,12 +402,12 @@ export function SessionView({ tab, isActive }: SessionViewProps) {
                     <FlowPanel />
                   </div>
                 </motion.div>
-              ) : null}
+              )}
             </AnimatePresence>
 
             {/* Changes panel */}
-            <AnimatePresence mode="popLayout" initial={false}>
-              {showChanges ? (
+            <AnimatePresence initial={false}>
+              {showChanges && (
                 <motion.div
                   key="changes-panel"
                   initial={{ width: 0, opacity: 0 }}
@@ -439,14 +439,14 @@ export function SessionView({ tab, isActive }: SessionViewProps) {
                     <ChangesPanel />
                   </div>
                 </motion.div>
-              ) : null}
+              )}
             </AnimatePresence>
 
             {/* Review panel — rendered as overlay (see bottom of component) */}
 
             {/* Info panel */}
-            <AnimatePresence mode="popLayout" initial={false}>
-              {showInfo ? (
+            <AnimatePresence initial={false}>
+              {showInfo && (
                 <motion.div
                   key="info-panel"
                   initial={{ width: 0, opacity: 0 }}
@@ -478,85 +478,101 @@ export function SessionView({ tab, isActive }: SessionViewProps) {
                     <SessionInfoPanel sessionId={sessionId} />
                   </div>
                 </motion.div>
-              ) : null}
+              )}
             </AnimatePresence>
 
-            {/* Collapsed tabs (shown when any panel is collapsed) */}
-            {(!showFlow || !showChanges || !showInfo) && (
-              <div className="flex flex-shrink-0 flex-col border-stone-800 border-l bg-[var(--color-base-bg)]">
-                {!showFlow && (
-                  <button
-                    type="button"
-                    onClick={() => setShowFlow(true)}
-                    title="Show flow"
-                    className="group flex w-10 flex-col items-center gap-1.5 py-3 transition-colors hover:bg-stone-800/60"
-                  >
-                    <Workflow
-                      size={18}
-                      className="text-stone-500 transition-colors group-hover:text-stone-200"
-                    />
-                    <span className="font-medium text-[9px] text-stone-600 transition-colors group-hover:text-stone-300">
-                      Flow
+            {/* Icon strip — always visible, toggles panels */}
+            <div className="flex flex-shrink-0 flex-col border-stone-800 border-l bg-[var(--color-base-bg)]">
+              <button
+                type="button"
+                onClick={() => setShowFlow((v) => !v)}
+                title={showFlow ? 'Hide flow' : 'Show flow'}
+                className={`group flex w-10 flex-col items-center gap-1.5 py-3 transition-colors hover:bg-stone-800/60 ${
+                  showFlow ? 'bg-stone-800/40' : ''
+                }`}
+              >
+                <Workflow
+                  size={18}
+                  className={`transition-colors ${
+                    showFlow ? 'text-stone-200' : 'text-stone-500 group-hover:text-stone-200'
+                  }`}
+                />
+                <span
+                  className={`font-medium text-[9px] transition-colors ${
+                    showFlow ? 'text-stone-300' : 'text-stone-600 group-hover:text-stone-300'
+                  }`}
+                >
+                  Flow
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowChanges((v) => !v)}
+                title={showChanges ? 'Hide changed files' : 'Show changed files'}
+                className={`group flex w-10 flex-col items-center gap-1.5 py-3 transition-colors hover:bg-stone-800/60 ${
+                  showChanges ? 'bg-stone-800/40' : ''
+                }`}
+              >
+                <div className="relative">
+                  <GitCompareArrows
+                    size={18}
+                    className={`transition-colors ${
+                      showChanges ? 'text-stone-200' : 'text-stone-500 group-hover:text-stone-200'
+                    }`}
+                  />
+                  {changedFiles.length > 0 && (
+                    <span className="absolute -top-1.5 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-stone-600 px-1 font-medium text-[9px] text-stone-200">
+                      {changedFiles.length}
                     </span>
-                  </button>
-                )}
-                {!showChanges && (
-                  <button
-                    type="button"
-                    onClick={() => setShowChanges(true)}
-                    title="Show changed files"
-                    className="group flex w-10 flex-col items-center gap-1.5 py-3 transition-colors hover:bg-stone-800/60"
-                  >
-                    <div className="relative">
-                      <GitCompareArrows
-                        size={18}
-                        className="text-stone-500 transition-colors group-hover:text-stone-200"
-                      />
-                      {changedFiles.length > 0 && (
-                        <span className="absolute -top-1.5 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-stone-600 px-1 font-medium text-[9px] text-stone-200">
-                          {changedFiles.length}
-                        </span>
-                      )}
-                    </div>
-                    <span className="font-medium text-[9px] text-stone-600 transition-colors group-hover:text-stone-300">
-                      Files
-                    </span>
-                  </button>
-                )}
-                {!showInfo && (
-                  <button
-                    type="button"
-                    onClick={() => setShowInfo(true)}
-                    title="Show session info"
-                    className="group flex w-10 flex-col items-center gap-1.5 py-3 transition-colors hover:bg-stone-800/60"
-                  >
-                    <Info
-                      size={18}
-                      className="text-stone-500 transition-colors group-hover:text-stone-200"
-                    />
-                    <span className="font-medium text-[9px] text-stone-600 transition-colors group-hover:text-stone-300">
-                      Info
-                    </span>
-                  </button>
-                )}
-                {sessionId && tab.useWorktree && changedFiles.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => usePrRaiseStore.getState().openOverlay(sessionId)}
-                    title="Raise pull request"
-                    className="group flex w-10 flex-col items-center gap-1.5 py-3 transition-colors hover:bg-stone-800/60"
-                  >
-                    <GitPullRequestArrow
-                      size={18}
-                      className="text-blue-500/70 transition-colors group-hover:text-blue-400"
-                    />
-                    <span className="font-medium text-[9px] text-stone-600 transition-colors group-hover:text-stone-300">
-                      PR
-                    </span>
-                  </button>
-                )}
-              </div>
-            )}
+                  )}
+                </div>
+                <span
+                  className={`font-medium text-[9px] transition-colors ${
+                    showChanges ? 'text-stone-300' : 'text-stone-600 group-hover:text-stone-300'
+                  }`}
+                >
+                  Files
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowInfo((v) => !v)}
+                title={showInfo ? 'Hide session info' : 'Show session info'}
+                className={`group flex w-10 flex-col items-center gap-1.5 py-3 transition-colors hover:bg-stone-800/60 ${
+                  showInfo ? 'bg-stone-800/40' : ''
+                }`}
+              >
+                <Info
+                  size={18}
+                  className={`transition-colors ${
+                    showInfo ? 'text-stone-200' : 'text-stone-500 group-hover:text-stone-200'
+                  }`}
+                />
+                <span
+                  className={`font-medium text-[9px] transition-colors ${
+                    showInfo ? 'text-stone-300' : 'text-stone-600 group-hover:text-stone-300'
+                  }`}
+                >
+                  Info
+                </span>
+              </button>
+              {sessionId && tab.useWorktree && changedFiles.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => usePrRaiseStore.getState().openOverlay(sessionId)}
+                  title="Raise pull request"
+                  className="group flex w-10 flex-col items-center gap-1.5 py-3 transition-colors hover:bg-stone-800/60"
+                >
+                  <GitPullRequestArrow
+                    size={18}
+                    className="text-blue-500/70 transition-colors group-hover:text-blue-400"
+                  />
+                  <span className="font-medium text-[9px] text-stone-600 transition-colors group-hover:text-stone-300">
+                    PR
+                  </span>
+                </button>
+              )}
+            </div>
           </>
         )}
       </div>
