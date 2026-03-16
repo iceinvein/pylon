@@ -9,6 +9,7 @@ import { registerIpcHandlers } from './ipc-handlers'
 import { prReviewManager } from './pr-review-manager'
 import { sessionManager } from './session-manager'
 import { testManager } from './test-manager'
+import { prPollingService } from './pr-polling-service'
 
 function createWindow(): BrowserWindow {
   const mainWindow = new BrowserWindow({
@@ -88,6 +89,8 @@ app.whenReady().then(() => {
   prReviewManager.setWindow(mainWindow)
   testManager.setWindow(mainWindow)
   setGitWindow(mainWindow)
+  prPollingService.setWindow(mainWindow)
+  prPollingService.start()
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -96,6 +99,7 @@ app.whenReady().then(() => {
       prReviewManager.setWindow(w)
       testManager.setWindow(w)
       setGitWindow(w)
+      prPollingService.setWindow(w)
     }
   })
 })
@@ -105,6 +109,7 @@ app.on('window-all-closed', () => {
 })
 
 app.on('will-quit', async () => {
+  prPollingService.stop()
   const { unwatchAll } = await import('./git-watcher')
   unwatchAll()
 })
