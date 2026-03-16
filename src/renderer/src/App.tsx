@@ -103,6 +103,12 @@ export default function App() {
           <PrReviewView />
         ) : sidebarView === 'testing' ? (
           <TestView />
+        ) : sidebarView === 'git' ? (
+          activeTab?.cwd ? (
+            <SessionView key={activeTab.id} tab={activeTab} />
+          ) : (
+            <HomePage />
+          )
         ) : activeTab?.cwd ? (
           <SessionView key={activeTab.id} tab={activeTab} />
         ) : (

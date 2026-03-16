@@ -1,4 +1,4 @@
-import { Clock, FlaskConical, GitPullRequestDraft, Home, Settings } from 'lucide-react'
+import { Clock, FlaskConical, GitBranch, GitPullRequestDraft, Home, Settings } from 'lucide-react'
 import { motion } from 'motion/react'
 import { useUiStore } from '../../store/ui-store'
 
@@ -88,6 +88,26 @@ export function NavRail() {
           />
         )}
         <FlaskConical size={18} className="relative z-10" />
+      </motion.button>
+
+      <motion.button
+        onClick={() => setSidebarView(sidebarView === 'git' ? 'home' : 'git')}
+        title="Git"
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        transition={{ duration: 0.1 }}
+        className={`relative flex h-9 w-9 items-center justify-center rounded-lg transition-colors ${
+          sidebarView === 'git' ? 'text-stone-100' : 'text-stone-400 hover:text-stone-100'
+        }`}
+      >
+        {sidebarView === 'git' && (
+          <motion.span
+            layoutId="nav-active"
+            className="absolute inset-0 rounded-lg bg-stone-700"
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+          />
+        )}
+        <GitBranch size={18} className="relative z-10" />
       </motion.button>
 
       <div className="mt-auto flex flex-col items-center gap-1">

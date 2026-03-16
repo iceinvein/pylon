@@ -5,6 +5,7 @@ import { useSessionStore } from '../../store/session-store'
 import { useTabStore } from '../../store/tab-store'
 import { useUiStore } from '../../store/ui-store'
 import { GitBranchPanel } from '../GitBranchPanel'
+import { GitPanel } from '../git/GitPanel'
 import { HistoryPanel } from '../HistoryPanel'
 import { StatusBar } from '../StatusBar'
 import { NavRail } from './NavRail'
@@ -37,6 +38,7 @@ export function Layout({ children }: LayoutProps) {
     gitPanelOpen &&
     sidebarView !== 'pr-review' &&
     sidebarView !== 'testing' &&
+    sidebarView !== 'git' &&
     branchStatus?.isGitRepo &&
     !!branchStatus?.branch
 
@@ -124,11 +126,28 @@ export function Layout({ children }: LayoutProps) {
           </motion.div>
         )}
       </AnimatePresence>
+      {/* Git management panel */}
+      <AnimatePresence initial={false}>
+        {sidebarView === 'git' && (
+          <motion.div
+            key="git-panel"
+            initial={{ width: 0, opacity: 0 }}
+            animate={{ width: 420, opacity: 1 }}
+            exit={{ width: 0, opacity: 0 }}
+            transition={{ duration: 0.15, ease: [0.25, 0.1, 0.25, 1] }}
+            className="flex flex-shrink-0 overflow-hidden border-stone-800 border-r pt-12"
+          >
+            <div className="min-w-0 flex-1">
+              <GitPanel />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       {/* Git branch panel — slides in from left edge of main area */}
       <AnimatePresence initial={false}>
         {showGitPanel && branchStatus && (
           <motion.div
-            key="git-panel"
+            key="git-branch-panel"
             initial={{ width: 0, opacity: 0 }}
             animate={{ width: GIT_PANEL_WIDTH, opacity: 1 }}
             exit={{ width: 0, opacity: 0 }}
