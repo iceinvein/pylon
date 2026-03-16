@@ -4,6 +4,7 @@ import { Layout } from './components/layout/Layout'
 import { SettingsOverlay } from './components/SettingsOverlay'
 import { useIpcBridge } from './hooks/use-ipc-bridge'
 import { usePrReviewBridge } from './hooks/use-pr-review-bridge'
+import { useGitBridge } from './hooks/use-git-bridge'
 import { useTestBridge } from './hooks/use-test-bridge'
 import { resumeStoredSession, type StoredSession } from './lib/resume-session'
 import { HomePage } from './pages/HomePage'
@@ -17,6 +18,7 @@ export default function App() {
   useIpcBridge()
   usePrReviewBridge()
   useTestBridge()
+  useGitBridge()
   const sidebarView = useUiStore((s) => s.sidebarView)
 
   const { tabs, activeTabId, setActiveTab } = useTabStore()
