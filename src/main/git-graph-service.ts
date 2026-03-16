@@ -1,14 +1,22 @@
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
-import { log } from '../shared/logger'
 import type { BranchInfo, GraphCommit, GraphLine, GraphRef } from '../shared/git-types'
+import { log } from '../shared/logger'
 
 const execFileAsync = promisify(execFile)
 const logger = log.child('git-graph-service')
 
 const LANE_COLORS = [
-  '#f59e0b', '#3b82f6', '#10b981', '#ef4444', '#8b5cf6',
-  '#ec4899', '#14b8a6', '#f97316', '#6366f1', '#84cc16',
+  '#f59e0b',
+  '#3b82f6',
+  '#10b981',
+  '#ef4444',
+  '#8b5cf6',
+  '#ec4899',
+  '#14b8a6',
+  '#f97316',
+  '#6366f1',
+  '#84cc16',
 ]
 
 export function parseGitLogLine(line: string): GraphCommit {
@@ -124,13 +132,7 @@ export async function getGraphLog(
   afterHash?: string,
   limit = 100,
 ): Promise<GraphCommit[]> {
-  const args = [
-    'log',
-    '--all',
-    '--format=%H|%P|%D|%s|%an|%aI',
-    '--topo-order',
-    `-${limit}`,
-  ]
+  const args = ['log', '--all', '--format=%H|%P|%D|%s|%an|%aI', '--topo-order', `-${limit}`]
 
   if (afterHash) {
     args.push(`${afterHash}~1`)
@@ -153,7 +155,11 @@ export async function getGitBranches(cwd: string): Promise<BranchInfo[]> {
   try {
     const { stdout: localOut } = await execFileAsync(
       'git',
-      ['for-each-ref', '--format=%(refname:short)|%(objectname:short)|%(upstream:short)|%(HEAD)', 'refs/heads/'],
+      [
+        'for-each-ref',
+        '--format=%(refname:short)|%(objectname:short)|%(upstream:short)|%(HEAD)',
+        'refs/heads/',
+      ],
       { cwd, timeout: 5000 },
     )
     for (const line of localOut.trim().split('\n').filter(Boolean)) {

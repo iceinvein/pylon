@@ -21,7 +21,11 @@ const riskLabels = {
   destructive: { text: 'Destructive', color: 'text-red-400' },
 }
 
-function CommandEntryCard({ entry, onConfirm, onCancel }: {
+function CommandEntryCard({
+  entry,
+  onConfirm,
+  onCancel,
+}: {
   entry: CommandEntry
   onConfirm: () => void
   onCancel: () => void
@@ -34,7 +38,7 @@ function CommandEntryCard({ entry, onConfirm, onCancel }: {
       {entry.status === 'pending' && (
         <div className="flex items-center gap-2 pl-3">
           <Loader2 size={11} className="animate-spin text-stone-600" />
-          <span className="text-stone-500 text-[10px]">Interpreting...</span>
+          <span className="text-[10px] text-stone-500">Interpreting...</span>
         </div>
       )}
 
@@ -42,36 +46,38 @@ function CommandEntryCard({ entry, onConfirm, onCancel }: {
         <div className={`ml-3 rounded-lg border p-2.5 ${riskColors[plan.riskLevel]}`}>
           <div className="flex items-center justify-between">
             <p className="text-stone-300 text-xs">{plan.interpretation}</p>
-            <span className={`text-[10px] font-medium ${riskLabels[plan.riskLevel].color}`}>
+            <span className={`font-medium text-[10px] ${riskLabels[plan.riskLevel].color}`}>
               {riskLabels[plan.riskLevel].text}
             </span>
           </div>
           <div className="mt-2 space-y-1">
             {plan.commands.map((cmd, i) => (
               <div key={i} className="flex items-start gap-2">
-                <code className="font-[family-name:var(--font-mono)] text-amber-400/80 text-[10px]">{cmd.command}</code>
+                <code className="font-[family-name:var(--font-mono)] text-[10px] text-amber-400/80">
+                  {cmd.command}
+                </code>
               </div>
             ))}
           </div>
           {plan.warnings && plan.warnings.length > 0 && (
             <div className="mt-2 flex items-start gap-1.5">
               <AlertTriangle size={10} className="mt-0.5 flex-shrink-0 text-yellow-500" />
-              <p className="text-yellow-400/80 text-[10px]">{plan.warnings.join('. ')}</p>
+              <p className="text-[10px] text-yellow-400/80">{plan.warnings.join('. ')}</p>
             </div>
           )}
-          <p className="mt-2 text-stone-500 text-[10px]">{plan.preview}</p>
+          <p className="mt-2 text-[10px] text-stone-500">{plan.preview}</p>
           <div className="mt-2 flex gap-2">
             <button
               type="button"
               onClick={onConfirm}
-              className="flex items-center gap-1 rounded bg-emerald-600 px-2.5 py-1 text-white text-[10px] hover:bg-emerald-500"
+              className="flex items-center gap-1 rounded bg-emerald-600 px-2.5 py-1 text-[10px] text-white hover:bg-emerald-500"
             >
               <Play size={9} /> Confirm
             </button>
             <button
               type="button"
               onClick={onCancel}
-              className="rounded px-2.5 py-1 text-stone-500 text-[10px] hover:bg-stone-800 hover:text-stone-300"
+              className="rounded px-2.5 py-1 text-[10px] text-stone-500 hover:bg-stone-800 hover:text-stone-300"
             >
               Cancel
             </button>
@@ -82,7 +88,7 @@ function CommandEntryCard({ entry, onConfirm, onCancel }: {
       {entry.status === 'executing' && (
         <div className="ml-3 flex items-center gap-2">
           <Loader2 size={11} className="animate-spin text-amber-500" />
-          <span className="text-amber-400 text-[10px]">Executing...</span>
+          <span className="text-[10px] text-amber-400">Executing...</span>
         </div>
       )}
 
@@ -104,8 +110,15 @@ function CommandEntryCard({ entry, onConfirm, onCancel }: {
 }
 
 export function GitOpsTab({ cwd, sessionId }: GitOpsTabProps) {
-  const { commandHistory, conflicts, error, submitCommand, confirmPlan, cancelPlan, applyResolutions } =
-    useGitOpsStore()
+  const {
+    commandHistory,
+    conflicts,
+    error,
+    submitCommand,
+    confirmPlan,
+    cancelPlan,
+    applyResolutions,
+  } = useGitOpsStore()
   const [input, setInput] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -139,7 +152,9 @@ export function GitOpsTab({ cwd, sessionId }: GitOpsTabProps) {
         {commandHistory.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center gap-2">
             <p className="text-stone-600 text-xs">Type a git command in plain English</p>
-            <p className="text-stone-700 text-[10px]">e.g. "undo my last commit" or "squash the last 3 commits"</p>
+            <p className="text-[10px] text-stone-700">
+              e.g. "undo my last commit" or "squash the last 3 commits"
+            </p>
           </div>
         ) : (
           commandHistory.map((entry) => (
@@ -154,7 +169,9 @@ export function GitOpsTab({ cwd, sessionId }: GitOpsTabProps) {
       </div>
 
       {error && (
-        <div className="border-stone-800 border-t bg-red-950/30 px-3 py-1.5 text-red-400 text-[10px]">{error}</div>
+        <div className="border-stone-800 border-t bg-red-950/30 px-3 py-1.5 text-[10px] text-red-400">
+          {error}
+        </div>
       )}
 
       {/* Input */}
@@ -166,7 +183,9 @@ export function GitOpsTab({ cwd, sessionId }: GitOpsTabProps) {
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit() }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleSubmit()
+            }}
             placeholder="Describe what you want to do..."
             disabled={!sessionId}
             className="min-w-0 flex-1 bg-transparent text-stone-200 text-xs outline-none placeholder:text-stone-600"

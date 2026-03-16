@@ -51,15 +51,9 @@ export function GitPanel() {
 
       {/* Tab content — placeholders until tab components are built */}
       <div className="min-h-0 flex-1 overflow-hidden">
-        {activeTab === 'graph' && (
-          <GitGraphTab cwd={cwd} sessionId={tab?.sessionId ?? null} />
-        )}
-        {activeTab === 'commit' && (
-          <GitCommitTab cwd={cwd} sessionId={tab?.sessionId ?? null} />
-        )}
-        {activeTab === 'command' && (
-          <GitOpsTab cwd={cwd} sessionId={tab?.sessionId ?? null} />
-        )}
+        {activeTab === 'graph' && <GitGraphTab cwd={cwd} sessionId={tab?.sessionId ?? null} />}
+        {activeTab === 'commit' && <GitCommitTab cwd={cwd} sessionId={tab?.sessionId ?? null} />}
+        {activeTab === 'command' && <GitOpsTab cwd={cwd} sessionId={tab?.sessionId ?? null} />}
       </div>
     </div>
   )

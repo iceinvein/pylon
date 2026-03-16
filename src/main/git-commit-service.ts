@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
-import { log } from '../shared/logger'
 import type { CommitGroup, FileStatus } from '../shared/git-types'
+import { log } from '../shared/logger'
 
 const execFileAsync = promisify(execFile)
 const logger = log.child('git-commit-service')
@@ -81,7 +81,7 @@ export async function getDiffForAnalysis(cwd: string): Promise<string> {
       cwd,
       timeout: 10000,
     })
-    if (staged.trim()) parts.push('=== STAGED CHANGES ===\n' + staged)
+    if (staged.trim()) parts.push(`=== STAGED CHANGES ===\n${staged}`)
   } catch {
     // No staged changes
   }
@@ -91,7 +91,7 @@ export async function getDiffForAnalysis(cwd: string): Promise<string> {
       cwd,
       timeout: 10000,
     })
-    if (unstaged.trim()) parts.push('=== UNSTAGED CHANGES ===\n' + unstaged)
+    if (unstaged.trim()) parts.push(`=== UNSTAGED CHANGES ===\n${unstaged}`)
   } catch {
     // No unstaged changes
   }
@@ -102,7 +102,7 @@ export async function getDiffForAnalysis(cwd: string): Promise<string> {
       ['ls-files', '--others', '--exclude-standard'],
       { cwd, timeout: 5000 },
     )
-    if (untracked.trim()) parts.push('=== UNTRACKED FILES ===\n' + untracked)
+    if (untracked.trim()) parts.push(`=== UNTRACKED FILES ===\n${untracked}`)
   } catch {
     // Ignore
   }

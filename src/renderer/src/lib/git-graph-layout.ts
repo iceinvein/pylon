@@ -9,8 +9,16 @@ export const GRAPH_CONSTANTS = {
 } as const
 
 export const LANE_COLORS = [
-  '#f59e0b', '#3b82f6', '#10b981', '#ef4444', '#8b5cf6',
-  '#ec4899', '#14b8a6', '#f97316', '#6366f1', '#84cc16',
+  '#f59e0b',
+  '#3b82f6',
+  '#10b981',
+  '#ef4444',
+  '#8b5cf6',
+  '#ec4899',
+  '#14b8a6',
+  '#f97316',
+  '#6366f1',
+  '#84cc16',
 ]
 
 export function getNodeX(column: number): number {

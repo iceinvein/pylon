@@ -1,6 +1,6 @@
 import { create } from 'zustand'
-import { log } from '../../../shared/logger'
 import type { BranchInfo, GraphCommit } from '../../../shared/git-types'
+import { log } from '../../../shared/logger'
 
 const logger = log.child('git-graph-store')
 

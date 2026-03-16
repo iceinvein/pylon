@@ -10,7 +10,7 @@ import {
   Wrench,
 } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { AskUserQuestionTool, getAskUserQuestionSummary } from './AskUserQuestionTool'
 import { BashTool } from './BashTool'
 import { EditTool } from './EditTool'
@@ -185,7 +185,17 @@ function ToolRenderer({
 }
 
 export function ToolUseBlock({ toolName, input, result }: ToolUseBlockProps) {
-  const [expanded, setExpanded] = useState(false)
+  const [expanded, setExpanded] = useState(!result)
+  const [userToggled, setUserToggled] = useState(false)
+  const prevResult = useRef(result)
+
+  useEffect(() => {
+    if (result && !prevResult.current && !userToggled) {
+      setExpanded(false)
+    }
+    prevResult.current = result
+  }, [result, userToggled])
+
   const info = getToolInfo(toolName, input)
   const Icon = info.icon
 
@@ -193,7 +203,10 @@ export function ToolUseBlock({ toolName, input, result }: ToolUseBlockProps) {
     <div>
       <button
         type="button"
-        onClick={() => setExpanded((v) => !v)}
+        onClick={() => {
+          setUserToggled(true)
+          setExpanded((v) => !v)
+        }}
         className="group flex w-full items-center gap-2 py-0.5 text-left"
       >
         <motion.span

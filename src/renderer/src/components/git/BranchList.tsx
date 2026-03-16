@@ -1,4 +1,10 @@
-import { ArrowDownToLine, ArrowUpFromLine, ChevronDown, ChevronRight, GitBranch } from 'lucide-react'
+import {
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  ChevronDown,
+  ChevronRight,
+  GitBranch,
+} from 'lucide-react'
 import { useState } from 'react'
 import type { BranchInfo } from '../../../../shared/git-types'
 
@@ -16,7 +22,9 @@ export function BranchList({ branches, onCheckout, onScrollTo }: BranchListProps
 
   return (
     <div className="overflow-y-auto border-stone-800 border-r p-2" style={{ width: 160 }}>
-      <p className="mb-2 font-medium text-stone-400 text-[10px] uppercase tracking-wider">Branches</p>
+      <p className="mb-2 font-medium text-[10px] text-stone-400 uppercase tracking-wider">
+        Branches
+      </p>
 
       {local.map((b) => (
         <button
@@ -32,12 +40,12 @@ export function BranchList({ branches, onCheckout, onScrollTo }: BranchListProps
           <GitBranch size={11} className="flex-shrink-0" />
           <span className="min-w-0 flex-1 truncate">{b.name}</span>
           {b.ahead > 0 && (
-            <span className="flex items-center gap-0.5 text-emerald-500 text-[10px]">
+            <span className="flex items-center gap-0.5 text-[10px] text-emerald-500">
               <ArrowUpFromLine size={9} /> {b.ahead}
             </span>
           )}
           {b.behind > 0 && (
-            <span className="flex items-center gap-0.5 text-amber-500 text-[10px]">
+            <span className="flex items-center gap-0.5 text-[10px] text-amber-500">
               <ArrowDownToLine size={9} /> {b.behind}
             </span>
           )}
@@ -49,7 +57,7 @@ export function BranchList({ branches, onCheckout, onScrollTo }: BranchListProps
           <button
             type="button"
             onClick={() => setShowRemotes(!showRemotes)}
-            className="mt-2 flex w-full items-center gap-1 rounded px-1.5 py-1 text-stone-500 text-[10px] uppercase tracking-wider hover:bg-stone-800 hover:text-stone-400"
+            className="mt-2 flex w-full items-center gap-1 rounded px-1.5 py-1 text-[10px] text-stone-500 uppercase tracking-wider hover:bg-stone-800 hover:text-stone-400"
           >
             {showRemotes ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
             Remotes ({remote.length})

@@ -153,6 +153,31 @@ export async function listPrs(repoFullName: string, state = 'open'): Promise<GhP
   }))
 }
 
+/**
+ * Parse a unified diff to extract file paths and per-file addition/deletion counts.
+ * Used as a fallback when the REST API file list is unavailable.
+ */
+export function parseFilesFromDiff(
+  diff: string,
+): Array<{ path: string; additions: number; deletions: number }> {
+  const files: Array<{ path: string; additions: number; deletions: number }> = []
+  const chunks = diff.split(/^(?=diff --git )/m)
+  for (const chunk of chunks) {
+    if (!chunk.startsWith('diff --git ')) continue
+    const headerMatch = chunk.match(/^diff --git a\/(.+?) b\/(.+)/)
+    if (!headerMatch) continue
+    const filePath = headerMatch[2]
+    let additions = 0
+    let deletions = 0
+    for (const line of chunk.split('\n')) {
+      if (line.startsWith('+') && !line.startsWith('+++')) additions++
+      else if (line.startsWith('-') && !line.startsWith('---')) deletions++
+    }
+    files.push({ path: filePath, additions, deletions })
+  }
+  return files
+}
+
 export async function getPrDetail(repoFullName: string, prNumber: number): Promise<GhPrDetail> {
   const [json, diff] = await Promise.all([
     execGh([
@@ -162,17 +187,32 @@ export async function getPrDetail(repoFullName: string, prNumber: number): Promi
       '--repo',
       repoFullName,
       '--json',
-      'number,title,body,author,state,createdAt,updatedAt,headRefName,baseRefName,additions,deletions,reviewDecision,isDraft,url,files',
+      'number,title,body,author,state,createdAt,updatedAt,headRefName,baseRefName,additions,deletions,reviewDecision,isDraft,url',
     ]),
     execGh(['pr', 'diff', String(prNumber), '--repo', repoFullName]),
   ])
 
   const pr = JSON.parse(json) as Record<string, unknown>
-  const files = ((pr.files as Array<Record<string, unknown>>) ?? []).map((f) => ({
-    path: f.path as string,
-    additions: f.additions as number,
-    deletions: f.deletions as number,
-  }))
+
+  // Use paginated REST API for the complete file list — gh pr view --json files
+  // uses GraphQL which silently caps at ~100 files without auto-pagination.
+  let files: Array<{ path: string; additions: number; deletions: number }>
+  try {
+    const filesJson = await execGh([
+      'api',
+      `repos/${repoFullName}/pulls/${prNumber}/files`,
+      '--paginate',
+    ])
+    const filesRaw = JSON.parse(filesJson) as Array<Record<string, unknown>>
+    files = filesRaw.map((f) => ({
+      path: (f.filename as string) ?? '',
+      additions: (f.additions as number) ?? 0,
+      deletions: (f.deletions as number) ?? 0,
+    }))
+  } catch {
+    // Fallback: derive file list from the diff itself
+    files = parseFilesFromDiff(diff)
+  }
 
   return {
     number: pr.number as number,

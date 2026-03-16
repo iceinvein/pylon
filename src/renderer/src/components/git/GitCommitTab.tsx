@@ -10,8 +10,19 @@ type GitCommitTabProps = {
 }
 
 export function GitCommitTab({ cwd, sessionId }: GitCommitTabProps) {
-  const { workingTree, commitPlan, analyzing, error, fetchStatus, analyzePlan, executeGroup, generateMessage, stageFiles, unstageFiles, setCommitPlan } =
-    useGitCommitStore()
+  const {
+    workingTree,
+    commitPlan,
+    analyzing,
+    error,
+    fetchStatus,
+    analyzePlan,
+    executeGroup,
+    generateMessage,
+    stageFiles,
+    unstageFiles,
+    setCommitPlan,
+  } = useGitCommitStore()
   const [commitMsg, setCommitMsg] = useState('')
   const [executing, setExecuting] = useState<number | null>(null)
   const [generating, setGenerating] = useState(false)
@@ -92,12 +103,12 @@ export function GitCommitTab({ cwd, sessionId }: GitCommitTabProps) {
             <button
               type="button"
               onClick={() => setCommitPlan(null)}
-              className="text-stone-500 text-[10px] hover:text-stone-300"
+              className="text-[10px] text-stone-500 hover:text-stone-300"
             >
               Dismiss
             </button>
           </div>
-          <p className="mb-3 text-stone-500 text-[10px] italic">{commitPlan.reasoning}</p>
+          <p className="mb-3 text-[10px] text-stone-500 italic">{commitPlan.reasoning}</p>
           <div className="flex flex-col gap-2">
             {commitPlan.groups.map((group, i) => (
               <CommitPlanCard
@@ -156,7 +167,9 @@ export function GitCommitTab({ cwd, sessionId }: GitCommitTabProps) {
                 type="text"
                 value={commitMsg}
                 onChange={(e) => setCommitMsg(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter' && e.metaKey) handleManualCommit() }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && e.metaKey) handleManualCommit()
+                }}
                 placeholder="Commit message..."
                 className="min-w-0 flex-1 rounded bg-stone-800 px-2.5 py-1.5 text-stone-200 text-xs outline-none ring-1 ring-stone-700 placeholder:text-stone-600 focus:ring-stone-500"
               />
@@ -167,7 +180,11 @@ export function GitCommitTab({ cwd, sessionId }: GitCommitTabProps) {
                 className="rounded p-1.5 text-stone-500 transition-colors hover:bg-stone-800 hover:text-amber-400 disabled:opacity-50"
                 title="Generate commit message"
               >
-                {generating ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+                {generating ? (
+                  <Loader2 size={13} className="animate-spin" />
+                ) : (
+                  <Sparkles size={13} />
+                )}
               </button>
             </div>
 
@@ -186,7 +203,11 @@ export function GitCommitTab({ cwd, sessionId }: GitCommitTabProps) {
                 disabled={analyzing || !sessionId || workingTree.length === 0}
                 className="flex items-center gap-1.5 rounded border border-amber-700 px-3 py-1.5 text-amber-400 text-xs transition-colors hover:bg-amber-950/30 disabled:opacity-50"
               >
-                {analyzing ? <Loader2 size={11} className="animate-spin" /> : <Sparkles size={11} />}
+                {analyzing ? (
+                  <Loader2 size={11} className="animate-spin" />
+                ) : (
+                  <Sparkles size={11} />
+                )}
                 Analyze
               </button>
             </div>
@@ -195,7 +216,9 @@ export function GitCommitTab({ cwd, sessionId }: GitCommitTabProps) {
       )}
 
       {error && (
-        <div className="border-stone-800 border-t bg-red-950/30 px-3 py-2 text-red-400 text-xs">{error}</div>
+        <div className="border-stone-800 border-t bg-red-950/30 px-3 py-2 text-red-400 text-xs">
+          {error}
+        </div>
       )}
     </div>
   )

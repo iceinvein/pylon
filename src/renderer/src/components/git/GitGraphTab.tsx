@@ -12,8 +12,17 @@ type GitGraphTabProps = {
 }
 
 export function GitGraphTab({ cwd, sessionId }: GitGraphTabProps) {
-  const { commits, branches, loading, error, selectedCommit, hasMore, fetchGraph, fetchBranches, selectCommit } =
-    useGitGraphStore()
+  const {
+    commits,
+    branches,
+    loading,
+    error,
+    selectedCommit,
+    hasMore,
+    fetchGraph,
+    fetchBranches,
+    selectCommit,
+  } = useGitGraphStore()
   const scrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -51,6 +60,7 @@ export function GitGraphTab({ cwd, sessionId }: GitGraphTabProps) {
     [commits, selectCommit],
   )
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: sessionId needed for future AI explain
   const handleExplain = useCallback(
     (_hash: string) => {
       // TODO: Route to chat session with explain prompt
@@ -85,7 +95,10 @@ export function GitGraphTab({ cwd, sessionId }: GitGraphTabProps) {
           <span className="text-stone-400 text-xs">{commits.length} commits</span>
           <button
             type="button"
-            onClick={() => { fetchGraph(cwd); fetchBranches(cwd) }}
+            onClick={() => {
+              fetchGraph(cwd)
+              fetchBranches(cwd)
+            }}
             className="rounded p-1 text-stone-500 hover:bg-stone-800 hover:text-stone-300"
           >
             <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
@@ -96,7 +109,7 @@ export function GitGraphTab({ cwd, sessionId }: GitGraphTabProps) {
         <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto">
           <div className="relative" style={{ height: commits.length * GRAPH_CONSTANTS.ROW_HEIGHT }}>
             {/* Canvas graph lines */}
-            <div className="absolute left-0 top-0" style={{ width: graphWidth }}>
+            <div className="absolute top-0 left-0" style={{ width: graphWidth }}>
               <GitGraphCanvas commits={commits} />
             </div>
 
@@ -115,8 +128,10 @@ export function GitGraphTab({ cwd, sessionId }: GitGraphTabProps) {
                   paddingLeft: graphWidth + 8,
                 }}
               >
-                <span className="min-w-0 flex-1 truncate text-stone-300 text-xs">{commit.message}</span>
-                <span className="flex-shrink-0 px-2 font-[family-name:var(--font-mono)] text-stone-600 text-[10px]">
+                <span className="min-w-0 flex-1 truncate text-stone-300 text-xs">
+                  {commit.message}
+                </span>
+                <span className="flex-shrink-0 px-2 font-[family-name:var(--font-mono)] text-[10px] text-stone-600">
                   {commit.shortHash}
                 </span>
                 {commit.refs.length > 0 && (
@@ -125,7 +140,9 @@ export function GitGraphTab({ cwd, sessionId }: GitGraphTabProps) {
                       <span
                         key={ref.name}
                         className={`rounded px-1 py-0.5 text-[9px] ${
-                          ref.isCurrent ? 'bg-amber-950/50 text-amber-400' : 'bg-stone-800 text-stone-500'
+                          ref.isCurrent
+                            ? 'bg-amber-950/50 text-amber-400'
+                            : 'bg-stone-800 text-stone-500'
                         }`}
                       >
                         {ref.name}

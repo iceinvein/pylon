@@ -481,11 +481,7 @@ export class SessionManager {
     return { model: session.model, permissionMode: session.permissionMode }
   }
 
-  async sendGitAiQuery(
-    sessionId: string,
-    prompt: string,
-    systemPrompt: string,
-  ): Promise<string> {
+  async sendGitAiQuery(sessionId: string, prompt: string, systemPrompt: string): Promise<string> {
     const session = this.sessions.get(sessionId)
     if (!session) throw new Error('Session not found')
 

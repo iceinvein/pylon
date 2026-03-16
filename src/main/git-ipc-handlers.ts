@@ -1,9 +1,19 @@
-import { BrowserWindow, ipcMain } from 'electron'
-import { IPC } from '../shared/ipc-channels'
+import { type BrowserWindow, ipcMain } from 'electron'
 import type { CommitGroup, ConflictResolution } from '../shared/git-types'
+import { IPC } from '../shared/ipc-channels'
 import { log } from '../shared/logger'
-import { analyzeForCommitPlan, generateCommitMessage, interpretNlCommand, resolveConflicts } from './git-ai-bridge'
-import { executeCommitGroup, getWorkingTreeStatus, stageFiles, unstageFiles } from './git-commit-service'
+import {
+  analyzeForCommitPlan,
+  generateCommitMessage,
+  interpretNlCommand,
+  resolveConflicts,
+} from './git-ai-bridge'
+import {
+  executeCommitGroup,
+  getWorkingTreeStatus,
+  stageFiles,
+  unstageFiles,
+} from './git-commit-service'
 import { checkoutBranch, getGitBranches, getGraphLog } from './git-graph-service'
 import { continueOperation, getConflictFiles, writeResolvedFile } from './git-ops-service'
 
@@ -78,10 +88,8 @@ export function registerGitIpcHandlers(): void {
     getConflictFiles(args.cwd),
   )
 
-  ipcMain.handle(
-    IPC.GIT_OPS_RESOLVE_CONFLICTS,
-    (_e, args: { cwd: string; sessionId: string }) =>
-      resolveConflicts(args.cwd, args.sessionId),
+  ipcMain.handle(IPC.GIT_OPS_RESOLVE_CONFLICTS, (_e, args: { cwd: string; sessionId: string }) =>
+    resolveConflicts(args.cwd, args.sessionId),
   )
 
   ipcMain.handle(
@@ -100,4 +108,3 @@ export function registerGitIpcHandlers(): void {
     return result
   })
 }
-

@@ -4,11 +4,11 @@ import { app, BrowserWindow, ipcMain, shell } from 'electron'
 import { IPC } from '../shared/ipc-channels'
 import { initLogger, log, writeRendererLog } from '../shared/logger'
 import { initDatabase } from './db'
+import { registerGitIpcHandlers, setGitWindow } from './git-ipc-handlers'
 import { registerIpcHandlers } from './ipc-handlers'
 import { prReviewManager } from './pr-review-manager'
 import { sessionManager } from './session-manager'
 import { testManager } from './test-manager'
-import { registerGitIpcHandlers, setGitWindow } from './git-ipc-handlers'
 
 function createWindow(): BrowserWindow {
   const mainWindow = new BrowserWindow({

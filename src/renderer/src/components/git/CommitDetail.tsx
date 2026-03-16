@@ -13,12 +13,14 @@ export function CommitDetail({ commit, onClose, onExplain }: CommitDetailProps) 
       <div className="flex items-start justify-between">
         <div className="min-w-0 flex-1">
           <p className="font-medium text-stone-200 text-xs">{commit.message}</p>
-          <div className="mt-1 flex items-center gap-2 text-stone-500 text-[10px]">
+          <div className="mt-1 flex items-center gap-2 text-[10px] text-stone-500">
             <span>{commit.author}</span>
             <span>•</span>
             <span>{new Date(commit.date).toLocaleDateString()}</span>
             <span>•</span>
-            <code className="font-[family-name:var(--font-mono)] text-stone-600">{commit.shortHash}</code>
+            <code className="font-[family-name:var(--font-mono)] text-stone-600">
+              {commit.shortHash}
+            </code>
           </div>
           {commit.refs.length > 0 && (
             <div className="mt-1.5 flex flex-wrap gap-1">

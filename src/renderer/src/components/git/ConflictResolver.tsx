@@ -38,10 +38,18 @@ export function ConflictResolver({ conflicts, onApply, onCancel }: ConflictResol
       <div className="flex items-center justify-between border-stone-800 border-b px-3 py-2">
         <p className="font-medium text-stone-300 text-xs">Conflict Resolution</p>
         <div className="flex gap-2">
-          <button type="button" onClick={acceptAll} className="text-stone-500 text-[10px] hover:text-stone-300">
+          <button
+            type="button"
+            onClick={acceptAll}
+            className="text-[10px] text-stone-500 hover:text-stone-300"
+          >
             Accept all
           </button>
-          <button type="button" onClick={onCancel} className="text-stone-500 text-[10px] hover:text-red-400">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="text-[10px] text-stone-500 hover:text-red-400"
+          >
             Cancel
           </button>
         </div>
@@ -49,7 +57,10 @@ export function ConflictResolver({ conflicts, onApply, onCancel }: ConflictResol
 
       <div className="flex-1 overflow-y-auto p-2">
         {conflicts.map((conflict) => (
-          <div key={conflict.filePath} className="mb-2 rounded-lg border border-stone-700 bg-stone-900/50">
+          <div
+            key={conflict.filePath}
+            className="mb-2 rounded-lg border border-stone-700 bg-stone-900/50"
+          >
             <label className="flex cursor-pointer items-center gap-2 p-2.5">
               <input
                 type="checkbox"
@@ -62,11 +73,13 @@ export function ConflictResolver({ conflicts, onApply, onCancel }: ConflictResol
               </span>
               <span className={`text-[10px] ${confidenceColors[conflict.confidence]}`}>
                 {conflict.confidence}
-                {conflict.confidence === 'low' && <AlertTriangle size={10} className="ml-1 inline" />}
+                {conflict.confidence === 'low' && (
+                  <AlertTriangle size={10} className="ml-1 inline" />
+                )}
               </span>
             </label>
             <div className="border-stone-800 border-t px-3 py-2">
-              <p className="text-stone-500 text-[10px]">{conflict.explanation}</p>
+              <p className="text-[10px] text-stone-500">{conflict.explanation}</p>
             </div>
           </div>
         ))}

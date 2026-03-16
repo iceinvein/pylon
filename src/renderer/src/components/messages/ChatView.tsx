@@ -1,6 +1,6 @@
-import { Minimize2, Zap } from 'lucide-react'
+import { ChevronDown, ChevronRight, Minimize2, Zap } from 'lucide-react'
 import { motion } from 'motion/react'
-import { memo, useEffect, useMemo, useRef } from 'react'
+import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { useAgentGrouping } from '../../hooks/use-agent-grouping'
 import { detectChoices } from '../../lib/detect-choices'
 import { parsePlanSections } from '../../lib/parse-plan'
@@ -95,8 +95,8 @@ export const ChatView = memo(function ChatView({ sessionId }: ChatViewProps) {
 
   const { agentMap, mainThreadMessages } = useAgentGrouping(sessionMessages)
 
-  // Find the last compact_boundary and only show messages after it
-  const { visibleMessages, wasCompacted, compactMetadata } = useMemo(() => {
+  // Find the last compact_boundary — keep pre-compaction messages for reference
+  const { visibleMessages, preCompactMessages, wasCompacted, compactMetadata } = useMemo(() => {
     let lastBoundaryIdx = -1
     let metadata: { trigger?: string; pre_tokens?: number } | null = null
     for (let i = mainThreadMessages.length - 1; i >= 0; i--) {
@@ -110,8 +110,23 @@ export const ChatView = memo(function ChatView({ sessionId }: ChatViewProps) {
       }
     }
     if (lastBoundaryIdx === -1) {
-      return { visibleMessages: mainThreadMessages, wasCompacted: false, compactMetadata: null }
+      return {
+        visibleMessages: mainThreadMessages,
+        preCompactMessages: [],
+        wasCompacted: false,
+        compactMetadata: null,
+      }
     }
+    // Collect pre-compaction messages (everything before the boundary), filtering out
+    // system messages that aren't useful for reference (compact_boundary itself, etc.)
+    const preMessages = mainThreadMessages.slice(0, lastBoundaryIdx).filter((m) => {
+      const msg = m as SdkMessage
+      if (msg.type === 'system') {
+        const sub = msg.subtype as string | undefined
+        return sub !== 'compact_boundary' && sub !== 'hook_started' && sub !== 'hook_response'
+      }
+      return true
+    })
     // Skip the SDK-injected summary user message that immediately follows the boundary
     let startIdx = lastBoundaryIdx + 1
     const next = mainThreadMessages[startIdx] as SdkMessage | undefined
@@ -120,10 +135,13 @@ export const ChatView = memo(function ChatView({ sessionId }: ChatViewProps) {
     }
     return {
       visibleMessages: mainThreadMessages.slice(startIdx),
+      preCompactMessages: preMessages,
       wasCompacted: true,
       compactMetadata: metadata,
     }
   }, [mainThreadMessages])
+
+  const [showPreCompactMessages, setShowPreCompactMessages] = useState(false)
 
   // Map from visibleMessages index → original sessionMessages index.
   // The flow graph uses sessionMessages indices, so we need this to set
@@ -689,20 +707,57 @@ export const ChatView = memo(function ChatView({ sessionId }: ChatViewProps) {
     <div ref={scrollContainerRef} className="flex h-full flex-col overflow-y-auto">
       <div className="mx-auto w-full max-w-3xl">
         {wasCompacted && (
-          <div className="flex items-center gap-3 px-6 py-3">
-            <div className="h-px flex-1 bg-stone-700/50" />
-            <div className="flex items-center gap-1.5 text-stone-500 text-xs">
-              <Minimize2 size={12} />
-              <span>
-                Conversation {compactMetadata?.trigger === 'auto' ? 'auto-' : ''}compacted
-              </span>
-              {compactMetadata?.pre_tokens && (
-                <span className="text-stone-600">
-                  ({Math.round(compactMetadata.pre_tokens / 1000)}k tokens)
+          <div>
+            {/* Pre-compaction messages: retained for reference */}
+            {preCompactMessages.length > 0 && (
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setShowPreCompactMessages((v) => !v)}
+                  className="flex w-full items-center gap-2 px-6 py-2 text-stone-500 text-xs transition-colors hover:text-stone-400"
+                >
+                  {showPreCompactMessages ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                  <span>
+                    {showPreCompactMessages ? 'Hide' : 'Show'} earlier messages
+                    <span className="ml-1 text-stone-600">
+                      (
+                      {
+                        preCompactMessages.filter((m) => {
+                          const msg = m as SdkMessage
+                          return msg.type === 'user' || msg.type === 'assistant'
+                        }).length
+                      }{' '}
+                      messages)
+                    </span>
+                  </span>
+                </button>
+                {showPreCompactMessages && (
+                  <div className="pointer-events-auto ml-4 select-text border-stone-700/50 border-l-2 opacity-50">
+                    {preCompactMessages.map((msg, idx) => {
+                      const sdkMsg = msg as SdkMessage
+                      const rendered = renderMessage(sdkMsg, -(preCompactMessages.length - idx))
+                      if (!rendered) return null
+                      return <div key={`pre-compact-${idx}`}>{rendered}</div>
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+            <div className="flex items-center gap-3 px-6 py-3">
+              <div className="h-px flex-1 bg-stone-700/50" />
+              <div className="flex items-center gap-1.5 text-stone-500 text-xs">
+                <Minimize2 size={12} />
+                <span>
+                  Conversation {compactMetadata?.trigger === 'auto' ? 'auto-' : ''}compacted
                 </span>
-              )}
+                {compactMetadata?.pre_tokens && (
+                  <span className="text-stone-600">
+                    ({Math.round(compactMetadata.pre_tokens / 1000)}k tokens)
+                  </span>
+                )}
+              </div>
+              <div className="h-px flex-1 bg-stone-700/50" />
             </div>
-            <div className="h-px flex-1 bg-stone-700/50" />
           </div>
         )}
 

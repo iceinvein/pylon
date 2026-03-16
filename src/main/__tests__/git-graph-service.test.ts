@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { parseGitLogLine, assignLanes } from '../git-graph-service'
+import { assignLanes, parseGitLogLine } from '../git-graph-service'
 
 describe('parseGitLogLine', () => {
   test('parses a simple commit', () => {
@@ -37,9 +37,39 @@ describe('parseGitLogLine', () => {
 describe('assignLanes', () => {
   test('assigns column 0 to a linear history', () => {
     const commits = [
-      { hash: 'a', parents: ['b'], refs: [], message: '', author: '', date: '', shortHash: 'a', graphColumns: 0, graphLines: [] },
-      { hash: 'b', parents: ['c'], refs: [], message: '', author: '', date: '', shortHash: 'b', graphColumns: 0, graphLines: [] },
-      { hash: 'c', parents: [], refs: [], message: '', author: '', date: '', shortHash: 'c', graphColumns: 0, graphLines: [] },
+      {
+        hash: 'a',
+        parents: ['b'],
+        refs: [],
+        message: '',
+        author: '',
+        date: '',
+        shortHash: 'a',
+        graphColumns: 0,
+        graphLines: [],
+      },
+      {
+        hash: 'b',
+        parents: ['c'],
+        refs: [],
+        message: '',
+        author: '',
+        date: '',
+        shortHash: 'b',
+        graphColumns: 0,
+        graphLines: [],
+      },
+      {
+        hash: 'c',
+        parents: [],
+        refs: [],
+        message: '',
+        author: '',
+        date: '',
+        shortHash: 'c',
+        graphColumns: 0,
+        graphLines: [],
+      },
     ]
     const result = assignLanes(commits)
     expect(result.every((c) => c.graphColumns === 0)).toBe(true)

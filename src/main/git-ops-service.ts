@@ -15,7 +15,11 @@ export async function executeGitCommands(
   for (const cmd of commands) {
     const parts = cmd.split(/\s+/)
     if (parts[0] !== 'git') {
-      return { success: false, output: outputs.join('\n'), error: `Refusing non-git command: ${cmd}` }
+      return {
+        success: false,
+        output: outputs.join('\n'),
+        error: `Refusing non-git command: ${cmd}`,
+      }
     }
 
     try {

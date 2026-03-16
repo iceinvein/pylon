@@ -1,15 +1,12 @@
-import { log } from '../shared/logger'
 import type { CommitPlan, ConflictResolution, GitCommandPlan } from '../shared/git-types'
+import { log } from '../shared/logger'
 import { getDiffForAnalysis } from './git-commit-service'
 import { getConflictFiles, readConflictFile } from './git-ops-service'
 import { sessionManager } from './session-manager'
 
 const logger = log.child('git-ai-bridge')
 
-export async function analyzeForCommitPlan(
-  cwd: string,
-  sessionId: string,
-): Promise<CommitPlan> {
+export async function analyzeForCommitPlan(cwd: string, sessionId: string): Promise<CommitPlan> {
   const diff = await getDiffForAnalysis(cwd)
   if (!diff.trim()) {
     return { groups: [], reasoning: 'No changes detected.' }
@@ -32,15 +29,16 @@ Use conventional commit format for messages. Group related changes together.`
   }
 }
 
-export async function generateCommitMessage(
-  cwd: string,
-  sessionId: string,
-): Promise<string> {
+export async function generateCommitMessage(cwd: string, sessionId: string): Promise<string> {
   const diff = await getDiffForAnalysis(cwd)
   const systemPrompt = `You are a git commit message generator. Analyze the staged diff and return ONLY a conventional commit message (no explanation, no markdown). Format: type(scope): description`
 
   const response = await sessionManager.sendGitAiQuery(sessionId, diff, systemPrompt)
-  return response.trim().replace(/^```\w*\n?/, '').replace(/\n?```$/, '').trim()
+  return response
+    .trim()
+    .replace(/^```\w*\n?/, '')
+    .replace(/\n?```$/, '')
+    .trim()
 }
 
 export async function interpretNlCommand(

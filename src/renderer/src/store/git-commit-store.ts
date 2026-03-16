@@ -1,6 +1,6 @@
 import { create } from 'zustand'
-import { log } from '../../../shared/logger'
 import type { CommitGroup, CommitPlan, FileStatus } from '../../../shared/git-types'
+import { log } from '../../../shared/logger'
 
 const logger = log.child('git-commit-store')
 
@@ -76,6 +76,5 @@ export const useGitCommitStore = create<GitCommitStore>((set) => ({
 
   setCommitPlan: (plan) => set({ commitPlan: plan }),
 
-  reset: () =>
-    set({ workingTree: [], commitPlan: null, analyzing: false, error: null }),
+  reset: () => set({ workingTree: [], commitPlan: null, analyzing: false, error: null }),
 }))

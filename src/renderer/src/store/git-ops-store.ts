@@ -1,6 +1,6 @@
 import { create } from 'zustand'
-import { log } from '../../../shared/logger'
 import type { CommandEntry, ConflictResolution, GitCommandPlan } from '../../../shared/git-types'
+import { log } from '../../../shared/logger'
 
 const logger = log.child('git-ops-store')
 
@@ -65,7 +65,11 @@ export const useGitOpsStore = create<GitOpsStore>((set) => ({
         pendingPlan: null,
         commandHistory: s.commandHistory.map((e) =>
           e.plan?.id === planId
-            ? { ...e, status: result.success ? ('completed' as const) : ('failed' as const), result: result.result }
+            ? {
+                ...e,
+                status: result.success ? ('completed' as const) : ('failed' as const),
+                result: result.result,
+              }
             : e,
         ),
       }))
@@ -100,6 +104,5 @@ export const useGitOpsStore = create<GitOpsStore>((set) => ({
 
   setConflicts: (conflicts) => set({ conflicts }),
 
-  reset: () =>
-    set({ commandHistory: [], pendingPlan: null, conflicts: [], error: null }),
+  reset: () => set({ commandHistory: [], pendingPlan: null, conflicts: [], error: null }),
 }))

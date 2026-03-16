@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import type { GraphCommit } from '../../../../shared/git-types'
-import { drawGraph, getGraphWidth, GRAPH_CONSTANTS } from '../../lib/git-graph-layout'
+import { drawGraph, GRAPH_CONSTANTS, getGraphWidth } from '../../lib/git-graph-layout'
 
 type GitGraphCanvasProps = {
   commits: GraphCommit[]
