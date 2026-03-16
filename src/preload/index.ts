@@ -53,6 +53,54 @@ const api = {
     return () => ipcRenderer.removeListener(IPC.GIT_STATUS_CHANGED, handler)
   },
 
+  // Git Graph
+  gitGraphGetLog: (cwd: string, afterHash?: string) =>
+    ipcRenderer.invoke(IPC.GIT_GRAPH_GET_LOG, { cwd, afterHash }),
+  gitGraphGetBranches: (cwd: string) =>
+    ipcRenderer.invoke(IPC.GIT_GRAPH_GET_BRANCHES, { cwd }),
+  gitGraphCheckout: (cwd: string, branch: string) =>
+    ipcRenderer.invoke(IPC.GIT_GRAPH_CHECKOUT, { cwd, branch }),
+
+  // Git Commit
+  gitCommitGetStatus: (cwd: string) =>
+    ipcRenderer.invoke(IPC.GIT_COMMIT_GET_STATUS, { cwd }),
+  gitCommitAnalyze: (cwd: string, sessionId: string) =>
+    ipcRenderer.invoke(IPC.GIT_COMMIT_ANALYZE, { cwd, sessionId }),
+  gitCommitGenerateMsg: (cwd: string, sessionId: string) =>
+    ipcRenderer.invoke(IPC.GIT_COMMIT_GENERATE_MSG, { cwd, sessionId }),
+  gitCommitExecute: (cwd: string, group: unknown) =>
+    ipcRenderer.invoke(IPC.GIT_COMMIT_EXECUTE, { cwd, group }),
+  gitCommitStage: (cwd: string, paths: string[]) =>
+    ipcRenderer.invoke(IPC.GIT_COMMIT_STAGE, { cwd, paths }),
+  gitCommitUnstage: (cwd: string, paths: string[]) =>
+    ipcRenderer.invoke(IPC.GIT_COMMIT_UNSTAGE, { cwd, paths }),
+
+  // Git Ops
+  gitOpsExecuteNl: (cwd: string, sessionId: string, text: string) =>
+    ipcRenderer.invoke(IPC.GIT_OPS_EXECUTE_NL, { cwd, sessionId, text }),
+  gitOpsConfirm: (cwd: string, planId: string) =>
+    ipcRenderer.invoke(IPC.GIT_OPS_CONFIRM, { cwd, planId }),
+  gitOpsGetConflicts: (cwd: string) =>
+    ipcRenderer.invoke(IPC.GIT_OPS_GET_CONFLICTS, { cwd }),
+  gitOpsResolveConflicts: (cwd: string, sessionId: string) =>
+    ipcRenderer.invoke(IPC.GIT_OPS_RESOLVE_CONFLICTS, { cwd, sessionId }),
+  gitOpsApplyResolution: (cwd: string, resolutions: unknown[]) =>
+    ipcRenderer.invoke(IPC.GIT_OPS_APPLY_RESOLUTION, { cwd, resolutions }),
+  gitOpsContinue: (cwd: string) =>
+    ipcRenderer.invoke(IPC.GIT_OPS_CONTINUE, { cwd }),
+
+  // Git Events (main → renderer)
+  onGitGraphUpdated: (callback: (data: unknown) => void) => {
+    const handler = (_event: unknown, data: unknown) => callback(data)
+    ipcRenderer.on(IPC.GIT_GRAPH_UPDATED, handler)
+    return () => ipcRenderer.removeListener(IPC.GIT_GRAPH_UPDATED, handler)
+  },
+  onGitOpsConflictDetected: (callback: (data: unknown) => void) => {
+    const handler = (_event: unknown, data: unknown) => callback(data)
+    ipcRenderer.on(IPC.GIT_OPS_CONFLICT_DETECTED, handler)
+    return () => ipcRenderer.removeListener(IPC.GIT_OPS_CONFLICT_DETECTED, handler)
+  },
+
   // PR Review
   checkGhStatus: () => ipcRenderer.invoke(IPC.GH_CHECK_STATUS),
   setGhPath: (path: string) => ipcRenderer.invoke(IPC.GH_SET_PATH, { path }),
