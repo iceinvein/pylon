@@ -20,8 +20,13 @@ export type FileTier = 'critical' | 'important' | 'low' | 'skip'
 export const PROMPT_OVERHEAD_TOKENS = 80_000
 
 export const MODEL_TOKEN_LIMITS: Record<string, number> = {
+  // Opus 4.6 — 1M context window
+  'claude-opus-4-6': 1_000_000,
+  'claude-opus-4-20250514': 1_000_000,
+  // Sonnet / Haiku — 200K context window
+  'claude-sonnet-4-6': 200_000,
   'claude-sonnet-4-20250514': 200_000,
-  'claude-opus-4-20250514': 200_000,
+  'claude-haiku-4-5': 200_000,
   'claude-haiku-3-20250307': 200_000,
   default: 200_000,
 }
@@ -241,9 +246,18 @@ function estimateTokens(text: string): number {
  * @param model - Model name for context limit lookup
  * @param chunkIndex - 0-indexed chunk number; later chunks have smaller budgets
  *                     because the conversation history grows with each chunk
+ * @param contextWindowOverride - SDK-reported context window size; takes precedence
+ *                                over MODEL_TOKEN_LIMITS when provided
  */
-export function getTokenBudget(model?: string, chunkIndex = 0): number {
-  const limit = (model ? MODEL_TOKEN_LIMITS[model] : undefined) ?? MODEL_TOKEN_LIMITS.default
+export function getTokenBudget(
+  model?: string,
+  chunkIndex = 0,
+  contextWindowOverride?: number,
+): number {
+  const limit =
+    contextWindowOverride ??
+    (model ? MODEL_TOKEN_LIMITS[model] : undefined) ??
+    MODEL_TOKEN_LIMITS.default
   const conversationGrowth = chunkIndex * PER_CHUNK_CONVERSATION_OVERHEAD
   return Math.max(10_000, limit - PROMPT_OVERHEAD_TOKENS - conversationGrowth)
 }

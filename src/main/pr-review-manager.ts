@@ -455,9 +455,11 @@ class PrReviewManager {
 
     const detail = await getPrDetail(repo.fullName, prNumber)
 
-    const tokenBudget = getTokenBudget()
+    // Use SDK-reported context window if available, otherwise fall back to hardcoded limits
+    const cachedContextWindow = sessionManager.getModelContextWindow('claude-sonnet-4-6')
+    const tokenBudget = getTokenBudget(undefined, 0, cachedContextWindow)
     logger.info(
-      `Token budget: ${tokenBudget} tokens (diff length: ${detail.diff.length} chars, ~${Math.ceil(detail.diff.length / 3.3)} tokens)`,
+      `Token budget: ${tokenBudget} tokens (context window: ${cachedContextWindow ?? 'default'}, diff length: ${detail.diff.length} chars, ~${Math.ceil(detail.diff.length / 3.3)} tokens)`,
     )
     const { chunks, skippedFiles } = chunkDiff(detail.diff, { tokenBudget })
 

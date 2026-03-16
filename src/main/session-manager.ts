@@ -94,6 +94,49 @@ export class SessionManager {
   private sessions = new Map<string, ActiveSession>()
   private window: BrowserWindow | null = null
   private messageListeners = new Map<string, Set<(message: unknown) => void>>()
+  /** Cached context window sizes per model, learned from SDK result messages.
+   *  Pre-loaded from SQLite on construction, written-through on SDK updates. */
+  private modelContextWindows = new Map<string, number>()
+
+  constructor() {
+    this.loadPersistedContextWindows()
+  }
+
+  /** Load previously-persisted context window sizes from the settings table. */
+  private loadPersistedContextWindows(): void {
+    try {
+      const db = getDb()
+      const rows = db
+        .prepare("SELECT key, value FROM settings WHERE key LIKE 'context_window:%'")
+        .all() as { key: string; value: string }[]
+      for (const row of rows) {
+        const model = row.key.slice('context_window:'.length)
+        const size = Number(row.value)
+        if (model && size > 0) {
+          this.modelContextWindows.set(model, size)
+        }
+      }
+      if (rows.length > 0) {
+        logger.info(`Loaded ${rows.length} persisted context window size(s)`)
+      }
+    } catch {
+      // DB may not be ready yet during early init — that's fine,
+      // values will be populated from SDK results on first query.
+    }
+  }
+
+  /** Persist a context window size to the settings table. */
+  private persistContextWindow(model: string, size: number): void {
+    try {
+      const db = getDb()
+      db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run(
+        `context_window:${model}`,
+        String(size),
+      )
+    } catch {
+      // Non-critical — in-memory cache is still valid
+    }
+  }
 
   setWindow(window: BrowserWindow): void {
     this.window = window
@@ -317,6 +360,21 @@ export class SessionManager {
 
         if (message.type === 'result') {
           const result = message as SDKResultMessage
+
+          // Cache context window sizes from SDK result for dynamic token budgeting
+          if (result.modelUsage) {
+            for (const [model, usage] of Object.entries(result.modelUsage)) {
+              if (usage.contextWindow > 0) {
+                const prev = this.modelContextWindows.get(model)
+                this.modelContextWindows.set(model, usage.contextWindow)
+                // Only write to DB if the value actually changed
+                if (prev !== usage.contextWindow) {
+                  this.persistContextWindow(model, usage.contextWindow)
+                }
+              }
+            }
+          }
+
           if (result.total_cost_usd !== undefined) {
             const db = getDb()
             db.prepare(
@@ -488,6 +546,11 @@ export class SessionManager {
     const session = this.sessions.get(sessionId)
     if (!session) return
     session.effort = effort
+  }
+
+  /** Returns the SDK-reported context window for a model, or undefined if not yet seen. */
+  getModelContextWindow(model: string): number | undefined {
+    return this.modelContextWindows.get(model)
   }
 
   getSessionInfo(sessionId: string): { model: string; permissionMode: PermissionMode } | null {
