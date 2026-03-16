@@ -13,17 +13,17 @@ const STATUS_CONFIG: Record<
   },
   running: {
     icon: Loader2,
-    color: 'text-stone-400 animate-spin',
+    color: 'text-[var(--color-base-text-secondary)] animate-spin',
     label: () => 'In progress',
   },
   error: {
     icon: XCircle,
-    color: 'text-red-400',
+    color: 'text-[var(--color-error)]',
     label: () => 'Failed',
   },
   pending: {
     icon: Clock,
-    color: 'text-stone-500',
+    color: 'text-[var(--color-base-text-muted)]',
     label: () => 'Pending',
   },
 }
@@ -50,10 +50,12 @@ export function ReviewHistory() {
   return (
     <div>
       <div className="flex items-center gap-2 px-2.5 py-1.5">
-        <span className="font-medium text-[10px] text-stone-600 uppercase tracking-wider">
+        <span className="font-medium text-[10px] text-[var(--color-base-text-faint)] uppercase tracking-wider">
           Past reviews
         </span>
-        <span className="text-[10px] text-stone-700 tabular-nums">{pastReviews.length}</span>
+        <span className="text-[10px] text-[var(--color-base-text-faint)] tabular-nums">
+          {pastReviews.length}
+        </span>
       </div>
       <div className="space-y-px">
         {pastReviews.map((r) => {
@@ -67,7 +69,9 @@ export function ReviewHistory() {
             <div
               key={r.id}
               className={`group flex items-center rounded-md transition-colors ${
-                isActive ? 'bg-stone-800/60' : 'hover:bg-stone-800/30'
+                isActive
+                  ? 'bg-[var(--color-base-raised)]/60'
+                  : 'hover:bg-[var(--color-base-raised)]/30'
               }`}
             >
               <button
@@ -76,10 +80,14 @@ export function ReviewHistory() {
                 className="flex min-w-0 flex-1 items-center gap-2.5 px-2.5 py-2"
               >
                 <StatusIcon size={12} className={`flex-shrink-0 ${config.color}`} />
-                <span className="text-[11px] text-stone-400">{timeAgo(r.createdAt)}</span>
-                <span className="truncate text-[11px] text-stone-600">{r.focus.join(', ')}</span>
+                <span className="text-[11px] text-[var(--color-base-text-secondary)]">
+                  {timeAgo(r.createdAt)}
+                </span>
+                <span className="truncate text-[11px] text-[var(--color-base-text-faint)]">
+                  {r.focus.join(', ')}
+                </span>
                 {r.costUsd > 0 && (
-                  <span className="flex-shrink-0 font-mono text-[10px] text-stone-600">
+                  <span className="flex-shrink-0 font-mono text-[10px] text-[var(--color-base-text-faint)]">
                     {formatCost(r.costUsd)}
                   </span>
                 )}
@@ -90,7 +98,7 @@ export function ReviewHistory() {
               <button
                 type="button"
                 onClick={() => deleteReview(r.id)}
-                className="flex-shrink-0 p-1.5 text-stone-700 opacity-0 transition-all hover:text-red-400 group-hover:opacity-100"
+                className="flex-shrink-0 p-1.5 text-[var(--color-base-text-faint)] opacity-0 transition-all hover:text-[var(--color-error)] group-hover:opacity-100"
                 title="Delete"
               >
                 <Trash2 size={10} />

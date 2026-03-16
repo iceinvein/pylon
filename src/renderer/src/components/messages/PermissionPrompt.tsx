@@ -8,26 +8,35 @@ type PermissionPromptProps = {
 
 export function PermissionPrompt({ permission, onRespond }: PermissionPromptProps) {
   return (
-    <div className="mx-6 my-2 rounded-lg border border-amber-800/50 bg-amber-950/20 p-4">
+    <div className="mx-6 my-2 rounded-lg border border-[var(--color-accent)]/30 bg-[var(--color-accent)]/5 p-4">
       <div className="flex items-start gap-3">
-        <ShieldQuestion size={16} className="mt-0.5 flex-shrink-0 text-amber-400" />
+        <ShieldQuestion
+          size={16}
+          className="mt-0.5 flex-shrink-0 text-[var(--color-accent-text)]"
+        />
         <div className="min-w-0 flex-1">
-          <p className="font-medium text-amber-300 text-sm">Permission Required</p>
-          <p className="mt-0.5 text-amber-500/80 text-xs">
-            Claude wants to use:{' '}
-            <span className="font-medium font-mono text-amber-400">{permission.toolName}</span>
+          <p className="font-semibold text-[var(--color-accent-text)] text-sm">
+            Allow this action?
           </p>
-          <div className="mt-2 overflow-x-auto rounded border border-amber-900/30 bg-stone-900/50 px-2 py-1.5">
-            <pre className="text-stone-400 text-xs">
+          <p className="mt-0.5 text-[var(--color-base-text-secondary)] text-xs">
+            Requesting:{' '}
+            <span className="font-medium font-mono text-[var(--color-accent-text)]">
+              {permission.toolName}
+            </span>
+          </p>
+          <div className="mt-2 max-h-48 overflow-auto rounded border border-[var(--color-base-border)] bg-[var(--color-base-bg)]/50 px-2 py-1.5">
+            <pre className="text-[var(--color-base-text-secondary)] text-xs">
               {JSON.stringify(permission.input, null, 2)}
             </pre>
           </div>
           {permission.suggestions && permission.suggestions.length > 0 && (
             <div className="mt-2 space-y-1">
               {permission.suggestions.map((s, i) => (
-                <div key={i} className="flex gap-2 text-stone-500 text-xs">
-                  <span className="text-stone-600">{s.type}:</span>
-                  <code className="font-mono text-stone-400">{s.pattern}</code>
+                <div key={i} className="flex gap-2 text-[var(--color-base-text-muted)] text-xs">
+                  <span className="text-[var(--color-base-text-faint)]">{s.type}:</span>
+                  <code className="font-mono text-[var(--color-base-text-secondary)]">
+                    {s.pattern}
+                  </code>
                 </div>
               ))}
             </div>
@@ -36,14 +45,14 @@ export function PermissionPrompt({ permission, onRespond }: PermissionPromptProp
             <button
               type="button"
               onClick={() => onRespond(permission.requestId, 'allow')}
-              className="rounded-md bg-green-700 px-3 py-1.5 font-medium text-white text-xs transition-colors hover:bg-green-600"
+              className="rounded-md bg-[var(--color-success)] px-3 py-1.5 font-medium text-white text-xs transition-colors hover:brightness-110"
             >
               Allow
             </button>
             <button
               type="button"
               onClick={() => onRespond(permission.requestId, 'deny')}
-              className="rounded-md bg-stone-700 px-3 py-1.5 font-medium text-stone-200 text-xs transition-colors hover:bg-stone-600"
+              className="rounded-md bg-[var(--color-base-raised)] px-3 py-1.5 font-medium text-[var(--color-base-text)] text-xs transition-colors hover:brightness-110"
             >
               Deny
             </button>

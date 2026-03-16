@@ -242,15 +242,15 @@ export function CommandPalette() {
 
           {/* Palette */}
           <motion.div
-            className="relative w-full max-w-[420px] overflow-hidden rounded-xl border border-stone-700/80 bg-stone-900/95 shadow-[0_20px_60px_rgba(0,0,0,0.5)] backdrop-blur-xl"
+            className="relative w-full max-w-[420px] overflow-hidden rounded-xl border border-[var(--color-base-border)]/80 bg-[var(--color-base-surface)]/95 shadow-[0_20px_60px_rgba(0,0,0,0.5)] backdrop-blur-xl"
             initial={{ scale: 0.96, opacity: 0, y: -10 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.96, opacity: 0, y: -10 }}
             transition={{ duration: 0.12, ease: [0.32, 0.72, 0, 1] }}
           >
             {/* Search input */}
-            <div className="flex items-center gap-2.5 border-stone-800/80 border-b px-4 py-3">
-              <Search size={14} className="flex-shrink-0 text-stone-500" />
+            <div className="flex items-center gap-2.5 border-[var(--color-base-border-subtle)]/80 border-b px-4 py-3">
+              <Search size={14} className="flex-shrink-0 text-[var(--color-base-text-muted)]" />
               <input
                 ref={inputRef}
                 type="text"
@@ -258,10 +258,10 @@ export function CommandPalette() {
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={handleInputKeyDown}
                 placeholder="Type a command..."
-                className="flex-1 bg-transparent text-sm text-stone-200 placeholder-stone-500 outline-none"
+                className="flex-1 bg-transparent text-[var(--color-base-text)] text-sm placeholder-[var(--color-base-text-muted)] outline-none"
                 spellCheck={false}
               />
-              <kbd className="rounded border border-stone-700/70 bg-stone-800/60 px-1.5 py-0.5 text-[10px] text-stone-500 leading-none">
+              <kbd className="rounded border border-[var(--color-base-border)]/70 bg-[var(--color-base-raised)]/60 px-1.5 py-0.5 text-[10px] text-[var(--color-base-text-muted)] leading-none">
                 {isMac ? '⌘K' : 'Ctrl+K'}
               </kbd>
             </div>
@@ -269,7 +269,7 @@ export function CommandPalette() {
             {/* Command list */}
             <div ref={listRef} className="max-h-[300px] overflow-y-auto p-1.5">
               {flatList.length === 0 ? (
-                <div className="px-3 py-8 text-center text-stone-500 text-xs">
+                <div className="px-3 py-8 text-center text-[var(--color-base-text-muted)] text-xs">
                   No matching commands
                 </div>
               ) : (
@@ -278,7 +278,7 @@ export function CommandPalette() {
                   {sessionCmds.length > 0 && (
                     <>
                       {showSections && (
-                        <div className="px-3 pt-1 pb-1.5 font-medium text-[10px] text-stone-600 uppercase tracking-wider">
+                        <div className="px-3 pt-1 pb-1.5 font-medium text-[10px] text-[var(--color-base-text-faint)] uppercase tracking-wider">
                           Session
                         </div>
                       )}
@@ -300,7 +300,7 @@ export function CommandPalette() {
                   {globalCmds.length > 0 && (
                     <>
                       {showSections && (
-                        <div className="px-3 pt-2.5 pb-1.5 font-medium text-[10px] text-stone-600 uppercase tracking-wider">
+                        <div className="px-3 pt-2.5 pb-1.5 font-medium text-[10px] text-[var(--color-base-text-faint)] uppercase tracking-wider">
                           General
                         </div>
                       )}
@@ -322,7 +322,7 @@ export function CommandPalette() {
                   {recentCmds.length > 0 && (
                     <>
                       {showSections && (
-                        <div className="px-3 pt-2.5 pb-1.5 font-medium text-[10px] text-stone-600 uppercase tracking-wider">
+                        <div className="px-3 pt-2.5 pb-1.5 font-medium text-[10px] text-[var(--color-base-text-faint)] uppercase tracking-wider">
                           Recent sessions
                         </div>
                       )}
@@ -344,21 +344,21 @@ export function CommandPalette() {
             </div>
 
             {/* Footer */}
-            <div className="flex items-center gap-3 border-stone-800/60 border-t px-4 py-2">
-              <span className="flex items-center gap-1 text-[10px] text-stone-600">
-                <kbd className="rounded border border-stone-700/50 bg-stone-800/40 px-1 py-px text-[9px]">
+            <div className="flex items-center gap-3 border-[var(--color-base-border-subtle)]/60 border-t px-4 py-2">
+              <span className="flex items-center gap-1 text-[10px] text-[var(--color-base-text-faint)]">
+                <kbd className="rounded border border-[var(--color-base-border)]/50 bg-[var(--color-base-raised)]/40 px-1 py-px text-[9px]">
                   ↑↓
                 </kbd>
                 navigate
               </span>
-              <span className="flex items-center gap-1 text-[10px] text-stone-600">
-                <kbd className="rounded border border-stone-700/50 bg-stone-800/40 px-1 py-px text-[9px]">
+              <span className="flex items-center gap-1 text-[10px] text-[var(--color-base-text-faint)]">
+                <kbd className="rounded border border-[var(--color-base-border)]/50 bg-[var(--color-base-raised)]/40 px-1 py-px text-[9px]">
                   ↵
                 </kbd>
                 run
               </span>
-              <span className="flex items-center gap-1 text-[10px] text-stone-600">
-                <kbd className="rounded border border-stone-700/50 bg-stone-800/40 px-1 py-px text-[9px]">
+              <span className="flex items-center gap-1 text-[10px] text-[var(--color-base-text-faint)]">
+                <kbd className="rounded border border-[var(--color-base-border)]/50 bg-[var(--color-base-raised)]/40 px-1 py-px text-[9px]">
                   esc
                 </kbd>
                 close
@@ -390,25 +390,27 @@ function CommandRow({
       }}
       onMouseEnter={onSelect}
       className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors duration-75 ${
-        isSelected ? 'bg-stone-800/90' : 'hover:bg-stone-800/40'
+        isSelected ? 'bg-[var(--color-base-raised)]/90' : 'hover:bg-[var(--color-base-raised)]/40'
       }`}
     >
       <div
         className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md border transition-colors duration-75 ${
           isSelected
-            ? 'border-stone-600/60 bg-stone-700/50 text-stone-300'
-            : 'border-stone-700/40 bg-stone-800/40 text-stone-500'
+            ? 'border-[var(--color-base-border)]/60 bg-[var(--color-base-border)]/50 text-[var(--color-base-text)]'
+            : 'border-[var(--color-base-border)]/40 bg-[var(--color-base-raised)]/40 text-[var(--color-base-text-muted)]'
         }`}
       >
         <Icon size={14} />
       </div>
       <div className="min-w-0 flex-1">
         <p
-          className={`text-sm transition-colors duration-75 ${isSelected ? 'text-stone-200' : 'text-stone-300'}`}
+          className={`text-sm transition-colors duration-75 ${isSelected ? 'text-[var(--color-base-text)]' : 'text-[var(--color-base-text)]'}`}
         >
           {cmd.label}
         </p>
-        <p className="text-[11px] text-stone-500 leading-tight">{cmd.description}</p>
+        <p className="text-[11px] text-[var(--color-base-text-muted)] leading-tight">
+          {cmd.description}
+        </p>
       </div>
     </button>
   )

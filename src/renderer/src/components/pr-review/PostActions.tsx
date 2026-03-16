@@ -11,28 +11,33 @@ const SEVERITY_PILLS = [
   {
     key: 'critical',
     label: 'Critical',
-    activeClass: 'bg-red-500/20 text-red-400 border-red-500/30',
-    inactiveClass: 'text-red-400/50 border-stone-700 hover:border-red-500/30 hover:text-red-400',
+    activeClass:
+      'bg-[var(--color-error)]/20 text-[var(--color-error)] border-[var(--color-error)]/30',
+    inactiveClass:
+      'text-[var(--color-error)]/50 border-[var(--color-base-border)] hover:border-[var(--color-error)]/30 hover:text-[var(--color-error)]',
   },
   {
     key: 'warning',
     label: 'Warning',
-    activeClass: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
+    activeClass:
+      'bg-[var(--color-accent-hover)]/20 text-[var(--color-warning)] border-[var(--color-accent)]/30',
     inactiveClass:
-      'text-amber-400/50 border-stone-700 hover:border-amber-500/30 hover:text-amber-400',
+      'text-[var(--color-warning)]/50 border-[var(--color-base-border)] hover:border-[var(--color-accent)]/30 hover:text-[var(--color-warning)]',
   },
   {
     key: 'suggestion',
     label: 'Suggestion',
-    activeClass: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-    inactiveClass: 'text-blue-400/50 border-stone-700 hover:border-blue-500/30 hover:text-blue-400',
+    activeClass: 'bg-[var(--color-info)]/20 text-[var(--color-info)] border-[var(--color-info)]/30',
+    inactiveClass:
+      'text-[var(--color-info)]/50 border-[var(--color-base-border)] hover:border-[var(--color-info)]/30 hover:text-[var(--color-info)]',
   },
   {
     key: 'nitpick',
     label: 'Nitpick',
-    activeClass: 'bg-stone-500/20 text-stone-400 border-stone-500/30',
+    activeClass:
+      'bg-[var(--color-base-text-muted)]/20 text-[var(--color-base-text-secondary)] border-[var(--color-base-text-muted)]/30',
     inactiveClass:
-      'text-stone-500/50 border-stone-700 hover:border-stone-500/30 hover:text-stone-400',
+      'text-[var(--color-base-text-muted)]/50 border-[var(--color-base-border)] hover:border-[var(--color-base-text-muted)]/30 hover:text-[var(--color-base-text-secondary)]',
   },
 ] as const
 
@@ -70,10 +75,10 @@ export function PostActions({ repoFullName, prNumber }: Props) {
   const isPosting = postingBatch !== null
 
   return (
-    <div className="border-stone-800 border-t bg-stone-950/80">
+    <div className="border-[var(--color-base-border-subtle)] border-t bg-[var(--color-base-bg)]/80">
       {/* Success banner */}
       {successMsg && (
-        <div className="flex items-center gap-2 bg-emerald-950/40 px-5 py-2 text-emerald-400 text-xs">
+        <div className="flex items-center gap-2 bg-[var(--color-success)]/40 px-5 py-2 text-emerald-400 text-xs">
           <Check size={12} className="flex-shrink-0" />
           {successMsg}
         </div>
@@ -85,7 +90,7 @@ export function PostActions({ repoFullName, prNumber }: Props) {
             type="button"
             onClick={selectedFindingIds.size > 0 ? clearFindingSelection : selectAllFindings}
             disabled={isPosting}
-            className="text-stone-500 text-xs transition-colors hover:text-stone-300 disabled:pointer-events-none disabled:opacity-30"
+            className="text-[var(--color-base-text-muted)] text-xs transition-colors hover:text-[var(--color-base-text)] disabled:pointer-events-none disabled:opacity-30"
           >
             {selectedFindingIds.size > 0 ? 'Deselect all' : 'Select all'}
           </button>
@@ -117,7 +122,7 @@ export function PostActions({ repoFullName, prNumber }: Props) {
             type="button"
             onClick={() => postSelectedAsReview(repoFullName, prNumber)}
             disabled={selectedCount === 0 || isPosting}
-            className="flex items-center gap-1.5 rounded-lg border border-stone-700 px-3 py-1.5 text-stone-300 text-xs transition-colors hover:border-stone-600 hover:bg-stone-800 disabled:pointer-events-none disabled:opacity-30"
+            className="flex items-center gap-1.5 rounded-lg border border-[var(--color-base-border)] px-3 py-1.5 text-[var(--color-base-text)] text-xs transition-colors hover:border-[var(--color-base-border)] hover:bg-[var(--color-base-raised)] disabled:pointer-events-none disabled:opacity-30"
           >
             {postingBatch === 'selected' ? (
               <Loader2 size={11} className="animate-spin" />
@@ -131,7 +136,7 @@ export function PostActions({ repoFullName, prNumber }: Props) {
             type="button"
             onClick={() => postAllAsReview(repoFullName, prNumber)}
             disabled={isPosting}
-            className="flex items-center gap-1.5 rounded-lg bg-stone-200 px-3 py-1.5 font-medium text-stone-900 text-xs transition-colors hover:bg-white disabled:pointer-events-none disabled:opacity-30"
+            className="flex items-center gap-1.5 rounded-lg bg-[var(--color-base-text)] px-3 py-1.5 font-medium text-[var(--color-base-bg)] text-xs transition-colors hover:bg-white disabled:pointer-events-none disabled:opacity-30"
           >
             {postingBatch === 'all' ? (
               <Loader2 size={12} className="animate-spin" />

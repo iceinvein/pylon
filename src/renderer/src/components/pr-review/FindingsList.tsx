@@ -20,7 +20,7 @@ export function FindingsList({ repoFullName, prNumber }: Props) {
 
   if (activeFindings.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center gap-2 py-16 text-stone-600">
+      <div className="flex flex-col items-center justify-center gap-2 py-16 text-[var(--color-base-text-faint)]">
         <CheckCircle2 size={24} strokeWidth={1.5} />
         <p className="text-xs">No findings from this review.</p>
       </div>
@@ -41,22 +41,22 @@ export function FindingsList({ repoFullName, prNumber }: Props) {
     <div>
       {/* Header with stats */}
       <div className="mb-3 flex items-center gap-2">
-        <span className="font-medium text-[11px] text-stone-400">
+        <span className="font-medium text-[11px] text-[var(--color-base-text-secondary)]">
           {activeFindings.length} finding{activeFindings.length !== 1 ? 's' : ''}
         </span>
         <div className="flex items-center gap-1.5">
           {criticalCount > 0 && (
-            <span className="rounded bg-red-500/10 px-1.5 py-0.5 font-medium text-[10px] text-red-400 tabular-nums">
+            <span className="rounded bg-[var(--color-error)]/10 px-1.5 py-0.5 font-medium text-[10px] text-[var(--color-error)] tabular-nums">
               {criticalCount} critical
             </span>
           )}
           {warningCount > 0 && (
-            <span className="rounded bg-amber-500/10 px-1.5 py-0.5 font-medium text-[10px] text-amber-400 tabular-nums">
+            <span className="rounded bg-[var(--color-accent-hover)]/10 px-1.5 py-0.5 font-medium text-[10px] text-[var(--color-warning)] tabular-nums">
               {warningCount} warning{warningCount !== 1 ? 's' : ''}
             </span>
           )}
           {suggestionCount > 0 && (
-            <span className="rounded bg-blue-500/10 px-1.5 py-0.5 font-medium text-[10px] text-blue-400 tabular-nums">
+            <span className="rounded bg-[var(--color-info)]/10 px-1.5 py-0.5 font-medium text-[10px] text-[var(--color-info)] tabular-nums">
               {suggestionCount} suggestion{suggestionCount !== 1 ? 's' : ''}
             </span>
           )}

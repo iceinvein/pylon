@@ -111,18 +111,18 @@ export function PrRaiseOverlay() {
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
-            className="fixed top-0 right-0 bottom-0 z-50 flex w-[70vw] min-w-[480px] max-w-[1000px] flex-col border-blue-500/20 border-l bg-stone-950 shadow-2xl"
+            className="fixed top-0 right-0 bottom-0 z-50 flex w-[70vw] min-w-[480px] max-w-[1000px] flex-col border-[var(--color-info)]/20 border-l bg-[var(--color-base-bg)] shadow-2xl"
           >
             {/* Header */}
-            <div className="flex items-center justify-between border-stone-800 border-b px-6 py-4">
-              <div className="flex items-center gap-2.5 font-semibold text-base text-stone-200">
-                <GitPullRequestArrow size={18} className="text-blue-400" />
+            <div className="flex items-center justify-between border-[var(--color-base-border-subtle)] border-b px-6 py-4">
+              <div className="flex items-center gap-2.5 font-semibold text-[var(--color-base-text)] text-base">
+                <GitPullRequestArrow size={18} className="text-[var(--color-info)]" />
                 Raise Pull Request
               </div>
               <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  className="rounded-md border border-stone-700 bg-stone-800 px-3 py-1.5 text-[12px] text-stone-400 transition-colors hover:bg-stone-700 hover:text-stone-200"
+                  className="rounded-md border border-[var(--color-base-border)] bg-[var(--color-base-raised)] px-3 py-1.5 text-[12px] text-[var(--color-base-text-secondary)] transition-colors hover:bg-[var(--color-base-border)] hover:text-[var(--color-base-text)]"
                   title="Run self-review on changes (coming soon)"
                   disabled
                 >
@@ -134,7 +134,7 @@ export function PrRaiseOverlay() {
                 <button
                   type="button"
                   onClick={closeOverlay}
-                  className="rounded-md p-1.5 text-stone-500 transition-colors hover:bg-stone-800 hover:text-stone-300"
+                  className="rounded-md p-1.5 text-[var(--color-base-text-muted)] transition-colors hover:bg-[var(--color-base-raised)] hover:text-[var(--color-base-text)]"
                   aria-label="Close"
                 >
                   <X size={18} />
@@ -144,13 +144,17 @@ export function PrRaiseOverlay() {
 
             {loading ? (
               <div className="flex flex-1 flex-col items-center justify-center gap-3">
-                <Loader2 size={24} className="animate-spin text-stone-500" />
-                <span className="text-sm text-stone-500">Loading PR info...</span>
+                <Loader2 size={24} className="animate-spin text-[var(--color-base-text-muted)]" />
+                <span className="text-[var(--color-base-text-muted)] text-sm">
+                  Loading PR info...
+                </span>
               </div>
             ) : error ? (
               <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6">
-                <span className="text-red-400 text-sm">Error</span>
-                <span className="text-center text-[12px] text-stone-500">{error}</span>
+                <span className="text-[var(--color-error)] text-sm">Error</span>
+                <span className="text-center text-[12px] text-[var(--color-base-text-muted)]">
+                  {error}
+                </span>
               </div>
             ) : (
               <>
@@ -166,7 +170,7 @@ export function PrRaiseOverlay() {
                 />
 
                 {/* Tabs */}
-                <div className="flex border-stone-800 border-b px-6 text-[13px]">
+                <div className="flex border-[var(--color-base-border-subtle)] border-b px-6 text-[13px]">
                   {(['description', 'files', 'commits'] as const).map((tab) => (
                     <button
                       key={tab}
@@ -174,8 +178,8 @@ export function PrRaiseOverlay() {
                       onClick={() => setActiveTab(tab)}
                       className={`px-3 py-2.5 capitalize transition-colors ${
                         activeTab === tab
-                          ? 'border-blue-500 border-b-2 text-blue-400'
-                          : 'text-stone-500 hover:text-stone-300'
+                          ? 'border-[var(--color-info)] border-b-2 text-[var(--color-info)]'
+                          : 'text-[var(--color-base-text-muted)] hover:text-[var(--color-base-text)]'
                       }`}
                     >
                       {tab}
@@ -199,28 +203,28 @@ export function PrRaiseOverlay() {
                 </div>
 
                 {/* Footer */}
-                <div className="flex items-center gap-3 border-stone-800 border-t px-6 py-4">
+                <div className="flex items-center gap-3 border-[var(--color-base-border-subtle)] border-t px-6 py-4">
                   {result?.success ? (
-                    <div className="flex flex-1 items-center gap-2 text-green-400 text-sm">
+                    <div className="flex flex-1 items-center gap-2 text-[var(--color-success)] text-sm">
                       <span>✓ PR #{result.prNumber} created!</span>
                       <a
                         href={result.prUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-blue-400 underline hover:text-blue-300"
+                        className="text-[var(--color-info)] underline hover:text-[var(--color-info)]"
                       >
                         View on GitHub
                       </a>
                     </div>
                   ) : result?.error ? (
-                    <div className="flex-1 text-red-400 text-xs">{result.error}</div>
+                    <div className="flex-1 text-[var(--color-error)] text-xs">{result.error}</div>
                   ) : (
                     <div className="flex-1" />
                   )}
                   <button
                     type="button"
                     onClick={closeOverlay}
-                    className="rounded-md border border-stone-700 bg-stone-800 px-5 py-2 text-[13px] text-stone-300 transition-colors hover:bg-stone-700"
+                    className="rounded-md border border-[var(--color-base-border)] bg-[var(--color-base-raised)] px-5 py-2 text-[13px] text-[var(--color-base-text)] transition-colors hover:bg-[var(--color-base-border)]"
                   >
                     Cancel
                   </button>
@@ -228,7 +232,7 @@ export function PrRaiseOverlay() {
                     type="button"
                     onClick={handleCreate}
                     disabled={creating || !editedTitle || !info || result?.success === true}
-                    className="rounded-md bg-blue-600 px-5 py-2 font-medium text-[13px] text-white transition-colors hover:bg-blue-500 disabled:opacity-40"
+                    className="rounded-md bg-[var(--color-info)] px-5 py-2 font-medium text-[13px] text-white transition-colors hover:bg-[var(--color-info)] disabled:opacity-40"
                   >
                     {creating ? (
                       <span className="flex items-center gap-2">

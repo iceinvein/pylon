@@ -149,16 +149,16 @@ export function ReviewPanel() {
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
-            className="fixed top-0 right-0 bottom-0 z-50 flex w-[70vw] min-w-[480px] max-w-[900px] flex-col border-stone-800 border-l bg-stone-950 shadow-2xl"
+            className="fixed top-0 right-0 bottom-0 z-50 flex w-[70vw] min-w-[480px] max-w-[900px] flex-col border-[var(--color-base-border-subtle)] border-l bg-[var(--color-base-bg)] shadow-2xl"
           >
             {/* Header */}
-            <div className="flex items-center justify-between border-stone-800 border-b px-6 py-4">
+            <div className="flex items-center justify-between border-[var(--color-base-border-subtle)] border-b px-6 py-4">
               <div>
-                <div className="flex items-center gap-2.5 font-semibold text-base text-stone-200">
+                <div className="flex items-center gap-2.5 font-semibold text-[var(--color-base-text)] text-base">
                   <ClipboardList size={18} className="text-violet-400" />
                   Review Plan
                 </div>
-                <div className="mt-1 text-[12px] text-stone-500">
+                <div className="mt-1 text-[12px] text-[var(--color-base-text-muted)]">
                   {relativePath} · {flatSections.length} section
                   {flatSections.length !== 1 ? 's' : ''}
                 </div>
@@ -166,7 +166,7 @@ export function ReviewPanel() {
               <button
                 type="button"
                 onClick={closeReviewPanel}
-                className="rounded-md p-1.5 text-stone-500 transition-colors hover:bg-stone-800 hover:text-stone-300"
+                className="rounded-md p-1.5 text-[var(--color-base-text-muted)] transition-colors hover:bg-[var(--color-base-raised)] hover:text-[var(--color-base-text)]"
                 aria-label="Close review panel"
               >
                 <X size={18} />
@@ -176,20 +176,20 @@ export function ReviewPanel() {
             {/* Scrollable sections */}
             <div className="flex-1 overflow-y-auto">
               {loading ? (
-                <div className="flex items-center justify-center py-16 text-sm text-stone-600">
+                <div className="flex items-center justify-center py-16 text-[var(--color-base-text-faint)] text-sm">
                   Loading plan...
                 </div>
               ) : error ? (
                 <div className="flex flex-col items-center justify-center gap-2 px-6 py-16">
-                  <span className="text-red-400 text-sm">Failed to load plan</span>
-                  <span className="text-[12px] text-stone-600">{error}</span>
+                  <span className="text-[var(--color-error)] text-sm">Failed to load plan</span>
+                  <span className="text-[12px] text-[var(--color-base-text-faint)]">{error}</span>
                 </div>
               ) : flatSections.length === 0 ? (
-                <div className="flex items-center justify-center py-16 text-sm text-stone-600">
+                <div className="flex items-center justify-center py-16 text-[var(--color-base-text-faint)] text-sm">
                   No sections found in plan file
                 </div>
               ) : (
-                <div className="divide-y divide-stone-800/60">
+                <div className="divide-y divide-[var(--color-base-border-subtle)]/60">
                   {flatSections.map((section, i) => (
                     <ReviewSection
                       key={`${section.level}-${section.title}`}
@@ -205,10 +205,10 @@ export function ReviewPanel() {
             </div>
 
             {/* Footer action bar */}
-            <div className="flex items-center gap-3 border-stone-800 border-t px-6 py-4">
-              <div className="flex-1 text-stone-500 text-xs">
+            <div className="flex items-center gap-3 border-[var(--color-base-border-subtle)] border-t px-6 py-4">
+              <div className="flex-1 text-[var(--color-base-text-muted)] text-xs">
                 {commentCount > 0 ? (
-                  <span className="text-amber-500">
+                  <span className="text-[var(--color-warning)]">
                     {commentCount} comment{commentCount !== 1 ? 's' : ''} on {flatSections.length}{' '}
                     section
                     {flatSections.length !== 1 ? 's' : ''}
@@ -223,7 +223,7 @@ export function ReviewPanel() {
                 type="button"
                 onClick={handleApprove}
                 disabled={!canAct}
-                className="rounded-md border border-stone-700 bg-stone-800 px-5 py-2 text-[13px] text-stone-300 transition-colors hover:bg-stone-700 disabled:opacity-40"
+                className="rounded-md border border-[var(--color-base-border)] bg-[var(--color-base-raised)] px-5 py-2 text-[13px] text-[var(--color-base-text)] transition-colors hover:bg-[var(--color-base-border)] disabled:opacity-40"
               >
                 Approve
               </button>
@@ -232,7 +232,7 @@ export function ReviewPanel() {
                   type="button"
                   onClick={handleRequestChanges}
                   disabled={!canAct}
-                  className="rounded-md bg-amber-600 px-5 py-2 font-semibold text-[13px] text-stone-950 transition-colors hover:bg-amber-500 disabled:opacity-40"
+                  className="rounded-md bg-[var(--color-accent)] px-5 py-2 font-semibold text-[13px] text-[var(--color-base-bg)] transition-colors hover:bg-[var(--color-accent-hover)] disabled:opacity-40"
                 >
                   Request Changes
                 </button>

@@ -19,7 +19,7 @@ function BranchIndicator({ status }: { status: GitBranchStatus }) {
   }
 
   const isBehind = status.behind > 0
-  const textColor = isBehind ? 'text-amber-400' : 'text-stone-500'
+  const textColor = isBehind ? 'text-[var(--color-warning)]' : 'text-[var(--color-base-text-muted)]'
 
   return (
     <span className={`flex items-center gap-1.5 text-xs ${textColor}`}>
@@ -35,15 +35,17 @@ export function StatusBar({ cwd: _cwd, branchStatus }: StatusBarProps) {
   const isGitOpen = sidebarView === 'git'
 
   if (!branchStatus?.isGitRepo || !branchStatus.branch) {
-    return <div className="h-6 border-stone-800 border-t bg-stone-950" />
+    return (
+      <div className="h-6 border-[var(--color-base-border-subtle)] border-t bg-[var(--color-base-bg)]" />
+    )
   }
 
   return (
-    <div className="flex h-6 items-center border-stone-800 border-t bg-stone-950 px-3">
+    <div className="flex h-6 items-center border-[var(--color-base-border-subtle)] border-t bg-[var(--color-base-bg)] px-3">
       <button
         type="button"
         onClick={() => setSidebarView(isGitOpen ? 'home' : 'git')}
-        className={`rounded px-1 py-0.5 transition-colors hover:bg-stone-800 ${isGitOpen ? 'bg-stone-800' : ''}`}
+        className={`rounded px-1 py-0.5 transition-colors hover:bg-[var(--color-base-raised)] ${isGitOpen ? 'bg-[var(--color-base-raised)]' : ''}`}
       >
         <BranchIndicator status={branchStatus} />
       </button>

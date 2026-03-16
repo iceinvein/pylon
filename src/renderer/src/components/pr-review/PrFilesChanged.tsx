@@ -60,24 +60,24 @@ export function PrFilesChanged({ files, diff }: PrFilesChangedProps) {
   }
 
   return (
-    <div className="mt-3 overflow-hidden rounded-lg border border-stone-800 bg-stone-900/40">
+    <div className="mt-3 overflow-hidden rounded-lg border border-[var(--color-base-border-subtle)] bg-[var(--color-base-surface)]/40">
       {/* Summary header */}
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
-        className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors hover:bg-stone-800/50"
+        className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors hover:bg-[var(--color-base-raised)]/50"
       >
         <ChevronDown
           size={12}
-          className={`flex-shrink-0 text-stone-500 transition-transform duration-150 ${expanded ? '' : '-rotate-90'}`}
+          className={`flex-shrink-0 text-[var(--color-base-text-muted)] transition-transform duration-150 ${expanded ? '' : '-rotate-90'}`}
         />
-        <FileText size={12} className="flex-shrink-0 text-stone-500" />
-        <span className="text-stone-300">
+        <FileText size={12} className="flex-shrink-0 text-[var(--color-base-text-muted)]" />
+        <span className="text-[var(--color-base-text)]">
           {files.length} file{files.length !== 1 ? 's' : ''} changed
         </span>
         <span className="ml-auto flex items-center gap-2 font-[family-name:var(--font-mono)] tabular-nums">
           <span className="text-emerald-500">+{formatNumber(totalAdditions)}</span>
-          <span className="text-red-500">-{formatNumber(totalDeletions)}</span>
+          <span className="text-[var(--color-error)]">-{formatNumber(totalDeletions)}</span>
         </span>
       </button>
 
@@ -91,7 +91,7 @@ export function PrFilesChanged({ files, diff }: PrFilesChangedProps) {
             transition={{ duration: 0.15, ease: [0.25, 0.1, 0.25, 1] }}
             className="overflow-hidden"
           >
-            <div className="max-h-[70vh] overflow-y-auto border-stone-800 border-t">
+            <div className="max-h-[70vh] overflow-y-auto border-[var(--color-base-border-subtle)] border-t">
               {files.map((file, i) => (
                 <FileRow
                   key={file.path}
@@ -129,30 +129,34 @@ function FileRow({
   const hasDiff = !!fileDiff
 
   return (
-    <div className={isLast && !isExpanded ? '' : 'border-stone-800/50 border-b'}>
+    <div
+      className={
+        isLast && !isExpanded ? '' : 'border-[var(--color-base-border-subtle)]/50 border-b'
+      }
+    >
       <button
         type="button"
         onClick={hasDiff ? onToggle : undefined}
         className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs transition-colors ${
-          hasDiff ? 'cursor-pointer hover:bg-stone-800/40' : 'cursor-default'
-        } ${isExpanded ? 'bg-stone-800/30' : ''}`}
+          hasDiff ? 'cursor-pointer hover:bg-[var(--color-base-raised)]/40' : 'cursor-default'
+        } ${isExpanded ? 'bg-[var(--color-base-raised)]/30' : ''}`}
       >
         {hasDiff ? (
           isExpanded ? (
-            <ChevronDown size={11} className="flex-shrink-0 text-stone-500" />
+            <ChevronDown size={11} className="flex-shrink-0 text-[var(--color-base-text-muted)]" />
           ) : (
-            <ChevronRight size={11} className="flex-shrink-0 text-stone-500" />
+            <ChevronRight size={11} className="flex-shrink-0 text-[var(--color-base-text-muted)]" />
           )
         ) : (
           <span className="w-[11px] flex-shrink-0" />
         )}
         <span className="min-w-0 flex-1 truncate font-[family-name:var(--font-mono)]">
-          {dir && <span className="text-stone-600">{dir}</span>}
-          <span className="text-stone-300">{name}</span>
+          {dir && <span className="text-[var(--color-base-text-faint)]">{dir}</span>}
+          <span className="text-[var(--color-base-text)]">{name}</span>
         </span>
         <span className="flex flex-shrink-0 items-center gap-2 font-[family-name:var(--font-mono)] tabular-nums">
           <span className="text-emerald-500">+{file.additions}</span>
-          <span className="text-red-500">-{file.deletions}</span>
+          <span className="text-[var(--color-error)]">-{file.deletions}</span>
         </span>
       </button>
 
@@ -181,14 +185,14 @@ function FileDiffContent({ rawDiff }: { rawDiff: string }) {
 
   if (hunks.length === 0) {
     return (
-      <div className="border-stone-800/30 border-t bg-stone-950/50 px-3 py-2 text-stone-600 text-xs">
+      <div className="border-[var(--color-base-border-subtle)]/30 border-t bg-[var(--color-base-bg)]/50 px-3 py-2 text-[var(--color-base-text-faint)] text-xs">
         Binary file or no textual changes
       </div>
     )
   }
 
   return (
-    <div className="border-stone-800/30 border-t bg-stone-950/50">
+    <div className="border-[var(--color-base-border-subtle)]/30 border-t bg-[var(--color-base-bg)]/50">
       <DiffView hunks={hunks} />
     </div>
   )

@@ -22,15 +22,19 @@ export function ChoiceButtons({ choices, onSelect, onPreFill }: ChoiceButtonsPro
           type="button"
           key={i}
           onClick={(e) => handleClick(e, choice.label)}
-          className="w-full rounded border border-stone-700/60 bg-stone-800/30 px-3 py-2 text-left transition-colors hover:border-blue-600/40 hover:bg-stone-800/50"
+          className="w-full rounded border border-[var(--color-base-border)]/60 bg-[var(--color-base-raised)]/30 px-3 py-2 text-left transition-colors hover:border-[var(--color-info)]/40 hover:bg-[var(--color-base-raised)]/50"
         >
-          <span className="font-medium text-sm text-stone-300">{choice.label}</span>
+          <span className="font-medium text-[var(--color-base-text)] text-sm">{choice.label}</span>
           {choice.description && (
-            <p className="mt-0.5 text-stone-500 text-xs">{choice.description}</p>
+            <p className="mt-0.5 text-[var(--color-base-text-muted)] text-xs">
+              {choice.description}
+            </p>
           )}
         </button>
       ))}
-      <p className="text-[10px] text-stone-600">Click to send · Shift+click to edit first</p>
+      <p className="text-[10px] text-[var(--color-base-text-faint)]">
+        Click to send · Shift+click to edit first
+      </p>
     </div>
   )
 }

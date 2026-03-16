@@ -1,9 +1,12 @@
 import { Folder, FolderOpen } from 'lucide-react'
+import { motion } from 'motion/react'
 import { useEffect, useState } from 'react'
 import logoUrl from '../assets/logo.png'
+import { SectionHeader } from '../components/SectionHeader'
 import { SessionHistory } from '../components/SessionHistory'
 import { WorktreeDialog } from '../components/WorktreeDialog'
 import { useFolderOpen } from '../hooks/use-folder-open'
+import { fadeUp, stagger } from '../lib/animations'
 import { timeAgo } from '../lib/utils'
 import { useTabStore } from '../store/tab-store'
 
@@ -31,51 +34,85 @@ export function HomePage() {
   }, [])
 
   return (
-    <div className="flex h-full flex-col items-center overflow-y-auto px-6 py-12">
-      <div className="w-full max-w-lg">
-        <div className="mb-12 text-center">
-          <img src={logoUrl} alt="Pylon" className="mx-auto mb-4 h-20 w-20" />
-          <h1 className="font-bold text-4xl text-stone-100 tracking-tight">Pylon</h1>
-          <p className="mt-2 text-stone-500">AI-powered development assistant</p>
-          <button
-            type="button"
-            onClick={openFolder}
-            className="mt-6 inline-flex items-center gap-2 rounded-lg bg-amber-600 px-5 py-2.5 font-medium text-sm text-stone-50 transition-colors hover:bg-amber-500"
+    <div className="flex h-full flex-col items-center overflow-y-auto px-6 py-16">
+      <motion.div className="w-full max-w-lg" variants={stagger()} initial="hidden" animate="show">
+        {/* Hero — staggered entrance */}
+        <div className="mb-16">
+          <motion.img
+            src={logoUrl}
+            alt="Pylon"
+            className="mb-6 h-14 w-14 opacity-80"
+            variants={fadeUp}
+          />
+          <motion.h1
+            className="font-display text-5xl text-[var(--color-base-text)] italic tracking-tight"
+            variants={fadeUp}
           >
-            <FolderOpen size={16} />
-            Open Folder
-          </button>
+            Pylon
+          </motion.h1>
+          <motion.p
+            className="mt-3 max-w-xs text-[var(--color-base-text-secondary)] text-base leading-relaxed"
+            variants={fadeUp}
+          >
+            Your code, with an architect beside you.
+          </motion.p>
+          <motion.div variants={fadeUp}>
+            <button
+              type="button"
+              onClick={openFolder}
+              className="mt-8 inline-flex items-center gap-2.5 rounded-lg bg-[var(--color-accent)] px-5 py-2.5 font-semibold text-sm text-white transition-all hover:bg-[var(--color-accent-hover)] active:scale-[0.98]"
+            >
+              <FolderOpen size={16} />
+              Open Folder
+            </button>
+          </motion.div>
+          {projects.length === 0 && (
+            <motion.p
+              className="mt-6 max-w-xs text-[var(--color-base-text-faint)] text-xs leading-relaxed"
+              variants={fadeUp}
+            >
+              Point Pylon at any project. It reads your code, runs commands, edits files, and
+              explains what it finds.
+            </motion.p>
+          )}
         </div>
 
         {projects.length > 0 && (
-          <div className="mb-8">
-            <p className="mb-2 font-medium text-stone-600 text-xs uppercase tracking-wider">
-              Projects
-            </p>
-            <div className="space-y-1">
+          <motion.div className="mb-10" variants={fadeUp}>
+            <SectionHeader>Projects</SectionHeader>
+            <div className="space-y-0.5">
               {projects.map((project) => (
                 <button
                   type="button"
                   key={project.path}
                   onClick={() => openPath(project.path)}
-                  className="group flex w-full items-start gap-3 rounded-lg p-3 text-left transition-colors hover:bg-stone-800/60"
+                  className="group flex w-full items-start gap-3 rounded-lg p-3 text-left transition-colors hover:bg-[var(--color-base-raised)]"
                 >
-                  <Folder size={14} className="mt-0.5 flex-shrink-0 text-stone-600" />
+                  <Folder
+                    size={14}
+                    className="mt-0.5 flex-shrink-0 text-[var(--color-base-text-muted)]"
+                  />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium text-sm text-stone-300">
+                    <p className="truncate font-medium text-[var(--color-base-text)] text-sm">
                       {project.path.split('/').pop()}
                     </p>
-                    <p className="truncate text-stone-600 text-xs">{project.path}</p>
-                    <p className="mt-0.5 text-[11px] text-stone-700">{timeAgo(project.lastUsed)}</p>
+                    <p className="truncate text-[var(--color-base-text-muted)] text-xs">
+                      {project.path}
+                    </p>
+                    <p className="mt-0.5 text-[11px] text-[var(--color-base-text-faint)]">
+                      {timeAgo(project.lastUsed)}
+                    </p>
                   </div>
                 </button>
               ))}
             </div>
-          </div>
+          </motion.div>
         )}
 
-        <SessionHistory />
-      </div>
+        <motion.div variants={fadeUp}>
+          <SessionHistory />
+        </motion.div>
+      </motion.div>
 
       {dialogState && (
         <WorktreeDialog

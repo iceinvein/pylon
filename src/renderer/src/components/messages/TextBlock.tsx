@@ -55,17 +55,17 @@ function parseSegments(text: string): Segment[] {
 
 const proseClasses = [
   'prose prose-invert prose-sm max-w-none',
-  'prose-p:text-stone-200 prose-li:text-stone-200',
-  'prose-headings:text-stone-100 prose-strong:text-stone-100',
-  'prose-a:text-amber-400 prose-a:no-underline hover:prose-a:underline',
+  'prose-p:text-[var(--color-base-text)] prose-li:text-[var(--color-base-text)]',
+  'prose-headings:text-[var(--color-base-text)] prose-strong:text-[var(--color-base-text)]',
+  'prose-a:text-[var(--color-warning)] prose-a:no-underline hover:prose-a:underline',
   'prose-pre:bg-transparent prose-pre:border-0 prose-pre:p-0 prose-pre:m-0',
-  'prose-code:text-amber-300 prose-code:bg-stone-800 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-xs prose-code:font-[family-name:var(--font-mono)]',
+  'prose-code:text-[var(--color-accent-text)] prose-code:bg-[var(--color-base-raised)] prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-xs prose-code:font-[family-name:var(--font-mono)]',
   'prose-code:before:content-none prose-code:after:content-none',
   'prose-table:border-collapse',
-  'prose-th:border prose-th:border-stone-700 prose-th:bg-stone-800/50 prose-th:px-3 prose-th:py-1.5 prose-th:text-stone-200',
-  'prose-td:border prose-td:border-stone-800 prose-td:px-3 prose-td:py-1.5 prose-td:text-stone-300',
-  'prose-blockquote:border-stone-600 prose-blockquote:text-stone-400',
-  'prose-hr:border-stone-800',
+  'prose-th:border prose-th:border-[var(--color-base-border)] prose-th:bg-[var(--color-base-raised)]/50 prose-th:px-3 prose-th:py-1.5 prose-th:text-[var(--color-base-text)]',
+  'prose-td:border prose-td:border-[var(--color-base-border-subtle)] prose-td:px-3 prose-td:py-1.5 prose-td:text-[var(--color-base-text)]',
+  'prose-blockquote:border-[var(--color-base-border)] prose-blockquote:text-[var(--color-base-text-secondary)]',
+  'prose-hr:border-[var(--color-base-border-subtle)]',
 ].join(' ')
 
 function CodeBlock({ className, children }: { className?: string; children?: React.ReactNode }) {
@@ -86,15 +86,15 @@ function CodeBlock({ className, children }: { className?: string; children?: Rea
   const label = isAnsi ? 'output' : language || 'code'
 
   return (
-    <div className="group relative my-3 overflow-hidden rounded-lg border border-stone-800 bg-stone-900">
-      <div className="flex items-center justify-between border-stone-800/60 border-b bg-stone-900/80 px-3 py-1.5">
-        <span className="font-[family-name:var(--font-mono)] text-[11px] text-stone-500">
+    <div className="group relative my-3 overflow-hidden rounded-lg border border-[var(--color-base-border-subtle)] bg-[var(--color-base-surface)]">
+      <div className="flex items-center justify-between border-[var(--color-base-border-subtle)]/60 border-b bg-[var(--color-base-surface)]/80 px-3 py-1.5">
+        <span className="font-[family-name:var(--font-mono)] text-[11px] text-[var(--color-base-text-muted)]">
           {label}
         </span>
         <button
           type="button"
           onClick={handleCopy}
-          className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-stone-500 transition-colors hover:bg-stone-800 hover:text-stone-300"
+          className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-[var(--color-base-text-muted)] transition-colors hover:bg-[var(--color-base-raised)] hover:text-[var(--color-base-text)]"
         >
           {copied ? <Check size={11} /> : <Copy size={11} />}
           {copied ? 'Copied' : 'Copy'}
@@ -106,7 +106,7 @@ function CodeBlock({ className, children }: { className?: string; children?: Rea
         <SyntaxOutput html={highlightedHtml} />
       ) : (
         <pre className="overflow-x-auto p-3">
-          <code className="font-[family-name:var(--font-mono)] text-stone-200 text-xs leading-relaxed">
+          <code className="font-[family-name:var(--font-mono)] text-[var(--color-base-text)] text-xs leading-relaxed">
             {code}
           </code>
         </pre>
@@ -120,7 +120,7 @@ function AnsiOutput({ code }: { code: string }) {
   const html = ansiToHtml(code)
   return (
     <pre
-      className="overflow-x-auto p-3 font-[family-name:var(--font-mono)] text-stone-300 text-xs leading-relaxed"
+      className="overflow-x-auto p-3 font-[family-name:var(--font-mono)] text-[var(--color-base-text)] text-xs leading-relaxed"
       // biome-ignore lint/security/noDangerouslySetInnerHtml: sanitized HTML from ansi-to-html (escapeXML: true)
       dangerouslySetInnerHTML={{ __html: html }}
     />
@@ -144,7 +144,7 @@ const markdownComponents: React.ComponentProps<typeof ReactMarkdown>['components
     if (isInline) {
       return (
         <code
-          className="rounded bg-stone-800 px-1.5 py-0.5 font-[family-name:var(--font-mono)] text-amber-300 text-xs"
+          className="rounded bg-[var(--color-base-raised)] px-1.5 py-0.5 font-[family-name:var(--font-mono)] text-[var(--color-accent-text)] text-xs"
           {...props}
         >
           {children}
@@ -170,17 +170,17 @@ function MarkdownContent({ text }: { text: string }) {
 
 function InsightCard({ text }: { text: string }) {
   return (
-    <div className="my-3 rounded-lg border border-amber-800/40 bg-amber-950/15 px-4 py-3">
+    <div className="my-3 rounded-lg border border-[var(--color-accent)]/40 bg-[var(--color-accent-muted)]/15 px-4 py-3">
       <div className="mb-2 flex items-center gap-2">
-        <Lightbulb size={14} className="text-amber-400" />
-        <span className="font-semibold text-amber-400 text-xs uppercase tracking-wide">
+        <Lightbulb size={14} className="text-[var(--color-warning)]" />
+        <span className="font-semibold text-[var(--color-warning)] text-xs uppercase tracking-wide">
           Insight
         </span>
       </div>
       <div
         className={
           proseClasses +
-          'prose-li:text-stone-300 prose-p:text-stone-300 prose-strong:text-amber-200'
+          'prose-li:text-[var(--color-base-text)] prose-p:text-[var(--color-base-text)] prose-strong:text-[var(--color-accent-text)]'
         }
       >
         <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
@@ -233,8 +233,8 @@ export function TextBlock({ text, isStreaming }: TextBlockProps) {
     return (
       <>
         {settled && <SettledMarkdown text={settled} />}
-        <div className="prose prose-invert prose-sm max-w-none prose-p:text-stone-200">
-          <span className="whitespace-pre-wrap text-stone-200">{tail}</span>
+        <div className="prose prose-invert prose-sm max-w-none prose-p:text-[var(--color-base-text)]">
+          <span className="whitespace-pre-wrap text-[var(--color-base-text)]">{tail}</span>
         </div>
       </>
     )

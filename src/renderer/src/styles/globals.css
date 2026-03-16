@@ -1,22 +1,55 @@
 @import "tailwindcss";
-@import "@fontsource-variable/inter";
+@import "@fontsource-variable/space-grotesk";
+@import "@fontsource/instrument-serif";
 @import "@fontsource-variable/jetbrains-mono";
 @plugin "@tailwindcss/typography";
 
 @theme {
-  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Space Grotesk Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Instrument Serif", "Georgia", serif;
   --font-mono: "JetBrains Mono Variable", ui-monospace, "Cascadia Code", "Fira Code", monospace;
+
+  /* Warm-shifted neutrals — clay-tinted, not pure gray */
+  --color-base-bg: #1a1714;
+  --color-base-surface: #211e1a;
+  --color-base-raised: #2a2621;
+  --color-base-border: #3d3630;
+  --color-base-border-subtle: #302b26;
+  --color-base-text: #e8e0d6;
+  --color-base-text-secondary: #a89e93;
+  --color-base-text-muted: #908578;
+  --color-base-text-faint: #8a7f76;
+
+  /* Primary — terracotta warmth */
+  --color-accent: #a85838;
+  --color-accent-hover: #be6844;
+  --color-accent-muted: #a8583840;
+  --color-accent-text: #e8a080;
+
+  /* Semantic colors — warm-shifted */
+  --color-success: #5a9e6f;
+  --color-error: #d06464;
+  --color-warning: #c49a4a;
+  --color-info: #5a8ac4;
+  --color-special: #9a7bc4;
 }
 
 body {
   font-family: var(--font-sans);
+  background-color: var(--color-base-bg);
+  color: var(--color-base-text);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Overlay scrollbars: float on top of content, don't consume layout space */
+/* Display font utility */
+.font-display {
+  font-family: var(--font-display);
+}
+
+/* Overlay scrollbars — warm-tinted */
 * {
-  scrollbar-color: #44403c transparent;
+  scrollbar-color: var(--color-base-border) transparent;
   scrollbar-width: thin;
 }
 ::-webkit-scrollbar {
@@ -27,14 +60,32 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #44403c;
+  background: var(--color-base-border);
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #57534e;
+  background: var(--color-base-text-muted);
 }
 ::-webkit-scrollbar-corner {
   background: transparent;
+}
+
+/* Focus indicators — visible on keyboard navigation, hidden on mouse */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* Reduced motion: respect user preference */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* Code blocks: overlay horizontal scrollbar so it doesn't trigger phantom vertical scroll */
@@ -76,13 +127,18 @@ pre,
   box-shadow: 0 0 8px 0 color-mix(in srgb, var(--glow-color) 20%, transparent);
 }
 
+/* Diff finding highlight — applied via classList, must exist in CSS (not JIT-generated) */
+.diff-finding-highlight {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-accent) 60%, transparent);
+}
+
 .flow-highlight {
   animation: flow-highlight-fade 1.5s ease-out;
 }
 
 @keyframes flow-highlight-fade {
   0% {
-    background-color: rgba(168, 162, 158, 0.15);
+    background-color: rgba(196, 112, 74, 0.1);
   }
   100% {
     background-color: transparent;

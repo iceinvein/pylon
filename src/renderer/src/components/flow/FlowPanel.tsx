@@ -103,7 +103,7 @@ function DotIcon({
 
 /** Compute the gradient bottom color from the last element */
 function getBottomAccent(elements: FlowElement[], isStreaming: boolean): string {
-  if (!isStreaming) return '#78716c' // stone-500
+  if (!isStreaming) return '#706660' // --color-base-text-muted
   // Walk backwards to find the last node
   for (let i = elements.length - 1; i >= 0; i--) {
     const el = elements[i]
@@ -155,7 +155,7 @@ export function FlowPanel() {
   if (!sessionId) {
     return (
       <div className="flex h-full items-center justify-center p-4">
-        <p className="text-stone-600 text-xs">No active session</p>
+        <p className="text-[var(--color-base-text-faint)] text-xs">No active session</p>
       </div>
     )
   }
@@ -165,8 +165,10 @@ export function FlowPanel() {
   if (nodeCount === 0) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-2 p-4">
-        <Workflow size={20} className="text-stone-700" />
-        <p className="text-stone-600 text-xs">Flow will appear as the agent works</p>
+        <Workflow size={20} className="text-[var(--color-base-text-faint)]" />
+        <p className="text-[var(--color-base-text-faint)] text-xs">
+          Flow will appear as the agent works
+        </p>
       </div>
     )
   }
@@ -197,7 +199,7 @@ export function FlowPanel() {
                 return (
                   <div key={`edge-${i}`} className="relative" style={{ height: 4 }}>
                     <div
-                      className="absolute border-red-500/40 border-l border-dashed"
+                      className="absolute border-[var(--color-error)]/40 border-l border-dashed"
                       style={{ left: SPINE_LEFT - CONTENT_LEFT, top: 0, bottom: 0 }}
                     />
                   </div>
@@ -215,7 +217,7 @@ export function FlowPanel() {
                 >
                   {/* Sub-lane line */}
                   <div
-                    className="absolute top-0 bottom-0 bg-stone-700/50"
+                    className="absolute top-0 bottom-0 bg-[var(--color-base-border)]/50"
                     style={{
                       left: SPINE_LEFT - CONTENT_LEFT + PARALLEL_INDENT,
                       width: 1,
@@ -274,7 +276,7 @@ export function FlowPanel() {
                   {/* Horizontal connector for loud nodes */}
                   {!isQuiet && (
                     <div
-                      className="absolute bg-stone-700/40"
+                      className="absolute bg-[var(--color-base-border)]/40"
                       style={{ left: 16, width: 8, height: 1, top: '50%' }}
                     />
                   )}

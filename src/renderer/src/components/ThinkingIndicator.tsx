@@ -2,15 +2,12 @@ import { useEffect, useState } from 'react'
 
 const THINKING_PHRASES = [
   'Thinking...',
-  'Reasoning through this...',
-  'Considering the options...',
-  'Analyzing the codebase...',
   'Gathering context...',
   'Connecting the dots...',
   'Mulling it over...',
-  'Examining the details...',
-  'Piecing things together...',
-  'Working through it...',
+  'Piecing it together...',
+  'Tracing the code...',
+  'Forming a plan...',
 ]
 
 type ThinkingIndicatorProps = {
@@ -38,8 +35,10 @@ export function ThinkingIndicator({ isCompacting }: ThinkingIndicatorProps) {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-2">
-      <span className="text-sm text-stone-500">{phrase.slice(0, charIdx)}</span>
-      <span className="inline-block h-3.5 w-0.5 animate-pulse bg-stone-500 align-text-bottom" />
+      <span className="font-display text-[var(--color-base-text-secondary)] text-base italic">
+        {phrase.slice(0, charIdx)}
+      </span>
+      <span className="inline-block h-4 w-0.5 animate-pulse bg-[var(--color-accent)] align-text-bottom" />
     </div>
   )
 }

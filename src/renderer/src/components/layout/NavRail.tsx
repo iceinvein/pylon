@@ -89,7 +89,7 @@ function NavButton({
       )}
       <Icon size={18} className="relative z-10" />
       {badge != null && badge > 0 && (
-        <span className="absolute -top-0.5 -right-0.5 z-20 flex h-4 min-w-4 items-center justify-center rounded-full bg-blue-500 px-1 text-[10px] font-medium text-white">
+        <span className="absolute -top-0.5 -right-0.5 z-20 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--color-info)] px-1 font-medium text-[10px] text-white">
           {badge > 99 ? '99+' : badge}
         </span>
       )}

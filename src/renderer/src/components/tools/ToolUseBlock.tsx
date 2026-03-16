@@ -45,7 +45,7 @@ function getToolInfo(toolName: string, input: Record<string, unknown>): ToolInfo
       icon: Terminal,
       label: 'Run',
       summary: desc || cmd,
-      iconColor: 'text-stone-500',
+      iconColor: 'text-[var(--color-accent-text)]',
     }
   }
 
@@ -56,7 +56,7 @@ function getToolInfo(toolName: string, input: Record<string, unknown>): ToolInfo
       icon: FileText,
       label: 'Read',
       summary: shortPath || path,
-      iconColor: 'text-stone-500',
+      iconColor: 'text-[var(--color-base-text-secondary)]',
     }
   }
 
@@ -66,7 +66,7 @@ function getToolInfo(toolName: string, input: Record<string, unknown>): ToolInfo
       icon: Wrench,
       label: toolName.replace(/^Task/, ''),
       summary: subject,
-      iconColor: 'text-stone-500',
+      iconColor: 'text-[var(--color-warning)]',
     }
   }
 
@@ -77,7 +77,7 @@ function getToolInfo(toolName: string, input: Record<string, unknown>): ToolInfo
       icon: Pencil,
       label: 'Edit',
       summary: shortPath || path,
-      iconColor: 'text-stone-500',
+      iconColor: 'text-[var(--color-warning)]',
     }
   }
 
@@ -89,10 +89,15 @@ function getToolInfo(toolName: string, input: Record<string, unknown>): ToolInfo
         icon: ListChecks,
         label: 'Tasks',
         summary: `${done}/${todos.length} completed`,
-        iconColor: 'text-amber-400',
+        iconColor: 'text-[var(--color-accent-text)]',
       }
     }
-    return { icon: ListChecks, label: 'Tasks', summary: '', iconColor: 'text-amber-400' }
+    return {
+      icon: ListChecks,
+      label: 'Tasks',
+      summary: '',
+      iconColor: 'text-[var(--color-accent-text)]',
+    }
   }
 
   if (name.includes('write') || name.includes('create')) {
@@ -102,7 +107,7 @@ function getToolInfo(toolName: string, input: Record<string, unknown>): ToolInfo
       icon: FilePlus,
       label: 'Write',
       summary: shortPath || path,
-      iconColor: 'text-emerald-400',
+      iconColor: 'text-[var(--color-success)]',
     }
   }
 
@@ -111,7 +116,7 @@ function getToolInfo(toolName: string, input: Record<string, unknown>): ToolInfo
       icon: Search,
       label: 'Search',
       summary: String(input.query ?? input.search ?? input.q ?? ''),
-      iconColor: 'text-blue-400',
+      iconColor: 'text-[var(--color-info)]',
     }
   }
 
@@ -120,7 +125,7 @@ function getToolInfo(toolName: string, input: Record<string, unknown>): ToolInfo
       icon: Search,
       label: 'Search',
       summary: String(input.pattern ?? input.glob ?? input.query ?? ''),
-      iconColor: 'text-stone-500',
+      iconColor: 'text-[var(--color-base-text-muted)]',
     }
   }
 
@@ -129,7 +134,7 @@ function getToolInfo(toolName: string, input: Record<string, unknown>): ToolInfo
       icon: MessageCircleQuestion,
       label: 'Question',
       summary: getAskUserQuestionSummary(input),
-      iconColor: 'text-blue-400',
+      iconColor: 'text-[var(--color-info)]',
     }
   }
 
@@ -140,7 +145,7 @@ function getToolInfo(toolName: string, input: Record<string, unknown>): ToolInfo
     icon: Wrench,
     label: toolName.replace(/^mcp__\w+__/, '').replace(/_/g, ' '),
     summary: firstVal,
-    iconColor: 'text-stone-500',
+    iconColor: 'text-[var(--color-base-text-muted)]',
   }
 }
 
@@ -212,14 +217,16 @@ export function ToolUseBlock({ toolName, input, result }: ToolUseBlockProps) {
         <motion.span
           animate={{ rotate: expanded ? 90 : 0 }}
           transition={{ duration: 0.15 }}
-          className="flex-shrink-0 text-stone-600"
+          className="flex-shrink-0 text-[var(--color-base-text-faint)]"
         >
           <ChevronRight size={14} />
         </motion.span>
         <Icon size={14} className={`flex-shrink-0 ${info.iconColor}`} />
-        <span className="font-medium text-sm text-stone-300">{info.label}</span>
+        <span className="font-medium text-[var(--color-base-text)] text-sm">{info.label}</span>
         {info.summary && !expanded && (
-          <span className="min-w-0 flex-1 truncate text-sm text-stone-500">{info.summary}</span>
+          <span className="min-w-0 flex-1 truncate text-[var(--color-base-text-muted)] text-sm">
+            {info.summary}
+          </span>
         )}
       </button>
       <AnimatePresence>
@@ -231,7 +238,7 @@ export function ToolUseBlock({ toolName, input, result }: ToolUseBlockProps) {
             transition={{ duration: 0.2, ease: 'easeOut' }}
             className="overflow-hidden"
           >
-            <div className="mt-1 ml-8 rounded border border-stone-800 bg-stone-900/50 px-3 py-2">
+            <div className="mt-1 ml-8 rounded border border-[var(--color-base-border)] bg-[var(--color-base-surface)] px-3 py-2">
               <ToolRenderer toolName={toolName} input={input} result={result} />
             </div>
           </motion.div>

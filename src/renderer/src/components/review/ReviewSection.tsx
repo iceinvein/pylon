@@ -5,17 +5,17 @@ import remarkGfm from 'remark-gfm'
 
 const sectionProseClasses = [
   'prose prose-invert prose-sm max-w-none',
-  'prose-p:text-stone-300 prose-li:text-stone-300',
-  'prose-headings:text-stone-200 prose-strong:text-stone-200',
+  'prose-p:text-[var(--color-base-text)] prose-li:text-[var(--color-base-text)]',
+  'prose-headings:text-[var(--color-base-text)] prose-strong:text-[var(--color-base-text)]',
   'prose-a:text-violet-400 prose-a:no-underline hover:prose-a:underline',
-  'prose-pre:bg-stone-900 prose-pre:border prose-pre:border-stone-800 prose-pre:rounded-lg prose-pre:my-2',
-  'prose-code:text-amber-300 prose-code:bg-stone-800 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-xs prose-code:font-[family-name:var(--font-mono)]',
+  'prose-pre:bg-[var(--color-base-surface)] prose-pre:border prose-pre:border-[var(--color-base-border-subtle)] prose-pre:rounded-lg prose-pre:my-2',
+  'prose-code:text-[var(--color-accent-text)] prose-code:bg-[var(--color-base-raised)] prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-xs prose-code:font-[family-name:var(--font-mono)]',
   'prose-code:before:content-none prose-code:after:content-none',
   'prose-table:border-collapse',
-  'prose-th:border prose-th:border-stone-700 prose-th:bg-stone-800/50 prose-th:px-3 prose-th:py-1.5 prose-th:text-stone-200',
-  'prose-td:border prose-td:border-stone-800 prose-td:px-3 prose-td:py-1.5 prose-td:text-stone-300',
-  'prose-blockquote:border-stone-600 prose-blockquote:text-stone-400',
-  'prose-hr:border-stone-800',
+  'prose-th:border prose-th:border-[var(--color-base-border)] prose-th:bg-[var(--color-base-raised)]/50 prose-th:px-3 prose-th:py-1.5 prose-th:text-[var(--color-base-text)]',
+  'prose-td:border prose-td:border-[var(--color-base-border-subtle)] prose-td:px-3 prose-td:py-1.5 prose-td:text-[var(--color-base-text)]',
+  'prose-blockquote:border-[var(--color-base-border)] prose-blockquote:text-[var(--color-base-text-secondary)]',
+  'prose-hr:border-[var(--color-base-border-subtle)]',
   'prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5',
 ].join(' ')
 
@@ -63,25 +63,25 @@ export function ReviewSection({ index, title, body, comment, onSetComment }: Rev
   return (
     <div
       className={`border-l-[3px] px-5 py-4 transition-colors ${
-        hasComment ? 'border-l-amber-500 bg-amber-500/5' : 'border-l-transparent'
+        hasComment ? 'border-l-amber-500 bg-[var(--color-accent-hover)]/5' : 'border-l-transparent'
       }`}
     >
       <div className="flex items-start gap-3">
         <button
           type="button"
           onClick={() => setCollapsed(!collapsed)}
-          className="mt-0.5 flex-shrink-0 text-stone-600 transition-colors hover:text-stone-400"
+          className="mt-0.5 flex-shrink-0 text-[var(--color-base-text-faint)] transition-colors hover:text-[var(--color-base-text-secondary)]"
         >
           {collapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
         </button>
-        <span className="min-w-[24px] pt-0.5 font-semibold text-stone-500 text-xs tabular-nums">
+        <span className="min-w-[24px] pt-0.5 font-semibold text-[var(--color-base-text-muted)] text-xs tabular-nums">
           {index + 1}
         </span>
         <div className="min-w-0 flex-1">
           <button
             type="button"
             onClick={() => setCollapsed(!collapsed)}
-            className="text-left font-medium text-[13px] text-stone-200 leading-relaxed transition-colors hover:text-stone-100"
+            className="text-left font-medium text-[13px] text-[var(--color-base-text)] leading-relaxed transition-colors hover:text-[var(--color-base-text)]"
           >
             {title}
           </button>
@@ -96,8 +96,8 @@ export function ReviewSection({ index, title, body, comment, onSetComment }: Rev
           onClick={handleStartComment}
           className={`flex-shrink-0 p-1 transition-colors ${
             hasComment
-              ? 'text-amber-500 hover:text-amber-400'
-              : 'text-stone-700 hover:text-stone-400'
+              ? 'text-[var(--color-warning)] hover:text-[var(--color-warning)]'
+              : 'text-[var(--color-base-text-faint)] hover:text-[var(--color-base-text-secondary)]'
           }`}
           title="Add comment"
         >
@@ -107,21 +107,21 @@ export function ReviewSection({ index, title, body, comment, onSetComment }: Rev
 
       {/* Comment bubble */}
       {hasComment && !editing && !collapsed && (
-        <div className="mt-3 ml-[44px] rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2">
+        <div className="mt-3 ml-[44px] rounded-md border border-[var(--color-accent)]/30 bg-[var(--color-accent-hover)]/10 px-3 py-2">
           <div className="mb-1 flex items-center gap-1.5">
-            <div className="flex h-4 w-4 items-center justify-center rounded-full bg-amber-500/30">
-              <span className="font-bold text-[9px] text-amber-500">U</span>
+            <div className="flex h-4 w-4 items-center justify-center rounded-full bg-[var(--color-accent-hover)]/30">
+              <span className="font-bold text-[9px] text-[var(--color-warning)]">U</span>
             </div>
-            <span className="font-semibold text-[10px] text-amber-500">COMMENT</span>
+            <span className="font-semibold text-[10px] text-[var(--color-warning)]">COMMENT</span>
             <button
               type="button"
               onClick={handleRemove}
-              className="ml-auto text-stone-600 hover:text-stone-400"
+              className="ml-auto text-[var(--color-base-text-faint)] hover:text-[var(--color-base-text-secondary)]"
             >
               <X size={12} />
             </button>
           </div>
-          <p className="text-stone-300 text-xs leading-relaxed">{comment}</p>
+          <p className="text-[var(--color-base-text)] text-xs leading-relaxed">{comment}</p>
         </div>
       )}
 
@@ -133,10 +133,12 @@ export function ReviewSection({ index, title, body, comment, onSetComment }: Rev
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Add your feedback..."
-            className="w-full resize-none rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-stone-200 text-xs leading-relaxed outline-none placeholder:text-stone-600 focus:border-amber-500/50"
+            className="w-full resize-none rounded-md border border-[var(--color-accent)]/30 bg-[var(--color-accent-hover)]/10 px-3 py-2 text-[var(--color-base-text)] text-xs leading-relaxed outline-none placeholder:text-[var(--color-base-text-faint)] focus:border-[var(--color-accent)]/50"
             rows={3}
           />
-          <div className="mt-1 text-[10px] text-stone-600">Cmd+Enter to save · Esc to cancel</div>
+          <div className="mt-1 text-[10px] text-[var(--color-base-text-faint)]">
+            Cmd+Enter to save · Esc to cancel
+          </div>
         </div>
       )}
     </div>

@@ -77,7 +77,7 @@ function WordHighlight({
             className={
               isHighlighted
                 ? side === 'left'
-                  ? 'rounded-xs bg-red-700/50'
+                  ? 'rounded-xs bg-[var(--color-error)]/50'
                   : 'rounded-xs bg-emerald-700/50'
                 : ''
             }
@@ -101,7 +101,7 @@ function SplitCell({
 }) {
   if (!line) {
     return (
-      <div className="flex min-h-[1.25rem] gap-0 bg-stone-900/30">
+      <div className="flex min-h-[1.25rem] gap-0 bg-[var(--color-base-surface)]/30">
         <span className="w-10 flex-shrink-0" />
         <span className="min-w-0 flex-1" />
       </div>
@@ -114,19 +114,23 @@ function SplitCell({
   return (
     <div
       className={`flex gap-0 ${
-        isChanged ? (side === 'left' ? 'bg-red-950/30' : 'bg-emerald-950/30') : ''
+        isChanged
+          ? side === 'left'
+            ? 'bg-[var(--color-error)]/30'
+            : 'bg-[var(--color-success)]/30'
+          : ''
       }`}
     >
-      <span className="w-10 flex-shrink-0 select-none pr-2 text-right text-stone-600">
+      <span className="w-10 flex-shrink-0 select-none pr-2 text-right text-[var(--color-base-text-faint)]">
         {lineNo}
       </span>
       <span
         className={`min-w-0 flex-1 whitespace-pre ${
           isChanged
             ? side === 'left'
-              ? 'text-red-300/90'
+              ? 'text-[var(--color-error)]/90'
               : 'text-emerald-300/90'
-            : 'text-stone-400'
+            : 'text-[var(--color-base-text-secondary)]'
         }`}
       >
         {pairedContent !== undefined ? (
@@ -194,7 +198,7 @@ export function SplitDiffView({
   }, [rows])
 
   if (hunks.length === 0) {
-    return <div className="px-3 py-2 text-stone-600 text-xs">No changes</div>
+    return <div className="px-3 py-2 text-[var(--color-base-text-faint)] text-xs">No changes</div>
   }
 
   return (
@@ -202,13 +206,13 @@ export function SplitDiffView({
       {/* Left (old) */}
       <div
         ref={leftRef}
-        className="min-w-0 flex-1 overflow-auto border-stone-800 border-r"
+        className="min-w-0 flex-1 overflow-auto border-[var(--color-base-border-subtle)] border-r"
         onScroll={() => syncScroll('left')}
       >
         {rows.map((row, i) => (
           <div key={i}>
             {hunkBoundaries.has(i) && (
-              <div className="border-stone-800/50 border-y bg-stone-900/30 px-2 py-0.5 text-center text-stone-600">
+              <div className="border-[var(--color-base-border-subtle)]/50 border-y bg-[var(--color-base-surface)]/30 px-2 py-0.5 text-center text-[var(--color-base-text-faint)]">
                 ⋯
               </div>
             )}
@@ -232,7 +236,7 @@ export function SplitDiffView({
           return (
             <div key={i}>
               {hunkBoundaries.has(i) && (
-                <div className="border-stone-800/50 border-y bg-stone-900/30 px-2 py-0.5 text-center text-stone-600">
+                <div className="border-[var(--color-base-border-subtle)]/50 border-y bg-[var(--color-base-surface)]/30 px-2 py-0.5 text-center text-[var(--color-base-text-faint)]">
                   ⋯
                 </div>
               )}

@@ -399,6 +399,7 @@ export const ChatView = memo(function ChatView({ sessionId, isActive }: ChatView
   }, [visibleMessages.length, sessionPermissions.length, sessionQuestions.length, streaming])
 
   // Listen for flow-scroll-to-message events from the FlowPanel
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
     function handleFlowScroll(e: Event) {
       const detail = (e as CustomEvent).detail as { messageIndex: number }
@@ -409,13 +410,17 @@ export const ChatView = memo(function ChatView({ sessionId, isActive }: ChatView
         if (Number(el.getAttribute('data-message-index')) === detail.messageIndex) {
           el.scrollIntoView({ behavior: 'smooth', block: 'center' })
           el.classList.add('flow-highlight')
-          setTimeout(() => el.classList.remove('flow-highlight'), 1500)
+          if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current)
+          highlightTimerRef.current = setTimeout(() => el.classList.remove('flow-highlight'), 1500)
           break
         }
       }
     }
     window.addEventListener('flow-scroll-to-message', handleFlowScroll)
-    return () => window.removeEventListener('flow-scroll-to-message', handleFlowScroll)
+    return () => {
+      window.removeEventListener('flow-scroll-to-message', handleFlowScroll)
+      if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current)
+    }
   }, [])
 
   async function handlePermissionRespond(requestId: string, behavior: 'allow' | 'deny') {
@@ -634,9 +639,10 @@ export const ChatView = memo(function ChatView({ sessionId, isActive }: ChatView
             transition={{ duration: 0.2, ease: 'easeOut' }}
           >
             <div className="flex items-center gap-2 px-6 py-1">
-              <Zap size={12} className="flex-shrink-0 text-purple-400/70" />
-              <span className="text-stone-500 text-xs">
-                Loaded skill <span className="text-stone-400">{skillName}</span>
+              <Zap size={12} className="flex-shrink-0 text-[var(--color-special)]/70" />
+              <span className="text-[var(--color-base-text-muted)] text-xs">
+                Loaded skill{' '}
+                <span className="text-[var(--color-base-text-secondary)]">{skillName}</span>
               </span>
             </div>
           </motion.div>
@@ -734,12 +740,12 @@ export const ChatView = memo(function ChatView({ sessionId, isActive }: ChatView
                 <button
                   type="button"
                   onClick={() => setShowPreCompactMessages((v) => !v)}
-                  className="flex w-full items-center gap-2 px-6 py-2 text-stone-500 text-xs transition-colors hover:text-stone-400"
+                  className="flex w-full items-center gap-2 px-6 py-2 text-[var(--color-base-text-muted)] text-xs transition-colors hover:text-[var(--color-base-text-secondary)]"
                 >
                   {showPreCompactMessages ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
                   <span>
                     {showPreCompactMessages ? 'Hide' : 'Show'} earlier messages
-                    <span className="ml-1 text-stone-600">
+                    <span className="ml-1 text-[var(--color-base-text-faint)]">
                       (
                       {
                         preCompactMessages.filter((m) => {
@@ -752,7 +758,7 @@ export const ChatView = memo(function ChatView({ sessionId, isActive }: ChatView
                   </span>
                 </button>
                 {showPreCompactMessages && (
-                  <div className="pointer-events-auto ml-4 select-text border-stone-700/50 border-l-2 opacity-50">
+                  <div className="pointer-events-auto ml-4 select-text border-[var(--color-base-border)]/50 border-l-2 opacity-50">
                     {preCompactMessages.map((msg, idx) => {
                       const sdkMsg = msg as SdkMessage
                       const rendered = renderMessage(sdkMsg, -(preCompactMessages.length - idx))
@@ -764,19 +770,19 @@ export const ChatView = memo(function ChatView({ sessionId, isActive }: ChatView
               </div>
             )}
             <div className="flex items-center gap-3 px-6 py-3">
-              <div className="h-px flex-1 bg-stone-700/50" />
-              <div className="flex items-center gap-1.5 text-stone-500 text-xs">
+              <div className="h-px flex-1 bg-[var(--color-base-border)]/50" />
+              <div className="flex items-center gap-1.5 text-[var(--color-base-text-muted)] text-xs">
                 <Minimize2 size={12} />
                 <span>
                   Conversation {compactMetadata?.trigger === 'auto' ? 'auto-' : ''}compacted
                 </span>
                 {compactMetadata?.pre_tokens && (
-                  <span className="text-stone-600">
+                  <span className="text-[var(--color-base-text-faint)]">
                     ({Math.round(compactMetadata.pre_tokens / 1000)}k tokens)
                   </span>
                 )}
               </div>
-              <div className="h-px flex-1 bg-stone-700/50" />
+              <div className="h-px flex-1 bg-[var(--color-base-border)]/50" />
             </div>
           </div>
         )}
@@ -876,7 +882,7 @@ export const ChatView = memo(function ChatView({ sessionId, isActive }: ChatView
             className="px-6 py-2"
           >
             <TextBlock text={streaming} isStreaming />
-            <span className="inline-block h-4 w-0.5 animate-pulse bg-stone-400 align-text-bottom" />
+            <span className="inline-block h-4 w-0.5 animate-pulse bg-[var(--color-accent)] align-text-bottom" />
           </motion.div>
         )}
 

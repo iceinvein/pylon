@@ -1,8 +1,6 @@
 import {
   ArrowUp,
-  ChevronDown,
   Image,
-  Info,
   Paperclip,
   ShieldAlert,
   ShieldCheck,
@@ -29,20 +27,11 @@ import type {
 import { useDraftStore } from '../store/draft-store'
 import { useUiStore } from '../store/ui-store'
 import { ContextIndicator } from './ContextIndicator'
+import { DropdownMenu } from './DropdownMenu'
 
 const PERMISSION_MODES = [
-  {
-    id: 'default' as const,
-    label: 'Default',
-    icon: ShieldCheck,
-    description: 'Ask before each tool use',
-  },
-  {
-    id: 'auto-approve' as const,
-    label: 'YOLO',
-    icon: ShieldAlert,
-    description: 'Auto-approve all tool permissions',
-  },
+  { id: 'default' as const, label: 'Default', icon: ShieldCheck },
+  { id: 'auto-approve' as const, label: 'YOLO', icon: ShieldAlert },
 ]
 
 const MODELS = [
@@ -51,11 +40,11 @@ const MODELS = [
   { id: 'claude-haiku-4-5', label: 'Haiku 4.5' },
 ] as const
 
-const EFFORT_LEVELS: { id: EffortLevel; label: string; description: string }[] = [
-  { id: 'low', label: 'Low', description: 'Quick, minimal thinking' },
-  { id: 'medium', label: 'Medium', description: 'Balanced speed and depth' },
-  { id: 'high', label: 'High', description: 'Deep reasoning (default)' },
-  { id: 'max', label: 'Max', description: 'Maximum effort (Opus only)' },
+const EFFORT_LEVELS: { id: EffortLevel; label: string }[] = [
+  { id: 'low', label: 'Low' },
+  { id: 'medium', label: 'Medium' },
+  { id: 'high', label: 'High' },
+  { id: 'max', label: 'Max' },
 ]
 
 type InputBarProps = {
@@ -92,51 +81,9 @@ export function InputBar({
   const [text, setText] = useState(savedDraft?.text ?? '')
   const [attachments, setAttachments] = useState<Attachment[]>(savedDraft?.attachments ?? [])
   const [isDragging, setIsDragging] = useState(false)
-  const [showModelMenu, setShowModelMenu] = useState(false)
-  const [showEffortMenu, setShowEffortMenu] = useState(false)
-  const [showPermissionMenu, setShowPermissionMenu] = useState(false)
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const modelMenuRef = useRef<HTMLDivElement>(null)
-  const effortMenuRef = useRef<HTMLDivElement>(null)
-  const permissionMenuRef = useRef<HTMLDivElement>(null)
-
-  const currentModelLabel = MODELS.find((m) => m.id === model)?.label ?? model
-  const currentEffortLabel = EFFORT_LEVELS.find((e) => e.id === effort)?.label ?? effort
-
-  useEffect(() => {
-    if (!showModelMenu) return
-    function handleClick(e: MouseEvent) {
-      if (modelMenuRef.current && !modelMenuRef.current.contains(e.target as Node)) {
-        setShowModelMenu(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [showModelMenu])
-
-  useEffect(() => {
-    if (!showEffortMenu) return
-    function handleClick(e: MouseEvent) {
-      if (effortMenuRef.current && !effortMenuRef.current.contains(e.target as Node)) {
-        setShowEffortMenu(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [showEffortMenu])
-
-  useEffect(() => {
-    if (!showPermissionMenu) return
-    function handleClick(e: MouseEvent) {
-      if (permissionMenuRef.current && !permissionMenuRef.current.contains(e.target as Node)) {
-        setShowPermissionMenu(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [showPermissionMenu])
 
   useEffect(() => {
     if (!lightboxUrl) return
@@ -189,7 +136,7 @@ export function InputBar({
     el.style.height = `${Math.min(el.scrollHeight, 200)}px`
   }
 
-  const { toggleCommandPalette } = useUiStore()
+  const toggleCommandPalette = useUiStore((s) => s.toggleCommandPalette)
 
   function handleChange(value: string) {
     // Typing "/" as the first character opens the command palette
@@ -308,12 +255,36 @@ export function InputBar({
     })
   }
 
+  // Build dropdown items with filtering
+  const effortItems = EFFORT_LEVELS.filter((e) => e.id !== 'max' || model === 'claude-opus-4-6')
+  const permissionItems = PERMISSION_MODES.map((m) => ({
+    id: m.id,
+    label: m.label,
+    icon: <m.icon size={13} className="flex-shrink-0" />,
+  }))
+
+  const isYolo = permissionMode === 'auto-approve'
+  const currentMode = PERMISSION_MODES.find((m) => m.id === permissionMode) ?? PERMISSION_MODES[0]
+
+  // Effort trigger styling — purple for max, muted for low, default otherwise
+  const effortTriggerClass =
+    effort === 'max'
+      ? 'flex h-7 items-center gap-1 rounded-full border border-[var(--color-special)]/50 px-2.5 text-[var(--color-special)] text-xs transition-colors hover:border-[var(--color-special)] hover:text-[var(--color-special)]'
+      : effort === 'low'
+        ? 'flex h-7 items-center gap-1 rounded-full border border-[var(--color-base-border)]/50 px-2.5 text-[var(--color-base-text-muted)] text-xs transition-colors hover:border-[var(--color-base-border)] hover:text-[var(--color-base-text-secondary)]'
+        : undefined // use DropdownMenu default
+
+  // Permission trigger styling — amber for YOLO
+  const permissionTriggerClass = isYolo
+    ? 'flex h-7 items-center gap-1 rounded-full border border-[var(--color-accent)]/50 px-2.5 text-[var(--color-warning)] text-xs transition-colors hover:border-[var(--color-accent)] hover:text-[var(--color-accent-text)]'
+    : undefined
+
   const canSend = (text.trim().length > 0 || attachments.length > 0) && !isRunning
 
   return (
     <div className="relative bg-[var(--color-base-bg)]">
       {behindCount != null && behindCount > 0 && (
-        <div className="flex items-center gap-2 border-amber-800/30 border-b bg-amber-950/20 px-3 py-1.5 text-amber-400 text-xs">
+        <div className="flex items-center gap-2 border-[var(--color-warning)]/20 border-b bg-[var(--color-warning)]/5 px-3 py-1.5 text-[var(--color-warning)] text-xs">
           <span>⚠</span>
           <span>
             Branch is {behindCount} commit{behindCount !== 1 ? 's' : ''} behind origin
@@ -350,18 +321,18 @@ export function InputBar({
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
-            className={`rounded-2xl border border-stone-700/60 bg-[var(--color-base-surface)] transition-colors focus-within:border-stone-600 ${
-              isDragging ? 'border-amber-700/50 bg-amber-950/10' : ''
+            className={`rounded-2xl border border-[var(--color-base-border)]/60 bg-[var(--color-base-surface)] transition-colors focus-within:border-[var(--color-accent)]/40 ${
+              isDragging ? 'border-[var(--color-accent)]/50 bg-[var(--color-accent)]/5' : ''
             }`}
           >
             {/* Attachments */}
             {attachments.length > 0 && (
-              <div className="flex flex-wrap gap-2 border-stone-800/50 border-b px-4 py-2">
+              <div className="flex flex-wrap gap-2 border-[var(--color-base-border)]/50 border-b px-4 py-2">
                 <AnimatePresence>
                   {attachments.map((att, i) => (
                     <motion.div
                       key={att.name + i}
-                      className={`group relative overflow-hidden rounded-lg border border-stone-700 bg-stone-800 ${
+                      className={`group relative overflow-hidden rounded-lg border border-[var(--color-base-border)] bg-[var(--color-base-raised)] ${
                         att.type === 'image' ? 'h-16 w-16' : 'flex items-center gap-1.5 px-2 py-1.5'
                       }`}
                       initial={{ opacity: 0, scale: 0.9 }}
@@ -381,18 +352,18 @@ export function InputBar({
                             className="h-full w-full object-cover"
                           />
                           <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-1 pt-2 pb-0.5">
-                            <span className="block truncate text-[10px] text-stone-300 leading-tight">
+                            <span className="block truncate text-[10px] text-[var(--color-base-text)] leading-tight">
                               {att.name}
                             </span>
                           </div>
                         </button>
                       ) : (
                         <>
-                          <Image size={14} className="text-stone-500" />
-                          <span className="max-w-[120px] truncate text-stone-400 text-xs">
+                          <Image size={14} className="text-[var(--color-base-text-muted)]" />
+                          <span className="max-w-[120px] truncate text-[var(--color-base-text-secondary)] text-xs">
                             {att.name}
                           </span>
-                          <span className="text-stone-600 text-xs">
+                          <span className="text-[var(--color-base-text-faint)] text-xs">
                             {(att.size / 1024).toFixed(0)}KB
                           </span>
                         </>
@@ -400,7 +371,7 @@ export function InputBar({
                       <button
                         type="button"
                         onClick={() => removeAttachment(i)}
-                        className="absolute top-0.5 right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-black/60 text-stone-300 opacity-0 transition-opacity group-hover:opacity-100"
+                        className="absolute top-0.5 right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-black/60 text-[var(--color-base-text)] opacity-0 transition-opacity group-hover:opacity-100"
                       >
                         <X size={9} />
                       </button>
@@ -417,10 +388,10 @@ export function InputBar({
               onChange={(e) => handleChange(e.target.value)}
               onKeyDown={handleKeyDown}
               onPaste={handlePaste}
-              placeholder={sessionId ? 'Type your message here...' : 'Open a folder to start'}
+              placeholder={sessionId ? 'Ask Claude anything...' : 'Open a project to begin'}
               disabled={!sessionId && false}
               rows={3}
-              className="min-h-[80px] w-full resize-none bg-transparent px-4 pt-3 pb-2 text-sm text-stone-100 placeholder-stone-500 outline-none"
+              className="min-h-[80px] w-full resize-none bg-transparent px-4 pt-3 pb-2 text-[var(--color-base-text)] text-sm leading-relaxed placeholder-[var(--color-base-text-faint)] outline-none"
             />
 
             {/* Toolbar row */}
@@ -437,176 +408,36 @@ export function InputBar({
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                title="Attach"
-                className="flex h-7 items-center gap-1.5 rounded-full border border-stone-700/50 px-2.5 text-stone-400 text-xs transition-colors hover:border-stone-600 hover:text-stone-300"
+                title="Attach file"
+                aria-label="Attach file"
+                className="flex h-7 w-7 items-center justify-center rounded-full border border-[var(--color-base-border)]/50 text-[var(--color-base-text-secondary)] transition-colors hover:border-[var(--color-base-border)] hover:text-[var(--color-base-text)]"
               >
                 <Paperclip size={13} />
-                <span>Attach</span>
               </button>
 
-              <div className="relative" ref={modelMenuRef}>
-                <button
-                  type="button"
-                  onClick={() => setShowModelMenu((v) => !v)}
-                  className="flex h-7 items-center gap-1 rounded-full border border-stone-700/50 px-2.5 text-stone-400 text-xs transition-colors hover:border-stone-600 hover:text-stone-300"
-                >
-                  <span>{currentModelLabel}</span>
-                  <ChevronDown size={12} />
-                </button>
-                <AnimatePresence>
-                  {showModelMenu && (
-                    <motion.div
-                      className="absolute bottom-full left-0 z-50 mb-1 min-w-[160px] overflow-hidden rounded-lg border border-stone-700 bg-stone-800 py-1 shadow-xl"
-                      initial={{ opacity: 0, y: 4 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 4 }}
-                      transition={{ duration: 0.12 }}
-                    >
-                      {MODELS.map((m) => (
-                        <button
-                          type="button"
-                          key={m.id}
-                          onClick={() => {
-                            onModelChange(m.id)
-                            setShowModelMenu(false)
-                          }}
-                          className={`flex w-full items-center px-3 py-1.5 text-left text-xs transition-colors hover:bg-stone-700 ${
-                            m.id === model ? 'text-stone-100' : 'text-stone-400'
-                          }`}
-                        >
-                          <span
-                            className={`mr-2 h-1.5 w-1.5 rounded-full ${m.id === model ? 'bg-stone-300' : 'bg-transparent'}`}
-                          />
-                          {m.label}
-                        </button>
-                      ))}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
+              <DropdownMenu
+                items={MODELS.map((m) => ({ id: m.id, label: m.label }))}
+                value={model}
+                onChange={onModelChange}
+              />
 
-              <div className="relative" ref={effortMenuRef}>
-                <button
-                  type="button"
-                  onClick={() => setShowEffortMenu((v) => !v)}
-                  className={`flex h-7 items-center gap-1 rounded-full border px-2.5 text-xs transition-colors ${
-                    effort === 'max'
-                      ? 'border-purple-700/50 text-purple-400 hover:border-purple-600 hover:text-purple-300'
-                      : effort === 'low'
-                        ? 'border-stone-700/50 text-stone-500 hover:border-stone-600 hover:text-stone-400'
-                        : 'border-stone-700/50 text-stone-400 hover:border-stone-600 hover:text-stone-300'
-                  }`}
-                >
-                  <SlidersHorizontal size={13} />
-                  <span>{currentEffortLabel}</span>
-                  <ChevronDown size={12} />
-                </button>
-                <AnimatePresence>
-                  {showEffortMenu && (
-                    <motion.div
-                      className="absolute bottom-full left-0 z-50 mb-1 min-w-[200px] overflow-hidden rounded-lg border border-stone-700 bg-stone-800 py-1 shadow-xl"
-                      initial={{ opacity: 0, y: 4 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 4 }}
-                      transition={{ duration: 0.12 }}
-                    >
-                      {EFFORT_LEVELS.filter(
-                        (e) => e.id !== 'max' || model === 'claude-opus-4-6',
-                      ).map((e) => (
-                        <button
-                          type="button"
-                          key={e.id}
-                          onClick={() => {
-                            onEffortChange(e.id)
-                            setShowEffortMenu(false)
-                          }}
-                          className={`flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors hover:bg-stone-700 ${
-                            e.id === effort ? 'text-stone-100' : 'text-stone-400'
-                          }`}
-                        >
-                          <span
-                            className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${e.id === effort ? 'bg-stone-300' : 'bg-transparent'}`}
-                          />
-                          <div>
-                            <div>{e.label}</div>
-                            <div className="text-[10px] text-stone-500">{e.description}</div>
-                          </div>
-                        </button>
-                      ))}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
+              <DropdownMenu
+                items={effortItems}
+                value={effort}
+                onChange={(id) => onEffortChange(id as EffortLevel)}
+                triggerIcon={<SlidersHorizontal size={13} />}
+                triggerClassName={effortTriggerClass}
+                minWidth={140}
+              />
 
-              <div className="relative" ref={permissionMenuRef}>
-                {(() => {
-                  const currentMode =
-                    PERMISSION_MODES.find((m) => m.id === permissionMode) ?? PERMISSION_MODES[0]
-                  const ModeIcon = currentMode.icon
-                  const isYolo = permissionMode === 'auto-approve'
-                  return (
-                    <button
-                      type="button"
-                      onClick={() => setShowPermissionMenu((v) => !v)}
-                      className={`flex h-7 items-center gap-1 rounded-full border px-2.5 text-xs transition-colors ${
-                        isYolo
-                          ? 'border-amber-700/50 text-amber-400 hover:border-amber-600 hover:text-amber-300'
-                          : 'border-stone-700/50 text-stone-400 hover:border-stone-600 hover:text-stone-300'
-                      }`}
-                    >
-                      <ModeIcon size={13} />
-                      <span>{currentMode.label}</span>
-                      <ChevronDown size={12} />
-                    </button>
-                  )
-                })()}
-                <AnimatePresence>
-                  {showPermissionMenu && (
-                    <motion.div
-                      className="absolute bottom-full left-0 z-50 mb-1 min-w-[220px] overflow-hidden rounded-lg border border-stone-700 bg-stone-800 py-1 shadow-xl"
-                      initial={{ opacity: 0, y: 4 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 4 }}
-                      transition={{ duration: 0.12 }}
-                    >
-                      {PERMISSION_MODES.map((m) => {
-                        const Icon = m.icon
-                        return (
-                          <button
-                            type="button"
-                            key={m.id}
-                            onClick={() => {
-                              onPermissionModeChange(m.id)
-                              setShowPermissionMenu(false)
-                            }}
-                            className={`flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors hover:bg-stone-700 ${
-                              m.id === permissionMode ? 'text-stone-100' : 'text-stone-400'
-                            }`}
-                          >
-                            <span
-                              className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${m.id === permissionMode ? 'bg-stone-300' : 'bg-transparent'}`}
-                            />
-                            <Icon size={13} className="flex-shrink-0" />
-                            <div>
-                              <div>{m.label}</div>
-                              <div className="text-[10px] text-stone-500">{m.description}</div>
-                            </div>
-                          </button>
-                        )
-                      })}
-                      <div className="mx-3 mt-1 border-stone-700/50 border-t pt-1.5 pb-1">
-                        <div className="flex items-start gap-1.5 text-[10px] text-stone-500">
-                          <Info size={11} className="mt-0.5 flex-shrink-0 text-stone-600" />
-                          <span>
-                            YOLO mode auto-approves tool permissions but still prompts for questions
-                            that require your input.
-                          </span>
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
+              <DropdownMenu
+                items={permissionItems}
+                value={permissionMode}
+                onChange={(id) => onPermissionModeChange(id as PermissionMode)}
+                triggerIcon={<currentMode.icon size={13} />}
+                triggerClassName={permissionTriggerClass}
+                minWidth={160}
+              />
 
               <div className="flex-1" />
 
@@ -620,7 +451,7 @@ export function InputBar({
                     key="stop"
                     onClick={onStop}
                     title="Stop"
-                    className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-700 text-white transition-colors hover:bg-red-600"
+                    className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--color-error)] text-white transition-colors hover:brightness-110"
                     initial={{ scale: 0.8, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0.8, opacity: 0 }}
@@ -634,7 +465,7 @@ export function InputBar({
                     onClick={handleSend}
                     disabled={!canSend}
                     title="Send"
-                    className="flex h-7 w-7 items-center justify-center rounded-lg bg-stone-600 text-stone-200 transition-colors hover:bg-stone-500 disabled:cursor-not-allowed disabled:opacity-30"
+                    className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--color-accent)] text-white transition-colors hover:bg-[var(--color-accent-hover)] disabled:cursor-not-allowed disabled:opacity-30"
                     initial={{ scale: 0.8, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0.8, opacity: 0 }}

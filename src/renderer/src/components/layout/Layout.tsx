@@ -102,7 +102,7 @@ export function Layout({ children }: LayoutProps) {
   )
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-stone-950 text-stone-100">
+    <div className="flex h-screen w-screen overflow-hidden bg-[var(--color-base-bg)] text-[var(--color-base-text)]">
       {/* Drag region for macOS title bar */}
       <div
         className="fixed top-0 right-0 left-0 z-50 h-12"
@@ -126,7 +126,7 @@ export function Layout({ children }: LayoutProps) {
             {/* biome-ignore lint/a11y/noStaticElementInteractions: mouse-only resize handle */}
             <div
               onMouseDown={handleDragStart}
-              className="flex w-1 flex-shrink-0 cursor-col-resize items-center justify-center border-stone-800 border-r bg-stone-950 transition-colors hover:bg-stone-700 active:bg-stone-600"
+              className="flex w-1 flex-shrink-0 cursor-col-resize items-center justify-center border-[var(--color-base-border-subtle)] border-r bg-[var(--color-base-bg)] transition-colors hover:bg-[var(--color-base-border)] active:bg-[var(--color-base-text-faint)]"
             />
           </motion.div>
         )}
@@ -149,7 +149,7 @@ export function Layout({ children }: LayoutProps) {
             {/* biome-ignore lint/a11y/noStaticElementInteractions: mouse-only resize handle */}
             <div
               onMouseDown={handleGitDragStart}
-              className="flex w-1 flex-shrink-0 cursor-col-resize items-center justify-center border-stone-800 border-r bg-stone-950 transition-colors hover:bg-stone-700 active:bg-stone-600"
+              className="flex w-1 flex-shrink-0 cursor-col-resize items-center justify-center border-[var(--color-base-border-subtle)] border-r bg-[var(--color-base-bg)] transition-colors hover:bg-[var(--color-base-border)] active:bg-[var(--color-base-text-faint)]"
             />
           </motion.div>
         )}

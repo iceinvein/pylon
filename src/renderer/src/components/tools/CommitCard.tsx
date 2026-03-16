@@ -158,12 +158,14 @@ export function CommitCard({ toolBlocks, toolResultMap, isStreaming }: CommitCar
 
   return (
     <div className="my-1 px-6 py-2">
-      <div className="overflow-hidden rounded-lg border border-stone-800 bg-stone-900/60">
+      <div className="overflow-hidden rounded-lg border border-[var(--color-base-border-subtle)] bg-[var(--color-base-surface)]/60">
         {/* Header */}
         <div className="flex items-center gap-3 px-4 py-3">
           <div
             className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg ${
-              isDone ? 'bg-green-900/30 text-green-400' : 'bg-stone-800 text-stone-400'
+              isDone
+                ? 'bg-[var(--color-success)]/30 text-[var(--color-success)]'
+                : 'bg-[var(--color-base-raised)] text-[var(--color-base-text-secondary)]'
             }`}
           >
             {isDone ? (
@@ -179,34 +181,38 @@ export function CommitCard({ toolBlocks, toolResultMap, isStreaming }: CommitCar
             {isDone ? (
               <>
                 <div className="flex items-center gap-2">
-                  <span className="font-medium text-sm text-stone-200">Committed</span>
-                  <code className="rounded bg-stone-800 px-1.5 py-0.5 font-[family-name:var(--font-mono)] text-amber-400 text-xs">
+                  <span className="font-medium text-[var(--color-base-text)] text-sm">
+                    Committed
+                  </span>
+                  <code className="rounded bg-[var(--color-base-raised)] px-1.5 py-0.5 font-[family-name:var(--font-mono)] text-[var(--color-warning)] text-xs">
                     {commitHash}
                   </code>
                 </div>
                 {commitMessage && (
-                  <p className="mt-0.5 truncate text-stone-400 text-xs">{commitMessage}</p>
+                  <p className="mt-0.5 truncate text-[var(--color-base-text-secondary)] text-xs">
+                    {commitMessage}
+                  </p>
                 )}
               </>
             ) : (
-              <span className="font-medium text-sm text-stone-300">
+              <span className="font-medium text-[var(--color-base-text)] text-sm">
                 {inProgress ? 'Committing...' : 'Commit'}
               </span>
             )}
           </div>
 
           {isDone && (fileStats.insertions > 0 || fileStats.deletions > 0) && (
-            <div className="flex items-center gap-2 text-stone-500 text-xs">
+            <div className="flex items-center gap-2 text-[var(--color-base-text-muted)] text-xs">
               {fileStats.files.length > 0 && (
                 <span>
                   {fileStats.files.length} file{fileStats.files.length !== 1 ? 's' : ''}
                 </span>
               )}
               {fileStats.insertions > 0 && (
-                <span className="text-green-500">+{fileStats.insertions}</span>
+                <span className="text-[var(--color-success)]">+{fileStats.insertions}</span>
               )}
               {fileStats.deletions > 0 && (
-                <span className="text-red-400">&minus;{fileStats.deletions}</span>
+                <span className="text-[var(--color-error)]">&minus;{fileStats.deletions}</span>
               )}
             </div>
           )}
@@ -222,27 +228,30 @@ export function CommitCard({ toolBlocks, toolResultMap, isStreaming }: CommitCar
               transition={{ duration: 0.2 }}
               className="overflow-hidden"
             >
-              <div className="space-y-3 border-stone-800/60 border-t px-4 py-3">
+              <div className="space-y-3 border-[var(--color-base-border-subtle)]/60 border-t px-4 py-3">
                 {/* Progress phases */}
                 <div className="space-y-1.5">
                   {phases.map((phase) => (
                     <div key={phase.id} className="flex items-center gap-2">
                       {phase.status === 'done' && (
-                        <Check size={12} className="flex-shrink-0 text-green-500" />
+                        <Check size={12} className="flex-shrink-0 text-[var(--color-success)]" />
                       )}
                       {phase.status === 'running' && (
-                        <Loader2 size={12} className="flex-shrink-0 animate-spin text-stone-400" />
+                        <Loader2
+                          size={12}
+                          className="flex-shrink-0 animate-spin text-[var(--color-base-text-secondary)]"
+                        />
                       )}
                       {phase.status === 'pending' && (
-                        <div className="h-3 w-3 flex-shrink-0 rounded-full border border-stone-700" />
+                        <div className="h-3 w-3 flex-shrink-0 rounded-full border border-[var(--color-base-border)]" />
                       )}
                       <span
                         className={`text-xs ${
                           phase.status === 'done'
-                            ? 'text-stone-400'
+                            ? 'text-[var(--color-base-text-secondary)]'
                             : phase.status === 'running'
-                              ? 'text-stone-300'
-                              : 'text-stone-600'
+                              ? 'text-[var(--color-base-text)]'
+                              : 'text-[var(--color-base-text-faint)]'
                         }`}
                       >
                         {phase.label}
@@ -254,13 +263,16 @@ export function CommitCard({ toolBlocks, toolResultMap, isStreaming }: CommitCar
                 {/* File list */}
                 {fileStats.files.length > 0 && (
                   <div className="space-y-1">
-                    <p className="font-medium text-[10px] text-stone-600 uppercase tracking-wider">
+                    <p className="font-medium text-[10px] text-[var(--color-base-text-faint)] uppercase tracking-wider">
                       Files
                     </p>
                     {fileStats.files.map((file) => (
                       <div key={file} className="flex items-center gap-2">
-                        <FileText size={11} className="flex-shrink-0 text-stone-600" />
-                        <span className="truncate font-[family-name:var(--font-mono)] text-stone-400 text-xs">
+                        <FileText
+                          size={11}
+                          className="flex-shrink-0 text-[var(--color-base-text-faint)]"
+                        />
+                        <span className="truncate font-[family-name:var(--font-mono)] text-[var(--color-base-text-secondary)] text-xs">
                           {file}
                         </span>
                       </div>

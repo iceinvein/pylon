@@ -15,18 +15,20 @@ export function WriteTool({ input, result }: WriteToolProps) {
 
   return (
     <div className="space-y-1.5">
-      <div className="flex items-center gap-2 text-stone-400 text-xs">
+      <div className="flex items-center gap-2 text-[var(--color-base-text-secondary)] text-xs">
         <FilePlus size={13} className="flex-shrink-0 text-emerald-400" />
-        <span className="font-[family-name:var(--font-mono)] text-stone-300">{path}</span>
+        <span className="font-[family-name:var(--font-mono)] text-[var(--color-base-text)]">
+          {path}
+        </span>
       </div>
-      <div className="text-stone-500 text-xs">
+      <div className="text-[var(--color-base-text-muted)] text-xs">
         {isSuccess ? 'Created' : 'Writing'} &mdash; {lineCount} line{lineCount !== 1 ? 's' : ''}
       </div>
       {content && (
-        <div className="overflow-x-auto rounded border border-stone-800 bg-stone-950/60 font-[family-name:var(--font-mono)] text-xs leading-5">
+        <div className="overflow-x-auto rounded border border-[var(--color-base-border-subtle)] bg-[var(--color-base-bg)]/60 font-[family-name:var(--font-mono)] text-xs leading-5">
           {content.split('\n').map((line, i) => (
-            <div key={i} className="flex gap-0 bg-emerald-950/20">
-              <span className="w-8 flex-shrink-0 select-none pr-1 text-right text-stone-600">
+            <div key={i} className="flex gap-0 bg-[var(--color-success)]/20">
+              <span className="w-8 flex-shrink-0 select-none pr-1 text-right text-[var(--color-base-text-faint)]">
                 {i + 1}
               </span>
               <span className="w-4 flex-shrink-0 select-none text-center text-emerald-500/60">

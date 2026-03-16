@@ -9,9 +9,11 @@ type TasksPanelProps = {
 }
 
 function TaskIcon({ status }: { status: TaskItem['status'] }) {
-  if (status === 'completed') return <CheckCircle size={12} className="text-green-500" />
-  if (status === 'in_progress') return <Loader size={12} className="animate-spin text-amber-400" />
-  return <Circle size={12} className="text-stone-600" />
+  if (status === 'completed')
+    return <CheckCircle size={12} className="text-[var(--color-success)]" />
+  if (status === 'in_progress')
+    return <Loader size={12} className="animate-spin text-[var(--color-warning)]" />
+  return <Circle size={12} className="text-[var(--color-base-text-faint)]" />
 }
 
 export function TasksPanel({ sessionId }: TasksPanelProps) {
@@ -29,34 +31,36 @@ export function TasksPanel({ sessionId }: TasksPanelProps) {
     <motion.div
       initial={{ opacity: 0, height: 0 }}
       animate={{ opacity: 1, height: 'auto' }}
-      className="border-stone-800 border-t"
+      className="border-[var(--color-base-border-subtle)] border-t"
     >
       {/* Summary bar — always visible */}
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
-        className="mx-auto flex w-full max-w-3xl items-center gap-2.5 px-4 py-2 text-left transition-colors hover:bg-stone-800/30"
+        className="mx-auto flex w-full max-w-3xl items-center gap-2.5 px-4 py-2 text-left transition-colors hover:bg-[var(--color-base-raised)]/30"
       >
-        <ListChecks size={14} className="flex-shrink-0 text-amber-400" />
+        <ListChecks size={14} className="flex-shrink-0 text-[var(--color-warning)]" />
 
         {/* Progress bar */}
-        <div className="h-1 w-16 flex-shrink-0 overflow-hidden rounded-full bg-stone-800">
+        <div className="h-1 w-16 flex-shrink-0 overflow-hidden rounded-full bg-[var(--color-base-raised)]">
           <motion.div
-            className={`h-full rounded-full ${allDone ? 'bg-green-500' : 'bg-amber-500'}`}
+            className={`h-full rounded-full ${allDone ? 'bg-[var(--color-success)]' : 'bg-[var(--color-accent-hover)]'}`}
             animate={{ width: `${total > 0 ? (completed / total) * 100 : 0}%` }}
             transition={{ duration: 0.3, ease: 'easeOut' }}
           />
         </div>
 
-        <span className="text-stone-500 text-xs">
-          <span className={allDone ? 'text-green-400' : 'text-stone-300'}>
+        <span className="text-[var(--color-base-text-muted)] text-xs">
+          <span
+            className={allDone ? 'text-[var(--color-success)]' : 'text-[var(--color-base-text)]'}
+          >
             {completed}/{total}
           </span>{' '}
           tasks
         </span>
 
         {inProgress && !expanded && (
-          <span className="min-w-0 flex-1 truncate text-stone-500 text-xs italic">
+          <span className="min-w-0 flex-1 truncate text-[var(--color-base-text-muted)] text-xs italic">
             {inProgress.activeForm ?? inProgress.subject}
           </span>
         )}
@@ -64,7 +68,7 @@ export function TasksPanel({ sessionId }: TasksPanelProps) {
         <motion.span
           animate={{ rotate: expanded ? 180 : 0 }}
           transition={{ duration: 0.15 }}
-          className="ml-auto flex-shrink-0 text-stone-600"
+          className="ml-auto flex-shrink-0 text-[var(--color-base-text-faint)]"
         >
           <ChevronUp size={14} />
         </motion.span>
@@ -89,10 +93,10 @@ export function TasksPanel({ sessionId }: TasksPanelProps) {
                   <span
                     className={`text-xs leading-relaxed ${
                       task.status === 'completed'
-                        ? 'text-stone-600 line-through'
+                        ? 'text-[var(--color-base-text-faint)] line-through'
                         : task.status === 'in_progress'
-                          ? 'text-stone-200'
-                          : 'text-stone-400'
+                          ? 'text-[var(--color-base-text)]'
+                          : 'text-[var(--color-base-text-secondary)]'
                     }`}
                   >
                     {task.status === 'in_progress' && task.activeForm

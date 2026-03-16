@@ -100,8 +100,8 @@ export function GitCommitTab({ cwd, sessionId }: GitCommitTabProps) {
   if (workingTree.length === 0 && !commitPlan) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-2 p-4">
-        <Check size={20} className="text-stone-700" />
-        <p className="text-stone-600 text-xs">Working tree clean</p>
+        <Check size={20} className="text-[var(--color-base-text-faint)]" />
+        <p className="text-[var(--color-base-text-faint)] text-xs">Working tree clean</p>
       </div>
     )
   }
@@ -112,16 +112,18 @@ export function GitCommitTab({ cwd, sessionId }: GitCommitTabProps) {
       {commitPlan ? (
         <div className="flex-1 overflow-y-auto p-3">
           <div className="mb-3 flex items-center justify-between">
-            <p className="font-medium text-stone-300 text-xs">Commit Plan</p>
+            <p className="font-medium text-[var(--color-base-text)] text-xs">Commit Plan</p>
             <button
               type="button"
               onClick={() => setCommitPlan(null)}
-              className="text-[10px] text-stone-500 hover:text-stone-300"
+              className="text-[10px] text-[var(--color-base-text-muted)] hover:text-[var(--color-base-text)]"
             >
               Dismiss
             </button>
           </div>
-          <p className="mb-3 text-[10px] text-stone-500 italic">{commitPlan.reasoning}</p>
+          <p className="mb-3 text-[10px] text-[var(--color-base-text-muted)] italic">
+            {commitPlan.reasoning}
+          </p>
           <div className="flex flex-col gap-2">
             {commitPlan.groups.map((group, i) => (
               <CommitPlanCard
@@ -142,7 +144,7 @@ export function GitCommitTab({ cwd, sessionId }: GitCommitTabProps) {
       ) : (
         <>
           {/* Select all header */}
-          <div className="flex items-center gap-2 border-stone-800 border-b px-4 py-1.5">
+          <div className="flex items-center gap-2 border-[var(--color-base-border-subtle)] border-b px-4 py-1.5">
             <input
               type="checkbox"
               checked={allStaged}
@@ -150,9 +152,9 @@ export function GitCommitTab({ cwd, sessionId }: GitCommitTabProps) {
                 if (el) el.indeterminate = someStaged
               }}
               onChange={handleToggleAll}
-              className="h-3 w-3 rounded border-stone-600 bg-stone-800 accent-amber-600"
+              className="h-3 w-3 rounded border-[var(--color-base-border)] bg-[var(--color-base-raised)] accent-amber-600"
             />
-            <span className="text-[10px] text-stone-500">
+            <span className="text-[10px] text-[var(--color-base-text-muted)]">
               {stagedCount === 0 ? 'Select all' : `${stagedCount}/${workingTree.length} staged`}
             </span>
           </div>
@@ -162,16 +164,16 @@ export function GitCommitTab({ cwd, sessionId }: GitCommitTabProps) {
             {workingTree.map((file) => (
               <label
                 key={file.path}
-                className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-xs transition-colors hover:bg-stone-800/50"
+                className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-xs transition-colors hover:bg-[var(--color-base-raised)]/50"
               >
                 <input
                   type="checkbox"
                   checked={file.staged}
                   onChange={() => handleToggleStage(file.path, file.staged)}
-                  className="h-3 w-3 rounded border-stone-600 bg-stone-800 accent-amber-600"
+                  className="h-3 w-3 rounded border-[var(--color-base-border)] bg-[var(--color-base-raised)] accent-amber-600"
                 />
-                <FileText size={11} className="flex-shrink-0 text-stone-500" />
-                <span className="min-w-0 flex-1 truncate font-[family-name:var(--font-mono)] text-stone-300">
+                <FileText size={11} className="flex-shrink-0 text-[var(--color-base-text-muted)]" />
+                <span className="min-w-0 flex-1 truncate font-[family-name:var(--font-mono)] text-[var(--color-base-text)]">
                   {file.path}
                 </span>
                 <span
@@ -179,7 +181,7 @@ export function GitCommitTab({ cwd, sessionId }: GitCommitTabProps) {
                     file.status === 'added'
                       ? 'text-emerald-400'
                       : file.status === 'deleted'
-                        ? 'text-red-400'
+                        ? 'text-[var(--color-error)]'
                         : 'text-yellow-400'
                   }`}
                 >
@@ -190,7 +192,7 @@ export function GitCommitTab({ cwd, sessionId }: GitCommitTabProps) {
           </div>
 
           {/* Commit input */}
-          <div className="border-stone-800 border-t p-3">
+          <div className="border-[var(--color-base-border-subtle)] border-t p-3">
             <div className="flex items-center gap-2">
               <input
                 type="text"
@@ -200,13 +202,13 @@ export function GitCommitTab({ cwd, sessionId }: GitCommitTabProps) {
                   if (e.key === 'Enter' && e.metaKey) handleManualCommit()
                 }}
                 placeholder="Commit message..."
-                className="min-w-0 flex-1 rounded bg-stone-800 px-2.5 py-1.5 text-stone-200 text-xs outline-none ring-1 ring-stone-700 placeholder:text-stone-600 focus:ring-stone-500"
+                className="min-w-0 flex-1 rounded bg-[var(--color-base-raised)] px-2.5 py-1.5 text-[var(--color-base-text)] text-xs outline-none ring-1 ring-[var(--color-base-border)] placeholder:text-[var(--color-base-text-faint)] focus:ring-[var(--color-accent)]"
               />
               <button
                 type="button"
                 onClick={handleGenerateMsg}
                 disabled={generating || !sessionId || stagedCount === 0}
-                className="rounded p-1.5 text-stone-500 transition-colors hover:bg-stone-800 hover:text-amber-400 disabled:opacity-50"
+                className="rounded p-1.5 text-[var(--color-base-text-muted)] transition-colors hover:bg-[var(--color-base-raised)] hover:text-[var(--color-warning)] disabled:opacity-50"
                 title="Generate commit message"
               >
                 {generating ? (
@@ -230,7 +232,7 @@ export function GitCommitTab({ cwd, sessionId }: GitCommitTabProps) {
                 type="button"
                 onClick={handleAnalyze}
                 disabled={analyzing || !sessionId || stagedCount === 0}
-                className="flex items-center gap-1.5 rounded border border-amber-700 px-3 py-1.5 text-amber-400 text-xs transition-colors hover:bg-amber-950/30 disabled:opacity-50"
+                className="flex items-center gap-1.5 rounded border border-[var(--color-accent)] px-3 py-1.5 text-[var(--color-warning)] text-xs transition-colors hover:bg-[var(--color-accent-muted)]/30 disabled:opacity-50"
               >
                 {analyzing ? (
                   <Loader2 size={11} className="animate-spin" />
@@ -245,7 +247,7 @@ export function GitCommitTab({ cwd, sessionId }: GitCommitTabProps) {
       )}
 
       {error && (
-        <div className="border-stone-800 border-t bg-red-950/30 px-3 py-2 text-red-400 text-xs">
+        <div className="border-[var(--color-base-border-subtle)] border-t bg-[var(--color-error)]/30 px-3 py-2 text-[var(--color-error)] text-xs">
           {error}
         </div>
       )}

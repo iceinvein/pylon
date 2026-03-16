@@ -28,19 +28,19 @@ import { useTestStore } from '../store/test-store'
 // ── Constants ────────────────────────────────────────────────────────────────
 
 const SEVERITY_COLORS: Record<FindingSeverity, string> = {
-  critical: 'bg-red-500/20 text-red-400',
+  critical: 'bg-[var(--color-error)]/20 text-[var(--color-error)]',
   high: 'bg-orange-500/20 text-orange-400',
   medium: 'bg-yellow-500/20 text-yellow-400',
-  low: 'bg-blue-500/20 text-blue-400',
-  info: 'bg-stone-500/20 text-stone-400',
+  low: 'bg-[var(--color-info)]/20 text-[var(--color-info)]',
+  info: 'bg-[var(--color-base-text-muted)]/20 text-[var(--color-base-text-secondary)]',
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  pending: 'bg-stone-500',
-  running: 'bg-blue-500 animate-pulse',
-  done: 'bg-green-500',
+  pending: 'bg-[var(--color-base-text-muted)]',
+  running: 'bg-[var(--color-info)] animate-pulse',
+  done: 'bg-[var(--color-success)]',
   stopped: 'bg-yellow-500',
-  error: 'bg-red-500',
+  error: 'bg-[var(--color-error)]',
 }
 
 const SEVERITY_ICONS: Record<FindingSeverity, typeof Bug> = {
@@ -188,7 +188,7 @@ export function TestView() {
   return (
     <div className="flex h-full">
       {/* Left panel */}
-      <div className="flex w-[300px] flex-shrink-0 flex-col overflow-y-auto border-stone-800 border-r">
+      <div className="flex w-[300px] flex-shrink-0 flex-col overflow-y-auto border-[var(--color-base-border-subtle)] border-r">
         {/* Project Picker */}
         <ProjectPicker
           projects={projects}
@@ -298,29 +298,34 @@ function ProjectPicker({ projects, selectedProject, onSelect }: ProjectPickerPro
   }, [open])
 
   return (
-    <div ref={containerRef} className="relative border-stone-800 border-b p-3">
-      <span className="mb-1 block text-stone-400 text-xs">Project</span>
+    <div
+      ref={containerRef}
+      className="relative border-[var(--color-base-border-subtle)] border-b p-3"
+    >
+      <span className="mb-1 block text-[var(--color-base-text-secondary)] text-xs">Project</span>
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="flex w-full items-center gap-2 rounded-lg border border-stone-700 bg-stone-800 px-3 py-2 text-left text-sm transition-colors hover:border-stone-600"
+        className="flex w-full items-center gap-2 rounded-lg border border-[var(--color-base-border)] bg-[var(--color-base-raised)] px-3 py-2 text-left text-sm transition-colors hover:border-[var(--color-base-border)]"
       >
         {selectedProject ? (
           <>
-            <Folder size={14} className="flex-shrink-0 text-stone-500" />
-            <span className="min-w-0 flex-1 truncate text-stone-100">
+            <Folder size={14} className="flex-shrink-0 text-[var(--color-base-text-muted)]" />
+            <span className="min-w-0 flex-1 truncate text-[var(--color-base-text)]">
               {basename(selectedProject)}
             </span>
           </>
         ) : (
-          <span className="flex-1 text-stone-500">Select a project…</span>
+          <span className="flex-1 text-[var(--color-base-text-muted)]">Select a project…</span>
         )}
         <ChevronDown
-          className={`h-4 w-4 flex-shrink-0 text-stone-500 transition-transform ${open ? 'rotate-180' : ''}`}
+          className={`h-4 w-4 flex-shrink-0 text-[var(--color-base-text-muted)] transition-transform ${open ? 'rotate-180' : ''}`}
         />
       </button>
       {selectedProject && (
-        <p className="mt-1 truncate text-[11px] text-stone-600">{selectedProject}</p>
+        <p className="mt-1 truncate text-[11px] text-[var(--color-base-text-faint)]">
+          {selectedProject}
+        </p>
       )}
 
       <AnimatePresence>
@@ -330,10 +335,12 @@ function ProjectPicker({ projects, selectedProject, onSelect }: ProjectPickerPro
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.12 }}
-            className="absolute right-3 left-3 z-50 mt-1 max-h-64 overflow-y-auto rounded-xl border border-stone-700 bg-stone-900 py-1 shadow-2xl"
+            className="absolute right-3 left-3 z-50 mt-1 max-h-64 overflow-y-auto rounded-xl border border-[var(--color-base-border)] bg-[var(--color-base-surface)] py-1 shadow-2xl"
           >
             {projects.length === 0 ? (
-              <div className="px-3 py-3 text-center text-stone-600 text-xs">No recent projects</div>
+              <div className="px-3 py-3 text-center text-[var(--color-base-text-faint)] text-xs">
+                No recent projects
+              </div>
             ) : (
               projects.map((p) => (
                 <button
@@ -343,17 +350,24 @@ function ProjectPicker({ projects, selectedProject, onSelect }: ProjectPickerPro
                     onSelect(p.path)
                     setOpen(false)
                   }}
-                  className={`flex w-full items-start gap-2.5 px-3 py-2 text-left transition-colors hover:bg-stone-800/60 ${
-                    selectedProject === p.path ? 'bg-stone-800/40' : ''
+                  className={`flex w-full items-start gap-2.5 px-3 py-2 text-left transition-colors hover:bg-[var(--color-base-raised)]/60 ${
+                    selectedProject === p.path ? 'bg-[var(--color-base-raised)]/40' : ''
                   }`}
                 >
-                  <Folder size={13} className="mt-0.5 flex-shrink-0 text-stone-600" />
+                  <Folder
+                    size={13}
+                    className="mt-0.5 flex-shrink-0 text-[var(--color-base-text-faint)]"
+                  />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium text-stone-300 text-xs">
+                    <p className="truncate font-medium text-[var(--color-base-text)] text-xs">
                       {basename(p.path)}
                     </p>
-                    <p className="truncate text-[11px] text-stone-600">{p.path}</p>
-                    <p className="text-[10px] text-stone-700">{timeAgo(p.lastUsed)}</p>
+                    <p className="truncate text-[11px] text-[var(--color-base-text-faint)]">
+                      {p.path}
+                    </p>
+                    <p className="text-[10px] text-[var(--color-base-text-faint)]">
+                      {timeAgo(p.lastUsed)}
+                    </p>
                   </div>
                 </button>
               ))
@@ -406,11 +420,13 @@ function ServerSection({
   }
 
   return (
-    <div className="border-stone-800 border-b p-3">
-      <h3 className="mb-2 font-semibold text-stone-400 text-xs uppercase tracking-wider">Server</h3>
+    <div className="border-[var(--color-base-border-subtle)] border-b p-3">
+      <h3 className="mb-2 font-semibold text-[var(--color-base-text-secondary)] text-xs uppercase tracking-wider">
+        Server
+      </h3>
 
       {scanLoading && (
-        <div className="flex items-center gap-2 text-stone-400 text-xs">
+        <div className="flex items-center gap-2 text-[var(--color-base-text-secondary)] text-xs">
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
           <span>Scanning project...</span>
         </div>
@@ -420,29 +436,31 @@ function ServerSection({
         <div className="space-y-1">
           {projectScan.framework && (
             <div className="flex items-center gap-2 text-xs">
-              <span className="text-stone-300">{projectScan.framework}</span>
+              <span className="text-[var(--color-base-text)]">{projectScan.framework}</span>
               {projectScan.detectedUrl && (
-                <span className="truncate text-stone-500">{projectScan.detectedUrl}</span>
+                <span className="truncate text-[var(--color-base-text-muted)]">
+                  {projectScan.detectedUrl}
+                </span>
               )}
             </div>
           )}
           {autoStartServer && projectScan.devCommand && (
             <div className="flex items-center gap-1.5 text-xs">
-              <span className="h-2 w-2 flex-shrink-0 rounded-full bg-blue-500" />
-              <span className="text-blue-400">Auto-start enabled</span>
+              <span className="h-2 w-2 flex-shrink-0 rounded-full bg-[var(--color-info)]" />
+              <span className="text-[var(--color-info)]">Auto-start enabled</span>
             </div>
           )}
           {!autoStartServer && !showCustomInput && (
             <div className="flex items-center gap-1.5 text-xs">
-              <span className="h-2 w-2 flex-shrink-0 rounded-full bg-stone-500" />
-              <span className="text-stone-400">Manual mode</span>
+              <span className="h-2 w-2 flex-shrink-0 rounded-full bg-[var(--color-base-text-muted)]" />
+              <span className="text-[var(--color-base-text-secondary)]">Manual mode</span>
             </div>
           )}
         </div>
       )}
 
       {!scanLoading && !showCustomInput && (!projectScan || projectScan.error) && (
-        <p className="text-stone-500 text-xs">
+        <p className="text-[var(--color-base-text-muted)] text-xs">
           {projectScan?.error ? projectScan.error : 'No project selected'}
         </p>
       )}
@@ -453,14 +471,14 @@ function ServerSection({
           value={inputValue}
           onChange={(e) => handleCustomUrlChange(e.target.value)}
           placeholder="https://localhost:3000"
-          className="w-full rounded-lg border border-stone-700 bg-stone-800 px-3 py-1.5 text-sm text-stone-100 placeholder:text-stone-500 focus:border-blue-500 focus:outline-none"
+          className="w-full rounded-lg border border-[var(--color-base-border)] bg-[var(--color-base-raised)] px-3 py-1.5 text-[var(--color-base-text)] text-sm placeholder:text-[var(--color-base-text-muted)] focus:border-[var(--color-info)] focus:outline-none"
         />
       )}
 
       <button
         type="button"
         onClick={handleToggleCustom}
-        className="mt-2 text-blue-400 text-xs transition-colors hover:text-blue-300"
+        className="mt-2 text-[var(--color-info)] text-xs transition-colors hover:text-[var(--color-info)]"
       >
         {showCustomInput ? 'Use auto-start server' : 'Use custom URL'}
       </button>
@@ -494,13 +512,13 @@ function GoalSection({
   onKeyDown,
 }: GoalSectionProps) {
   return (
-    <div className="border-stone-800 border-b p-3">
-      <h3 className="mb-2 font-semibold text-stone-400 text-xs uppercase tracking-wider">
+    <div className="border-[var(--color-base-border-subtle)] border-b p-3">
+      <h3 className="mb-2 font-semibold text-[var(--color-base-text-secondary)] text-xs uppercase tracking-wider">
         What to Test
       </h3>
 
       {goalsLoading && (
-        <div className="mb-2 flex items-center gap-2 text-stone-400 text-xs">
+        <div className="mb-2 flex items-center gap-2 text-[var(--color-base-text-secondary)] text-xs">
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
           <span>Analyzing project…</span>
         </div>
@@ -517,8 +535,12 @@ function GoalSection({
                 className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 cursor-pointer accent-blue-500"
               />
               <div className="min-w-0">
-                <span className="block text-stone-200 text-xs leading-tight">{goal.title}</span>
-                {goal.area && <span className="text-stone-500 text-xs">{goal.area}</span>}
+                <span className="block text-[var(--color-base-text)] text-xs leading-tight">
+                  {goal.title}
+                </span>
+                {goal.area && (
+                  <span className="text-[var(--color-base-text-muted)] text-xs">{goal.area}</span>
+                )}
               </div>
             </label>
           ))}
@@ -529,11 +551,13 @@ function GoalSection({
         <div className="mb-2 space-y-1">
           {customGoals.map((goal, i) => (
             <div key={i} className="flex items-center gap-1.5">
-              <span className="min-w-0 flex-1 truncate text-stone-300 text-xs">{goal}</span>
+              <span className="min-w-0 flex-1 truncate text-[var(--color-base-text)] text-xs">
+                {goal}
+              </span>
               <button
                 type="button"
                 onClick={() => onRemoveCustomGoal(i)}
-                className="flex-shrink-0 text-stone-500 transition-colors hover:text-red-400"
+                className="flex-shrink-0 text-[var(--color-base-text-muted)] transition-colors hover:text-[var(--color-error)]"
                 aria-label="Remove goal"
               >
                 <X className="h-3 w-3" />
@@ -551,13 +575,13 @@ function GoalSection({
           onChange={(e) => onCustomGoalInputChange(e.target.value)}
           onKeyDown={onKeyDown}
           placeholder="Add custom goal…"
-          className="min-w-0 flex-1 rounded-lg border border-stone-700 bg-stone-800 px-2.5 py-1.5 text-stone-100 text-xs placeholder:text-stone-500 focus:border-blue-500 focus:outline-none"
+          className="min-w-0 flex-1 rounded-lg border border-[var(--color-base-border)] bg-[var(--color-base-raised)] px-2.5 py-1.5 text-[var(--color-base-text)] text-xs placeholder:text-[var(--color-base-text-muted)] focus:border-[var(--color-info)] focus:outline-none"
         />
         <button
           type="button"
           onClick={onAddCustomGoal}
           disabled={!customGoalInput.trim()}
-          className="flex-shrink-0 rounded-lg border border-stone-700 bg-stone-800 p-1.5 text-stone-400 transition-colors hover:text-stone-200 disabled:opacity-40"
+          className="flex-shrink-0 rounded-lg border border-[var(--color-base-border)] bg-[var(--color-base-raised)] p-1.5 text-[var(--color-base-text-secondary)] transition-colors hover:text-[var(--color-base-text)] disabled:opacity-40"
           aria-label="Add goal"
         >
           <Plus className="h-3.5 w-3.5" />
@@ -587,11 +611,11 @@ function AdvancedSection({
   const [open, setOpen] = useState(false)
 
   return (
-    <div className="border-stone-800 border-b">
+    <div className="border-[var(--color-base-border-subtle)] border-b">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-1.5 px-3 py-2.5 text-left text-stone-400 text-xs transition-colors hover:text-stone-300"
+        className="flex w-full items-center gap-1.5 px-3 py-2.5 text-left text-[var(--color-base-text-secondary)] text-xs transition-colors hover:text-[var(--color-base-text)]"
       >
         <ChevronRight
           className={`h-3.5 w-3.5 flex-shrink-0 transition-transform ${open ? 'rotate-90' : ''}`}
@@ -602,26 +626,32 @@ function AdvancedSection({
       {open && (
         <div className="space-y-3 px-3 pb-3">
           <label className="block">
-            <span className="mb-1 block text-stone-400 text-xs">E2E Output Path</span>
+            <span className="mb-1 block text-[var(--color-base-text-secondary)] text-xs">
+              E2E Output Path
+            </span>
             <input
               type="text"
               value={e2ePath}
               onChange={(e) => onE2ePathChange(e.target.value)}
-              className="w-full rounded-lg border border-stone-700 bg-stone-800 px-3 py-1.5 text-sm text-stone-100 focus:border-blue-500 focus:outline-none"
+              className="w-full rounded-lg border border-[var(--color-base-border)] bg-[var(--color-base-raised)] px-3 py-1.5 text-[var(--color-base-text)] text-sm focus:border-[var(--color-info)] focus:outline-none"
             />
-            {e2eReason && <p className="mt-1 text-stone-500 text-xs">{e2eReason}</p>}
+            {e2eReason && (
+              <p className="mt-1 text-[var(--color-base-text-muted)] text-xs">{e2eReason}</p>
+            )}
           </label>
 
           <div>
-            <span className="mb-1 block text-stone-400 text-xs">Strategy</span>
+            <span className="mb-1 block text-[var(--color-base-text-secondary)] text-xs">
+              Strategy
+            </span>
             <div className="flex gap-2">
               <button
                 type="button"
                 onClick={() => onModeChange('manual')}
                 className={`flex-1 rounded-lg border px-3 py-1.5 text-xs transition-colors ${
                   mode === 'manual'
-                    ? 'border-blue-500 bg-blue-600/20 text-blue-400'
-                    : 'border-stone-700 bg-stone-800 text-stone-400 hover:text-stone-300'
+                    ? 'border-[var(--color-info)] bg-[var(--color-info)]/20 text-[var(--color-info)]'
+                    : 'border-[var(--color-base-border)] bg-[var(--color-base-raised)] text-[var(--color-base-text-secondary)] hover:text-[var(--color-base-text)]'
                 }`}
               >
                 Manual
@@ -631,8 +661,8 @@ function AdvancedSection({
                 onClick={() => onModeChange('requirements')}
                 className={`flex-1 rounded-lg border px-3 py-1.5 text-xs transition-colors ${
                   mode === 'requirements'
-                    ? 'border-blue-500 bg-blue-600/20 text-blue-400'
-                    : 'border-stone-700 bg-stone-800 text-stone-400 hover:text-stone-300'
+                    ? 'border-[var(--color-info)] bg-[var(--color-info)]/20 text-[var(--color-info)]'
+                    : 'border-[var(--color-base-border)] bg-[var(--color-base-raised)] text-[var(--color-base-text-secondary)] hover:text-[var(--color-base-text)]'
                 }`}
               >
                 Requirements
@@ -669,23 +699,23 @@ function LaunchButtons({
   const autoExploreEnabled = hasProject && hasUrl
 
   return (
-    <div className="space-y-2 border-stone-800 border-b p-3">
+    <div className="space-y-2 border-[var(--color-base-border-subtle)] border-b p-3">
       <div className="flex items-center gap-2">
         <button
           type="button"
           onClick={onStart}
           disabled={!canStart}
-          className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-blue-600 px-3 py-2 font-medium text-sm text-white transition-colors hover:bg-blue-500 disabled:bg-stone-700 disabled:text-stone-500"
+          className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-[var(--color-info)] px-3 py-2 font-medium text-sm text-white transition-colors hover:bg-[var(--color-info)] disabled:bg-[var(--color-base-border)] disabled:text-[var(--color-base-text-muted)]"
         >
           <Play className="h-4 w-4" />
           Start
         </button>
-        <div className="flex items-center gap-1.5 rounded-lg border border-stone-700 bg-stone-800 px-2 py-1.5">
-          <span className="text-stone-500 text-xs">Agents</span>
+        <div className="flex items-center gap-1.5 rounded-lg border border-[var(--color-base-border)] bg-[var(--color-base-raised)] px-2 py-1.5">
+          <span className="text-[var(--color-base-text-muted)] text-xs">Agents</span>
           <select
             value={agentCount}
             onChange={(e) => onSetAgentCount(Number(e.target.value))}
-            className="appearance-none bg-transparent pr-1 text-center text-sm text-stone-100 focus:outline-none"
+            className="appearance-none bg-transparent pr-1 text-center text-[var(--color-base-text)] text-sm focus:outline-none"
           >
             {[1, 2, 3, 4, 5].map((n) => (
               <option key={n} value={n}>
@@ -699,7 +729,7 @@ function LaunchButtons({
         type="button"
         onClick={onAutoExplore}
         disabled={!autoExploreEnabled}
-        className="flex w-full items-center justify-center gap-2 rounded-lg border border-stone-700 bg-stone-800 px-3 py-2 font-medium text-sm text-stone-300 transition-colors hover:bg-stone-700 disabled:opacity-40"
+        className="flex w-full items-center justify-center gap-2 rounded-lg border border-[var(--color-base-border)] bg-[var(--color-base-raised)] px-3 py-2 font-medium text-[var(--color-base-text)] text-sm transition-colors hover:bg-[var(--color-base-border)] disabled:opacity-40"
       >
         <Zap className="h-4 w-4 text-yellow-400" />
         Auto-explore everything
@@ -731,7 +761,7 @@ function ExplorationList({
   if (explorations.length === 0) {
     return (
       <div className="p-3">
-        <p className="text-stone-500 text-xs">No explorations yet</p>
+        <p className="text-[var(--color-base-text-muted)] text-xs">No explorations yet</p>
       </div>
     )
   }
@@ -790,7 +820,7 @@ function ExplorationGroup({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-1.5 px-3 py-2 text-left text-stone-400 text-xs transition-colors hover:text-stone-300"
+        className="flex w-full items-center gap-1.5 px-3 py-2 text-left text-[var(--color-base-text-secondary)] text-xs transition-colors hover:text-[var(--color-base-text)]"
       >
         <ChevronRight
           className={`h-3 w-3 flex-shrink-0 transition-transform ${open ? 'rotate-90' : ''}`}
@@ -839,12 +869,14 @@ function ExplorationRow({
       type="button"
       onClick={() => onSelect(exploration.id)}
       className={`group w-full rounded-lg px-2.5 py-2 text-left text-xs transition-colors ${
-        isSelected ? 'bg-stone-700/50 text-stone-100' : 'text-stone-300 hover:bg-stone-800/50'
+        isSelected
+          ? 'bg-[var(--color-base-border)]/50 text-[var(--color-base-text)]'
+          : 'text-[var(--color-base-text)] hover:bg-[var(--color-base-raised)]/50'
       }`}
     >
       <div className="flex items-center gap-2">
         <span
-          className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${STATUS_COLORS[exploration.status] ?? 'bg-stone-500'}`}
+          className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${STATUS_COLORS[exploration.status] ?? 'bg-[var(--color-base-text-muted)]'}`}
         />
         <span className="min-w-0 flex-1 truncate">{truncateGoal(exploration.goal)}</span>
         {exploration.findingsCount > 0 && (
@@ -857,7 +889,7 @@ function ExplorationRow({
               e.stopPropagation()
               onStop(exploration.id)
             }}
-            className="flex-shrink-0 text-stone-500 opacity-0 transition-all hover:text-red-400 group-hover:opacity-100"
+            className="flex-shrink-0 text-[var(--color-base-text-muted)] opacity-0 transition-all hover:text-[var(--color-error)] group-hover:opacity-100"
             aria-label="Stop exploration"
           >
             <Square className="h-3 w-3" />
@@ -869,14 +901,14 @@ function ExplorationRow({
               e.stopPropagation()
               onDelete(exploration.id)
             }}
-            className="flex-shrink-0 text-stone-500 opacity-0 transition-all hover:text-red-400 group-hover:opacity-100"
+            className="flex-shrink-0 text-[var(--color-base-text-muted)] opacity-0 transition-all hover:text-[var(--color-error)] group-hover:opacity-100"
             aria-label="Delete exploration"
           >
             <Trash2 className="h-3 w-3" />
           </button>
         )}
       </div>
-      <div className="mt-0.5 ml-3.5 text-stone-500 text-xs">
+      <div className="mt-0.5 ml-3.5 text-[var(--color-base-text-muted)] text-xs">
         {formatDate(exploration.createdAt)}
       </div>
     </button>
@@ -928,7 +960,7 @@ function ExplorationDetail({
 
       {/* Error banner */}
       {exploration.errorMessage && (
-        <div className="mx-4 mt-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-red-400 text-sm">
+        <div className="mx-4 mt-3 rounded-lg border border-[var(--color-error)]/30 bg-[var(--color-error)]/10 px-3 py-2 text-[var(--color-error)] text-sm">
           {exploration.errorMessage}
         </div>
       )}
@@ -939,19 +971,19 @@ function ExplorationDetail({
       {/* Findings */}
       {displayFindings.length > 0 && (
         <div className="px-4 py-3">
-          <h3 className="mb-2 flex items-center gap-2 font-semibold text-sm text-stone-100">
+          <h3 className="mb-2 flex items-center gap-2 font-semibold text-[var(--color-base-text)] text-sm">
             <Bug className="h-4 w-4 text-yellow-400" />
             Findings ({displayFindings.length})
           </h3>
           {showBatchToggle && (
-            <div className="mb-2 flex items-center gap-1 rounded-lg bg-stone-800 p-0.5">
+            <div className="mb-2 flex items-center gap-1 rounded-lg bg-[var(--color-base-raised)] p-0.5">
               <button
                 type="button"
                 onClick={() => setViewMode('single')}
                 className={`rounded px-2 py-1 text-xs ${
                   viewMode === 'single'
-                    ? 'bg-stone-700 text-stone-100'
-                    : 'text-stone-400 hover:text-stone-300'
+                    ? 'bg-[var(--color-base-border)] text-[var(--color-base-text)]'
+                    : 'text-[var(--color-base-text-secondary)] hover:text-[var(--color-base-text)]'
                 }`}
               >
                 This exploration
@@ -961,8 +993,8 @@ function ExplorationDetail({
                 onClick={() => setViewMode('batch')}
                 className={`rounded px-2 py-1 text-xs ${
                   viewMode === 'batch'
-                    ? 'bg-stone-700 text-stone-100'
-                    : 'text-stone-400 hover:text-stone-300'
+                    ? 'bg-[var(--color-base-border)] text-[var(--color-base-text)]'
+                    : 'text-[var(--color-base-text-secondary)] hover:text-[var(--color-base-text)]'
                 }`}
               >
                 All in batch ({batchFindings?.length ?? 0})
@@ -990,8 +1022,8 @@ function ExplorationDetail({
       {/* Generated tests */}
       {tests.length > 0 && (
         <div className="px-4 py-3">
-          <h3 className="mb-2 flex items-center gap-2 font-semibold text-sm text-stone-100">
-            <FileCode2 className="h-4 w-4 text-green-400" />
+          <h3 className="mb-2 flex items-center gap-2 font-semibold text-[var(--color-base-text)] text-sm">
+            <FileCode2 className="h-4 w-4 text-[var(--color-success)]" />
             Generated Tests ({tests.length})
           </h3>
           <div className="space-y-1">
@@ -1015,21 +1047,23 @@ type StatusBarProps = {
 
 function StatusBar({ exploration, findingsCount, testsCount }: StatusBarProps) {
   return (
-    <div className="flex items-center gap-4 border-stone-800 border-b px-4 py-3 text-sm">
+    <div className="flex items-center gap-4 border-[var(--color-base-border-subtle)] border-b px-4 py-3 text-sm">
       <div className="flex items-center gap-2">
         <span
-          className={`h-2.5 w-2.5 rounded-full ${STATUS_COLORS[exploration.status] ?? 'bg-stone-500'}`}
+          className={`h-2.5 w-2.5 rounded-full ${STATUS_COLORS[exploration.status] ?? 'bg-[var(--color-base-text-muted)]'}`}
         />
-        <span className="text-stone-100 capitalize">{exploration.status}</span>
+        <span className="text-[var(--color-base-text)] capitalize">{exploration.status}</span>
       </div>
-      <div className="text-stone-400">
+      <div className="text-[var(--color-base-text-secondary)]">
         {findingsCount} {findingsCount === 1 ? 'finding' : 'findings'}
       </div>
-      <div className="text-stone-400">
+      <div className="text-[var(--color-base-text-secondary)]">
         {testsCount} {testsCount === 1 ? 'test' : 'tests'}
       </div>
       {exploration.totalCostUsd > 0 && (
-        <div className="ml-auto text-stone-500">{formatCost(exploration.totalCostUsd)}</div>
+        <div className="ml-auto text-[var(--color-base-text-muted)]">
+          {formatCost(exploration.totalCostUsd)}
+        </div>
       )}
     </div>
   )
@@ -1051,12 +1085,12 @@ function StreamingPanel({ text }: { text: string }) {
   return (
     <div className="px-4 pt-3">
       <div className="mb-2 flex items-center gap-2">
-        <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
-        <span className="text-stone-400 text-xs">Exploring…</span>
+        <Loader2 className="h-4 w-4 animate-spin text-[var(--color-info)]" />
+        <span className="text-[var(--color-base-text-secondary)] text-xs">Exploring…</span>
       </div>
       <pre
         ref={ref}
-        className="max-h-[300px] overflow-auto whitespace-pre-wrap rounded-lg border border-stone-800 bg-stone-900/50 p-3 text-stone-300 text-xs"
+        className="max-h-[300px] overflow-auto whitespace-pre-wrap rounded-lg border border-[var(--color-base-border-subtle)] bg-[var(--color-base-surface)]/50 p-3 text-[var(--color-base-text)] text-xs"
       >
         {text}
       </pre>
@@ -1077,9 +1111,9 @@ function FindingCard({
   const Icon = SEVERITY_ICONS[finding.severity]
 
   return (
-    <div className="rounded-lg border border-stone-700 bg-stone-800/50 p-3">
+    <div className="rounded-lg border border-[var(--color-base-border)] bg-[var(--color-base-raised)]/50 p-3">
       <div className="flex items-start gap-2">
-        <Icon className="mt-0.5 h-4 w-4 flex-shrink-0 text-stone-400" />
+        <Icon className="mt-0.5 h-4 w-4 flex-shrink-0 text-[var(--color-base-text-secondary)]" />
         <div className="min-w-0 flex-1">
           <div className="mb-1 flex items-center gap-2">
             <span
@@ -1088,19 +1122,25 @@ function FindingCard({
               {finding.severity}
             </span>
             {goalText && (
-              <span className="truncate rounded bg-stone-700/60 px-1.5 py-0.5 text-[10px] text-stone-400">
+              <span className="truncate rounded bg-[var(--color-base-border)]/60 px-1.5 py-0.5 text-[10px] text-[var(--color-base-text-secondary)]">
                 {goalText}
               </span>
             )}
-            <span className="truncate font-medium text-sm text-stone-100">{finding.title}</span>
+            <span className="truncate font-medium text-[var(--color-base-text)] text-sm">
+              {finding.title}
+            </span>
           </div>
-          <p className="mb-1 text-stone-400 text-xs">{finding.description}</p>
-          {finding.url && <p className="mb-1 truncate text-blue-400 text-xs">{finding.url}</p>}
+          <p className="mb-1 text-[var(--color-base-text-secondary)] text-xs">
+            {finding.description}
+          </p>
+          {finding.url && (
+            <p className="mb-1 truncate text-[var(--color-info)] text-xs">{finding.url}</p>
+          )}
           {finding.reproductionSteps.length > 0 && (
             <button
               type="button"
               onClick={() => setExpanded(!expanded)}
-              className="mt-1 flex items-center gap-1 text-stone-500 text-xs transition-colors hover:text-stone-300"
+              className="mt-1 flex items-center gap-1 text-[var(--color-base-text-muted)] text-xs transition-colors hover:text-[var(--color-base-text)]"
             >
               <ChevronRight
                 className={`h-3 w-3 transition-transform ${expanded ? 'rotate-90' : ''}`}
@@ -1109,7 +1149,7 @@ function FindingCard({
             </button>
           )}
           {expanded && (
-            <ol className="mt-2 list-inside list-decimal space-y-1 text-stone-400 text-xs">
+            <ol className="mt-2 list-inside list-decimal space-y-1 text-[var(--color-base-text-secondary)] text-xs">
               {finding.reproductionSteps.map((step, i) => (
                 <li key={i}>{step}</li>
               ))}
@@ -1137,20 +1177,20 @@ function GeneratedTestItem({ path, cwd }: { path: string; cwd: string }) {
   }
 
   return (
-    <div className="rounded-lg border border-stone-700 bg-stone-800/50">
+    <div className="rounded-lg border border-[var(--color-base-border)] bg-[var(--color-base-raised)]/50">
       <button
         type="button"
         onClick={handleExpand}
-        className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-stone-700/30"
+        className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-[var(--color-base-border)]/30"
       >
         <ChevronRight
-          className={`h-3.5 w-3.5 flex-shrink-0 text-stone-500 transition-transform ${expanded ? 'rotate-90' : ''}`}
+          className={`h-3.5 w-3.5 flex-shrink-0 text-[var(--color-base-text-muted)] transition-transform ${expanded ? 'rotate-90' : ''}`}
         />
-        <FileCode2 className="h-4 w-4 flex-shrink-0 text-green-400" />
-        <span className="truncate text-stone-300">{path}</span>
+        <FileCode2 className="h-4 w-4 flex-shrink-0 text-[var(--color-success)]" />
+        <span className="truncate text-[var(--color-base-text)]">{path}</span>
       </button>
       {expanded && content !== null && (
-        <pre className="max-h-[400px] overflow-x-auto whitespace-pre-wrap border-stone-700 border-t px-3 pb-3 text-stone-400 text-xs">
+        <pre className="max-h-[400px] overflow-x-auto whitespace-pre-wrap border-[var(--color-base-border)] border-t px-3 pb-3 text-[var(--color-base-text-secondary)] text-xs">
           {content}
         </pre>
       )}
@@ -1164,18 +1204,22 @@ function EmptyState({ hasProject }: { hasProject: boolean }) {
   return (
     <div className="flex flex-1 items-center justify-center">
       <div className="text-center">
-        <Bug className="mx-auto mb-3 h-12 w-12 text-stone-600" />
+        <Bug className="mx-auto mb-3 h-12 w-12 text-[var(--color-base-text-faint)]" />
         {hasProject ? (
           <>
-            <p className="text-sm text-stone-400">No exploration selected</p>
-            <p className="mt-1 text-stone-500 text-xs">
+            <p className="text-[var(--color-base-text-secondary)] text-sm">
+              No exploration selected
+            </p>
+            <p className="mt-1 text-[var(--color-base-text-muted)] text-xs">
               Configure goals on the left and start an exploration
             </p>
           </>
         ) : (
           <>
-            <p className="text-sm text-stone-400">Select a project to get started</p>
-            <p className="mt-1 text-stone-500 text-xs">
+            <p className="text-[var(--color-base-text-secondary)] text-sm">
+              Select a project to get started
+            </p>
+            <p className="mt-1 text-[var(--color-base-text-muted)] text-xs">
               Choose a project from the dropdown to scan for server details and generate test goals
             </p>
           </>

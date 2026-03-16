@@ -42,10 +42,10 @@ function PrBody({ body }: { body: string }) {
   }, [body])
 
   return (
-    <div className="relative rounded-lg bg-stone-900/60">
+    <div className="relative rounded-lg bg-[var(--color-base-surface)]/60">
       <div
         ref={contentRef}
-        className={`prose prose-invert prose-xs max-w-none overflow-hidden prose-img:rounded prose-blockquote:border-stone-700 p-3 prose-a:text-blue-400 prose-blockquote:text-stone-500 prose-code:text-stone-300 prose-headings:text-stone-300 prose-strong:text-stone-300 text-stone-400 text-xs leading-relaxed prose-a:no-underline hover:prose-a:underline ${!expanded && needsTruncation ? 'pr-body-collapsed' : ''}`}
+        className={`prose prose-invert prose-xs max-w-none overflow-hidden prose-img:rounded prose-blockquote:border-[var(--color-base-border)] p-3 prose-a:text-[var(--color-info)] prose-blockquote:text-[var(--color-base-text-muted)] prose-code:text-[var(--color-base-text)] prose-headings:text-[var(--color-base-text)] prose-strong:text-[var(--color-base-text)] text-[var(--color-base-text-secondary)] text-xs leading-relaxed prose-a:no-underline hover:prose-a:underline ${!expanded && needsTruncation ? 'pr-body-collapsed' : ''}`}
         style={!expanded && needsTruncation ? { maxHeight: COLLAPSED_HEIGHT } : undefined}
       >
         <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw, rehypeSanitize]}>
@@ -55,12 +55,12 @@ function PrBody({ body }: { body: string }) {
       {needsTruncation && (
         <>
           {!expanded && (
-            <div className="pointer-events-none absolute right-0 bottom-7 left-0 h-8 bg-gradient-to-t from-stone-900/60 to-transparent" />
+            <div className="pointer-events-none absolute right-0 bottom-7 left-0 h-8 bg-gradient-to-t from-[var(--color-base-surface)]/60 to-transparent" />
           )}
           <button
             type="button"
             onClick={() => setExpanded((e) => !e)}
-            className="flex w-full cursor-pointer items-center justify-center gap-1 rounded-b-lg py-1 text-stone-500 text-xs transition-colors hover:text-stone-300"
+            className="flex w-full cursor-pointer items-center justify-center gap-1 rounded-b-lg py-1 text-[var(--color-base-text-muted)] text-xs transition-colors hover:text-[var(--color-base-text)]"
           >
             {expanded ? (
               <>
@@ -147,7 +147,7 @@ export function PrDetail() {
 
   if (!selectedPr) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-3 text-stone-600">
+      <div className="flex h-full flex-col items-center justify-center gap-3 text-[var(--color-base-text-faint)]">
         <GitPullRequest size={32} strokeWidth={1.5} />
         <span className="text-sm">Select a PR to review</span>
       </div>
@@ -157,7 +157,7 @@ export function PrDetail() {
   if (prDetailLoading) {
     return (
       <div className="flex h-full items-center justify-center">
-        <Loader2 size={16} className="animate-spin text-stone-500" />
+        <Loader2 size={16} className="animate-spin text-[var(--color-base-text-muted)]" />
       </div>
     )
   }
@@ -180,36 +180,38 @@ export function PrDetail() {
   return (
     <div className="flex h-full flex-col">
       {/* PR Header with review button */}
-      <div className="border-stone-800 border-b bg-stone-950/50 px-5 py-3">
+      <div className="border-[var(--color-base-border-subtle)] border-b bg-[var(--color-base-bg)]/50 px-5 py-3">
         <div className="flex items-start gap-3">
           <PrIcon
             size={18}
-            className={`mt-0.5 flex-shrink-0 ${pr.isDraft ? 'text-stone-500' : 'text-emerald-500'}`}
+            className={`mt-0.5 flex-shrink-0 ${pr.isDraft ? 'text-[var(--color-base-text-muted)]' : 'text-emerald-500'}`}
           />
           <div className="min-w-0 flex-1">
             <div className="flex items-baseline gap-2">
-              <h2 className="font-semibold text-sm text-stone-100">{pr.title}</h2>
-              <span className="flex-shrink-0 text-stone-600 text-xs">#{pr.number}</span>
+              <h2 className="font-semibold text-[var(--color-base-text)] text-sm">{pr.title}</h2>
+              <span className="flex-shrink-0 text-[var(--color-base-text-faint)] text-xs">
+                #{pr.number}
+              </span>
             </div>
-            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-stone-500">
+            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[var(--color-base-text-muted)]">
               <span className="flex items-center gap-1">
                 <User size={10} /> {pr.author}
               </span>
               <span className="flex items-center gap-1 font-[family-name:var(--font-mono)]">
                 <GitBranch size={10} />
-                <span className="text-stone-400">{pr.headBranch}</span>
-                <span className="text-stone-600">&rarr;</span>
+                <span className="text-[var(--color-base-text-secondary)]">{pr.headBranch}</span>
+                <span className="text-[var(--color-base-text-faint)]">&rarr;</span>
                 <span>{pr.baseBranch}</span>
               </span>
               <span className="flex items-center gap-1.5 font-[family-name:var(--font-mono)] tabular-nums">
                 <span className="text-emerald-500">+{pr.additions}</span>
-                <span className="text-red-500">-{pr.deletions}</span>
+                <span className="text-[var(--color-error)]">-{pr.deletions}</span>
               </span>
               <a
                 href={pr.url}
                 target="_blank"
                 rel="noreferrer"
-                className="flex items-center gap-1 transition-colors hover:text-stone-300"
+                className="flex items-center gap-1 transition-colors hover:text-[var(--color-base-text)]"
                 onClick={(e) => {
                   e.preventDefault()
                   window.open(pr.url, '_blank')
@@ -225,14 +227,14 @@ export function PrDetail() {
             <button
               type="button"
               onClick={() => setShowReviewModal(true)}
-              className="flex flex-shrink-0 items-center gap-1.5 rounded-lg bg-stone-100 px-3.5 py-1.5 font-semibold text-[12px] text-stone-900 transition-colors hover:bg-white"
+              className="flex flex-shrink-0 items-center gap-1.5 rounded-lg bg-[var(--color-base-text)] px-3.5 py-1.5 font-semibold text-[12px] text-[var(--color-base-bg)] transition-colors hover:bg-white"
             >
               {isDone ? <RotateCw size={12} /> : <Play size={12} />}
               {isDone ? 'Re-run' : 'Review'}
             </button>
           )}
           {isRunning && (
-            <span className="flex flex-shrink-0 items-center gap-1.5 rounded-lg border border-stone-700 px-3 py-1.5 text-[11px] text-stone-400">
+            <span className="flex flex-shrink-0 items-center gap-1.5 rounded-lg border border-[var(--color-base-border)] px-3 py-1.5 text-[11px] text-[var(--color-base-text-secondary)]">
               <Loader2 size={11} className="animate-spin" />
               Reviewing...
             </span>
@@ -278,7 +280,7 @@ export function PrDetail() {
       {isDone && prDetail && (
         <div className="flex min-h-0 flex-1 flex-col">
           {/* Review history bar */}
-          <div className="border-stone-800 border-b px-3 py-1.5">
+          <div className="border-[var(--color-base-border-subtle)] border-b px-3 py-1.5">
             <ReviewHistory />
           </div>
 
@@ -298,7 +300,7 @@ export function PrDetail() {
               onMouseDown={onResizeStart}
               className="group relative w-0 flex-shrink-0 cursor-col-resize"
             >
-              <div className="absolute inset-y-0 -left-px w-[3px] transition-colors group-hover:bg-stone-600 group-active:bg-stone-500" />
+              <div className="absolute inset-y-0 -left-px w-[3px] transition-colors group-hover:bg-[var(--color-base-text-faint)] group-active:bg-[var(--color-base-text-muted)]" />
             </div>
             <div className="min-w-0 flex-1">
               <DiffPane

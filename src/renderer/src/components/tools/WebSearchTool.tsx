@@ -54,8 +54,8 @@ export function WebSearchTool({ input, result }: WebSearchToolProps) {
 
   if (!result) {
     return (
-      <div className="text-stone-400 text-xs">
-        Searching: <span className="text-stone-300">{query}</span>
+      <div className="text-[var(--color-base-text-secondary)] text-xs">
+        Searching: <span className="text-[var(--color-base-text)]">{query}</span>
       </div>
     )
   }
@@ -74,11 +74,13 @@ export function WebSearchTool({ input, result }: WebSearchToolProps) {
           href={link.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-2 rounded px-2 py-1 text-xs transition-colors hover:bg-stone-800"
+          className="flex items-center gap-2 rounded px-2 py-1 text-xs transition-colors hover:bg-[var(--color-base-raised)]"
         >
-          <ExternalLink size={11} className="flex-shrink-0 text-stone-500" />
-          <span className="min-w-0 flex-1 truncate text-stone-300">{link.title}</span>
-          <span className="flex-shrink-0 text-stone-600">{link.domain}</span>
+          <ExternalLink size={11} className="flex-shrink-0 text-[var(--color-base-text-muted)]" />
+          <span className="min-w-0 flex-1 truncate text-[var(--color-base-text)]">
+            {link.title}
+          </span>
+          <span className="flex-shrink-0 text-[var(--color-base-text-faint)]">{link.domain}</span>
         </a>
       ))}
     </div>

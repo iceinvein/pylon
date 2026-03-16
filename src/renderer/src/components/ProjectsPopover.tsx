@@ -74,7 +74,7 @@ export function ProjectsPopover({
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -4 }}
           transition={{ duration: 0.12 }}
-          className="fixed z-50 w-72 rounded-xl border border-stone-700 bg-stone-900 py-1.5 shadow-2xl"
+          className="fixed z-50 w-72 rounded-xl border border-[var(--color-base-border)] bg-[var(--color-base-surface)] py-1.5 shadow-2xl"
           style={
             position === 'below'
               ? {
@@ -94,14 +94,16 @@ export function ProjectsPopover({
           }
         >
           <div className="px-3 py-1.5">
-            <p className="font-medium text-[10px] text-stone-500 uppercase tracking-wider">
+            <p className="font-medium text-[10px] text-[var(--color-base-text-muted)] uppercase tracking-wider">
               Projects
             </p>
           </div>
 
           <div className="max-h-64 overflow-y-auto">
             {projects.length === 0 ? (
-              <div className="px-3 py-3 text-center text-stone-600 text-xs">No recent projects</div>
+              <div className="px-3 py-3 text-center text-[var(--color-base-text-faint)] text-xs">
+                No recent projects
+              </div>
             ) : (
               projects.map((project) => (
                 <button
@@ -111,29 +113,36 @@ export function ProjectsPopover({
                     onSelectProject(project.path)
                     onClose()
                   }}
-                  className="flex w-full items-start gap-2.5 px-3 py-2 text-left transition-colors hover:bg-stone-800/60"
+                  className="flex w-full items-start gap-2.5 px-3 py-2 text-left transition-colors hover:bg-[var(--color-base-raised)]/60"
                 >
-                  <Folder size={13} className="mt-0.5 flex-shrink-0 text-stone-600" />
+                  <Folder
+                    size={13}
+                    className="mt-0.5 flex-shrink-0 text-[var(--color-base-text-faint)]"
+                  />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium text-stone-300 text-xs">
+                    <p className="truncate font-medium text-[var(--color-base-text)] text-xs">
                       {project.path.split('/').pop()}
                     </p>
-                    <p className="truncate text-[11px] text-stone-600">{project.path}</p>
-                    <p className="text-[10px] text-stone-700">{timeAgo(project.lastUsed)}</p>
+                    <p className="truncate text-[11px] text-[var(--color-base-text-faint)]">
+                      {project.path}
+                    </p>
+                    <p className="text-[10px] text-[var(--color-base-text-faint)]">
+                      {timeAgo(project.lastUsed)}
+                    </p>
                   </div>
                 </button>
               ))
             )}
           </div>
 
-          <div className="border-stone-800 border-t px-1.5 pt-1.5">
+          <div className="border-[var(--color-base-border-subtle)] border-t px-1.5 pt-1.5">
             <button
               type="button"
               onClick={() => {
                 onBrowse()
                 onClose()
               }}
-              className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left text-stone-400 text-xs transition-colors hover:bg-stone-800/60 hover:text-stone-300"
+              className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left text-[var(--color-base-text-secondary)] text-xs transition-colors hover:bg-[var(--color-base-raised)]/60 hover:text-[var(--color-base-text)]"
             >
               <FolderOpen size={13} />
               Browse...

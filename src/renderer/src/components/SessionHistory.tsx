@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { resumeStoredSession, type StoredSession } from '../lib/resume-session'
 import { formatCost, timeAgo } from '../lib/utils'
 import { useTabStore } from '../store/tab-store'
+import { SectionHeader } from './SectionHeader'
 
 export function SessionHistory() {
   const [storedSessions, setStoredSessions] = useState<StoredSession[]>([])
@@ -34,46 +35,37 @@ export function SessionHistory() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-8 text-sm text-stone-600">
-        Loading sessions...
+      <div className="flex items-center justify-center py-8 text-[var(--color-base-text-faint)] text-sm">
+        Loading...
       </div>
     )
   }
 
-  if (storedSessions.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-8 text-center">
-        <p className="text-sm text-stone-600">No previous sessions</p>
-        <p className="mt-1 text-stone-700 text-xs">Open a folder to get started</p>
-      </div>
-    )
-  }
+  if (storedSessions.length === 0) return null
 
   return (
     <div className="space-y-1">
-      <p className="mb-2 font-medium text-stone-600 text-xs uppercase tracking-wider">
-        Recent Sessions
-      </p>
+      <SectionHeader>Recent</SectionHeader>
       {storedSessions.slice(0, 5).map((session) => (
         <button
           type="button"
           key={session.id}
           onClick={() => handleResume(session)}
-          className="group flex w-full items-start gap-3 rounded-lg p-3 text-left transition-colors hover:bg-stone-800/60"
+          className="group flex w-full items-start gap-3 rounded-lg p-3 text-left transition-colors hover:bg-[var(--color-base-raised)]"
         >
-          <Folder size={14} className="mt-0.5 flex-shrink-0 text-stone-600" />
+          <Folder size={14} className="mt-0.5 flex-shrink-0 text-[var(--color-base-text-muted)]" />
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm text-stone-300">
+            <p className="truncate text-[var(--color-base-text)] text-sm">
               {session.title || session.cwd.split('/').pop() || 'Untitled'}
             </p>
-            <p className="truncate text-stone-600 text-xs">{session.cwd}</p>
+            <p className="truncate text-[var(--color-base-text-muted)] text-xs">{session.cwd}</p>
             <div className="mt-1 flex items-center gap-3">
-              <span className="flex items-center gap-1 text-stone-700 text-xs">
+              <span className="flex items-center gap-1 text-[var(--color-base-text-faint)] text-xs">
                 <Clock size={10} />
                 {timeAgo(session.updated_at)}
               </span>
               {session.total_cost_usd > 0 && (
-                <span className="flex items-center gap-1 text-stone-700 text-xs">
+                <span className="flex items-center gap-1 text-[var(--color-base-text-faint)] text-xs">
                   <DollarSign size={10} />
                   {formatCost(session.total_cost_usd)}
                 </span>
@@ -83,7 +75,7 @@ export function SessionHistory() {
           <button
             type="button"
             onClick={(e) => handleDelete(e, session.id)}
-            className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded text-stone-600 opacity-0 transition-all hover:bg-stone-700 hover:text-red-400 group-hover:opacity-100"
+            className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded text-[var(--color-base-text-faint)] opacity-0 transition-all hover:bg-[var(--color-base-border)] hover:text-[var(--color-error)] group-hover:opacity-100"
           >
             <Trash2 size={12} />
           </button>

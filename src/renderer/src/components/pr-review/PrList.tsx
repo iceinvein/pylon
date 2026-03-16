@@ -64,19 +64,19 @@ export function PrList() {
     : 'All repos'
 
   return (
-    <div className="flex h-full flex-col border-stone-800 border-r">
-      <div className="border-stone-800 border-b p-3">
+    <div className="flex h-full flex-col border-[var(--color-base-border-subtle)] border-r">
+      <div className="border-[var(--color-base-border-subtle)] border-b p-3">
         {/* Repo filter dropdown */}
         <div ref={repoMenuRef} className="relative">
           <button
             type="button"
             onClick={() => setRepoMenuOpen((v) => !v)}
-            className="flex w-full items-center justify-between rounded-md bg-stone-800 px-2.5 py-1.5 text-stone-300 text-xs ring-1 ring-stone-700 transition-colors hover:ring-stone-600"
+            className="flex w-full items-center justify-between rounded-md bg-[var(--color-base-raised)] px-2.5 py-1.5 text-[var(--color-base-text)] text-xs ring-1 ring-[var(--color-base-border)] transition-colors hover:ring-[var(--color-base-border)]"
           >
             <span className="truncate">{selectedLabel}</span>
             <ChevronDown
               size={12}
-              className={`ml-1.5 flex-shrink-0 text-stone-500 transition-transform ${repoMenuOpen ? 'rotate-180' : ''}`}
+              className={`ml-1.5 flex-shrink-0 text-[var(--color-base-text-muted)] transition-transform ${repoMenuOpen ? 'rotate-180' : ''}`}
             />
           </button>
           <AnimatePresence>
@@ -86,7 +86,7 @@ export function PrList() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -4 }}
                 transition={{ duration: 0.12 }}
-                className="absolute top-full right-0 left-0 z-50 mt-1 max-h-60 overflow-y-auto rounded-lg border border-stone-700 bg-stone-900 py-1 shadow-xl"
+                className="absolute top-full right-0 left-0 z-50 mt-1 max-h-60 overflow-y-auto rounded-lg border border-[var(--color-base-border)] bg-[var(--color-base-surface)] py-1 shadow-xl"
               >
                 <button
                   type="button"
@@ -94,12 +94,18 @@ export function PrList() {
                     setSelectedRepo(null)
                     setRepoMenuOpen(false)
                   }}
-                  className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-xs transition-colors hover:bg-stone-800"
+                  className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-xs transition-colors hover:bg-[var(--color-base-raised)]"
                 >
                   <span className={`h-3 w-3 flex-shrink-0 ${!selectedRepo ? '' : 'opacity-0'}`}>
-                    {!selectedRepo && <Check size={12} className="text-stone-300" />}
+                    {!selectedRepo && <Check size={12} className="text-[var(--color-base-text)]" />}
                   </span>
-                  <span className={!selectedRepo ? 'text-stone-200' : 'text-stone-400'}>
+                  <span
+                    className={
+                      !selectedRepo
+                        ? 'text-[var(--color-base-text)]'
+                        : 'text-[var(--color-base-text-secondary)]'
+                    }
+                  >
                     All repos
                   </span>
                 </button>
@@ -113,13 +119,15 @@ export function PrList() {
                         setSelectedRepo(r.fullName)
                         setRepoMenuOpen(false)
                       }}
-                      className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-xs transition-colors hover:bg-stone-800"
+                      className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-xs transition-colors hover:bg-[var(--color-base-raised)]"
                     >
                       <span className={`h-3 w-3 flex-shrink-0 ${isSelected ? '' : 'opacity-0'}`}>
-                        {isSelected && <Check size={12} className="text-stone-300" />}
+                        {isSelected && (
+                          <Check size={12} className="text-[var(--color-base-text)]" />
+                        )}
                       </span>
                       <span
-                        className={`truncate ${isSelected ? 'text-stone-200' : 'text-stone-400'}`}
+                        className={`truncate ${isSelected ? 'text-[var(--color-base-text)]' : 'text-[var(--color-base-text-secondary)]'}`}
                       >
                         {r.fullName}
                       </span>
@@ -132,13 +140,16 @@ export function PrList() {
         </div>
 
         <div className="relative mt-2">
-          <Search size={13} className="absolute top-1/2 left-2.5 -translate-y-1/2 text-stone-500" />
+          <Search
+            size={13}
+            className="absolute top-1/2 left-2.5 -translate-y-1/2 text-[var(--color-base-text-muted)]"
+          />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Filter PRs..."
-            className="w-full rounded-md bg-stone-800 py-1.5 pr-3 pl-8 text-stone-300 text-xs placeholder-stone-600 outline-none ring-1 ring-stone-700 focus:ring-stone-500"
+            className="w-full rounded-md bg-[var(--color-base-raised)] py-1.5 pr-3 pl-8 text-[var(--color-base-text)] text-xs placeholder-[var(--color-base-text-faint)] outline-none ring-1 ring-[var(--color-base-border)] focus:ring-[var(--color-accent)]"
           />
         </div>
       </div>
@@ -146,10 +157,10 @@ export function PrList() {
       <div className="flex-1 overflow-y-auto p-2">
         {prsLoading || reposLoading ? (
           <div className="flex items-center justify-center py-8">
-            <Loader2 size={16} className="animate-spin text-stone-500" />
+            <Loader2 size={16} className="animate-spin text-[var(--color-base-text-muted)]" />
           </div>
         ) : filteredPrs.length === 0 ? (
-          <div className="py-8 text-center text-stone-500 text-xs">
+          <div className="py-8 text-center text-[var(--color-base-text-muted)] text-xs">
             {repos.length === 0
               ? 'No GitHub projects found. Add a project first.'
               : 'No open PRs found.'}

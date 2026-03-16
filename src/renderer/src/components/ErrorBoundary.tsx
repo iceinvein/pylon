@@ -21,16 +21,19 @@ export class ErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="flex h-screen w-screen items-center justify-center bg-stone-950 text-stone-300">
+        <div className="flex h-screen w-screen items-center justify-center bg-[var(--color-base-bg)] text-[var(--color-base-text-secondary)]">
           <div className="max-w-md space-y-4 text-center">
-            <h1 className="font-medium text-lg text-stone-100">Something went wrong</h1>
-            <p className="text-sm text-stone-500">
-              {this.state.error?.message ?? 'An unexpected error occurred.'}
+            <h1 className="font-medium text-[var(--color-base-text)] text-lg">
+              Pylon hit an unexpected error
+            </h1>
+            <p className="max-h-24 overflow-auto text-[var(--color-base-text-muted)] text-sm">
+              {this.state.error?.message ??
+                'Try reloading — if it persists, check the dev console.'}
             </p>
             <button
               type="button"
               onClick={() => window.location.reload()}
-              className="rounded-md bg-stone-800 px-4 py-2 text-sm text-stone-200 transition-colors hover:bg-stone-700"
+              className="rounded-md bg-[var(--color-base-raised)] px-4 py-2 text-[var(--color-base-text)] text-sm transition-colors hover:brightness-110"
             >
               Reload
             </button>

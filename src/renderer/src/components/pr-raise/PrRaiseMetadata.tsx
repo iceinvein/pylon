@@ -20,35 +20,41 @@ export function PrRaiseMetadata({
   onSquashChange,
 }: Props) {
   return (
-    <div className="space-y-3 border-stone-800 border-b px-6 py-4">
+    <div className="space-y-3 border-[var(--color-base-border-subtle)] border-b px-6 py-4">
       {/* Title */}
       <input
         type="text"
         value={title}
         onChange={(e) => onTitleChange(e.target.value)}
         placeholder="PR title..."
-        className="w-full rounded-md border border-stone-700 bg-stone-900 px-3 py-2 text-sm text-stone-200 placeholder:text-stone-600 focus:border-blue-500/50 focus:outline-none"
+        className="w-full rounded-md border border-[var(--color-base-border)] bg-[var(--color-base-surface)] px-3 py-2 text-[var(--color-base-text)] text-sm placeholder:text-[var(--color-base-text-faint)] focus:border-[var(--color-info)]/50 focus:outline-none"
       />
 
       {/* Branch + Commits row */}
       <div className="flex items-center gap-3">
         {/* Base branch */}
-        <div className="flex items-center gap-2 rounded-md border border-stone-700 bg-stone-900 px-3 py-1.5">
-          <span className="text-[10px] text-stone-500 uppercase tracking-wider">Base</span>
+        <div className="flex items-center gap-2 rounded-md border border-[var(--color-base-border)] bg-[var(--color-base-surface)] px-3 py-1.5">
+          <span className="text-[10px] text-[var(--color-base-text-muted)] uppercase tracking-wider">
+            Base
+          </span>
           <input
             type="text"
             value={baseBranch}
             onChange={(e) => onBaseBranchChange(e.target.value)}
-            className="w-24 bg-transparent text-stone-200 text-xs focus:outline-none"
+            className="w-24 bg-transparent text-[var(--color-base-text)] text-xs focus:outline-none"
           />
         </div>
 
-        <span className="text-stone-600">←</span>
+        <span className="text-[var(--color-base-text-faint)]">←</span>
 
         {/* Head branch (read-only) */}
-        <div className="flex items-center gap-2 rounded-md border border-stone-800 bg-stone-900/50 px-3 py-1.5">
-          <span className="text-[10px] text-stone-500 uppercase tracking-wider">Head</span>
-          <span className="text-stone-400 text-xs">{info?.headBranch ?? '...'}</span>
+        <div className="flex items-center gap-2 rounded-md border border-[var(--color-base-border-subtle)] bg-[var(--color-base-surface)]/50 px-3 py-1.5">
+          <span className="text-[10px] text-[var(--color-base-text-muted)] uppercase tracking-wider">
+            Head
+          </span>
+          <span className="text-[var(--color-base-text-secondary)] text-xs">
+            {info?.headBranch ?? '...'}
+          </span>
         </div>
 
         {/* Squash toggle */}
@@ -57,7 +63,9 @@ export function PrRaiseMetadata({
             type="button"
             onClick={() => onSquashChange(true)}
             className={`rounded px-2 py-1 transition-colors ${
-              squash ? 'bg-blue-600/20 text-blue-400' : 'text-stone-500 hover:text-stone-300'
+              squash
+                ? 'bg-[var(--color-info)]/20 text-[var(--color-info)]'
+                : 'text-[var(--color-base-text-muted)] hover:text-[var(--color-base-text)]'
             }`}
           >
             Squash
@@ -66,7 +74,9 @@ export function PrRaiseMetadata({
             type="button"
             onClick={() => onSquashChange(false)}
             className={`rounded px-2 py-1 transition-colors ${
-              !squash ? 'bg-blue-600/20 text-blue-400' : 'text-stone-500 hover:text-stone-300'
+              !squash
+                ? 'bg-[var(--color-info)]/20 text-[var(--color-info)]'
+                : 'text-[var(--color-base-text-muted)] hover:text-[var(--color-base-text)]'
             }`}
           >
             As-is
@@ -77,13 +87,13 @@ export function PrRaiseMetadata({
       {/* Stats bar */}
       {info && (
         <div className="flex items-center gap-3 text-xs">
-          <span className="rounded bg-green-900/30 px-1.5 py-0.5 text-green-400">
+          <span className="rounded bg-[var(--color-success)]/30 px-1.5 py-0.5 text-[var(--color-success)]">
             +{info.stats.insertions}
           </span>
-          <span className="rounded bg-red-900/30 px-1.5 py-0.5 text-red-400">
+          <span className="rounded bg-[var(--color-error)]/30 px-1.5 py-0.5 text-[var(--color-error)]">
             -{info.stats.deletions}
           </span>
-          <span className="text-stone-500">
+          <span className="text-[var(--color-base-text-muted)]">
             {info.stats.filesChanged} file{info.stats.filesChanged !== 1 ? 's' : ''} ·{' '}
             {info.commits.length} commit{info.commits.length !== 1 ? 's' : ''}
           </span>

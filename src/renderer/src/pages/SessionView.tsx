@@ -1,4 +1,4 @@
-import { ChevronRight, GitCompareArrows, GitPullRequestArrow, Info, Workflow } from 'lucide-react'
+import { GitCompareArrows, GitPullRequestArrow, Info, Workflow } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type {
@@ -14,10 +14,12 @@ import { FlowPanel } from '../components/flow/FlowPanel'
 import { InputBar } from '../components/InputBar'
 import { TasksPanel } from '../components/layout/TasksPanel'
 import { ChatView } from '../components/messages/ChatView'
+import { PanelHeader } from '../components/PanelHeader'
 import { PrRaiseOverlay } from '../components/pr-raise/PrRaiseOverlay'
 import { ReviewPanel } from '../components/review/ReviewPanel'
 import { SessionInfoPanel } from '../components/SessionInfoPanel'
 import { ThinkingIndicator } from '../components/ThinkingIndicator'
+import { fadeUpSmall, stagger } from '../lib/animations'
 import { resumeStoredSession, type StoredSession } from '../lib/resume-session'
 import { usePrRaiseStore } from '../store/pr-raise-store'
 import { useSessionStore } from '../store/session-store'
@@ -336,17 +338,73 @@ export function SessionView({ tab, isActive }: SessionViewProps) {
               <ChatView sessionId={sessionId} isActive={isActive} />
             ) : (
               <div className="flex h-full items-center justify-center">
-                <p className="text-sm text-stone-600">Send a message to start</p>
+                <motion.div
+                  className="w-full max-w-md px-6"
+                  initial="hidden"
+                  animate="show"
+                  variants={stagger(0.06)}
+                >
+                  <motion.p
+                    className="font-display text-2xl text-[var(--color-base-text-secondary)] italic"
+                    variants={fadeUpSmall}
+                  >
+                    What shall we build?
+                  </motion.p>
+                  <motion.p
+                    className="mt-2 text-[var(--color-base-text-faint)] text-sm"
+                    variants={fadeUpSmall}
+                  >
+                    Try one of these, or type your own below.
+                  </motion.p>
+                  <div className="mt-6 flex flex-col gap-2">
+                    {[
+                      'Explain this codebase — what does it do and how is it structured?',
+                      'Find and fix any bugs in the recent changes',
+                      'Add tests for the untested functions',
+                      'Refactor the largest file into smaller modules',
+                    ].map((prompt) => (
+                      <motion.button
+                        type="button"
+                        key={prompt}
+                        onClick={() => handleSend(prompt, [])}
+                        variants={fadeUpSmall}
+                        className="rounded-lg border border-[var(--color-base-border)]/50 px-4 py-2.5 text-left text-[var(--color-base-text-secondary)] text-sm transition-all hover:border-[var(--color-accent)]/30 hover:bg-[var(--color-accent)]/5 hover:text-[var(--color-base-text)]"
+                      >
+                        {prompt}
+                      </motion.button>
+                    ))}
+                  </div>
+                  <motion.p
+                    className="mt-4 text-[11px] text-[var(--color-base-text-faint)]"
+                    variants={fadeUpSmall}
+                  >
+                    Type{' '}
+                    <kbd className="rounded border border-[var(--color-base-border)] px-1 py-0.5 text-[10px]">
+                      /
+                    </kbd>{' '}
+                    for commands
+                    {' · '}
+                    <kbd className="rounded border border-[var(--color-base-border)] px-1 py-0.5 text-[10px]">
+                      ⌘K
+                    </kbd>{' '}
+                    palette
+                  </motion.p>
+                </motion.div>
               </div>
             )}
           </div>
-          <div className="overflow-hidden">
-            <div
-              className={`transition-opacity duration-150 ${isProcessing ? 'opacity-100' : 'opacity-0'}`}
-            >
-              <ThinkingIndicator isCompacting={isCompacting} />
-            </div>
-          </div>
+          <AnimatePresence>
+            {isProcessing && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+              >
+                <ThinkingIndicator isCompacting={isCompacting} />
+              </motion.div>
+            )}
+          </AnimatePresence>
           <TasksPanel sessionId={sessionId ?? null} />
           <div>
             <InputBar
@@ -382,23 +440,14 @@ export function SessionView({ tab, isActive }: SessionViewProps) {
                   {/* biome-ignore lint/a11y/noStaticElementInteractions: mouse-only resize handle */}
                   <div
                     onMouseDown={handleFlowDragStart}
-                    className="flex w-1 flex-shrink-0 cursor-col-resize items-center justify-center border-stone-800 border-l bg-stone-950 transition-colors hover:bg-stone-700 active:bg-stone-600"
+                    className="flex w-1 flex-shrink-0 cursor-col-resize items-center justify-center border-[var(--color-base-border-subtle)] border-l bg-[var(--color-base-bg)] transition-colors hover:bg-[var(--color-base-border)] active:bg-[var(--color-base-text-faint)]"
                   />
                   <div className="flex min-w-0 flex-1 flex-col bg-[var(--color-base-bg)]">
-                    <div className="flex items-center justify-between border-stone-800 border-b px-3 py-2">
-                      <div className="flex items-center gap-2 font-medium text-stone-400 text-xs">
-                        <Workflow size={13} />
-                        Flow
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setShowFlow(false)}
-                        className="rounded p-0.5 text-stone-600 transition-colors hover:bg-stone-800 hover:text-stone-300"
-                        title="Collapse flow"
-                      >
-                        <ChevronRight size={14} />
-                      </button>
-                    </div>
+                    <PanelHeader
+                      icon={<Workflow size={13} />}
+                      title="Flow"
+                      onClose={() => setShowFlow(false)}
+                    />
                     <FlowPanel />
                   </div>
                 </motion.div>
@@ -419,23 +468,14 @@ export function SessionView({ tab, isActive }: SessionViewProps) {
                   {/* biome-ignore lint/a11y/noStaticElementInteractions: mouse-only resize handle */}
                   <div
                     onMouseDown={handleChangesDragStart}
-                    className="flex w-1 flex-shrink-0 cursor-col-resize items-center justify-center border-stone-800 border-l bg-stone-950 transition-colors hover:bg-stone-700 active:bg-stone-600"
+                    className="flex w-1 flex-shrink-0 cursor-col-resize items-center justify-center border-[var(--color-base-border-subtle)] border-l bg-[var(--color-base-bg)] transition-colors hover:bg-[var(--color-base-border)] active:bg-[var(--color-base-text-faint)]"
                   />
                   <div className="flex min-w-0 flex-1 flex-col bg-[var(--color-base-bg)]">
-                    <div className="flex items-center justify-between border-stone-800 border-b px-3 py-2">
-                      <div className="flex items-center gap-2 font-medium text-stone-400 text-xs">
-                        <GitCompareArrows size={13} />
-                        Changes
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setShowChanges(false)}
-                        className="rounded p-0.5 text-stone-600 transition-colors hover:bg-stone-800 hover:text-stone-300"
-                        title="Collapse changes"
-                      >
-                        <ChevronRight size={14} />
-                      </button>
-                    </div>
+                    <PanelHeader
+                      icon={<GitCompareArrows size={13} />}
+                      title="Changes"
+                      onClose={() => setShowChanges(false)}
+                    />
                     <ChangesPanel />
                   </div>
                 </motion.div>
@@ -458,118 +498,89 @@ export function SessionView({ tab, isActive }: SessionViewProps) {
                   {/* biome-ignore lint/a11y/noStaticElementInteractions: mouse-only resize handle */}
                   <div
                     onMouseDown={handleInfoDragStart}
-                    className="flex w-1 flex-shrink-0 cursor-col-resize items-center justify-center border-stone-800 border-l bg-stone-950 transition-colors hover:bg-stone-700 active:bg-stone-600"
+                    className="flex w-1 flex-shrink-0 cursor-col-resize items-center justify-center border-[var(--color-base-border-subtle)] border-l bg-[var(--color-base-bg)] transition-colors hover:bg-[var(--color-base-border)] active:bg-[var(--color-base-text-faint)]"
                   />
                   <div className="flex min-w-0 flex-1 flex-col bg-[var(--color-base-bg)]">
-                    <div className="flex items-center justify-between border-stone-800 border-b px-3 py-2">
-                      <div className="flex items-center gap-2 font-medium text-stone-400 text-xs">
-                        <Info size={13} />
-                        Session
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setShowInfo(false)}
-                        className="rounded p-0.5 text-stone-600 transition-colors hover:bg-stone-800 hover:text-stone-300"
-                        title="Collapse session info"
-                      >
-                        <ChevronRight size={14} />
-                      </button>
-                    </div>
+                    <PanelHeader
+                      icon={<Info size={13} />}
+                      title="Session"
+                      onClose={() => setShowInfo(false)}
+                    />
                     <SessionInfoPanel sessionId={sessionId} />
                   </div>
                 </motion.div>
               )}
             </AnimatePresence>
 
-            {/* Icon strip — always visible, toggles panels */}
-            <div className="flex flex-shrink-0 flex-col border-stone-800 border-l bg-[var(--color-base-bg)]">
+            {/* Icon strip — icons only, labels in panel headers */}
+            <div className="flex flex-shrink-0 flex-col items-center gap-0.5 border-[var(--color-base-border-subtle)] border-l bg-[var(--color-base-bg)] pt-1">
               <button
                 type="button"
                 onClick={() => setShowFlow((v) => !v)}
                 title={showFlow ? 'Hide flow' : 'Show flow'}
-                className={`group flex w-10 flex-col items-center gap-1.5 py-3 transition-colors hover:bg-stone-800/60 ${
-                  showFlow ? 'bg-stone-800/40' : ''
+                className={`group flex h-9 w-9 items-center justify-center rounded-lg transition-colors hover:bg-[var(--color-base-raised)]/60 ${
+                  showFlow ? 'bg-[var(--color-accent)]/10' : ''
                 }`}
               >
                 <Workflow
-                  size={18}
+                  size={17}
                   className={`transition-colors ${
-                    showFlow ? 'text-stone-200' : 'text-stone-500 group-hover:text-stone-200'
+                    showFlow
+                      ? 'text-[var(--color-accent-text)]'
+                      : 'text-[var(--color-base-text-muted)] group-hover:text-[var(--color-base-text)]'
                   }`}
                 />
-                <span
-                  className={`font-medium text-[9px] transition-colors ${
-                    showFlow ? 'text-stone-300' : 'text-stone-600 group-hover:text-stone-300'
-                  }`}
-                >
-                  Flow
-                </span>
               </button>
               <button
                 type="button"
                 onClick={() => setShowChanges((v) => !v)}
                 title={showChanges ? 'Hide changed files' : 'Show changed files'}
-                className={`group flex w-10 flex-col items-center gap-1.5 py-3 transition-colors hover:bg-stone-800/60 ${
-                  showChanges ? 'bg-stone-800/40' : ''
+                className={`group relative flex h-9 w-9 items-center justify-center rounded-lg transition-colors hover:bg-[var(--color-base-raised)]/60 ${
+                  showChanges ? 'bg-[var(--color-accent)]/10' : ''
                 }`}
               >
-                <div className="relative">
-                  <GitCompareArrows
-                    size={18}
-                    className={`transition-colors ${
-                      showChanges ? 'text-stone-200' : 'text-stone-500 group-hover:text-stone-200'
-                    }`}
-                  />
-                  {changedFiles.length > 0 && (
-                    <span className="absolute -top-1.5 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-stone-600 px-1 font-medium text-[9px] text-stone-200">
-                      {changedFiles.length}
-                    </span>
-                  )}
-                </div>
-                <span
-                  className={`font-medium text-[9px] transition-colors ${
-                    showChanges ? 'text-stone-300' : 'text-stone-600 group-hover:text-stone-300'
+                <GitCompareArrows
+                  size={17}
+                  className={`transition-colors ${
+                    showChanges
+                      ? 'text-[var(--color-accent-text)]'
+                      : 'text-[var(--color-base-text-muted)] group-hover:text-[var(--color-base-text)]'
                   }`}
-                >
-                  Files
-                </span>
+                />
+                {changedFiles.length > 0 && (
+                  <span className="absolute top-0.5 right-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-[var(--color-accent)] px-0.5 font-medium text-[8px] text-white">
+                    {changedFiles.length}
+                  </span>
+                )}
               </button>
               <button
                 type="button"
                 onClick={() => setShowInfo((v) => !v)}
                 title={showInfo ? 'Hide session info' : 'Show session info'}
-                className={`group flex w-10 flex-col items-center gap-1.5 py-3 transition-colors hover:bg-stone-800/60 ${
-                  showInfo ? 'bg-stone-800/40' : ''
+                className={`group flex h-9 w-9 items-center justify-center rounded-lg transition-colors hover:bg-[var(--color-base-raised)]/60 ${
+                  showInfo ? 'bg-[var(--color-accent)]/10' : ''
                 }`}
               >
                 <Info
-                  size={18}
+                  size={17}
                   className={`transition-colors ${
-                    showInfo ? 'text-stone-200' : 'text-stone-500 group-hover:text-stone-200'
+                    showInfo
+                      ? 'text-[var(--color-accent-text)]'
+                      : 'text-[var(--color-base-text-muted)] group-hover:text-[var(--color-base-text)]'
                   }`}
                 />
-                <span
-                  className={`font-medium text-[9px] transition-colors ${
-                    showInfo ? 'text-stone-300' : 'text-stone-600 group-hover:text-stone-300'
-                  }`}
-                >
-                  Info
-                </span>
               </button>
               {sessionId && tab.useWorktree && changedFiles.length > 0 && (
                 <button
                   type="button"
                   onClick={() => usePrRaiseStore.getState().openOverlay(sessionId)}
                   title="Raise pull request"
-                  className="group flex w-10 flex-col items-center gap-1.5 py-3 transition-colors hover:bg-stone-800/60"
+                  className="group flex h-9 w-9 items-center justify-center rounded-lg transition-colors hover:bg-[var(--color-base-raised)]/60"
                 >
                   <GitPullRequestArrow
-                    size={18}
-                    className="text-blue-500/70 transition-colors group-hover:text-blue-400"
+                    size={17}
+                    className="text-[var(--color-info)] transition-colors group-hover:brightness-125"
                   />
-                  <span className="font-medium text-[9px] text-stone-600 transition-colors group-hover:text-stone-300">
-                    PR
-                  </span>
                 </button>
               )}
             </div>

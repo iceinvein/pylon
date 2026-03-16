@@ -40,32 +40,32 @@ const SEVERITY_CONFIG: Record<
   critical: {
     icon: AlertCircle,
     border: 'border-l-red-500',
-    text: 'text-red-400',
-    bg: 'bg-red-500/5',
+    text: 'text-[var(--color-error)]',
+    bg: 'bg-[var(--color-error)]/5',
     label: 'Critical',
     postedBorder: 'border-l-emerald-500',
   },
   warning: {
     icon: AlertTriangle,
     border: 'border-l-amber-500',
-    text: 'text-amber-400',
-    bg: 'bg-amber-500/5',
+    text: 'text-[var(--color-warning)]',
+    bg: 'bg-[var(--color-accent-hover)]/5',
     label: 'Warning',
     postedBorder: 'border-l-emerald-500',
   },
   suggestion: {
     icon: Lightbulb,
     border: 'border-l-blue-500',
-    text: 'text-blue-400',
-    bg: 'bg-blue-500/5',
+    text: 'text-[var(--color-info)]',
+    bg: 'bg-[var(--color-info)]/5',
     label: 'Suggestion',
     postedBorder: 'border-l-emerald-500',
   },
   nitpick: {
     icon: Info,
-    border: 'border-l-stone-500',
-    text: 'text-stone-500',
-    bg: 'bg-stone-500/5',
+    border: 'border-l-[var(--color-base-text-muted)]',
+    text: 'text-[var(--color-base-text-muted)]',
+    bg: 'bg-[var(--color-base-text-muted)]/5',
     label: 'Nitpick',
     postedBorder: 'border-l-emerald-500',
   },
@@ -88,7 +88,7 @@ export function DiffFindingAnnotation({ finding, checked, onToggle, onPost }: Pr
       <div className="flex items-start gap-2 px-3 py-2">
         <div className="flex-shrink-0 pt-0.5">
           {isPosting ? (
-            <Loader2 size={12} className="animate-spin text-stone-400" />
+            <Loader2 size={12} className="animate-spin text-[var(--color-base-text-secondary)]" />
           ) : finding.posted ? (
             <CheckCircle2 size={12} className="text-emerald-500" />
           ) : (
@@ -96,7 +96,7 @@ export function DiffFindingAnnotation({ finding, checked, onToggle, onPost }: Pr
               type="checkbox"
               checked={checked}
               onChange={onToggle}
-              className="h-3 w-3 rounded border-stone-600 bg-stone-800 accent-stone-400"
+              className="h-3 w-3 rounded border-[var(--color-base-border)] bg-[var(--color-base-raised)] accent-[var(--color-accent)]"
             />
           )}
         </div>
@@ -114,14 +114,18 @@ export function DiffFindingAnnotation({ finding, checked, onToggle, onPost }: Pr
             >
               {finding.posted ? 'Posted' : config.label}
             </span>
-            <span className="font-medium text-[11px] text-stone-200">{finding.title}</span>
+            <span className="font-medium text-[11px] text-[var(--color-base-text)]">
+              {finding.title}
+            </span>
             {finding.domain && (
-              <span className="rounded bg-stone-800 px-1 py-0.5 font-medium text-[9px] text-stone-500 uppercase tracking-wider">
+              <span className="rounded bg-[var(--color-base-raised)] px-1 py-0.5 font-medium text-[9px] text-[var(--color-base-text-muted)] uppercase tracking-wider">
                 {DOMAIN_LABELS[finding.domain] ?? finding.domain}
               </span>
             )}
           </div>
-          <p className="mt-1 text-[11px] text-stone-400 leading-relaxed">{finding.description}</p>
+          <p className="mt-1 text-[11px] text-[var(--color-base-text-secondary)] leading-relaxed">
+            {finding.description}
+          </p>
         </div>
 
         {!finding.posted && !isPosting && (
@@ -129,7 +133,7 @@ export function DiffFindingAnnotation({ finding, checked, onToggle, onPost }: Pr
             type="button"
             onClick={onPost}
             title="Post this finding"
-            className="flex-shrink-0 rounded p-1 text-stone-600 opacity-0 transition-all hover:bg-stone-700/50 hover:text-stone-300 group-hover:opacity-100"
+            className="flex-shrink-0 rounded p-1 text-[var(--color-base-text-faint)] opacity-0 transition-all hover:bg-[var(--color-base-border)]/50 hover:text-[var(--color-base-text)] group-hover:opacity-100"
           >
             <Send size={11} />
           </button>

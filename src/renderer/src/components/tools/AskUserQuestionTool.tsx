@@ -39,7 +39,7 @@ export function AskUserQuestionTool({ input }: AskUserQuestionToolProps) {
 
   if (questions.length === 0) {
     return (
-      <pre className="overflow-x-auto rounded bg-stone-800 p-2 font-mono text-stone-300 text-xs">
+      <pre className="overflow-x-auto rounded bg-[var(--color-base-raised)] p-2 font-mono text-[var(--color-base-text)] text-xs">
         {JSON.stringify(input, null, 2)}
       </pre>
     )
@@ -50,29 +50,38 @@ export function AskUserQuestionTool({ input }: AskUserQuestionToolProps) {
       {questions.map((q, qi) => (
         <div key={qi}>
           <div className="flex items-start gap-2">
-            <MessageCircleQuestion size={13} className="mt-0.5 flex-shrink-0 text-blue-400" />
+            <MessageCircleQuestion
+              size={13}
+              className="mt-0.5 flex-shrink-0 text-[var(--color-info)]"
+            />
             <div className="min-w-0 flex-1">
               {q.header && (
-                <span className="mb-1 inline-block rounded-full bg-blue-900/40 px-2 py-0.5 font-medium text-[10px] text-blue-300 uppercase tracking-wide">
+                <span className="mb-1 inline-block rounded-full bg-[var(--color-info)]/40 px-2 py-0.5 font-medium text-[10px] text-[var(--color-info)] uppercase tracking-wide">
                   {q.header}
                 </span>
               )}
-              <p className="text-sm text-stone-200">{q.question}</p>
+              <p className="text-[var(--color-base-text)] text-sm">{q.question}</p>
               <div className="mt-2 space-y-1.5">
                 {q.options.map((opt, oi) => (
                   <div
                     key={oi}
-                    className="rounded border border-stone-700/60 bg-stone-800/50 px-3 py-2 transition-colors"
+                    className="rounded border border-[var(--color-base-border)]/60 bg-[var(--color-base-raised)]/50 px-3 py-2 transition-colors"
                   >
-                    <span className="font-medium text-sm text-stone-300">{opt.label}</span>
+                    <span className="font-medium text-[var(--color-base-text)] text-sm">
+                      {opt.label}
+                    </span>
                     {opt.description && (
-                      <p className="mt-0.5 text-stone-500 text-xs">{opt.description}</p>
+                      <p className="mt-0.5 text-[var(--color-base-text-muted)] text-xs">
+                        {opt.description}
+                      </p>
                     )}
                   </div>
                 ))}
               </div>
               {q.multiSelect && (
-                <p className="mt-1.5 text-[10px] text-stone-600">Multiple selections allowed</p>
+                <p className="mt-1.5 text-[10px] text-[var(--color-base-text-faint)]">
+                  Multiple selections allowed
+                </p>
               )}
             </div>
           </div>
