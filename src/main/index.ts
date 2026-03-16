@@ -8,6 +8,7 @@ import { registerIpcHandlers } from './ipc-handlers'
 import { prReviewManager } from './pr-review-manager'
 import { sessionManager } from './session-manager'
 import { testManager } from './test-manager'
+import { registerGitIpcHandlers, setGitWindow } from './git-ipc-handlers'
 
 function createWindow(): BrowserWindow {
   const mainWindow = new BrowserWindow({
@@ -75,6 +76,7 @@ app.whenReady().then(() => {
 
   initDatabase()
   registerIpcHandlers()
+  registerGitIpcHandlers()
 
   // Auto-cleanup stale worktrees (>7 days old)
   import('./worktree-cleanup')
@@ -85,6 +87,7 @@ app.whenReady().then(() => {
   sessionManager.setWindow(mainWindow)
   prReviewManager.setWindow(mainWindow)
   testManager.setWindow(mainWindow)
+  setGitWindow(mainWindow)
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -92,6 +95,7 @@ app.whenReady().then(() => {
       sessionManager.setWindow(w)
       prReviewManager.setWindow(w)
       testManager.setWindow(w)
+      setGitWindow(w)
     }
   })
 })

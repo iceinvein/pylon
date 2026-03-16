@@ -26,6 +26,7 @@ export async function executeGitCommands(
       outputs.push(stdout.trim() || stderr.trim() || `(${cmd} completed)`)
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
+      logger.error('Git command failed:', cmd, message)
       return { success: false, output: outputs.join('\n'), error: message }
     }
   }
