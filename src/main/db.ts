@@ -154,6 +154,9 @@ export function initDatabase(): Database.Database {
       ON pr_cache(state, last_seen_at, updated_at);
   `)
 
+  // Normalize any uppercase state values from GitHub API (OPEN→open, CLOSED→closed, MERGED→merged)
+  db.exec(`UPDATE pr_cache SET state = LOWER(state) WHERE state != LOWER(state)`)
+
   // AI Exploration Testing tables
   db.exec(`
     CREATE TABLE IF NOT EXISTS test_explorations (
