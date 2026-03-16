@@ -16,6 +16,7 @@ import type {
   ReviewFocus,
 } from '../shared/types'
 import { getDb } from './db'
+import { prPollingService } from './pr-polling-service'
 import { sessionManager } from './session-manager'
 
 const logger = log.child('ipc')
@@ -464,6 +465,20 @@ export function registerIpcHandlers(): void {
     const { prReviewManager } = await import('./pr-review-manager')
     prReviewManager.resetAgentPrompt(args.focus)
     return true
+  })
+
+  // ── PR Polling ──
+
+  ipcMain.handle(IPC.PR_POLL_MARK_SEEN, async (_e, args: { repo: string; prNumber: number }) => {
+    prPollingService.markSeen(args.repo, args.prNumber)
+  })
+
+  ipcMain.handle(IPC.PR_POLL_GET_CACHED, async (_e, args: { repo?: string }) => {
+    return prPollingService.getCachedPrs(args.repo)
+  })
+
+  ipcMain.handle(IPC.PR_POLL_FORCE, async () => {
+    await prPollingService.forcePoll()
   })
 
   ipcMain.handle(
