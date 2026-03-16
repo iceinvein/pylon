@@ -40,6 +40,12 @@ type StreamEventMessage = {
       text?: string
       thinking?: string
     }
+    // message_start events carry per-API-call usage (includes current context size)
+    message?: {
+      usage?: {
+        input_tokens?: number
+      }
+    }
   }
 }
 
@@ -81,6 +87,25 @@ export function useIpcBridge(): void {
         } else if (delta?.type === 'thinking_delta' && delta.thinking && !parentToolUseId) {
           accumulateDelta(`${sessionId}:thinking`, delta.thinking)
         }
+
+        // Capture context size from message_start events (main agent only).
+        // Each message_start.input_tokens is the full input for that API call,
+        // which equals the current conversation context size.
+        if (
+          streamMsg.event?.type === 'message_start' &&
+          !parentToolUseId &&
+          streamMsg.event.message?.usage?.input_tokens
+        ) {
+          const session = store().sessions.get(sessionId)
+          if (session) {
+            store().updateSession(sessionId, {
+              cost: {
+                ...session.cost,
+                contextInputTokens: streamMsg.event.message.usage.input_tokens,
+              },
+            })
+          }
+        }
         return
       }
 
@@ -112,14 +137,11 @@ export function useIpcBridge(): void {
         store().clearStreamingText(sessionId)
         store().clearStreamingText(`${sessionId}:thinking`)
 
-        // Extract contextWindow and per-model inputTokens from modelUsage (keyed by model name).
-        // We use per-model inputTokens (not aggregate usage.input_tokens) because in multi-model
-        // sessions, aggregate tokens may exceed a single model's context window.
+        // Extract contextWindow from modelUsage (keyed by model name).
+        // contextInputTokens is set live by message_start stream events — preserve it here.
         const modelUsageEntries = Object.values(resultMsg.modelUsage ?? {})
-        const primaryModelUsage = modelUsageEntries[0]
-        const contextWindow = primaryModelUsage?.contextWindow ?? 0
-        const contextInputTokens =
-          primaryModelUsage?.inputTokens ?? resultMsg.usage?.input_tokens ?? 0
+        const contextWindow = modelUsageEntries[0]?.contextWindow ?? 0
+        const existingSession = store().sessions.get(sessionId)
 
         const updates: Record<string, unknown> = {
           cost: {
@@ -127,7 +149,8 @@ export function useIpcBridge(): void {
             inputTokens: resultMsg.usage?.input_tokens ?? 0,
             outputTokens: resultMsg.usage?.output_tokens ?? 0,
             contextWindow,
-            contextInputTokens,
+            // Preserve the live contextInputTokens from message_start events
+            contextInputTokens: existingSession?.cost.contextInputTokens ?? 0,
           },
         }
         if (resultMsg.model) {
