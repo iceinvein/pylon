@@ -26,6 +26,7 @@ import type {
 } from '../../../shared/types'
 import { useDraftStore } from '../store/draft-store'
 import { useUiStore } from '../store/ui-store'
+import { ContextIndicator } from './ContextIndicator'
 
 const PERMISSION_MODES = [
   {
@@ -528,6 +529,8 @@ export function InputBar({
               </div>
 
               <div className="flex-1" />
+
+              <ContextIndicator sessionId={sessionId} />
 
               <AnimatePresence mode="wait">
                 {isRunning ? (

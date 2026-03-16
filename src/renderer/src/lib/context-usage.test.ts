@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { getContextUsagePercent, getContextUsageColor, formatContextUsage } from './context-usage'
+import { formatContextUsage, getContextUsageColor, getContextUsagePercent } from './context-usage'
 
 describe('getContextUsagePercent', () => {
   test('returns 0 when contextWindow is 0', () => {

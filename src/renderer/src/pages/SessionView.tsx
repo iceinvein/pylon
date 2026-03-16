@@ -99,7 +99,13 @@ export function SessionView({ tab }: SessionViewProps) {
       status: 'empty',
       model: pendingModel,
       title: '',
-      cost: { inputTokens: 0, outputTokens: 0, totalUsd: 0, contextWindow: 0, contextInputTokens: 0 },
+      cost: {
+        inputTokens: 0,
+        outputTokens: 0,
+        totalUsd: 0,
+        contextWindow: 0,
+        contextInputTokens: 0,
+      },
       createdAt: Date.now(),
       updatedAt: Date.now(),
     })
