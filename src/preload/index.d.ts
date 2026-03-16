@@ -22,6 +22,11 @@ type Api = {
   getSessionInfo: (sessionId: string) => Promise<{ model: string; permissionMode: string } | null>
   getSettings: () => Promise<unknown>
   updateSettings: (key: string, value: unknown) => Promise<boolean>
+  getSavedTabs: () => Promise<{
+    version: number
+    tabs: import('../shared/types').Tab[]
+    activeTabId: string | null
+  } | null>
   getFileDiffs: (
     sessionId: string,
     filePaths: string[],

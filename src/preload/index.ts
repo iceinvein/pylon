@@ -28,6 +28,7 @@ const api = {
   getSettings: () => ipcRenderer.invoke(IPC.SETTINGS_GET),
   updateSettings: (key: string, value: unknown) =>
     ipcRenderer.invoke(IPC.SETTINGS_UPDATE, { key, value }),
+  getSavedTabs: () => ipcRenderer.invoke(IPC.TABS_GET),
   getFileDiffs: (sessionId: string, filePaths: string[]) =>
     ipcRenderer.invoke(IPC.SESSION_FILE_DIFFS, { sessionId, filePaths }),
   getFileStatuses: (sessionId: string, filePaths: string[]) =>

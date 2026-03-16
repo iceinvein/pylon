@@ -294,6 +294,19 @@ export function registerIpcHandlers(): void {
     return true
   })
 
+  ipcMain.handle(IPC.TABS_GET, async () => {
+    const db = getDb()
+    const row = db.prepare('SELECT value FROM settings WHERE key = ?').get('open_tabs') as
+      | { value: string }
+      | undefined
+    if (!row) return null
+    try {
+      return JSON.parse(row.value)
+    } catch {
+      return null
+    }
+  })
+
   // ── Plugins ──
 
   ipcMain.handle(IPC.PLUGINS_LIST, async () => {
