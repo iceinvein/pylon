@@ -97,6 +97,11 @@ type Api = {
   getAgentPrompts(): Promise<Array<{ id: string; name: string; prompt: string; isCustom: boolean }>>
   resetAgentPrompt(focus: string): Promise<boolean>
   onGhReviewUpdate: (callback: (data: unknown) => void) => () => void
+  // PR Polling
+  markPrSeen: (repo: string, prNumber: number) => Promise<void>
+  getCachedPrs: (repo?: string) => Promise<import('../shared/types').GhPullRequest[]>
+  forcePollPrs: () => Promise<void>
+  onPrUnseenCount: (callback: (data: { count: number }) => void) => () => void
   // PR Raise
   getRaisePrInfo: (sessionId: string) => Promise<import('../shared/types').PrRaiseInfo>
   generatePrDescription: (

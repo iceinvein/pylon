@@ -132,6 +132,18 @@ const api = {
     return () => ipcRenderer.removeListener(IPC.GH_REVIEW_UPDATE, handler)
   },
 
+  // PR Polling
+  markPrSeen: (repo: string, prNumber: number) =>
+    ipcRenderer.invoke(IPC.PR_POLL_MARK_SEEN, { repo, prNumber }),
+  getCachedPrs: (repo?: string) =>
+    ipcRenderer.invoke(IPC.PR_POLL_GET_CACHED, { repo }),
+  forcePollPrs: () => ipcRenderer.invoke(IPC.PR_POLL_FORCE),
+  onPrUnseenCount: (callback: (data: { count: number }) => void) => {
+    const handler = (_event: unknown, data: { count: number }) => callback(data)
+    ipcRenderer.on(IPC.PR_POLL_UNSEEN_COUNT, handler)
+    return () => ipcRenderer.removeListener(IPC.PR_POLL_UNSEEN_COUNT, handler)
+  },
+
   // PR Raise
   getRaisePrInfo: (sessionId: string) => ipcRenderer.invoke(IPC.GH_RAISE_PR_INFO, { sessionId }),
   generatePrDescription: (sessionId: string) =>
