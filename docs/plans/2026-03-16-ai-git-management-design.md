@@ -11,9 +11,21 @@ A new "Git" sidebar view in Pylon's NavRail providing rich git visualization, AI
 
 Pylon has worktree management and a ChangesPanel for session-scoped file tracking, but no general-purpose git UI. Users cannot browse branches, view commit history, stage/unstage files, create commits, resolve conflicts, or get AI assistance with git operations outside the narrow worktree merge flow.
 
+## Existing Git Infrastructure
+
+The codebase already has git-related modules that this feature must account for:
+
+- **`src/main/git-status.ts`** — `getBranchStatus()`, `fetchAndCompare()`, `pullBranch()`. Provides branch name, ahead/behind counts, and pull.
+- **`src/main/git-watcher.ts`** — File system watcher that emits `GIT_STATUS_CHANGED` events.
+- **`src/renderer/src/components/GitBranchPanel.tsx`** — Simple branch panel with ahead/behind display, fetch/compare, and pull button.
+- **Existing IPC channels:** `GIT_BRANCH_STATUS`, `GIT_FETCH_COMPARE`, `GIT_PULL`, `GIT_WATCH`, `GIT_STATUS_CHANGED`.
+- **Existing store state:** `session-store.ts` tracks `branchStatus: Map<string, GitBranchStatus>`.
+
+**Strategy:** The new Git panel **absorbs and replaces** `GitBranchPanel.tsx`. The existing `git-status.ts` functions (`getBranchStatus`, `fetchAndCompare`, `pullBranch`) are **reused** by `git-graph-service.ts` rather than reimplemented. The existing IPC channels for branch status continue to work. `git-watcher.ts` is kept and its `GIT_STATUS_CHANGED` events are consumed by the new git stores as an additional refresh trigger.
+
 ## Approach
 
-**Micro-module architecture** with three independent modules, each owning its own main-process service, Zustand store slice, and component tree:
+**Micro-module architecture** with three independent modules, each owning its own main-process service, Zustand store, and component tree:
 
 1. **git-graph** — Rich interactive git graph visualization
 2. **git-commit** — AI-powered commit orchestration
@@ -22,6 +34,16 @@ Pylon has worktree management and a ChangesPanel for session-scoped file trackin
 A thin `GitPanel` shell composes all three with tab navigation. Each module is independently testable.
 
 **AI interaction model:** Inline ✨ buttons for common quick actions (generate commit message, explain commit), with complex operations routing through the existing session chat for full conversational power.
+
+### How AI Calls Reach Claude
+
+The git services do **not** create their own Claude SDK connections. Instead, AI-powered operations (`analyzeForCommitPlan`, `generateCommitMessage`, `executeNlCommand`, `resolveConflicts`) are routed through a new **`git-ai-bridge.ts`** module in the main process. This bridge:
+
+1. Takes the active session's `sessionId`
+2. Calls `sessionManager.sendGitAiQuery(sessionId, prompt, systemPrompt)` — a new method on `SessionManager` that uses the session's existing SDK connection to send a one-shot query with a specialized system prompt
+3. Returns structured JSON parsed from Claude's response
+
+This means `session-manager.ts` **is modified** with a single new public method, but its core architecture stays unchanged. The AI queries appear in the session's chat history, enabling conversational follow-up.
 
 ## Module 1: Git Graph
 
@@ -64,11 +86,25 @@ type GraphLine = {
   type: 'straight' | 'merge-in' | 'fork-out'
   color: string
 }
+
+type BranchInfo = {
+  name: string
+  type: 'local' | 'remote'
+  isCurrent: boolean
+  upstream: string | null
+  ahead: number
+  behind: number
+  headHash: string
+}
 ```
 
 ### Layout Algorithm
 
 Lane allocation: each branch gets a column. When a branch merges, its lane is freed. New branches take the leftmost available lane. Colors assigned per-lane from a fixed palette.
+
+### Pagination
+
+Cursor-based using the last commit hash: `fetchGraph(cwd, afterHash?)`. The renderer requests ~100 commits at a time. When the user scrolls near the bottom, it fetches the next page using the last visible commit's hash as cursor. This is more reliable than offset-based pagination for a DAG that can change between fetches.
 
 ### Interactions
 
@@ -79,7 +115,7 @@ Lane allocation: each branch gets a column. When a branch merges, its lane is fr
 | Click branch ref | Scroll graph to branch HEAD, highlight branch path |
 | Double-click branch | Checkout (with confirmation if dirty) |
 | ✨ "Explain" button | Send commit diff to Claude in chat for explanation |
-| Scroll | Lazy-load more commits (~100 at a time) |
+| Scroll | Lazy-load more commits (~100 at a time, cursor-based) |
 
 ### Branch List
 
@@ -87,13 +123,13 @@ Collapsible sidebar within the Graph tab:
 - Local branches (current highlighted)
 - Remote branches (collapsed by default)
 - Tags (collapsed by default)
-- Ahead/behind indicators for tracked branches
+- Ahead/behind indicators for tracked branches (reuses existing `getBranchStatus` from `git-status.ts`)
 
 ## Module 2: Commit Orchestration
 
 ### AI-Assisted Flow
 
-1. **Analyze** — ✨ "Analyze Changes" gathers `git diff` + `git diff --cached`, sends to Claude
+1. **Analyze** — ✨ "Analyze Changes" gathers `git diff` + `git diff --cached`, sends to Claude via `git-ai-bridge.ts`
 2. **Plan** — Claude returns a structured `CommitPlan`:
 
 ```typescript
@@ -112,9 +148,16 @@ type CommitGroup = {
 
 type StagedFile = {
   path: string
-  hunks?: string[]
+}
+
+type FileStatus = {
+  path: string
+  status: 'modified' | 'added' | 'deleted' | 'renamed' | 'untracked'
+  staged: boolean
 }
 ```
+
+> **Note:** `StagedFile` intentionally does not support per-hunk staging in v1. Partial staging (`git add -p`) is non-trivial to automate programmatically. This may be added in a future iteration.
 
 3. **Review** — Plan rendered as draggable cards. Each card shows the proposed message (editable), file list (with checkboxes to move between groups), rationale (collapsible), and diff preview
 4. **Adjust** — User can drag files between groups, edit messages, reorder, add/remove groups
@@ -130,13 +173,11 @@ Standard staging UI for when AI isn't needed:
 ### Service
 
 `git-commit-service.ts` exposes:
-- `getWorkingTreeStatus()` — All changed files with status
-- `stageFiles(paths)` / `unstageFiles(paths)`
-- `analyzeForCommitPlan(sessionId)` — AI commit plan generation
-- `executeCommitGroup(group)` — Stage files and commit
-- `generateCommitMessage(sessionId)` — Message for currently staged changes
-
-AI calls route through the existing session's Claude connection with a specialized system prompt returning structured JSON.
+- `getWorkingTreeStatus(cwd: string)` — All changed files with status
+- `stageFiles(cwd: string, paths: string[])` / `unstageFiles(cwd: string, paths: string[])`
+- `analyzeForCommitPlan(cwd: string, sessionId: string)` — AI commit plan generation (via git-ai-bridge)
+- `executeCommitGroup(cwd: string, group: CommitGroup)` — Stage files and commit
+- `generateCommitMessage(cwd: string, sessionId: string)` — Message for currently staged changes (via git-ai-bridge)
 
 ## Module 3: Natural Language Git Commands & Conflict Resolution
 
@@ -148,11 +189,12 @@ AI calls route through the existing session's Claude connection with a specializ
 ### Command Flow
 
 1. User types natural language request
-2. Sent to Claude via active session chat
+2. Sent to Claude via `git-ai-bridge.ts` using the active session
 3. Claude returns structured response:
 
 ```typescript
 type GitCommandPlan = {
+  id: string
   interpretation: string
   commands: PlannedCommand[]
   preview: string
@@ -163,6 +205,16 @@ type GitCommandPlan = {
 type PlannedCommand = {
   command: string
   explanation: string
+}
+
+type CommandEntry = {
+  id: string
+  request: string
+  plan: GitCommandPlan | null
+  status: 'pending' | 'planned' | 'confirmed' | 'executing' | 'completed' | 'failed' | 'cancelled'
+  result?: string
+  error?: string
+  timestamp: number
 }
 ```
 
@@ -176,7 +228,7 @@ When any operation produces conflicts:
 
 1. Command tab enters **Conflict Resolution mode**
 2. Lists conflicting files
-3. AI analyzes both sides and generates resolutions:
+3. AI analyzes both sides and generates resolutions (via git-ai-bridge):
 
 ```typescript
 type ConflictResolution = {
@@ -204,127 +256,156 @@ Low-confidence resolutions get a visual warning badge.
 
 ### New Channels
 
-Added to `src/shared/ipc-channels.ts`:
+Added to `src/shared/ipc-channels.ts`. Constant names follow the existing `SCREAMING_SNAKE` convention; string values follow the existing `colon:separated` convention:
 
-```
+```typescript
 // Git Graph
-GIT_GRAPH_GET_LOG
-GIT_GRAPH_GET_BRANCHES
-GIT_GRAPH_CHECKOUT
-GIT_GRAPH_REFRESH
+GIT_GRAPH_GET_LOG      = 'git:graph:get-log'       // (cwd: string, afterHash?: string) → GraphCommit[]
+GIT_GRAPH_GET_BRANCHES = 'git:graph:get-branches'   // (cwd: string) → BranchInfo[]
+GIT_GRAPH_CHECKOUT     = 'git:graph:checkout'        // (cwd: string, branch: string) → { success: boolean }
+GIT_GRAPH_REFRESH      = 'git:graph:refresh'         // (cwd: string) → void
 
 // Git Commit
-GIT_COMMIT_GET_STATUS
-GIT_COMMIT_ANALYZE
-GIT_COMMIT_GENERATE_MSG
-GIT_COMMIT_EXECUTE
-GIT_COMMIT_STAGE
-GIT_COMMIT_UNSTAGE
+GIT_COMMIT_GET_STATUS  = 'git:commit:get-status'     // (cwd: string) → FileStatus[]
+GIT_COMMIT_ANALYZE     = 'git:commit:analyze'         // (cwd: string, sessionId: string) → CommitPlan
+GIT_COMMIT_GENERATE_MSG = 'git:commit:generate-msg'   // (cwd: string, sessionId: string) → string
+GIT_COMMIT_EXECUTE     = 'git:commit:execute'          // (cwd: string, group: CommitGroup) → { success: boolean }
+GIT_COMMIT_STAGE       = 'git:commit:stage'            // (cwd: string, paths: string[]) → void
+GIT_COMMIT_UNSTAGE     = 'git:commit:unstage'          // (cwd: string, paths: string[]) → void
 
 // Git Ops
-GIT_OPS_EXECUTE_NL
-GIT_OPS_CONFIRM
-GIT_OPS_GET_CONFLICTS
-GIT_OPS_RESOLVE_CONFLICTS
-GIT_OPS_APPLY_RESOLUTION
-GIT_OPS_CONTINUE
+GIT_OPS_EXECUTE_NL     = 'git:ops:execute-nl'         // (cwd: string, sessionId: string, text: string) → GitCommandPlan
+GIT_OPS_CONFIRM        = 'git:ops:confirm'             // (cwd: string, planId: string) → { success: boolean; result?: string }
+GIT_OPS_GET_CONFLICTS  = 'git:ops:get-conflicts'       // (cwd: string) → ConflictFile[]
+GIT_OPS_RESOLVE_CONFLICTS = 'git:ops:resolve-conflicts' // (cwd: string, sessionId: string) → ConflictResolution[]
+GIT_OPS_APPLY_RESOLUTION = 'git:ops:apply-resolution'   // (cwd: string, resolutions: ConflictResolution[]) → void
+GIT_OPS_CONTINUE       = 'git:ops:continue'             // (cwd: string) → { success: boolean }
 
-// Events (main → renderer)
-GIT_GRAPH_UPDATED
-GIT_COMMIT_PLAN_READY
-GIT_OPS_COMMAND_PLAN
-GIT_OPS_CONFLICT_DETECTED
+// Events (main → renderer push)
+GIT_GRAPH_UPDATED      = 'git:graph:updated'            // Pushed after any git mutation
+GIT_COMMIT_PLAN_READY  = 'git:commit:plan-ready'        // AI commit plan streamed back
+GIT_OPS_COMMAND_PLAN   = 'git:ops:command-plan'          // NL command interpretation ready
+GIT_OPS_CONFLICT_DETECTED = 'git:ops:conflict-detected'  // Conflicts found during operation
 ```
 
 ### Cross-Module Refresh
 
-After any git-mutating operation, the responsible service sends `GIT_GRAPH_UPDATED` to the renderer. The graph store and commit store both listen and re-fetch. Simple, unidirectional, no coupling between services.
+After any git-mutating operation, the responsible service sends `GIT_GRAPH_UPDATED` to the renderer. All three stores listen and re-fetch their relevant data. The existing `GIT_STATUS_CHANGED` event from `git-watcher.ts` also triggers refresh. Simple, unidirectional, no coupling between services.
 
-## Zustand Store
+## Zustand Stores
 
-Single `git-store.ts` composed from three slices:
+Three **separate stores** following the existing codebase convention (each store is a standalone `create<T>()` call, matching `session-store.ts`, `pr-review-store.ts`, `tab-store.ts`, `ui-store.ts`):
 
 ```typescript
-type GitGraphSlice = {
+// store/git-graph-store.ts
+type GitGraphStore = {
   commits: GraphCommit[]
   branches: BranchInfo[]
   loading: boolean
+  error: string | null
   selectedCommit: string | null
-  fetchGraph: (cwd: string, offset?: number) => Promise<void>
+  fetchGraph: (cwd: string, afterHash?: string) => Promise<void>
+  fetchBranches: (cwd: string) => Promise<void>
   selectCommit: (hash: string | null) => void
 }
 
-type GitCommitSlice = {
+// store/git-commit-store.ts
+type GitCommitStore = {
   workingTree: FileStatus[]
   commitPlan: CommitPlan | null
   analyzing: boolean
+  error: string | null
   fetchStatus: (cwd: string) => Promise<void>
-  analyzePlan: (sessionId: string) => Promise<void>
-  executeGroup: (group: CommitGroup) => Promise<void>
+  analyzePlan: (cwd: string, sessionId: string) => Promise<void>
+  executeGroup: (cwd: string, group: CommitGroup) => Promise<void>
 }
 
-type GitOpsSlice = {
+// store/git-ops-store.ts
+type GitOpsStore = {
   commandHistory: CommandEntry[]
   pendingPlan: GitCommandPlan | null
   conflicts: ConflictResolution[]
-  submitCommand: (sessionId: string, text: string) => Promise<void>
-  confirmPlan: (planId: string) => Promise<void>
-  applyResolutions: (resolutions: ConflictResolution[]) => Promise<void>
+  error: string | null
+  submitCommand: (cwd: string, sessionId: string, text: string) => Promise<void>
+  confirmPlan: (cwd: string, planId: string) => Promise<void>
+  applyResolutions: (cwd: string, resolutions: ConflictResolution[]) => Promise<void>
 }
 ```
+
+Each store includes an `error: string | null` field for error state tracking.
 
 ## File Structure
 
 ### New Files
 
 **Main Process (`src/main/`):**
-- `git-graph-service.ts` — Graph data, DAG construction
+- `git-graph-service.ts` — Graph data, DAG construction, branch listing
 - `git-commit-service.ts` — Staging, commit plan generation, execution
-- `git-ops-service.ts` — NL command translation, conflict resolution
-- `git-ipc-handlers.ts` — All GIT_* IPC handlers
+- `git-ops-service.ts` — NL command translation, conflict detection/resolution
+- `git-ai-bridge.ts` — Routes AI queries through session manager's SDK connection
+- `git-ipc-handlers.ts` — All `git:*` IPC handlers
 
 **Renderer (`src/renderer/src/`):**
-- `store/git-store.ts` — Zustand store with 3 slices
-- `components/git/GitPanel.tsx` — Shell with tab navigation
+- `store/git-graph-store.ts` — Graph state
+- `store/git-commit-store.ts` — Commit orchestration state
+- `store/git-ops-store.ts` — NL commands and conflict state
+- `components/git/GitPanel.tsx` — Shell with tab navigation (Graph | Commit | Command)
 - `components/git/GitGraphTab.tsx` — Graph canvas + commit list + branch sidebar
 - `components/git/GitGraphCanvas.tsx` — Canvas rendering for topology
 - `components/git/GitCommitTab.tsx` — Staging UI + commit plan cards
 - `components/git/GitOpsTab.tsx` — NL command input + history + conflict resolver
 - `components/git/CommitPlanCard.tsx` — Individual commit group card (draggable)
 - `components/git/ConflictResolver.tsx` — Side-by-side conflict resolution view
-- `components/git/BranchList.tsx` — Collapsible branch/tag list
+- `components/git/BranchList.tsx` — Collapsible branch/tag list (replaces `GitBranchPanel.tsx`)
 - `components/git/CommitDetail.tsx` — Expanded commit view
 - `hooks/use-git-bridge.ts` — IPC event bridge for git events
 - `lib/git-graph-layout.ts` — Lane allocation algorithm, color assignment
 
 **Shared (`src/shared/`):**
-- `git-types.ts` — All shared types
+- `git-types.ts` — All shared types (GraphCommit, CommitPlan, GitCommandPlan, CommandEntry, etc.)
 
 ### Modified Files
 
 | File | Change |
 |------|--------|
-| `src/shared/ipc-channels.ts` | Add GIT_* channel constants |
+| `src/shared/ipc-channels.ts` | Add `git:*` channel constants |
 | `src/main/index.ts` | Import and call `registerGitIpcHandlers()` |
-| `src/preload/index.ts` | Expose `window.api.git*` methods |
-| `src/preload/index.d.ts` | Type declarations for new API surface |
-| `src/renderer/src/components/layout/NavRail.tsx` | Add Git icon + route |
-| `src/renderer/src/components/layout/Layout.tsx` | Render `<GitPanel>` when selected |
+| `src/main/session-manager.ts` | Add `sendGitAiQuery()` method for AI bridge |
+| `src/preload/index.ts` | Expose `window.api.git*` methods and type declarations |
+| `src/renderer/src/store/ui-store.ts` | Add `'git'` to `SidebarView` union type |
+| `src/renderer/src/components/layout/NavRail.tsx` | Add Git icon + route to `'git'` sidebar view |
+| `src/renderer/src/components/layout/Layout.tsx` | Render `<GitPanel>` when `sidebarView === 'git'` |
+| `src/renderer/src/App.tsx` | May need update if GitPanel is full-view rather than sidebar panel |
+
+### Deprecated / Replaced
+
+| File | Action |
+|------|--------|
+| `src/renderer/src/components/GitBranchPanel.tsx` | Replaced by `BranchList.tsx` inside the Git panel. Remove after migration. |
 
 ### Not Modified
 
-- `session-manager.ts` — Git services are independent
-- `ChangesPanel.tsx` — Serves a different purpose (session-scoped tracking)
+- `ChangesPanel.tsx` — Serves a different purpose (session-scoped file tracking during Claude sessions)
+- `git-status.ts` — Reused by git-graph-service, not modified
+- `git-watcher.ts` — Existing events consumed by new stores, not modified
 - PR review system — Completely independent
 
 ## Design Decisions
 
 **Micro-module over monolithic:** Three focused services instead of one large file. Mirrors existing pattern where `session-manager.ts` and `pr-review-manager.ts` are separate concerns.
 
+**Three separate Zustand stores over sliced store:** The existing codebase uses standalone `create<T>()` calls for every store. Using the slice pattern would introduce an inconsistency. Three separate stores also align with the "independently testable" module philosophy.
+
 **Canvas + DOM hybrid for graph:** Pure SVG degrades past ~500 commits. Pure Canvas loses accessibility. Hybrid gives smooth rendering for topology and accessible DOM for data.
 
-**AI routes through existing session chat:** Reuses the Claude Agent SDK connection already wired per session. Commit analysis and NL commands appear in chat history, enabling conversational follow-up.
+**AI routes through session via git-ai-bridge:** Rather than the git services creating their own Claude SDK connections, a thin `git-ai-bridge.ts` calls a new `sessionManager.sendGitAiQuery()` method. This reuses the existing SDK connection, keeps AI queries in chat history, and adds only one new public method to session-manager.
+
+**Cursor-based pagination for graph:** More reliable than offset-based for a DAG that can change between fetches. Uses last visible commit hash as cursor.
 
 **Single refresh event over fine-grained invalidation:** Git operations have unpredictable side effects. A single `GIT_GRAPH_UPDATED` event after any mutation is simpler and more reliable than tracking which data is stale. Graph fetch is fast (paginated `git log` parsing).
 
-**Separate `git-ipc-handlers.ts`:** The existing `ipc-handlers.ts` already handles session + PR review channels. Adding ~15 more git channels would reduce maintainability. Dedicated file follows the isolation principle.
+**Absorb GitBranchPanel rather than coexist:** The new BranchList inside the Graph tab provides a superset of GitBranchPanel's functionality. Maintaining both would create confusion. The old component is deprecated and removed.
+
+**Separate `git-ipc-handlers.ts`:** The existing `ipc-handlers.ts` already handles session + PR review channels (~710 lines). Adding ~15 more git channels would reduce maintainability. Dedicated file follows the isolation principle.
+
+**No per-hunk staging in v1:** `git add -p` automation is complex and fragile. Whole-file staging covers the common case. Per-hunk staging can be added later.
