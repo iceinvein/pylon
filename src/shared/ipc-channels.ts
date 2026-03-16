@@ -38,6 +38,30 @@ export const IPC = {
   GIT_PULL: 'git:pull',
   GIT_STATUS_CHANGED: 'git:status-changed',
   GIT_WATCH: 'git:watch',
+  // Git Graph
+  GIT_GRAPH_GET_LOG: 'git:graph:get-log',
+  GIT_GRAPH_GET_BRANCHES: 'git:graph:get-branches',
+  GIT_GRAPH_CHECKOUT: 'git:graph:checkout',
+  GIT_GRAPH_REFRESH: 'git:graph:refresh',
+  // Git Commit
+  GIT_COMMIT_GET_STATUS: 'git:commit:get-status',
+  GIT_COMMIT_ANALYZE: 'git:commit:analyze',
+  GIT_COMMIT_GENERATE_MSG: 'git:commit:generate-msg',
+  GIT_COMMIT_EXECUTE: 'git:commit:execute',
+  GIT_COMMIT_STAGE: 'git:commit:stage',
+  GIT_COMMIT_UNSTAGE: 'git:commit:unstage',
+  // Git Ops
+  GIT_OPS_EXECUTE_NL: 'git:ops:execute-nl',
+  GIT_OPS_CONFIRM: 'git:ops:confirm',
+  GIT_OPS_GET_CONFLICTS: 'git:ops:get-conflicts',
+  GIT_OPS_RESOLVE_CONFLICTS: 'git:ops:resolve-conflicts',
+  GIT_OPS_APPLY_RESOLUTION: 'git:ops:apply-resolution',
+  GIT_OPS_CONTINUE: 'git:ops:continue',
+  // Git Events (main → renderer)
+  GIT_GRAPH_UPDATED: 'git:graph:updated',
+  GIT_COMMIT_PLAN_READY: 'git:commit:plan-ready',
+  GIT_OPS_COMMAND_PLAN: 'git:ops:command-plan',
+  GIT_OPS_CONFLICT_DETECTED: 'git:ops:conflict-detected',
   // PR Review
   GH_CHECK_STATUS: 'gh:check-status',
   GH_SET_PATH: 'gh:set-path',
