@@ -27,6 +27,7 @@ const emptyFiles: string[] = []
 
 type SessionViewProps = {
   tab: Tab
+  isActive: boolean
 }
 
 type IpcAttachment = {
@@ -36,7 +37,7 @@ type IpcAttachment = {
   name?: string
 }
 
-export function SessionView({ tab }: SessionViewProps) {
+export function SessionView({ tab, isActive }: SessionViewProps) {
   const { updateTab } = useTabStore()
   const setSession = useSessionStore((s) => s.setSession)
   const updateSession = useSessionStore((s) => s.updateSession)
@@ -332,7 +333,7 @@ export function SessionView({ tab }: SessionViewProps) {
         <div className="flex min-w-0 flex-1 flex-col">
           <div className="min-h-0 flex-1">
             {sessionId ? (
-              <ChatView sessionId={sessionId} />
+              <ChatView sessionId={sessionId} isActive={isActive} />
             ) : (
               <div className="flex h-full items-center justify-center">
                 <p className="text-sm text-stone-600">Send a message to start</p>

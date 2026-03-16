@@ -76,9 +76,10 @@ const emptyMessages: unknown[] = []
 
 type ChatViewProps = {
   sessionId: string
+  isActive: boolean
 }
 
-export const ChatView = memo(function ChatView({ sessionId }: ChatViewProps) {
+export const ChatView = memo(function ChatView({ sessionId, isActive }: ChatViewProps) {
   // Use fine-grained selectors to avoid re-rendering on unrelated store changes
   const sessionMessages = useSessionStore((s) => s.messages.get(sessionId)) ?? emptyMessages
   const streaming = useSessionStore((s) => s.streamingText.get(sessionId))
@@ -346,6 +347,24 @@ export const ChatView = memo(function ChatView({ sessionId }: ChatViewProps) {
       }
     }
   }, [streaming])
+
+  // Re-snap to bottom when tab becomes visible after being hidden via <Activity>.
+  // While hidden (display: none), scroll updates are no-ops — scrollHeight has no
+  // layout. When the tab regains visibility, we need to catch up if the user was
+  // near the bottom before the tab was hidden.
+  const wasActiveRef = useRef(isActive)
+  useEffect(() => {
+    const wasHidden = !wasActiveRef.current
+    wasActiveRef.current = isActive
+    if (!isActive || !wasHidden) return
+
+    const container = scrollContainerRef.current
+    if (!container || !isNearBottomRef.current) return
+
+    requestAnimationFrame(() => {
+      container.scrollTop = container.scrollHeight
+    })
+  }, [isActive])
 
   // Scroll to bottom on discrete events: new messages arriving, new
   // permission/question prompts, or streaming ending. This covers the gap

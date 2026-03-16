@@ -89,6 +89,9 @@ type ActiveSession = {
       resolve: (answers: Record<string, string>) => void
     }
   >
+  /** Latest context input tokens from the most recent message_start event.
+   *  Includes uncached + cache_read + cache_creation tokens. */
+  lastContextInputTokens: number
 }
 
 export class SessionManager {
@@ -225,6 +228,7 @@ export class SessionManager {
       abortController: new AbortController(),
       pendingPermissions: new Map(),
       pendingQuestions: new Map(),
+      lastContextInputTokens: 0,
     })
 
     return id
@@ -360,6 +364,27 @@ export class SessionManager {
         this.send(IPC.SESSION_MESSAGE, { sessionId, message })
         this.notifyMessageListeners(sessionId, message)
 
+        // Track latest context size from top-level message_start events
+        // (sum uncached + cache_read + cache_creation for true context size)
+        if (message.type === 'stream_event') {
+          const evt = (message as Record<string, unknown>).event as
+            | Record<string, unknown>
+            | undefined
+          if (evt?.type === 'message_start') {
+            const msgObj = evt.message as Record<string, unknown> | undefined
+            const usage = msgObj?.usage as Record<string, number> | undefined
+            if (usage) {
+              const total =
+                (usage.input_tokens ?? 0) +
+                (usage.cache_read_input_tokens ?? 0) +
+                (usage.cache_creation_input_tokens ?? 0)
+              if (total > 0) {
+                session.lastContextInputTokens = total
+              }
+            }
+          }
+        }
+
         if (message.type === 'result') {
           const result = message as SDKResultMessage
 
@@ -380,13 +405,23 @@ export class SessionManager {
           }
 
           if (result.total_cost_usd !== undefined) {
+            // Resolve context window from modelUsage (use resolved value that accounts for model floors)
+            const modelUsageEntries = Object.values(result.modelUsage ?? {})
+            const rawContextWindow = modelUsageEntries[0]?.contextWindow ?? 0
+            const resolvedContextWindow =
+              rawContextWindow > 0
+                ? resolveContextWindow(session.model, rawContextWindow)
+                : (this.modelContextWindows.get(session.model) ?? 0)
+
             const db = getDb()
             db.prepare(
-              'UPDATE sessions SET total_cost_usd = total_cost_usd + ?, input_tokens = input_tokens + ?, output_tokens = output_tokens + ?, updated_at = ? WHERE id = ?',
+              'UPDATE sessions SET total_cost_usd = total_cost_usd + ?, input_tokens = input_tokens + ?, output_tokens = output_tokens + ?, context_window = ?, context_input_tokens = ?, updated_at = ? WHERE id = ?',
             ).run(
               result.total_cost_usd || 0,
               result.usage?.input_tokens || 0,
               result.usage?.output_tokens || 0,
+              resolvedContextWindow,
+              session.lastContextInputTokens,
               Date.now(),
               sessionId,
             )
@@ -492,6 +527,7 @@ export class SessionManager {
       abortController: new AbortController(),
       pendingPermissions: new Map(),
       pendingQuestions: new Map(),
+      lastContextInputTokens: 0,
     })
 
     // Backfill title for old sessions that never got one

@@ -66,6 +66,12 @@ export function initDatabase(): Database.Database {
   if (!cols.some((c) => c.name === 'source')) {
     db.exec("ALTER TABLE sessions ADD COLUMN source TEXT NOT NULL DEFAULT 'user'")
   }
+  if (!cols.some((c) => c.name === 'context_window')) {
+    db.exec('ALTER TABLE sessions ADD COLUMN context_window INTEGER NOT NULL DEFAULT 0')
+  }
+  if (!cols.some((c) => c.name === 'context_input_tokens')) {
+    db.exec('ALTER TABLE sessions ADD COLUMN context_input_tokens INTEGER NOT NULL DEFAULT 0')
+  }
 
   // PR Review tables
   db.exec(`

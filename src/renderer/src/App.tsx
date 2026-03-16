@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { Activity, useEffect } from 'react'
 import { CommandPalette } from './components/CommandPalette'
 import { Layout } from './components/layout/Layout'
 import { SettingsOverlay } from './components/SettingsOverlay'
@@ -105,16 +105,21 @@ export default function App() {
           <PrReviewView />
         ) : sidebarView === 'testing' ? (
           <TestView />
-        ) : sidebarView === 'git' ? (
-          activeTab?.cwd ? (
-            <SessionView key={activeTab.id} tab={activeTab} />
-          ) : (
-            <HomePage />
-          )
-        ) : activeTab?.cwd ? (
-          <SessionView key={activeTab.id} tab={activeTab} />
         ) : (
-          <HomePage />
+          <>
+            {/* Render all tabs simultaneously, hiding inactive ones via <Activity>.
+                This preserves scroll position, React state, and refs across tab switches
+                instead of remounting (which the old key={activeTab.id} approach did). */}
+            {tabs
+              .filter((t) => t.cwd)
+              .map((tab) => (
+                <Activity key={tab.id} mode={tab.id === activeTabId ? 'visible' : 'hidden'}>
+                  <SessionView tab={tab} isActive={tab.id === activeTabId} />
+                </Activity>
+              ))}
+            {/* Show HomePage when no tab has a cwd (i.e. no project selected) */}
+            {!activeTab?.cwd && <HomePage />}
+          </>
         )}
       </Layout>
       <SettingsOverlay />
