@@ -1,5 +1,4 @@
 import { useEffect } from 'react'
-import { log } from '../../../shared/logger'
 import type {
   PermissionRequest,
   QuestionRequest,
@@ -100,8 +99,6 @@ export function useIpcBridge(): void {
           streamMsg.event.message?.usage
         ) {
           const usage = streamMsg.event.message.usage as Record<string, number>
-          const ipcLog = log.child('ipc-bridge')
-          ipcLog.debug('message_start usage:', usage)
           const contextInputTokens =
             (usage.input_tokens ?? 0) +
             (usage.cache_read_input_tokens ?? 0) +
