@@ -675,6 +675,7 @@ export const ChatView = memo(function ChatView({ sessionId, isActive }: ChatView
         sub === 'hook_response' ||
         sub === 'task_started' ||
         sub === 'task_progress' ||
+        sub === 'task_notification' ||
         sub === 'compact_boundary'
       )
         return null
