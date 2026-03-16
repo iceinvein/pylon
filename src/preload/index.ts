@@ -22,6 +22,8 @@ const api = {
     ipcRenderer.invoke(IPC.QUESTION_RESPONSE, { requestId, answers }),
   setModel: (sessionId: string, model: string) =>
     ipcRenderer.invoke(IPC.SESSION_SET_MODEL, { sessionId, model }),
+  setEffort: (sessionId: string, effort: string) =>
+    ipcRenderer.invoke(IPC.SESSION_SET_EFFORT, { sessionId, effort }),
   setPermissionMode: (sessionId: string, mode: string) =>
     ipcRenderer.invoke(IPC.SESSION_SET_PERMISSION_MODE, { sessionId, mode }),
   getSessionInfo: (sessionId: string) => ipcRenderer.invoke(IPC.SESSION_GET_INFO, { sessionId }),

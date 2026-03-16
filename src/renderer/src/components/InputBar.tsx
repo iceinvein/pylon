@@ -6,6 +6,7 @@ import {
   Paperclip,
   ShieldAlert,
   ShieldCheck,
+  SlidersHorizontal,
   Square,
   X,
 } from 'lucide-react'
@@ -20,6 +21,7 @@ import {
 } from 'react'
 import type {
   Attachment,
+  EffortLevel,
   FileAttachment,
   ImageAttachment,
   PermissionMode,
@@ -49,12 +51,21 @@ const MODELS = [
   { id: 'claude-haiku-4-5', label: 'Haiku 4.5' },
 ] as const
 
+const EFFORT_LEVELS: { id: EffortLevel; label: string; description: string }[] = [
+  { id: 'low', label: 'Low', description: 'Quick, minimal thinking' },
+  { id: 'medium', label: 'Medium', description: 'Balanced speed and depth' },
+  { id: 'high', label: 'High', description: 'Deep reasoning (default)' },
+  { id: 'max', label: 'Max', description: 'Maximum effort (Opus only)' },
+]
+
 type InputBarProps = {
   tabId: string
   sessionId: string | null
   isRunning: boolean
   model: string
   onModelChange: (model: string) => void
+  effort: EffortLevel
+  onEffortChange: (effort: EffortLevel) => void
   permissionMode: PermissionMode
   onPermissionModeChange: (mode: PermissionMode) => void
   onSend: (text: string, attachments: Attachment[]) => void
@@ -68,6 +79,8 @@ export function InputBar({
   isRunning,
   model,
   onModelChange,
+  effort,
+  onEffortChange,
   permissionMode,
   onPermissionModeChange,
   onSend,
@@ -80,14 +93,17 @@ export function InputBar({
   const [attachments, setAttachments] = useState<Attachment[]>(savedDraft?.attachments ?? [])
   const [isDragging, setIsDragging] = useState(false)
   const [showModelMenu, setShowModelMenu] = useState(false)
+  const [showEffortMenu, setShowEffortMenu] = useState(false)
   const [showPermissionMenu, setShowPermissionMenu] = useState(false)
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const modelMenuRef = useRef<HTMLDivElement>(null)
+  const effortMenuRef = useRef<HTMLDivElement>(null)
   const permissionMenuRef = useRef<HTMLDivElement>(null)
 
   const currentModelLabel = MODELS.find((m) => m.id === model)?.label ?? model
+  const currentEffortLabel = EFFORT_LEVELS.find((e) => e.id === effort)?.label ?? effort
 
   useEffect(() => {
     if (!showModelMenu) return
@@ -99,6 +115,17 @@ export function InputBar({
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
   }, [showModelMenu])
+
+  useEffect(() => {
+    if (!showEffortMenu) return
+    function handleClick(e: MouseEvent) {
+      if (effortMenuRef.current && !effortMenuRef.current.contains(e.target as Node)) {
+        setShowEffortMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [showEffortMenu])
 
   useEffect(() => {
     if (!showPermissionMenu) return
@@ -458,6 +485,59 @@ export function InputBar({
                 </AnimatePresence>
               </div>
 
+              <div className="relative" ref={effortMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => setShowEffortMenu((v) => !v)}
+                  className={`flex h-7 items-center gap-1 rounded-full border px-2.5 text-xs transition-colors ${
+                    effort === 'max'
+                      ? 'border-purple-700/50 text-purple-400 hover:border-purple-600 hover:text-purple-300'
+                      : effort === 'low'
+                        ? 'border-stone-700/50 text-stone-500 hover:border-stone-600 hover:text-stone-400'
+                        : 'border-stone-700/50 text-stone-400 hover:border-stone-600 hover:text-stone-300'
+                  }`}
+                >
+                  <SlidersHorizontal size={13} />
+                  <span>{currentEffortLabel}</span>
+                  <ChevronDown size={12} />
+                </button>
+                <AnimatePresence>
+                  {showEffortMenu && (
+                    <motion.div
+                      className="absolute bottom-full left-0 z-50 mb-1 min-w-[200px] overflow-hidden rounded-lg border border-stone-700 bg-stone-800 py-1 shadow-xl"
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 4 }}
+                      transition={{ duration: 0.12 }}
+                    >
+                      {EFFORT_LEVELS.filter(
+                        (e) => e.id !== 'max' || model === 'claude-opus-4-6',
+                      ).map((e) => (
+                        <button
+                          type="button"
+                          key={e.id}
+                          onClick={() => {
+                            onEffortChange(e.id)
+                            setShowEffortMenu(false)
+                          }}
+                          className={`flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors hover:bg-stone-700 ${
+                            e.id === effort ? 'text-stone-100' : 'text-stone-400'
+                          }`}
+                        >
+                          <span
+                            className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${e.id === effort ? 'bg-stone-300' : 'bg-transparent'}`}
+                          />
+                          <div>
+                            <div>{e.label}</div>
+                            <div className="text-[10px] text-stone-500">{e.description}</div>
+                          </div>
+                        </button>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
               <div className="relative" ref={permissionMenuRef}>
                 {(() => {
                   const currentMode =
@@ -531,6 +611,8 @@ export function InputBar({
               <div className="flex-1" />
 
               <ContextIndicator sessionId={sessionId} />
+
+              <div className="w-1.5" />
 
               <AnimatePresence mode="wait">
                 {isRunning ? (

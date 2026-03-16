@@ -93,6 +93,8 @@ export type QuestionResponse = {
 
 export type PermissionMode = 'default' | 'auto-approve'
 
+export type EffortLevel = 'low' | 'medium' | 'high' | 'max'
+
 export type AppSettings = {
   defaultModel: string
   defaultPermissionMode: PermissionMode

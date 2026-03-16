@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type {
   AppSettings,
   Attachment,
+  EffortLevel,
   ImageAttachment,
   PermissionMode,
   Tab,
@@ -42,6 +43,7 @@ export function SessionView({ tab }: SessionViewProps) {
   const sessions = useSessionStore((s) => s.sessions)
   const creatingSession = useRef(false)
   const [pendingModel, setPendingModel] = useState('claude-opus-4-6')
+  const [effort, setEffort] = useState<EffortLevel>('high')
   const [permissionMode, setPermissionMode] = useState<PermissionMode>('default')
 
   const sessionId = tab.sessionId
@@ -210,8 +212,25 @@ export function SessionView({ tab }: SessionViewProps) {
   const handleModelChange = useCallback(
     async (model: string) => {
       setPendingModel(model)
+      // 'max' effort is only available on Opus — downgrade to 'high' when switching away
+      if (model !== 'claude-opus-4-6' && effort === 'max') {
+        setEffort('high')
+        if (sessionId) {
+          await window.api.setEffort(sessionId, 'high')
+        }
+      }
       if (sessionId) {
         await window.api.setModel(sessionId, model)
+      }
+    },
+    [sessionId, effort],
+  )
+
+  const handleEffortChange = useCallback(
+    async (level: EffortLevel) => {
+      setEffort(level)
+      if (sessionId) {
+        await window.api.setEffort(sessionId, level)
       }
     },
     [sessionId],
@@ -335,6 +354,8 @@ export function SessionView({ tab }: SessionViewProps) {
               isRunning={isRunning}
               model={currentModel}
               onModelChange={handleModelChange}
+              effort={effort}
+              onEffortChange={handleEffortChange}
               permissionMode={permissionMode}
               onPermissionModeChange={handlePermissionModeChange}
               onSend={handleSend}

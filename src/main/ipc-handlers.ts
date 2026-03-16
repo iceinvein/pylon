@@ -260,6 +260,14 @@ export function registerIpcHandlers(): void {
   })
 
   ipcMain.handle(
+    IPC.SESSION_SET_EFFORT,
+    async (_e, args: { sessionId: string; effort: string }) => {
+      sessionManager.setEffort(args.sessionId, args.effort as import('../shared/types').EffortLevel)
+      return true
+    },
+  )
+
+  ipcMain.handle(
     IPC.SESSION_SET_PERMISSION_MODE,
     async (_e, args: { sessionId: string; mode: PermissionMode }) => {
       sessionManager.setPermissionMode(args.sessionId, args.mode)
