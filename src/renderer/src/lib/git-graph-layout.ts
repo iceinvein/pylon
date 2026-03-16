@@ -1,4 +1,4 @@
-import type { GraphCommit, GraphLine } from '../../../shared/git-types'
+import type { GraphCommit } from '../../../shared/git-types'
 
 export const GRAPH_CONSTANTS = {
   ROW_HEIGHT: 32,

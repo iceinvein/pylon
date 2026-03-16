@@ -1,6 +1,7 @@
 import { GitBranch, GitCommitHorizontal, Terminal } from 'lucide-react'
 import { useState } from 'react'
 import { useTabStore } from '../../store/tab-store'
+import { GitGraphTab } from './GitGraphTab'
 
 type GitTab = 'graph' | 'commit' | 'command'
 
@@ -49,9 +50,7 @@ export function GitPanel() {
       {/* Tab content — placeholders until tab components are built */}
       <div className="min-h-0 flex-1 overflow-hidden">
         {activeTab === 'graph' && (
-          <div className="flex h-full items-center justify-center text-stone-600 text-xs">
-            Graph tab — coming soon
-          </div>
+          <GitGraphTab cwd={cwd} sessionId={tab?.sessionId ?? null} />
         )}
         {activeTab === 'commit' && (
           <div className="flex h-full items-center justify-center text-stone-600 text-xs">
