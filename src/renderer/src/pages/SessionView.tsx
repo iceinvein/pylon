@@ -17,6 +17,7 @@ import { PrRaiseOverlay } from '../components/pr-raise/PrRaiseOverlay'
 import { ReviewPanel } from '../components/review/ReviewPanel'
 import { SessionInfoPanel } from '../components/SessionInfoPanel'
 import { ThinkingIndicator } from '../components/ThinkingIndicator'
+import { resumeStoredSession, type StoredSession } from '../lib/resume-session'
 import { usePrRaiseStore } from '../store/pr-raise-store'
 import { useSessionStore } from '../store/session-store'
 import { useTabStore } from '../store/tab-store'
@@ -81,6 +82,31 @@ export function SessionView({ tab }: SessionViewProps) {
       setBranchStatus(tab.cwd, status)
     })
   }, [tab.cwd, setBranchStatus])
+
+  // Lazy hydration: when switching to a restored-but-unhydrated tab
+  useEffect(() => {
+    // Only trigger for tabs explicitly marked as unhydrated by the restore logic.
+    // hydrated === undefined means a fresh tab (not restored) — skip.
+    // hydrated === true means already hydrated — skip.
+    // hydrated === false means restored but not yet hydrated — hydrate now.
+    if (!sessionId || tab.hydrated !== false) return
+
+    let cancelled = false
+
+    async function hydrate() {
+      const allSessions = (await window.api.listSessions()) as StoredSession[]
+      const session = allSessions.find((s) => s.id === sessionId)
+      if (cancelled || !session) return
+
+      await resumeStoredSession(session)
+      updateTab(tab.id, { hydrated: true })
+    }
+
+    hydrate()
+    return () => {
+      cancelled = true
+    }
+  }, [sessionId, tab.hydrated, tab.id, updateTab])
 
   async function ensureSession(): Promise<string> {
     if (sessionId) return sessionId
