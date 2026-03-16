@@ -479,7 +479,7 @@ export const ChatView = memo(function ChatView({ sessionId, isActive }: ChatView
         )}
         <div className="min-w-0 flex-1 space-y-1">
           {showHeader && (
-            <span className="font-semibold text-[var(--color-base-text-secondary)] text-xs">
+            <span className="font-semibold text-[var(--color-base-text)] text-sm">
               Claude
             </span>
           )}
@@ -660,7 +660,7 @@ export const ChatView = memo(function ChatView({ sessionId, isActive }: ChatView
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.2, ease: 'easeOut' }}
           >
-            <div className="flex items-center gap-2 px-6 py-1">
+            <div className="flex items-center gap-2 py-1 pr-6 pl-[3.75rem]">
               <Zap size={12} className="flex-shrink-0 text-[var(--color-special)]/70" />
               <span className="text-[var(--color-base-text-muted)] text-xs">
                 Loaded skill{' '}
@@ -763,7 +763,7 @@ export const ChatView = memo(function ChatView({ sessionId, isActive }: ChatView
                 <button
                   type="button"
                   onClick={() => setShowPreCompactMessages((v) => !v)}
-                  className="flex w-full items-center gap-2 px-6 py-2 text-[var(--color-base-text-muted)] text-xs transition-colors hover:text-[var(--color-base-text-secondary)]"
+                  className="flex w-full items-center gap-2 py-2 pr-6 pl-[3.75rem] text-[var(--color-base-text-muted)] text-xs transition-colors hover:text-[var(--color-base-text-secondary)]"
                 >
                   {showPreCompactMessages ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
                   <span>
@@ -792,7 +792,7 @@ export const ChatView = memo(function ChatView({ sessionId, isActive }: ChatView
                 )}
               </div>
             )}
-            <div className="flex items-center gap-3 px-6 py-3">
+            <div className="flex items-center gap-3 py-3 pr-6 pl-[3.75rem]">
               <div className="h-px flex-1 bg-[var(--color-base-border)]/50" />
               <div className="flex items-center gap-1.5 text-[var(--color-base-text-muted)] text-xs">
                 <Minimize2 size={12} />

@@ -23,7 +23,7 @@ export function ResultMessage({
 }: ResultMessageProps) {
   if (isError) {
     return (
-      <div className="mx-6 my-2 rounded-lg border border-[var(--color-error)]/50 bg-[var(--color-error)]/20 px-4 py-3">
+      <div className="my-2 mr-6 ml-[3.75rem] rounded-lg border border-[var(--color-error)]/50 bg-[var(--color-error)]/20 px-4 py-3">
         <div className="flex items-center gap-2">
           <XCircle size={14} className="text-[var(--color-error)]" />
           <span className="font-medium text-[var(--color-error)] text-sm">Error</span>

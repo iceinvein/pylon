@@ -16,7 +16,7 @@ export function ChoiceButtons({ choices, onSelect, onPreFill }: ChoiceButtonsPro
   }
 
   return (
-    <div className="mx-6 my-2 space-y-1.5">
+    <div className="my-2 mr-6 ml-[3.75rem] space-y-1.5">
       {choices.map((choice, i) => (
         <button
           type="button"

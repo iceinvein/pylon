@@ -8,7 +8,7 @@ type PermissionPromptProps = {
 
 export function PermissionPrompt({ permission, onRespond }: PermissionPromptProps) {
   return (
-    <div className="mx-6 my-2 rounded-lg border border-[var(--color-accent)]/30 bg-[var(--color-accent)]/5 p-4">
+    <div className="my-2 mr-6 ml-[3.75rem] rounded-lg border border-[var(--color-accent)]/30 bg-[var(--color-accent)]/5 p-4">
       <div className="flex items-start gap-3">
         <ShieldQuestion
           size={16}

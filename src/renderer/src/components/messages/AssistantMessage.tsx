@@ -30,7 +30,7 @@ export function AssistantMessage({ content, toolResultMap, showHeader }: Assista
       )}
       <div className="min-w-0 flex-1 space-y-1">
         {showHeader && (
-          <span className="font-semibold text-[var(--color-base-text-secondary)] text-xs">
+          <span className="font-semibold text-[var(--color-base-text)] text-sm">
             Claude
           </span>
         )}

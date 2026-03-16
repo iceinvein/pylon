@@ -83,7 +83,7 @@ export function QuestionPrompt({ question, onRespond }: QuestionPromptProps) {
     hasTextQuestions
 
   return (
-    <div className="mx-6 my-2 rounded-lg border border-[var(--color-info)]/40 bg-[var(--color-info)]/15 p-4">
+    <div className="my-2 mr-6 ml-[3.75rem] rounded-lg border border-[var(--color-info)]/40 bg-[var(--color-info)]/15 p-4">
       <div className="space-y-4">
         {question.questions.map((q, qi) => (
           <div key={qi} className="flex items-start gap-3">

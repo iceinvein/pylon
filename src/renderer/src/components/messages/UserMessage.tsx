@@ -42,7 +42,7 @@ export function UserMessage({ message }: UserMessageProps) {
         <User size={13} className="text-[var(--color-accent-text)]" />
       </div>
       <div className="min-w-0 flex-1">
-        <span className="font-semibold text-[var(--color-base-text)] text-xs">You</span>
+        <span className="font-semibold text-[var(--color-base-text)] text-sm">You</span>
         {images.length > 0 && (
           <div className="mt-2 space-y-2">
             {images.map((img, i) => (

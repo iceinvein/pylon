@@ -36,7 +36,7 @@ export function SystemMessage({ content, subtype }: SystemMessageProps) {
   const skillName = isSkillContent(content)
   if (skillName || looksLikeSkillContent(content)) {
     return (
-      <div className="flex items-center gap-2 px-6 py-1">
+      <div className="flex items-center gap-2 py-1 pr-6 pl-[3.75rem]">
         <Zap size={12} className="flex-shrink-0 text-[var(--color-special)]/70" />
         <span className="text-[var(--color-base-text-muted)] text-xs">
           Loaded skill{' '}
@@ -47,7 +47,7 @@ export function SystemMessage({ content, subtype }: SystemMessageProps) {
   }
 
   return (
-    <div className="flex items-start gap-2 px-6 py-1.5">
+    <div className="flex items-start gap-2 py-1.5 pr-6 pl-[3.75rem]">
       <Info size={12} className="mt-0.5 flex-shrink-0 text-[var(--color-base-text-faint)]" />
       <div className="min-w-0">
         {subtype && (
