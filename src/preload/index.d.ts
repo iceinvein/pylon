@@ -143,6 +143,23 @@ type Api = {
   onGoalSuggestion: (
     callback: (data: import('../shared/types').GoalSuggestionUpdate) => void,
   ) => () => void
+  // Git Graph (wired in Task 7)
+  gitGraphGetLog: (cwd: string, afterHash?: string) => Promise<import('../shared/git-types').GraphCommit[]>
+  gitGraphGetBranches: (cwd: string) => Promise<import('../shared/git-types').BranchInfo[]>
+  // Git Commit (wired in Task 7)
+  gitCommitGetStatus: (cwd: string) => Promise<import('../shared/git-types').FileStatus[]>
+  gitCommitAnalyze: (cwd: string, sessionId: string) => Promise<import('../shared/git-types').CommitPlan>
+  gitCommitGenerateMsg: (cwd: string, sessionId: string) => Promise<string>
+  gitCommitExecute: (cwd: string, group: import('../shared/git-types').CommitGroup) => Promise<{ success: boolean }>
+  gitCommitStage: (cwd: string, paths: string[]) => Promise<void>
+  gitCommitUnstage: (cwd: string, paths: string[]) => Promise<void>
+  // Git Ops (wired in Task 7)
+  gitOpsExecuteNl: (cwd: string, sessionId: string, text: string) => Promise<import('../shared/git-types').GitCommandPlan>
+  gitOpsConfirm: (cwd: string, planId: string) => Promise<{ success: boolean; result?: string }>
+  gitOpsApplyResolution: (cwd: string, resolutions: import('../shared/git-types').ConflictResolution[]) => Promise<void>
+  // Git Events (wired in Task 7)
+  onGitGraphUpdated: (callback: (data: unknown) => void) => () => void
+  onGitOpsConflictDetected: (callback: (data: unknown) => void) => () => void
   sendLog: (level: string, source: string, message: string) => void
 }
 
