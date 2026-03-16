@@ -13,7 +13,12 @@ import {
 import { app, type BrowserWindow } from 'electron'
 import { IPC } from '../shared/ipc-channels'
 import { log } from '../shared/logger'
-import type { PermissionMode, PermissionResponse, QuestionResponse } from '../shared/types'
+import type {
+  EffortLevel,
+  PermissionMode,
+  PermissionResponse,
+  QuestionResponse,
+} from '../shared/types'
 import { getDb } from './db'
 
 const logger = log.child('session-manager')
@@ -68,6 +73,7 @@ type ActiveSession = {
   gitBaselineHash: string | null
   model: string
   permissionMode: PermissionMode
+  effort: EffortLevel
   queryInstance: ReturnType<typeof query> | null
   abortController: AbortController
   pendingPermissions: Map<
@@ -170,6 +176,7 @@ export class SessionManager {
       gitBaselineHash: null,
       model: sessionModel,
       permissionMode: 'default',
+      effort: 'high',
       queryInstance: null,
       abortController: new AbortController(),
       pendingPermissions: new Map(),
@@ -203,6 +210,7 @@ export class SessionManager {
         promptSuggestions: true,
         enableFileCheckpointing: true,
         settingSources: ['user', 'project', 'local'],
+        effort: session.effort,
         canUseTool: async (toolName: string, input: Record<string, unknown>, opts) => {
           // Capture git baseline on first file-modifying tool
           if (['Edit', 'Write'].includes(toolName)) {
@@ -417,6 +425,7 @@ export class SessionManager {
       gitBaselineHash: row.git_baseline_hash,
       model: row.model,
       permissionMode: (row.permission_mode as PermissionMode) || 'default',
+      effort: 'high',
       queryInstance: null,
       abortController: new AbortController(),
       pendingPermissions: new Map(),
@@ -475,6 +484,12 @@ export class SessionManager {
     )
   }
 
+  setEffort(sessionId: string, effort: EffortLevel): void {
+    const session = this.sessions.get(sessionId)
+    if (!session) return
+    session.effort = effort
+  }
+
   getSessionInfo(sessionId: string): { model: string; permissionMode: PermissionMode } | null {
     const session = this.sessions.get(sessionId)
     if (!session) return null
@@ -485,32 +500,38 @@ export class SessionManager {
     const session = this.sessions.get(sessionId)
     if (!session) throw new Error('Session not found')
 
-    const text = `[Git AI Assistant]\n\nSystem: ${systemPrompt}\n\nUser: ${prompt}`
-    return new Promise((resolve, reject) => {
-      let responseText = ''
-      const listener = this.onMessage(sessionId, (msg: unknown) => {
-        const parsed = msg as { type?: string; message?: { type?: string; content?: unknown } }
-        if (parsed?.message?.type === 'assistant') {
-          const content = parsed.message.content
-          if (typeof content === 'string') {
-            responseText = content
-          } else if (Array.isArray(content)) {
-            for (const block of content) {
-              if (block?.type === 'text') responseText += block.text ?? ''
-            }
-          }
-        }
-        if (parsed?.type === 'result') {
-          listener()
-          resolve(responseText)
-        }
-      })
+    // Use a standalone SDK query() — NOT the user's active session — so the
+    // git AI request never appears in the chat UI or pollutes conversation context.
+    const combinedPrompt = `${systemPrompt}\n\n${prompt}`
+    const options: SdkOptions & Record<string, unknown> = {
+      cwd: session.cwd,
+      model: session.model,
+      abortController: new AbortController(),
+      // `tools: []` disables ALL built-in tools so the model can only return text.
+      // (Note: `allowedTools` only controls auto-approval, not availability.)
+      tools: [],
+      permissionMode: 'acceptEdits' as const,
+    }
 
-      this.sendMessage(sessionId, text, []).catch((err) => {
-        listener()
-        reject(err)
-      })
-    })
+    let responseText = ''
+    const q = query({ prompt: combinedPrompt, options })
+    for await (const message of q) {
+      const msg = message as { type?: string; content?: unknown; message?: { content?: unknown } }
+      // Extract text from both assistant turn messages and the final result
+      if (msg.type === 'assistant' || msg.type === 'result') {
+        const content = msg.message?.content ?? msg.content
+        if (typeof content === 'string') {
+          responseText = content
+        } else if (Array.isArray(content)) {
+          const text = (content as { type?: string; text?: string }[])
+            .filter((b) => b.type === 'text' && b.text)
+            .map((b) => b.text ?? '')
+            .join('')
+          if (text) responseText = text
+        }
+      }
+    }
+    return responseText
   }
 
   async checkRepoStatus(folderPath: string): Promise<{ isGitRepo: boolean; isDirty: boolean }> {
