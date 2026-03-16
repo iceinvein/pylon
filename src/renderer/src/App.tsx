@@ -11,6 +11,7 @@ import { HomePage } from './pages/HomePage'
 import { PrReviewView } from './pages/PrReviewView'
 import { SessionView } from './pages/SessionView'
 import { TestView } from './pages/TestView'
+import { useSessionStore } from './store/session-store'
 import { useTabStore } from './store/tab-store'
 import { useUiStore } from './store/ui-store'
 
@@ -50,6 +51,15 @@ export default function App() {
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [tabs, setActiveTab, setNewTabPopoverOpen])
+
+  // Update Electron window title to reflect the active session
+  const activeSession = useSessionStore((s) =>
+    activeTab?.sessionId ? s.sessions.get(activeTab.sessionId) : undefined,
+  )
+  useEffect(() => {
+    const title = activeSession?.title || activeTab?.label
+    document.title = title ? `${title} — Pylon` : 'Pylon'
+  }, [activeSession?.title, activeTab?.label])
 
   // Restore persisted tabs on startup
   const restoreTabs = useTabStore((s) => s.restoreTabs)

@@ -56,7 +56,7 @@ export function TabBar() {
                 }`}
               >
                 <StatusDot status={session?.status} />
-                <span className="min-w-0 flex-1 truncate">{tab.label}</span>
+                <span className="min-w-0 flex-1 truncate">{session?.title || tab.label}</span>
                 {/* Right slot: shortcut indicator by default, close button on hover */}
                 <div className="relative ml-1 flex h-5 flex-shrink-0 items-center justify-center">
                   {shortcutNum !== null && (
