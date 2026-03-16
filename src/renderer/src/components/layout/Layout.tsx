@@ -18,6 +18,10 @@ const MIN_WIDTH = 200
 const MAX_WIDTH = 500
 const DEFAULT_WIDTH = 260
 
+const GIT_MIN_WIDTH = 300
+const GIT_MAX_WIDTH = 700
+const GIT_DEFAULT_WIDTH = 420
+
 export function Layout({ children }: LayoutProps) {
   const activeTabId = useTabStore((s) => s.activeTabId)
   const tabs = useTabStore((s) => s.tabs)
@@ -50,38 +54,51 @@ export function Layout({ children }: LayoutProps) {
   }, [activeCwd, setBranchStatus])
 
   const [panelWidth, setPanelWidth] = useState(DEFAULT_WIDTH)
+  const [gitPanelWidth, setGitPanelWidth] = useState(GIT_DEFAULT_WIDTH)
   const dragging = useRef(false)
   const dragStartX = useRef(0)
   const dragStartWidth = useRef(0)
 
+  const makeDragHandler = useCallback(
+    (currentWidth: number, setWidth: (w: number) => void, minW: number, maxW: number) =>
+      (e: React.MouseEvent) => {
+        e.preventDefault()
+        dragging.current = true
+        dragStartX.current = e.clientX
+        dragStartWidth.current = currentWidth
+
+        document.body.style.userSelect = 'none'
+        document.body.style.cursor = 'col-resize'
+
+        const handleMouseMove = (ev: MouseEvent) => {
+          if (!dragging.current) return
+          const delta = ev.clientX - dragStartX.current
+          setWidth(Math.min(maxW, Math.max(minW, dragStartWidth.current + delta)))
+        }
+
+        const handleMouseUp = () => {
+          dragging.current = false
+          document.body.style.userSelect = ''
+          document.body.style.cursor = ''
+          document.removeEventListener('mousemove', handleMouseMove)
+          document.removeEventListener('mouseup', handleMouseUp)
+        }
+
+        document.addEventListener('mousemove', handleMouseMove)
+        document.addEventListener('mouseup', handleMouseUp)
+      },
+    [],
+  )
+
   const handleDragStart = useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault()
-      dragging.current = true
-      dragStartX.current = e.clientX
-      dragStartWidth.current = panelWidth
+    (e: React.MouseEvent) => makeDragHandler(panelWidth, setPanelWidth, MIN_WIDTH, MAX_WIDTH)(e),
+    [panelWidth, makeDragHandler],
+  )
 
-      document.body.style.userSelect = 'none'
-      document.body.style.cursor = 'col-resize'
-
-      const handleMouseMove = (ev: MouseEvent) => {
-        if (!dragging.current) return
-        const delta = ev.clientX - dragStartX.current
-        setPanelWidth(Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, dragStartWidth.current + delta)))
-      }
-
-      const handleMouseUp = () => {
-        dragging.current = false
-        document.body.style.userSelect = ''
-        document.body.style.cursor = ''
-        document.removeEventListener('mousemove', handleMouseMove)
-        document.removeEventListener('mouseup', handleMouseUp)
-      }
-
-      document.addEventListener('mousemove', handleMouseMove)
-      document.addEventListener('mouseup', handleMouseUp)
-    },
-    [panelWidth],
+  const handleGitDragStart = useCallback(
+    (e: React.MouseEvent) =>
+      makeDragHandler(gitPanelWidth, setGitPanelWidth, GIT_MIN_WIDTH, GIT_MAX_WIDTH)(e),
+    [gitPanelWidth, makeDragHandler],
   )
 
   return (
@@ -120,14 +137,20 @@ export function Layout({ children }: LayoutProps) {
           <motion.div
             key="git-panel"
             initial={{ width: 0, opacity: 0 }}
-            animate={{ width: 420, opacity: 1 }}
+            animate={{ width: gitPanelWidth + 5, opacity: 1 }}
             exit={{ width: 0, opacity: 0 }}
             transition={{ duration: 0.15, ease: [0.25, 0.1, 0.25, 1] }}
-            className="flex flex-shrink-0 overflow-hidden border-stone-800 border-r pt-12"
+            className="flex flex-shrink-0 overflow-hidden pt-12"
           >
             <div className="min-w-0 flex-1">
               <GitPanel />
             </div>
+            {/* Drag handle */}
+            {/* biome-ignore lint/a11y/noStaticElementInteractions: mouse-only resize handle */}
+            <div
+              onMouseDown={handleGitDragStart}
+              className="flex w-1 flex-shrink-0 cursor-col-resize items-center justify-center border-stone-800 border-r bg-stone-950 transition-colors hover:bg-stone-700 active:bg-stone-600"
+            />
           </motion.div>
         )}
       </AnimatePresence>
