@@ -298,6 +298,7 @@ export function SessionView({ tab }: SessionViewProps) {
           <TasksPanel sessionId={sessionId ?? null} />
           <div>
             <InputBar
+              tabId={tab.id}
               sessionId={sessionId}
               isRunning={isRunning}
               model={currentModel}

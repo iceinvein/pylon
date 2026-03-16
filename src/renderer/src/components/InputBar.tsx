@@ -18,7 +18,13 @@ import {
   useRef,
   useState,
 } from 'react'
-import type { Attachment, ImageAttachment, PermissionMode } from '../../../shared/types'
+import type {
+  Attachment,
+  FileAttachment,
+  ImageAttachment,
+  PermissionMode,
+} from '../../../shared/types'
+import { useDraftStore } from '../store/draft-store'
 import { useUiStore } from '../store/ui-store'
 
 const PERMISSION_MODES = [
@@ -43,6 +49,7 @@ const MODELS = [
 ] as const
 
 type InputBarProps = {
+  tabId: string
   sessionId: string | null
   isRunning: boolean
   model: string
@@ -55,6 +62,7 @@ type InputBarProps = {
 }
 
 export function InputBar({
+  tabId,
   sessionId,
   isRunning,
   model,
@@ -65,8 +73,10 @@ export function InputBar({
   onStop,
   behindCount,
 }: InputBarProps) {
-  const [text, setText] = useState('')
-  const [attachments, setAttachments] = useState<Attachment[]>([])
+  // Restore draft from previous tab switch (if any)
+  const savedDraft = useDraftStore.getState().getDraft(tabId)
+  const [text, setText] = useState(savedDraft?.text ?? '')
+  const [attachments, setAttachments] = useState<Attachment[]>(savedDraft?.attachments ?? [])
   const [isDragging, setIsDragging] = useState(false)
   const [showModelMenu, setShowModelMenu] = useState(false)
   const [showPermissionMenu, setShowPermissionMenu] = useState(false)
@@ -122,6 +132,28 @@ export function InputBar({
     }
   }, [draftText])
 
+  // Save draft to module-level Map on unmount (tab switch)
+  const textRef = useRef(text)
+  const attachmentsRef = useRef(attachments)
+  textRef.current = text
+  attachmentsRef.current = attachments
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs once on mount/unmount per tab — adjustHeight reads a ref, savedDraft is captured at render time
+  useEffect(() => {
+    if (savedDraft?.text) {
+      requestAnimationFrame(() => adjustHeight())
+    }
+    return () => {
+      const t = textRef.current
+      const fileAtts = attachmentsRef.current.filter((a): a is FileAttachment => a.type === 'file')
+      if (t || fileAtts.length > 0) {
+        useDraftStore.getState().setDraft(tabId, { text: t, attachments: fileAtts })
+      } else {
+        useDraftStore.getState().clearDraft(tabId)
+      }
+    }
+  }, [tabId])
+
   function adjustHeight() {
     const el = textareaRef.current
     if (!el) return
@@ -155,6 +187,7 @@ export function InputBar({
     onSend(trimmed, attachments)
     setText('')
     setAttachments([])
+    useDraftStore.getState().clearDraft(tabId)
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto'
     }
