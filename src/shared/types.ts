@@ -24,6 +24,7 @@ export type Tab = {
   cwd: string
   label: string
   useWorktree?: boolean
+  hydrated?: boolean
 }
 
 export type SerializedMessage = {
