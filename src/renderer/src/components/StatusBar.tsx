@@ -30,8 +30,9 @@ function BranchIndicator({ status }: { status: GitBranchStatus }) {
 }
 
 export function StatusBar({ cwd: _cwd, branchStatus }: StatusBarProps) {
-  const toggleGitPanel = useUiStore((s) => s.toggleGitPanel)
-  const gitPanelOpen = useUiStore((s) => s.gitPanelOpen)
+  const sidebarView = useUiStore((s) => s.sidebarView)
+  const setSidebarView = useUiStore((s) => s.setSidebarView)
+  const isGitOpen = sidebarView === 'git'
 
   if (!branchStatus?.isGitRepo || !branchStatus.branch) {
     return <div className="h-6 border-stone-800 border-t bg-stone-950" />
@@ -41,8 +42,8 @@ export function StatusBar({ cwd: _cwd, branchStatus }: StatusBarProps) {
     <div className="flex h-6 items-center border-stone-800 border-t bg-stone-950 px-3">
       <button
         type="button"
-        onClick={toggleGitPanel}
-        className={`rounded px-1 py-0.5 transition-colors hover:bg-stone-800 ${gitPanelOpen ? 'bg-stone-800' : ''}`}
+        onClick={() => setSidebarView(isGitOpen ? 'home' : 'git')}
+        className={`rounded px-1 py-0.5 transition-colors hover:bg-stone-800 ${isGitOpen ? 'bg-stone-800' : ''}`}
       >
         <BranchIndicator status={branchStatus} />
       </button>

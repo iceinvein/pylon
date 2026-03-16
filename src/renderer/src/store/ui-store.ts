@@ -9,7 +9,6 @@ type UiStore = {
   draftText: string | null
   reviewPanelPlan: { sessionId: string; filePath: string } | null
   newTabPopoverOpen: boolean
-  gitPanelOpen: boolean
 
   toggleCommandPalette: () => void
   setSettingsOpen: (open: boolean) => void
@@ -18,7 +17,6 @@ type UiStore = {
   openReviewPanel: (sessionId: string, filePath: string) => void
   closeReviewPanel: () => void
   setNewTabPopoverOpen: (open: boolean) => void
-  toggleGitPanel: () => void
 }
 
 export const useUiStore = create<UiStore>((set) => ({
@@ -28,7 +26,6 @@ export const useUiStore = create<UiStore>((set) => ({
   draftText: null,
   reviewPanelPlan: null,
   newTabPopoverOpen: false,
-  gitPanelOpen: false,
 
   toggleCommandPalette: () => set((state) => ({ commandPaletteOpen: !state.commandPaletteOpen })),
 
@@ -42,6 +39,4 @@ export const useUiStore = create<UiStore>((set) => ({
   closeReviewPanel: () => set({ reviewPanelPlan: null }),
 
   setNewTabPopoverOpen: (open) => set({ newTabPopoverOpen: open }),
-
-  toggleGitPanel: () => set((state) => ({ gitPanelOpen: !state.gitPanelOpen })),
 }))
