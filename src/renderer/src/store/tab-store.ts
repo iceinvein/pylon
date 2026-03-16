@@ -9,6 +9,7 @@ type TabStore = {
   closeTab: (tabId: string) => void
   setActiveTab: (tabId: string) => void
   updateTab: (tabId: string, updates: Partial<Tab>) => void
+  restoreTabs: (tabs: Tab[], activeTabId: string | null) => void
 }
 
 export const useTabStore = create<TabStore>((set, get) => ({
@@ -55,4 +56,27 @@ export const useTabStore = create<TabStore>((set, get) => ({
       tabs: state.tabs.map((t) => (t.id === tabId ? { ...t, ...updates } : t)),
     }))
   },
+
+  restoreTabs: (tabs, activeTabId) => {
+    set({ tabs, activeTabId })
+  },
 }))
+
+// ── Debounced persist to SQLite via IPC ──
+
+let saveTimer: ReturnType<typeof setTimeout> | null = null
+
+useTabStore.subscribe((state) => {
+  if (saveTimer) clearTimeout(saveTimer)
+  saveTimer = setTimeout(() => {
+    const payload = JSON.stringify({
+      version: 1,
+      tabs: state.tabs,
+      activeTabId: state.activeTabId,
+    })
+    // window.api may not exist during tests or before preload
+    if (typeof window !== 'undefined' && window.api?.updateSettings) {
+      window.api.updateSettings('open_tabs', payload)
+    }
+  }, 300)
+})
