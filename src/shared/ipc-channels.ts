@@ -80,6 +80,11 @@ export const IPC = {
   GH_REVIEW_UPDATE: 'gh:review-update',
   GH_GET_AGENT_PROMPTS: 'gh:get-agent-prompts',
   GH_RESET_AGENT_PROMPT: 'gh:reset-agent-prompt',
+  // PR Polling
+  PR_POLL_UNSEEN_COUNT: 'pr:poll:unseen-count',
+  PR_POLL_MARK_SEEN: 'pr:poll:mark-seen',
+  PR_POLL_GET_CACHED: 'pr:poll:get-cached',
+  PR_POLL_FORCE: 'pr:poll:force',
   // PR Raise
   GH_RAISE_PR_INFO: 'gh:raise-pr-info',
   GH_RAISE_PR_GENERATE_DESCRIPTION: 'gh:raise-pr-generate-description',
