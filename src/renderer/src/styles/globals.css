@@ -71,9 +71,12 @@ body {
 }
 
 /* Focus indicators — visible on keyboard navigation, hidden on mouse */
-:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
+/* Must be in @layer base so Tailwind utilities (outline-none) can override */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
 }
 
 /* Reduced motion: respect user preference */

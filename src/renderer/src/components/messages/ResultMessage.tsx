@@ -1,4 +1,4 @@
-import { CheckCircle, Clock, Hash, XCircle } from 'lucide-react'
+import { XCircle } from 'lucide-react'
 import { formatCost, formatTokens } from '../../lib/utils'
 
 type ResultMessageProps = {
@@ -14,7 +14,6 @@ type ResultMessageProps = {
 
 export function ResultMessage({
   isError,
-  model,
   totalCostUsd,
   durationMs,
   numTurns,
@@ -34,43 +33,20 @@ export function ResultMessage({
     )
   }
 
+  // Quiet inline stats — just metadata, not a separator
+  const stats: string[] = []
+  if (totalCostUsd !== undefined) stats.push(formatCost(totalCostUsd))
+  if (durationMs !== undefined) stats.push(`${(durationMs / 1000).toFixed(1)}s`)
+  if (numTurns !== undefined) stats.push(`${numTurns} turns`)
+  if (inputTokens !== undefined || outputTokens !== undefined) {
+    stats.push(`${formatTokens(inputTokens ?? 0)} in / ${formatTokens(outputTokens ?? 0)} out`)
+  }
+
+  if (stats.length === 0) return <div className="h-3" />
+
   return (
-    <div className="mt-4 mb-2">
-      <div className="flex items-center gap-3 border-[var(--color-base-border)]/50 border-t px-5 py-3">
-        <CheckCircle size={14} className="text-[var(--color-success)]/80" />
-        <span className="font-medium text-[var(--color-success)]/80 text-xs">Done</span>
-        <div className="flex flex-wrap items-center gap-3 text-[var(--color-base-text-muted)] text-xs">
-          {model && <span className="text-[var(--color-base-text-secondary)]">{model}</span>}
-          {totalCostUsd !== undefined && (
-            <span>
-              <span className="text-[var(--color-base-text-faint)]">cost</span>{' '}
-              <span className="text-[var(--color-base-text-secondary)]">
-                {formatCost(totalCostUsd)}
-              </span>
-            </span>
-          )}
-          {durationMs !== undefined && (
-            <span className="flex items-center gap-1">
-              <Clock size={10} />
-              <span className="text-[var(--color-base-text-secondary)]">
-                {(durationMs / 1000).toFixed(1)}s
-              </span>
-            </span>
-          )}
-          {numTurns !== undefined && (
-            <span className="flex items-center gap-1">
-              <Hash size={10} />
-              <span className="text-[var(--color-base-text-secondary)]">{numTurns} turns</span>
-            </span>
-          )}
-          {(inputTokens !== undefined || outputTokens !== undefined) && (
-            <span className="text-[var(--color-base-text-faint)]">
-              {formatTokens(inputTokens ?? 0)} in / {formatTokens(outputTokens ?? 0)} out
-            </span>
-          )}
-        </div>
-      </div>
-      <div className="mx-6 mt-4 mb-2 h-px bg-[var(--color-base-border-subtle)]" />
+    <div className="px-6 pt-1 pb-2 pl-[3.75rem]">
+      <span className="text-[10px] text-[var(--color-base-text-faint)]">{stats.join(' · ')}</span>
     </div>
   )
 }

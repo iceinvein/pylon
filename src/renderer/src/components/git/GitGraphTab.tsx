@@ -1,7 +1,7 @@
 import { GitBranch, Loader2, RefreshCw } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useCallback, useEffect, useRef } from 'react'
-import { GRAPH_CONSTANTS, getGraphWidth } from '../../lib/git-graph-layout'
+import { GRAPH_CONSTANTS, getGraphWidth, getNodeWidth } from '../../lib/git-graph-layout'
 import { useGitGraphStore } from '../../store/git-graph-store'
 import { CommitDetail } from './CommitDetail'
 import { GitGraphCanvas } from './GitGraphCanvas'
@@ -43,6 +43,7 @@ export function GitGraphTab({ cwd }: GitGraphTabProps) {
   }, [commits, cwd, fetchGraph, hasMore, loading])
 
   const graphWidth = getGraphWidth(commits)
+  const nodeWidth = getNodeWidth(commits)
   const selectedCommitData = commits.find((c) => c.hash === selectedCommit)
 
   if (error) {
@@ -109,8 +110,7 @@ export function GitGraphTab({ cwd }: GitGraphTabProps) {
               style={{
                 top: i * GRAPH_CONSTANTS.ROW_HEIGHT,
                 height: GRAPH_CONSTANTS.ROW_HEIGHT,
-                paddingLeft:
-                  GRAPH_CONSTANTS.GRAPH_LEFT_PADDING * 2 + GRAPH_CONSTANTS.COLUMN_WIDTH + 8,
+                paddingLeft: nodeWidth + GRAPH_CONSTANTS.TEXT_LEFT_PADDING,
                 paddingRight: 8,
               }}
             >

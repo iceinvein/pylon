@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronRight, Minimize2, Zap } from 'lucide-react'
+import { ChevronDown, ChevronRight, Minimize2, Sparkles, Zap } from 'lucide-react'
 import { motion } from 'motion/react'
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { useAgentGrouping } from '../../hooks/use-agent-grouping'
@@ -349,22 +349,27 @@ export const ChatView = memo(function ChatView({ sessionId, isActive }: ChatView
   }, [streaming])
 
   // Re-snap to bottom when tab becomes visible after being hidden via <Activity>.
-  // While hidden (display: none), scroll updates are no-ops — scrollHeight has no
-  // layout. When the tab regains visibility, we need to catch up if the user was
-  // near the bottom before the tab was hidden.
   const wasActiveRef = useRef(isActive)
   useEffect(() => {
-    const wasHidden = !wasActiveRef.current
     wasActiveRef.current = isActive
-    if (!isActive || !wasHidden) return
-
-    const container = scrollContainerRef.current
-    if (!container || !isNearBottomRef.current) return
-
-    requestAnimationFrame(() => {
-      container.scrollTop = container.scrollHeight
-    })
   }, [isActive])
+
+  // Keep scroll pinned to bottom when content height changes — whether shrinking
+  // (tool blocks collapsing) or growing (Shiki re-highlighting after tab switch).
+  // Without this, scrollTop stays fixed while scrollHeight changes, opening a gap.
+  useEffect(() => {
+    const container = scrollContainerRef.current
+    const content = container?.firstElementChild
+    if (!container || !content) return
+
+    const observer = new ResizeObserver(() => {
+      if (isNearBottomRef.current) {
+        container.scrollTop = container.scrollHeight
+      }
+    })
+    observer.observe(content)
+    return () => observer.disconnect()
+  })
 
   // Scroll to bottom on discrete events: new messages arriving, new
   // permission/question prompts, or streaming ending. This covers the gap
@@ -391,9 +396,9 @@ export const ChatView = memo(function ChatView({ sessionId, isActive }: ChatView
     if (!isNearBottomRef.current) return
 
     if (grew || !streaming) {
-      // Use rAF to let the DOM update first, then scroll
       requestAnimationFrame(() => {
-        bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+        const container = scrollContainerRef.current
+        if (container) container.scrollTop = container.scrollHeight
       })
     }
   }, [visibleMessages.length, sessionPermissions.length, sessionQuestions.length, streaming])
@@ -446,7 +451,7 @@ export const ChatView = memo(function ChatView({ sessionId, isActive }: ChatView
     useUiStore.getState().setDraftText(text)
   }
 
-  function renderAssistantContent(content: AssistantContentBlock[]) {
+  function renderAssistantContent(content: AssistantContentBlock[], showHeader = false) {
     const hasAgentBlocks = content.some((b) => b.type === 'tool_use' && b.name === 'Agent')
 
     const hasPlanBlocks = content.some(
@@ -455,66 +460,83 @@ export const ChatView = memo(function ChatView({ sessionId, isActive }: ChatView
 
     if (!hasAgentBlocks && !hasPlanBlocks) {
       return (
-        <AssistantMessage content={content} sessionId={sessionId} toolResultMap={toolResultMap} />
+        <AssistantMessage
+          content={content}
+          sessionId={sessionId}
+          toolResultMap={toolResultMap}
+          showHeader={showHeader}
+        />
       )
     }
 
     // Render message normally but replace Agent tool_use blocks with SubagentBlock cards
     return (
-      <div className="space-y-1 px-6 py-2">
-        {content.map((block, i) => {
-          if (block.type === 'tool_use' && block.name === 'Agent' && block.id) {
-            const agent = agentMap.get(block.id)
-            const status = agent?.done ? (agent.isError ? 'error' : 'done') : 'running'
-            return (
-              <SubagentBlock
-                key={i}
-                sessionId={sessionId}
-                agentType={agent?.agentType ?? 'agent'}
-                status={status}
-                description={agent?.description}
-                agentId={block.id}
-                prompt={agent?.prompt}
-                result={agent?.result}
-              />
-            )
-          }
-          if (block.type === 'text' && block.text) {
-            return <TextBlock key={i} text={block.text} />
-          }
-          if (block.type === 'thinking' && block.thinking) {
-            return null
-          }
-          if (block.type === 'tool_use') {
-            // Only render PlanCard for the final write of each plan file.
-            // Intermediate writes (from agent review iterations) are rendered
-            // as normal tool blocks so the chat isn't cluttered with duplicates.
-            const matchedPlan =
-              block.id && finalPlanToolUseIds.has(block.id)
-                ? detectedPlans.find((p) => p.toolUseId === block.id)
-                : undefined
-            if (matchedPlan) {
+      <div className={`flex gap-3 px-6 py-2 ${showHeader ? '' : 'pl-[3.75rem]'}`}>
+        {showHeader && (
+          <div className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-[var(--color-base-raised)]">
+            <Sparkles size={13} className="text-[var(--color-base-text-muted)]" />
+          </div>
+        )}
+        <div className="min-w-0 flex-1 space-y-1">
+          {showHeader && (
+            <span className="font-semibold text-[var(--color-base-text-secondary)] text-xs">
+              Claude
+            </span>
+          )}
+          {content.map((block, i) => {
+            if (block.type === 'tool_use' && block.name === 'Agent' && block.id) {
+              const agent = agentMap.get(block.id)
+              const status = agent?.done ? (agent.isError ? 'error' : 'done') : 'running'
               return (
-                <PlanCard
+                <SubagentBlock
                   key={i}
-                  plan={matchedPlan}
                   sessionId={sessionId}
-                  sectionTitles={planSectionTitles.get(matchedPlan.toolUseId) ?? []}
+                  agentType={agent?.agentType ?? 'agent'}
+                  status={status}
+                  description={agent?.description}
+                  agentId={block.id}
+                  prompt={agent?.prompt}
+                  result={agent?.result}
                 />
               )
             }
-            return (
-              <ToolUseBlock
-                key={i}
-                toolName={block.name ?? 'unknown'}
-                input={block.input ?? {}}
-                toolUseId={block.id}
-                result={toolResultMap.get(block.id ?? '')}
-              />
-            )
-          }
-          return null
-        })}
+            if (block.type === 'text' && block.text) {
+              return <TextBlock key={i} text={block.text} />
+            }
+            if (block.type === 'thinking' && block.thinking) {
+              return null
+            }
+            if (block.type === 'tool_use') {
+              // Only render PlanCard for the final write of each plan file.
+              // Intermediate writes (from agent review iterations) are rendered
+              // as normal tool blocks so the chat isn't cluttered with duplicates.
+              const matchedPlan =
+                block.id && finalPlanToolUseIds.has(block.id)
+                  ? detectedPlans.find((p) => p.toolUseId === block.id)
+                  : undefined
+              if (matchedPlan) {
+                return (
+                  <PlanCard
+                    key={i}
+                    plan={matchedPlan}
+                    sessionId={sessionId}
+                    sectionTitles={planSectionTitles.get(matchedPlan.toolUseId) ?? []}
+                  />
+                )
+              }
+              return (
+                <ToolUseBlock
+                  key={i}
+                  toolName={block.name ?? 'unknown'}
+                  input={block.input ?? {}}
+                  toolUseId={block.id}
+                  result={toolResultMap.get(block.id ?? '')}
+                />
+              )
+            }
+            return null
+          })}
+        </div>
       </div>
     )
   }
@@ -623,7 +645,7 @@ export const ChatView = memo(function ChatView({ sessionId, isActive }: ChatView
     return indices
   }, [turns])
 
-  function renderMessage(msg: SdkMessage, idx: number) {
+  function renderMessage(msg: SdkMessage, idx: number, isFirstAssistant = false) {
     if (msg.type === 'user') {
       if (isToolResultMessage(msg)) return null
       // Positional detection (robust): check if this message was injected after a Skill tool call
@@ -661,7 +683,7 @@ export const ChatView = memo(function ChatView({ sessionId, isActive }: ChatView
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.2, ease: 'easeOut' }}
         >
-          {renderAssistantContent(content)}
+          {renderAssistantContent(content, isFirstAssistant)}
         </motion.div>
       )
     }
@@ -858,11 +880,14 @@ export const ChatView = memo(function ChatView({ sessionId, isActive }: ChatView
             )
           }
 
-          // Normal turn rendering
+          // Normal turn rendering — track first assistant message for header display
+          let seenFirstAssistant = false
           return (
             <div key={turn.userIdx ?? `pre-${turnIdx}`}>
               {turn.messages.map(({ msg, idx }) => {
-                const rendered = renderMessage(msg, idx)
+                const isFirst = msg.type === 'assistant' && !seenFirstAssistant
+                if (msg.type === 'assistant') seenFirstAssistant = true
+                const rendered = renderMessage(msg, idx, isFirst)
                 if (!rendered) return null
                 return (
                   <div key={`flow-${idx}`} data-message-index={originalIndexMap.get(idx) ?? idx}>
@@ -880,7 +905,7 @@ export const ChatView = memo(function ChatView({ sessionId, isActive }: ChatView
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.15 }}
-            className="px-6 py-2"
+            className="px-6 py-2 pl-[3.75rem]"
           >
             <TextBlock text={streaming} isStreaming />
             <span className="inline-block h-4 w-0.5 animate-pulse bg-[var(--color-accent)] align-text-bottom" />

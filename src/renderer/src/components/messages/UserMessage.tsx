@@ -1,3 +1,5 @@
+import { User } from 'lucide-react'
+
 type ContentBlock = {
   type: string
   text?: string
@@ -35,24 +37,34 @@ export function UserMessage({ message }: UserMessageProps) {
   const images = getImages()
 
   return (
-    <div className="border-l-[3px] border-l-amber-600 bg-[var(--color-base-raised)] px-6 py-3">
-      {images.length > 0 && (
-        <div className="mb-2 space-y-2">
-          {images.map((img, i) => (
-            <div
-              key={i}
-              className="overflow-hidden rounded-lg border border-[var(--color-base-border)]"
-            >
-              <img
-                src={`data:${img.source?.media_type};base64,${img.source?.data}`}
-                alt="attachment"
-                className="max-h-64 max-w-full object-contain"
-              />
-            </div>
-          ))}
-        </div>
-      )}
-      {text && <p className="whitespace-pre-wrap text-[var(--color-base-text)] text-sm">{text}</p>}
+    <div className="flex gap-3 px-6 py-3">
+      <div className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-[var(--color-accent)]/15">
+        <User size={13} className="text-[var(--color-accent-text)]" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <span className="font-semibold text-[var(--color-base-text)] text-xs">You</span>
+        {images.length > 0 && (
+          <div className="mt-2 space-y-2">
+            {images.map((img, i) => (
+              <div
+                key={i}
+                className="overflow-hidden rounded-lg border border-[var(--color-base-border)]"
+              >
+                <img
+                  src={`data:${img.source?.media_type};base64,${img.source?.data}`}
+                  alt="attachment"
+                  className="max-h-64 max-w-full object-contain"
+                />
+              </div>
+            ))}
+          </div>
+        )}
+        {text && (
+          <p className="mt-1 whitespace-pre-wrap text-[var(--color-base-text)] text-sm leading-relaxed">
+            {text}
+          </p>
+        )}
+      </div>
     </div>
   )
 }

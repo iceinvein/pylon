@@ -18,7 +18,6 @@ import { PanelHeader } from '../components/PanelHeader'
 import { PrRaiseOverlay } from '../components/pr-raise/PrRaiseOverlay'
 import { ReviewPanel } from '../components/review/ReviewPanel'
 import { SessionInfoPanel } from '../components/SessionInfoPanel'
-import { ThinkingIndicator } from '../components/ThinkingIndicator'
 import { fadeUpSmall, stagger } from '../lib/animations'
 import { resumeStoredSession, type StoredSession } from '../lib/resume-session'
 import { usePrRaiseStore } from '../store/pr-raise-store'
@@ -393,19 +392,11 @@ export function SessionView({ tab, isActive }: SessionViewProps) {
               </div>
             )}
           </div>
-          <AnimatePresence>
-            {isProcessing && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.15 }}
-              >
-                <ThinkingIndicator isCompacting={isCompacting} />
-              </motion.div>
-            )}
-          </AnimatePresence>
-          <TasksPanel sessionId={sessionId ?? null} />
+          <TasksPanel
+            sessionId={sessionId ?? null}
+            isProcessing={isProcessing}
+            isCompacting={isCompacting}
+          />
           <div>
             <InputBar
               tabId={tab.id}
