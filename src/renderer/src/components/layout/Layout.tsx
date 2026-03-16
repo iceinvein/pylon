@@ -4,7 +4,6 @@ import type { GitBranchStatus } from '../../../../shared/types'
 import { useSessionStore } from '../../store/session-store'
 import { useTabStore } from '../../store/tab-store'
 import { useUiStore } from '../../store/ui-store'
-import { GitBranchPanel } from '../GitBranchPanel'
 import { GitPanel } from '../git/GitPanel'
 import { HistoryPanel } from '../HistoryPanel'
 import { StatusBar } from '../StatusBar'
@@ -18,7 +17,6 @@ type LayoutProps = {
 const MIN_WIDTH = 200
 const MAX_WIDTH = 500
 const DEFAULT_WIDTH = 260
-const GIT_PANEL_WIDTH = 280
 
 export function Layout({ children }: LayoutProps) {
   const activeTabId = useTabStore((s) => s.activeTabId)
@@ -31,16 +29,6 @@ export function Layout({ children }: LayoutProps) {
 
   const sidebarView = useUiStore((s) => s.sidebarView)
   const showSidebar = sidebarView === 'history'
-  const gitPanelOpen = useUiStore((s) => s.gitPanelOpen)
-  const toggleGitPanel = useUiStore((s) => s.toggleGitPanel)
-
-  const showGitPanel =
-    gitPanelOpen &&
-    sidebarView !== 'pr-review' &&
-    sidebarView !== 'testing' &&
-    sidebarView !== 'git' &&
-    branchStatus?.isGitRepo &&
-    !!branchStatus?.branch
 
   const setBranchStatus = useSessionStore((s) => s.setBranchStatus)
 
@@ -139,27 +127,6 @@ export function Layout({ children }: LayoutProps) {
           >
             <div className="min-w-0 flex-1">
               <GitPanel />
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-      {/* Git branch panel — slides in from left edge of main area */}
-      <AnimatePresence initial={false}>
-        {showGitPanel && branchStatus && (
-          <motion.div
-            key="git-branch-panel"
-            initial={{ width: 0, opacity: 0 }}
-            animate={{ width: GIT_PANEL_WIDTH, opacity: 1 }}
-            exit={{ width: 0, opacity: 0 }}
-            transition={{ duration: 0.15, ease: [0.25, 0.1, 0.25, 1] }}
-            className="flex flex-shrink-0 overflow-hidden border-stone-800 border-r pt-12"
-          >
-            <div className="min-w-0 flex-1">
-              <GitBranchPanel
-                cwd={activeCwd}
-                branchStatus={branchStatus}
-                onClose={toggleGitPanel}
-              />
             </div>
           </motion.div>
         )}
