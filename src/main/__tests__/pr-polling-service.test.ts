@@ -47,13 +47,29 @@ mock.module('../db', () => ({
 }))
 
 // Mock gh-cli functions
-type GhStatus = { available: boolean; authenticated: boolean; binaryPath: string | null; username: string | null; error: string | null }
+type GhStatus = {
+  available: boolean
+  authenticated: boolean
+  binaryPath: string | null
+  username: string | null
+  error: string | null
+}
 type GhRepoInfo = { owner: string; repo: string; fullName: string; projectPath: string }
 type PrInfo = {
-  number: number; title: string; author: string; state: 'open' | 'closed' | 'merged'
-  createdAt: string; updatedAt: string; headBranch: string; baseBranch: string
-  additions: number; deletions: number; reviewDecision: string | null; isDraft: boolean
-  url: string; repo: GhRepoInfo
+  number: number
+  title: string
+  author: string
+  state: 'open' | 'closed' | 'merged'
+  createdAt: string
+  updatedAt: string
+  headBranch: string
+  baseBranch: string
+  additions: number
+  deletions: number
+  reviewDecision: string | null
+  isDraft: boolean
+  url: string
+  repo: GhRepoInfo
 }
 
 const mockCheckGhStatus = mock<(_?: unknown) => Promise<GhStatus>>(() =>

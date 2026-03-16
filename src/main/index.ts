@@ -6,10 +6,10 @@ import { initLogger, log, writeRendererLog } from '../shared/logger'
 import { initDatabase } from './db'
 import { registerGitIpcHandlers, setGitWindow } from './git-ipc-handlers'
 import { registerIpcHandlers } from './ipc-handlers'
+import { prPollingService } from './pr-polling-service'
 import { prReviewManager } from './pr-review-manager'
 import { sessionManager } from './session-manager'
 import { testManager } from './test-manager'
-import { prPollingService } from './pr-polling-service'
 
 function createWindow(): BrowserWindow {
   const mainWindow = new BrowserWindow({
