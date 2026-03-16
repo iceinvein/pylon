@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { resolveContextWindow } from '../../../shared/model-context'
 import type {
   PermissionRequest,
   QuestionRequest,
@@ -145,9 +146,16 @@ export function useIpcBridge(): void {
         store().clearStreamingText(`${sessionId}:thinking`)
 
         // Extract contextWindow from modelUsage (keyed by model name).
+        // Use resolveContextWindow() to take max(SDK-reported, known floor) —
+        // the SDK may under-report (e.g. 200K for Opus when it actually supports 1M).
         // contextInputTokens is set live by message_start stream events — preserve it here.
+        const modelUsageKeys = Object.keys(resultMsg.modelUsage ?? {})
         const modelUsageEntries = Object.values(resultMsg.modelUsage ?? {})
-        const contextWindow = modelUsageEntries[0]?.contextWindow ?? 0
+        const sdkContextWindow = modelUsageEntries[0]?.contextWindow ?? 0
+        const modelName = modelUsageKeys[0] ?? ''
+        const contextWindow = modelName
+          ? resolveContextWindow(modelName, sdkContextWindow)
+          : sdkContextWindow
         const existingSession = store().sessions.get(sessionId)
 
         const updates: Record<string, unknown> = {

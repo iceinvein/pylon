@@ -13,6 +13,7 @@ import {
 import { app, type BrowserWindow } from 'electron'
 import { IPC } from '../shared/ipc-channels'
 import { log } from '../shared/logger'
+import { resolveContextWindow } from '../shared/model-context'
 import type {
   EffortLevel,
   PermissionMode,
@@ -254,6 +255,7 @@ export class SessionManager {
         enableFileCheckpointing: true,
         settingSources: ['user', 'project', 'local'],
         effort: session.effort,
+        betas: ['context-1m-2025-08-07'],
         canUseTool: async (toolName: string, input: Record<string, unknown>, opts) => {
           // Capture git baseline on first file-modifying tool
           if (['Edit', 'Write'].includes(toolName)) {
@@ -361,15 +363,17 @@ export class SessionManager {
         if (message.type === 'result') {
           const result = message as SDKResultMessage
 
-          // Cache context window sizes from SDK result for dynamic token budgeting
+          // Cache context window sizes from SDK result for dynamic token budgeting.
+          // Use resolveContextWindow() to take max(SDK-reported, known floor) —
+          // the SDK may report 200K even when the model actually supports 1M.
           if (result.modelUsage) {
             for (const [model, usage] of Object.entries(result.modelUsage)) {
               if (usage.contextWindow > 0) {
+                const resolved = resolveContextWindow(model, usage.contextWindow)
                 const prev = this.modelContextWindows.get(model)
-                this.modelContextWindows.set(model, usage.contextWindow)
-                // Only write to DB if the value actually changed
-                if (prev !== usage.contextWindow) {
-                  this.persistContextWindow(model, usage.contextWindow)
+                this.modelContextWindows.set(model, resolved)
+                if (prev !== resolved) {
+                  this.persistContextWindow(model, resolved)
                 }
               }
             }
