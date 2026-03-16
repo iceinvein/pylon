@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useTabStore } from '../../store/tab-store'
 import { GitCommitTab } from './GitCommitTab'
 import { GitGraphTab } from './GitGraphTab'
+import { GitOpsTab } from './GitOpsTab'
 
 type GitTab = 'graph' | 'commit' | 'command'
 
@@ -57,9 +58,7 @@ export function GitPanel() {
           <GitCommitTab cwd={cwd} sessionId={tab?.sessionId ?? null} />
         )}
         {activeTab === 'command' && (
-          <div className="flex h-full items-center justify-center text-stone-600 text-xs">
-            Command tab — coming soon
-          </div>
+          <GitOpsTab cwd={cwd} sessionId={tab?.sessionId ?? null} />
         )}
       </div>
     </div>
