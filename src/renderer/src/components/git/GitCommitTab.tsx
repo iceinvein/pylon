@@ -82,7 +82,20 @@ export function GitCommitTab({ cwd, sessionId }: GitCommitTabProps) {
     await fetchStatus(cwd)
   }, [cwd, commitMsg, workingTree, executeGroup, fetchStatus])
 
+  const handleToggleAll = useCallback(async () => {
+    const allStaged = workingTree.every((f) => f.staged)
+    const paths = workingTree.map((f) => f.path)
+    if (allStaged) {
+      await unstageFiles(cwd, paths)
+    } else {
+      await stageFiles(cwd, paths)
+    }
+    await fetchStatus(cwd)
+  }, [cwd, workingTree, stageFiles, unstageFiles, fetchStatus])
+
   const stagedCount = workingTree.filter((f) => f.staged).length
+  const allStaged = workingTree.length > 0 && stagedCount === workingTree.length
+  const someStaged = stagedCount > 0 && !allStaged
 
   if (workingTree.length === 0 && !commitPlan) {
     return (
@@ -128,6 +141,22 @@ export function GitCommitTab({ cwd, sessionId }: GitCommitTabProps) {
         </div>
       ) : (
         <>
+          {/* Select all header */}
+          <div className="flex items-center gap-2 border-stone-800 border-b px-4 py-1.5">
+            <input
+              type="checkbox"
+              checked={allStaged}
+              ref={(el) => {
+                if (el) el.indeterminate = someStaged
+              }}
+              onChange={handleToggleAll}
+              className="h-3 w-3 rounded border-stone-600 bg-stone-800 accent-amber-600"
+            />
+            <span className="text-[10px] text-stone-500">
+              {stagedCount === 0 ? 'Select all' : `${stagedCount}/${workingTree.length} staged`}
+            </span>
+          </div>
+
           {/* File list */}
           <div className="flex-1 overflow-y-auto p-2">
             {workingTree.map((file) => (
@@ -176,7 +205,7 @@ export function GitCommitTab({ cwd, sessionId }: GitCommitTabProps) {
               <button
                 type="button"
                 onClick={handleGenerateMsg}
-                disabled={generating || !sessionId}
+                disabled={generating || !sessionId || stagedCount === 0}
                 className="rounded p-1.5 text-stone-500 transition-colors hover:bg-stone-800 hover:text-amber-400 disabled:opacity-50"
                 title="Generate commit message"
               >
@@ -200,7 +229,7 @@ export function GitCommitTab({ cwd, sessionId }: GitCommitTabProps) {
               <button
                 type="button"
                 onClick={handleAnalyze}
-                disabled={analyzing || !sessionId || workingTree.length === 0}
+                disabled={analyzing || !sessionId || stagedCount === 0}
                 className="flex items-center gap-1.5 rounded border border-amber-700 px-3 py-1.5 text-amber-400 text-xs transition-colors hover:bg-amber-950/30 disabled:opacity-50"
               >
                 {analyzing ? (

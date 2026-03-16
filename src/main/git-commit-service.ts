@@ -74,38 +74,15 @@ export async function executeCommitGroup(
 }
 
 export async function getDiffForAnalysis(cwd: string): Promise<string> {
-  const parts: string[] = []
-
+  // Only analyze staged (checked) files — this respects the user's checkbox selections
+  // in the commit tab. Unstaged/untracked files are intentionally excluded.
   try {
     const { stdout: staged } = await execFileAsync('git', ['diff', '--cached'], {
       cwd,
       timeout: 10000,
     })
-    if (staged.trim()) parts.push(`=== STAGED CHANGES ===\n${staged}`)
+    return staged.trim()
   } catch {
-    // No staged changes
+    return ''
   }
-
-  try {
-    const { stdout: unstaged } = await execFileAsync('git', ['diff'], {
-      cwd,
-      timeout: 10000,
-    })
-    if (unstaged.trim()) parts.push(`=== UNSTAGED CHANGES ===\n${unstaged}`)
-  } catch {
-    // No unstaged changes
-  }
-
-  try {
-    const { stdout: untracked } = await execFileAsync(
-      'git',
-      ['ls-files', '--others', '--exclude-standard'],
-      { cwd, timeout: 5000 },
-    )
-    if (untracked.trim()) parts.push(`=== UNTRACKED FILES ===\n${untracked}`)
-  } catch {
-    // Ignore
-  }
-
-  return parts.join('\n\n')
 }

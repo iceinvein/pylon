@@ -9,7 +9,7 @@ const logger = log.child('git-ai-bridge')
 export async function analyzeForCommitPlan(cwd: string, sessionId: string): Promise<CommitPlan> {
   const diff = await getDiffForAnalysis(cwd)
   if (!diff.trim()) {
-    return { groups: [], reasoning: 'No changes detected.' }
+    return { groups: [], reasoning: 'No staged files. Check the files you want to analyze.' }
   }
 
   const systemPrompt = `You are a git commit assistant. Analyze the following diff and propose logical commit groups.
