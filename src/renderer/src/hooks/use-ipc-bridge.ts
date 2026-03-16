@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { log } from '../../../shared/logger'
 import type {
   PermissionRequest,
   QuestionRequest,
@@ -40,10 +41,12 @@ type StreamEventMessage = {
       text?: string
       thinking?: string
     }
-    // message_start events carry per-API-call usage (includes current context size)
+    // message_start events carry per-API-call usage
     message?: {
       usage?: {
         input_tokens?: number
+        cache_read_input_tokens?: number
+        cache_creation_input_tokens?: number
       }
     }
   }
@@ -89,19 +92,26 @@ export function useIpcBridge(): void {
         }
 
         // Capture context size from message_start events (main agent only).
-        // Each message_start.input_tokens is the full input for that API call,
-        // which equals the current conversation context size.
+        // The full context size = input_tokens + cache_read + cache_creation,
+        // since input_tokens alone excludes cached tokens.
         if (
           streamMsg.event?.type === 'message_start' &&
           !parentToolUseId &&
-          streamMsg.event.message?.usage?.input_tokens
+          streamMsg.event.message?.usage
         ) {
+          const usage = streamMsg.event.message.usage as Record<string, number>
+          const ipcLog = log.child('ipc-bridge')
+          ipcLog.debug('message_start usage:', usage)
+          const contextInputTokens =
+            (usage.input_tokens ?? 0) +
+            (usage.cache_read_input_tokens ?? 0) +
+            (usage.cache_creation_input_tokens ?? 0)
           const session = store().sessions.get(sessionId)
-          if (session) {
+          if (session && contextInputTokens > 0) {
             store().updateSession(sessionId, {
               cost: {
                 ...session.cost,
-                contextInputTokens: streamMsg.event.message.usage.input_tokens,
+                contextInputTokens,
               },
             })
           }
