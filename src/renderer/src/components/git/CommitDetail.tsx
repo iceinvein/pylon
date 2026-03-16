@@ -1,64 +1,55 @@
-import { Sparkles, X } from 'lucide-react'
+import { Copy, GitBranch, Tag, User } from 'lucide-react'
+import { useCallback } from 'react'
 import type { GraphCommit } from '../../../../shared/git-types'
 
 type CommitDetailProps = {
   commit: GraphCommit
-  onClose: () => void
-  onExplain: (hash: string) => void
 }
 
-export function CommitDetail({ commit, onClose, onExplain }: CommitDetailProps) {
+export function CommitDetail({ commit }: CommitDetailProps) {
+  const handleCopyHash = useCallback(() => {
+    navigator.clipboard.writeText(commit.hash)
+  }, [commit.hash])
+
   return (
-    <div className="border-stone-800 border-t bg-stone-900/50 p-3">
-      <div className="flex items-start justify-between">
-        <div className="min-w-0 flex-1">
-          <p className="font-medium text-stone-200 text-xs">{commit.message}</p>
-          <div className="mt-1 flex items-center gap-2 text-[10px] text-stone-500">
-            <span>{commit.author}</span>
-            <span>•</span>
-            <span>{new Date(commit.date).toLocaleDateString()}</span>
-            <span>•</span>
-            <code className="font-[family-name:var(--font-mono)] text-stone-600">
-              {commit.shortHash}
-            </code>
-          </div>
-          {commit.refs.length > 0 && (
-            <div className="mt-1.5 flex flex-wrap gap-1">
-              {commit.refs.map((ref) => (
-                <span
-                  key={ref.name}
-                  className={`rounded px-1.5 py-0.5 text-[10px] ${
-                    ref.type === 'tag'
-                      ? 'bg-purple-950/50 text-purple-400'
-                      : ref.isCurrent
-                        ? 'bg-amber-950/50 text-amber-400'
-                        : 'bg-stone-800 text-stone-400'
-                  }`}
-                >
-                  {ref.name}
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={() => onExplain(commit.hash)}
-            className="rounded p-1 text-stone-500 transition-colors hover:bg-stone-800 hover:text-amber-400"
-            title="Explain this commit with AI"
-          >
-            <Sparkles size={12} />
-          </button>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded p-1 text-stone-500 transition-colors hover:bg-stone-800 hover:text-stone-300"
-          >
-            <X size={12} />
-          </button>
-        </div>
+    <div className="border-stone-800/60 border-t bg-stone-900/40 px-4 py-2.5">
+      <div className="flex items-center gap-2 text-[10px] text-stone-500">
+        <span className="flex items-center gap-1">
+          <User size={9} className="text-stone-600" />
+          {commit.author}
+        </span>
+        <span>•</span>
+        <span>{new Date(commit.date).toLocaleDateString()}</span>
+        <span>•</span>
+        <button
+          type="button"
+          onClick={handleCopyHash}
+          className="flex items-center gap-0.5 font-[family-name:var(--font-mono)] text-stone-600 transition-colors hover:text-stone-400"
+          title="Copy full hash"
+        >
+          {commit.shortHash}
+          <Copy size={8} />
+        </button>
       </div>
+      {commit.refs.length > 0 && (
+        <div className="mt-1.5 flex flex-wrap gap-1">
+          {commit.refs.map((ref) => (
+            <span
+              key={ref.name}
+              className={`flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] ${
+                ref.type === 'tag'
+                  ? 'bg-purple-950/50 text-purple-400'
+                  : ref.isCurrent
+                    ? 'bg-amber-950/50 text-amber-400'
+                    : 'bg-stone-800 text-stone-400'
+              }`}
+            >
+              {ref.type === 'tag' ? <Tag size={8} /> : <GitBranch size={8} />}
+              {ref.name}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

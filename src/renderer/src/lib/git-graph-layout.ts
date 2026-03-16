@@ -29,6 +29,7 @@ export function getNodeY(rowIndex: number): number {
   return rowIndex * GRAPH_CONSTANTS.ROW_HEIGHT + GRAPH_CONSTANTS.ROW_HEIGHT / 2
 }
 
+/** Full width including line endpoints — used for canvas sizing */
 export function getGraphWidth(commits: GraphCommit[]): number {
   let maxCol = 0
   for (const c of commits) {
@@ -36,6 +37,16 @@ export function getGraphWidth(commits: GraphCommit[]): number {
     for (const line of c.graphLines) {
       maxCol = Math.max(maxCol, line.fromColumn, line.toColumn)
     }
+  }
+  return GRAPH_CONSTANTS.GRAPH_LEFT_PADDING * 2 + (maxCol + 1) * GRAPH_CONSTANTS.COLUMN_WIDTH
+}
+
+/** Width based on node positions only — used for text offset (paddingLeft).
+ *  Lines may extend beyond this but we don't want them pushing commit text far right. */
+export function getNodeWidth(commits: GraphCommit[]): number {
+  let maxCol = 0
+  for (const c of commits) {
+    maxCol = Math.max(maxCol, c.graphColumns)
   }
   return GRAPH_CONSTANTS.GRAPH_LEFT_PADDING * 2 + (maxCol + 1) * GRAPH_CONSTANTS.COLUMN_WIDTH
 }

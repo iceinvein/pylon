@@ -130,7 +130,7 @@ export function assignLanes(commits: GraphCommit[]): GraphCommit[] {
 export async function getGraphLog(
   cwd: string,
   afterHash?: string,
-  limit = 100,
+  limit = 50,
 ): Promise<GraphCommit[]> {
   const args = ['log', '--all', '--format=%H|%P|%D|%s|%an|%aI', '--topo-order', `-${limit}`]
 
