@@ -51,6 +51,7 @@ type ResultMessage = {
     input_tokens?: number
     output_tokens?: number
   }
+  modelUsage?: Record<string, { inputTokens?: number; contextWindow?: number }>
   duration_ms?: number
   num_turns?: number
 }
@@ -111,11 +112,22 @@ export function useIpcBridge(): void {
         store().clearStreamingText(sessionId)
         store().clearStreamingText(`${sessionId}:thinking`)
 
+        // Extract contextWindow and per-model inputTokens from modelUsage (keyed by model name).
+        // We use per-model inputTokens (not aggregate usage.input_tokens) because in multi-model
+        // sessions, aggregate tokens may exceed a single model's context window.
+        const modelUsageEntries = Object.values(resultMsg.modelUsage ?? {})
+        const primaryModelUsage = modelUsageEntries[0]
+        const contextWindow = primaryModelUsage?.contextWindow ?? 0
+        const contextInputTokens =
+          primaryModelUsage?.inputTokens ?? resultMsg.usage?.input_tokens ?? 0
+
         const updates: Record<string, unknown> = {
           cost: {
             totalUsd: resultMsg.total_cost_usd ?? 0,
             inputTokens: resultMsg.usage?.input_tokens ?? 0,
             outputTokens: resultMsg.usage?.output_tokens ?? 0,
+            contextWindow,
+            contextInputTokens,
           },
         }
         if (resultMsg.model) {

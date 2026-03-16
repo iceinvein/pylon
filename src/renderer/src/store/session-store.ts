@@ -20,6 +20,8 @@ type SessionState = {
     inputTokens: number
     outputTokens: number
     totalUsd: number
+    contextWindow: number
+    contextInputTokens: number
   }
   createdAt: number
   updatedAt: number

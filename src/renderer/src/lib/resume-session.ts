@@ -56,6 +56,8 @@ export async function resumeStoredSession(session: StoredSession): Promise<Resum
       inputTokens: session.input_tokens ?? 0,
       outputTokens: session.output_tokens ?? 0,
       totalUsd: session.total_cost_usd ?? 0,
+      contextWindow: 0,
+      contextInputTokens: 0,
     },
     createdAt: session.created_at,
     updatedAt: session.updated_at,
