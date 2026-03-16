@@ -125,6 +125,35 @@ export function initDatabase(): Database.Database {
     db.exec('ALTER TABLE pr_review_findings ADD COLUMN domain TEXT')
   }
 
+  // PR Cache table for background polling
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS pr_cache (
+      repo_full_name TEXT NOT NULL,
+      pr_number INTEGER NOT NULL,
+      title TEXT NOT NULL,
+      author TEXT NOT NULL,
+      state TEXT NOT NULL DEFAULT 'open',
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      head_branch TEXT NOT NULL,
+      base_branch TEXT NOT NULL,
+      additions INTEGER NOT NULL DEFAULT 0,
+      deletions INTEGER NOT NULL DEFAULT 0,
+      review_decision TEXT,
+      is_draft INTEGER NOT NULL DEFAULT 0,
+      url TEXT NOT NULL,
+      repo_owner TEXT NOT NULL DEFAULT '',
+      repo_name TEXT NOT NULL DEFAULT '',
+      project_path TEXT NOT NULL DEFAULT '',
+      last_seen_at INTEGER,
+      last_polled_at INTEGER NOT NULL,
+      PRIMARY KEY (repo_full_name, pr_number)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_pr_cache_unseen
+      ON pr_cache(state, last_seen_at, updated_at);
+  `)
+
   // AI Exploration Testing tables
   db.exec(`
     CREATE TABLE IF NOT EXISTS test_explorations (
