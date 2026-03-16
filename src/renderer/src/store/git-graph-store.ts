@@ -27,7 +27,13 @@ export const useGitGraphStore = create<GitGraphStore>((set) => ({
   hasMore: true,
 
   fetchGraph: async (cwd, afterHash) => {
-    set({ loading: true, error: null })
+    // On fresh fetch (no cursor), clear stale data immediately so a previous repo's
+    // graph doesn't flash while the new one loads.
+    if (afterHash) {
+      set({ loading: true, error: null })
+    } else {
+      set({ commits: [], loading: true, error: null, selectedCommit: null })
+    }
     try {
       const result = await window.api.gitGraphGetLog(cwd, afterHash)
       set((s) => ({

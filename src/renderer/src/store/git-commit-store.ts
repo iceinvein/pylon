@@ -27,6 +27,7 @@ export const useGitCommitStore = create<GitCommitStore>((set) => ({
   error: null,
 
   fetchStatus: async (cwd) => {
+    set({ workingTree: [], error: null })
     try {
       const statuses = await window.api.gitCommitGetStatus(cwd)
       set({ workingTree: statuses, error: null })

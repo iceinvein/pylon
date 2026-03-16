@@ -11,7 +11,14 @@ export function GitGraphCanvas({ commits }: GitGraphCanvasProps) {
 
   useEffect(() => {
     const canvas = canvasRef.current
-    if (!canvas || commits.length === 0) return
+    if (!canvas) return
+
+    // When commits are cleared (e.g. tab switch), reset canvas so old drawing doesn't linger
+    if (commits.length === 0) {
+      canvas.width = 0
+      canvas.height = 0
+      return
+    }
 
     const dpr = window.devicePixelRatio || 1
     const width = getGraphWidth(commits)
