@@ -481,6 +481,42 @@ export class SessionManager {
     return { model: session.model, permissionMode: session.permissionMode }
   }
 
+  async sendGitAiQuery(
+    sessionId: string,
+    prompt: string,
+    systemPrompt: string,
+  ): Promise<string> {
+    const session = this.sessions.get(sessionId)
+    if (!session) throw new Error('Session not found')
+
+    const text = `[Git AI Assistant]\n\nSystem: ${systemPrompt}\n\nUser: ${prompt}`
+    return new Promise((resolve, reject) => {
+      let responseText = ''
+      const listener = this.onMessage(sessionId, (msg: unknown) => {
+        const parsed = msg as { type?: string; message?: { type?: string; content?: unknown } }
+        if (parsed?.message?.type === 'assistant') {
+          const content = parsed.message.content
+          if (typeof content === 'string') {
+            responseText = content
+          } else if (Array.isArray(content)) {
+            for (const block of content) {
+              if (block?.type === 'text') responseText += block.text ?? ''
+            }
+          }
+        }
+        if (parsed?.type === 'result') {
+          listener()
+          resolve(responseText)
+        }
+      })
+
+      this.sendMessage(sessionId, text, []).catch((err) => {
+        listener()
+        reject(err)
+      })
+    })
+  }
+
   async checkRepoStatus(folderPath: string): Promise<{ isGitRepo: boolean; isDirty: boolean }> {
     try {
       await execFileAsync('git', ['rev-parse', '--git-dir'], {
