@@ -86,6 +86,7 @@ type PrReviewStore = {
   }>
   _loadPrsSeq: number
   _selectPrSeq: number
+  unseenCount: number
 
   checkGhStatus: () => Promise<void>
   setGhPath: (path: string) => Promise<void>
@@ -114,6 +115,10 @@ type PrReviewStore = {
     costUsd?: number
     agentProgress?: PrReviewStore['agentProgress']
   }) => void
+  setUnseenCount: (count: number) => void
+  markPrSeen: (repo: string, prNumber: number) => Promise<void>
+  loadCachedPrs: (repo?: string) => Promise<void>
+  forcePoll: () => Promise<void>
 }
 
 export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
@@ -138,6 +143,7 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
   agentProgress: [],
   _loadPrsSeq: 0,
   _selectPrSeq: 0,
+  unseenCount: 0,
 
   checkGhStatus: async () => {
     set({ ghStatusLoading: true })
@@ -183,6 +189,10 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
   loadPrs: async (repo) => {
     const seq = get()._loadPrsSeq + 1
     set({ prsLoading: true, _loadPrsSeq: seq })
+    // Hydrate from cache instantly while we fetch fresh data
+    get().loadCachedPrs(repo)
+    // Trigger a background poll to refresh the cache simultaneously
+    get().forcePoll()
     try {
       if (repo) {
         const prs = await window.api.listGhPrs(repo)
@@ -227,6 +237,8 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
       _selectPrSeq: seq,
     })
     if (!pr) return
+    // Mark PR as seen for badge tracking
+    get().markPrSeen(pr.repo.fullName, pr.number)
     set({ prDetailLoading: true })
     try {
       const detail = await window.api.getGhPrDetail(pr.repo.fullName, pr.number)
@@ -437,6 +449,31 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
     } catch (err) {
       logger.error('postAllAsReview failed:', err)
       set({ postingBatch: null })
+    }
+  },
+
+  setUnseenCount: (count) => set({ unseenCount: count }),
+
+  markPrSeen: async (repo, prNumber) => {
+    await window.api.markPrSeen(repo, prNumber)
+  },
+
+  loadCachedPrs: async (repo) => {
+    try {
+      const cached = await window.api.getCachedPrs(repo)
+      if (cached.length > 0) {
+        set({ prs: cached, prsLoading: false })
+      }
+    } catch (err) {
+      logger.error('loadCachedPrs failed:', err)
+    }
+  },
+
+  forcePoll: async () => {
+    try {
+      await window.api.forcePollPrs()
+    } catch (err) {
+      logger.error('forcePoll failed:', err)
     }
   },
 
