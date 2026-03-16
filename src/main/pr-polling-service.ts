@@ -9,6 +9,7 @@ const logger = log.child('pr-polling')
 const POLL_INTERVAL_MS = 10 * 60 * 1000 // 10 minutes
 
 class PrPollingService {
+  private timeout: ReturnType<typeof setTimeout> | null = null
   private interval: ReturnType<typeof setInterval> | null = null
   private window: BrowserWindow | null = null
   private polling = false
@@ -19,7 +20,7 @@ class PrPollingService {
 
   start(): void {
     // Immediate first poll (delayed slightly to let the app finish booting)
-    setTimeout(() => this.poll().catch((err) => logger.error('Initial poll failed:', err)), 3000)
+    this.timeout = setTimeout(() => this.poll().catch((err) => logger.error('Initial poll failed:', err)), 3000)
     this.interval = setInterval(
       () => this.poll().catch((err) => logger.error('Poll failed:', err)),
       POLL_INTERVAL_MS,
@@ -27,6 +28,10 @@ class PrPollingService {
   }
 
   stop(): void {
+    if (this.timeout) {
+      clearTimeout(this.timeout)
+      this.timeout = null
+    }
     if (this.interval) {
       clearInterval(this.interval)
       this.interval = null

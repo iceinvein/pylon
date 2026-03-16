@@ -455,7 +455,11 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
   setUnseenCount: (count) => set({ unseenCount: count }),
 
   markPrSeen: async (repo, prNumber) => {
-    await window.api.markPrSeen(repo, prNumber)
+    try {
+      await window.api.markPrSeen(repo, prNumber)
+    } catch (err) {
+      logger.error('markPrSeen failed:', err)
+    }
   },
 
   loadCachedPrs: async (repo) => {
