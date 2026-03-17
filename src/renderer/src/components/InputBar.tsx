@@ -50,6 +50,7 @@ const EFFORT_LEVELS: { id: EffortLevel; label: string }[] = [
 type InputBarProps = {
   tabId: string
   sessionId: string | null
+  isActive: boolean
   isRunning: boolean
   model: string
   onModelChange: (model: string) => void
@@ -65,6 +66,7 @@ type InputBarProps = {
 export function InputBar({
   tabId,
   sessionId,
+  isActive,
   isRunning,
   model,
   onModelChange,
@@ -84,6 +86,13 @@ export function InputBar({
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Auto-focus textarea when this tab becomes active (new tab or tab switch)
+  useEffect(() => {
+    if (isActive) {
+      requestAnimationFrame(() => textareaRef.current?.focus())
+    }
+  }, [isActive])
 
   useEffect(() => {
     if (!lightboxUrl) return

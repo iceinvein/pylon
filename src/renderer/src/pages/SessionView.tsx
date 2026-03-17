@@ -401,6 +401,7 @@ export function SessionView({ tab, isActive }: SessionViewProps) {
             <InputBar
               tabId={tab.id}
               sessionId={sessionId}
+              isActive={isActive}
               isRunning={isRunning}
               model={currentModel}
               onModelChange={handleModelChange}
