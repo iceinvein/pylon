@@ -88,12 +88,12 @@ Commands are displayed in `COMMANDS` array definition order. No explicit priorit
 | `compact` | Compact conversation | Summarize and compress history to save context | Call `sendMessage(sessionId, '/compact')` |
 | `cost` | Show cost | Display token usage and cost | Call `sendMessage(sessionId, '/cost')` |
 | `status` | Show status | Display session info, model, cwd, and cost | Inject a system message showing: model name, cwd, permission mode, and session duration |
+| `help` | Help | Show available commands | Inject a system message listing all commands returned by `getCommands(context)` — i.e., only commands available in the current context |
 
 ### Global commands (requiresSession: false)
 
 | ID | Label | Description | Behavior |
 |---|---|---|---|
-| `help` | Help | Show available commands | Inject a system message listing all commands returned by `getCommands(context)` — i.e., only commands available in the current context |
 | `config` | Settings | Open settings | Toggle SettingsOverlay via ui-store |
 | `open-folder` | Open folder | Open a project folder in a new tab | Call `window.api.openFolder()`, then `addTab(path)` |
 
