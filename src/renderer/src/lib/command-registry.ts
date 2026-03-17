@@ -124,7 +124,7 @@ export const COMMANDS: SlashCommand[] = [
       if (!ctx.sessionId) return
       const available = getCommands(ctx)
       const lines = available.map((c) => `**/${c.id}** — ${c.description}`)
-      const content = `### Available commands\n\n${lines.join('\n')}`
+      const content = `**Available commands**\n\n${lines.join('\n')}`
       useSessionStore.getState().appendMessage(ctx.sessionId, {
         type: 'system',
         content,

@@ -1,8 +1,24 @@
 import { Info, Zap } from 'lucide-react'
+import type { ReactNode } from 'react'
 
 type SystemMessageProps = {
   content: string
   subtype?: string
+}
+
+/** Parse **bold** markers into <strong> elements, returning React nodes. */
+function parseBold(text: string): ReactNode[] {
+  const parts = text.split(/(\*\*.+?\*\*)/g)
+  return parts.map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return (
+        <strong key={i} className="font-semibold text-[var(--color-base-text-secondary)]">
+          {part.slice(2, -2)}
+        </strong>
+      )
+    }
+    return part
+  })
 }
 
 function isSkillContent(content: string): string | null {
@@ -55,7 +71,9 @@ export function SystemMessage({ content, subtype }: SystemMessageProps) {
             [{subtype}]
           </span>
         )}
-        <span className="text-[var(--color-base-text-muted)] text-xs">{content}</span>
+        <span className="whitespace-pre-line text-[var(--color-base-text-muted)] text-xs">
+          {parseBold(content)}
+        </span>
       </div>
     </div>
   )
