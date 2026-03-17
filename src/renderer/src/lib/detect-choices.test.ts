@@ -600,4 +600,263 @@ Does this look right?`
       expect(detectChoices(text)).toBeNull()
     })
   })
+
+  describe('ready to <action> confirmation (false positives)', () => {
+    test('returns null for "Ready to execute?" as confirmation question', () => {
+      const text = `Plan complete. Ready to execute?
+
+1. Option A — First approach
+2. Option B — Second approach`
+
+      expect(detectChoices(text)).toBeNull()
+    })
+
+    test('returns null for "Ready to proceed?" as confirmation question', () => {
+      const text = `1. Auth module — JWT tokens
+2. Database — PostgreSQL
+
+Ready to proceed?`
+
+      expect(detectChoices(text)).toBeNull()
+    })
+
+    test('returns null for "Ready to start?" as confirmation question', () => {
+      const text = `1. Build the frontend
+2. Set up the API
+3. Write the tests
+
+Ready to start?`
+
+      expect(detectChoices(text)).toBeNull()
+    })
+
+    test('returns null for "Ready to deploy?"', () => {
+      const text = `1. Service A — Updated
+2. Service B — New
+
+Ready to deploy?`
+
+      expect(detectChoices(text)).toBeNull()
+    })
+
+    test('still detects choices with "Ready to pick?" (selection intent)', () => {
+      const text = `1. Option A — First
+2. Option B — Second
+
+Ready to pick one?`
+
+      const result = detectChoices(text)
+      // "ready to pick" — "pick" is not in the confirmation exclusion list,
+      // and the question still matches SELECTION_QUESTION_RE via "ready to"
+      expect(result).not.toBeNull()
+      expect(result?.choices).toHaveLength(2)
+    })
+
+    test('still detects choices with "Ready to choose?"', () => {
+      const text = `1. Plan A — Conservative
+2. Plan B — Aggressive
+
+Ready to choose?`
+
+      const result = detectChoices(text)
+      expect(result).not.toBeNull()
+    })
+  })
+
+  describe('paragraph-length items (false positives)', () => {
+    test('returns null when items are full paragraphs (> 200 chars)', () => {
+      const text = `Which approach would you prefer?
+
+1. The **help** command forced a scope decision — we originally had it as global (no session needed), but since it injects a system message into the chat, it actually does need a session. This is the kind of thing that static type analysis will not catch.
+
+2. **permissionMode** lives in unexpected places — it is local React state in SessionView.tsx, not in the Zustand session store. This is because it is a per-view concern that gets synced to the main process via IPC.
+
+3. The **SLASH_EXECUTE** IPC channel in ipc-channels.ts tells a story — someone previously planned a main-process command handler but backed away from it. Our renderer-only approach avoids that complexity entirely.`
+
+      expect(detectChoices(text)).toBeNull()
+    })
+
+    test('returns null when any single item exceeds 200 chars', () => {
+      const text = `Which do you prefer?
+
+1. Short option — Brief
+2. This is a very long option that goes into extensive detail about the architecture, covering multiple aspects of the system design including the database schema, the API layer, the frontend components, and the deployment strategy which makes it clearly not a selectable choice`
+
+      expect(detectChoices(text)).toBeNull()
+    })
+
+    test('still detects choices when items are short', () => {
+      const text = `1. Fast — Quick but less accurate
+2. Accurate — Slow but thorough
+
+Which approach?`
+
+      const result = detectChoices(text)
+      expect(result).not.toBeNull()
+      expect(result?.choices).toHaveLength(2)
+    })
+  })
+
+  describe('insight/observation preambles (false positives)', () => {
+    test('returns null for "worth noting" preamble', () => {
+      const text = `One thing worth noting about the design:
+
+1. Auth uses JWT — Token-based
+2. Sessions are stateless — No server storage
+
+Which do you prefer?`
+
+      expect(detectChoices(text)).toBeNull()
+    })
+
+    test('returns null for "insight" in preamble', () => {
+      const text = `Here is an insight:
+
+1. Component A — Does auth
+2. Component B — Does routing
+
+Which approach?`
+
+      expect(detectChoices(text)).toBeNull()
+    })
+
+    test('returns null for "observations" preamble', () => {
+      const text = `My observations:
+
+1. Performance improved — 2x faster
+2. Bundle size reduced — 30% smaller
+
+Which option?`
+
+      expect(detectChoices(text)).toBeNull()
+    })
+
+    test('returns null for "findings" preamble', () => {
+      const text = `Key findings:
+
+1. Auth flow — Has a race condition
+2. Data layer — Missing validation
+
+Which do you want to fix?`
+
+      expect(detectChoices(text)).toBeNull()
+    })
+
+    test('returns null for "things to note" preamble', () => {
+      const text = `A few things to note:
+
+1. Config A — Changed default
+2. Config B — New setting
+
+Which one?`
+
+      expect(detectChoices(text)).toBeNull()
+    })
+
+    test('returns null for "keep in mind" preamble', () => {
+      const text = `Keep in mind:
+
+1. Trade-off A — More speed, less safety
+2. Trade-off B — More safety, less speed
+
+Which do you prefer?`
+
+      expect(detectChoices(text)).toBeNull()
+    })
+
+    test('returns null for "for context" preamble', () => {
+      const text = `For context:
+
+1. Approach A — Used by Team X
+2. Approach B — Used by Team Y
+
+Which approach?`
+
+      expect(detectChoices(text)).toBeNull()
+    })
+
+    test('returns null for "design decisions" preamble', () => {
+      const text = `Here are the design decisions:
+
+1. REST API — Simpler to implement
+2. GraphQL — More flexible queries
+
+Which option?`
+
+      expect(detectChoices(text)).toBeNull()
+    })
+
+    test('returns null for "what I found" preamble', () => {
+      const text = `Here is what I found:
+
+1. Issue A — Critical severity
+2. Issue B — Low severity
+
+Which do you want to fix first?`
+
+      expect(detectChoices(text)).toBeNull()
+    })
+
+    test('returns null for "breakdown of" preamble', () => {
+      const text = `Here is a breakdown of the changes:
+
+1. Auth — Refactored
+2. API — Updated endpoints
+
+Which one?`
+
+      expect(detectChoices(text)).toBeNull()
+    })
+  })
+
+  describe('exact screenshot reproduction', () => {
+    test('returns null for insight block with distant "Ready to execute?" question', () => {
+      const text = `Plan complete and saved to \`docs/superpowers/plans/2026-03-17-command-registry.md\`. Ready to execute?
+
+\`★ Insight ─────────────────────────────────────\`
+One thing worth noting about the design journey here:
+
+1. The **\`help\`** command forced a scope decision — we originally had it as \`global\` (no session needed), but since it injects a system message into the chat, it actually does need a session. This is the kind of thing that static type analysis won't catch — the \`execute\` function signature allows any behavior, so the constraint is semantic, not structural.
+
+2. **\`permissionMode\`** lives in unexpected places — it's local React state in \`SessionView.tsx\`, not in the Zustand session store. This is because it's a per-view concern that gets synced to the main process via IPC. The CommandPalette can't access it without prop-drilling or a store migration. For now, defaulting to \`'default'\` is fine since it's purely informational in the \`/status\` command.
+
+3. The **\`SLASH_EXECUTE\`** IPC channel in \`ipc-channels.ts\` tells a story — someone previously planned a main-process command handler but backed away from it. Our renderer-only approach avoids that complexity entirely.
+\`─────────────────────────────────────────────────\``
+
+      expect(detectChoices(text)).toBeNull()
+    })
+  })
+
+  describe('preamble distance limits', () => {
+    test('returns null when question is too many lines before the list', () => {
+      const text = `Which option do you prefer?
+
+Here is some context about the problem.
+
+We looked into several possibilities.
+
+After careful analysis, here are the candidates:
+
+Some more introductory text.
+
+And even more text separating things.
+
+1. Option A — First
+2. Option B — Second`
+
+      // The question is more than 8 lines away — should not associate
+      expect(detectChoices(text)).toBeNull()
+    })
+
+    test('still detects choices when question is close in preamble', () => {
+      const text = `Which option do you prefer?
+
+1. Option A — First
+2. Option B — Second`
+
+      const result = detectChoices(text)
+      expect(result).not.toBeNull()
+      expect(result?.choices).toHaveLength(2)
+    })
+  })
 })

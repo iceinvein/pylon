@@ -170,22 +170,24 @@ function MarkdownContent({ text }: { text: string }) {
 
 function InsightCard({ text }: { text: string }) {
   return (
-    <div className="my-3 rounded-lg border border-[var(--color-accent)]/40 bg-[var(--color-accent-muted)]/15 px-4 py-3">
-      <div className="mb-2 flex items-center gap-2">
-        <Lightbulb size={14} className="text-[var(--color-warning)]" />
-        <span className="font-semibold text-[var(--color-warning)] text-xs uppercase tracking-wide">
-          Insight
-        </span>
-      </div>
-      <div
-        className={
-          proseClasses +
-          'prose-li:text-[var(--color-base-text)] prose-p:text-[var(--color-base-text)] prose-strong:text-[var(--color-accent-text)]'
-        }
-      >
-        <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-          {text}
-        </ReactMarkdown>
+    <div className="my-3 overflow-hidden rounded-lg border border-[var(--color-special)]/25 bg-gradient-to-br from-[var(--color-special)]/10 to-[var(--color-base-surface)]/80">
+      <div className="border-[var(--color-special)]/30 border-l-2 px-4 py-3">
+        <div className="mb-2 flex items-center gap-2">
+          <Lightbulb size={14} className="text-[var(--color-special)]" />
+          <span className="font-semibold text-[var(--color-special)] text-xs uppercase tracking-wide">
+            Insight
+          </span>
+        </div>
+        <div
+          className={
+            proseClasses +
+            ' prose-li:text-[var(--color-base-text)] prose-p:text-[var(--color-base-text)] prose-strong:text-[var(--color-special)]'
+          }
+        >
+          <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+            {text}
+          </ReactMarkdown>
+        </div>
       </div>
     </div>
   )

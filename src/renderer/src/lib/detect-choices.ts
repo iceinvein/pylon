@@ -19,6 +19,17 @@ const ITEM_LINE_RE = /^(?:\d+[.)]\s+|[a-zA-Z][.)]\s+)(.+)$/
 // allowed range: digits 1-6 or letters a-f (case-insensitive).
 const VALID_PREFIX_RE = /^([1-6]|[a-fA-F])$/
 
+// Maximum allowed content length (after prefix stripping) for a single item.
+// Real choices are brief labels with optional short descriptions. Items that
+// exceed this are paragraph-length explanations, findings, or design notes —
+// not selectable choices.
+const MAX_ITEM_CONTENT_LENGTH = 200
+
+// Maximum absolute line distance from the first list item back to a preamble
+// question. Prevents associating distant, semantically unrelated questions
+// with a numbered list that appears much later in the text.
+const MAX_PREAMBLE_LINE_DISTANCE = 8
+
 /**
  * Strips **bold** markdown wrappers from a string.
  * Only removes paired double-asterisks; content is preserved.
@@ -106,7 +117,7 @@ const ACTION_OFFER_RE =
  * Also matches recap/summary language where the list reviews prior decisions.
  */
 const INFORMATIONAL_PREAMBLE_RE =
-  /\b(you (should|will|would|can) see|you('ll| will) (get|have|notice)|expected (results|output|behavior|outcome)|here('s| is| are) (what|the (step|result|output))|the following (will|should|are)|after (deploying|running|doing|applying|completing|installing|updating|merging)|steps to|once (you|this|it)|in order to|to recap|to summarize|in summary|here('s| is) a summary|that covers|key changes|changes from|overview of)\b/i
+  /\b(you (should|will|would|can) see|you('ll| will) (get|have|notice)|expected (results|output|behavior|outcome)|here('s| is| are) (what|the (step|result|output))|the following (will|should|are)|after (deploying|running|doing|applying|completing|installing|updating|merging)|steps to|once (you|this|it)|in order to|to recap|to summarize|in summary|here('s| is) a summary|that covers|key changes|changes from|overview of|worth noting|things? to note|points? to note|observations?|findings?|notes? on|notable|keep in mind|be aware|for (context|reference)|design (decisions?|rationale)|what (I|we) (found|noticed|learned|discovered)|breakdown of|highlights?)\b|\binsight\b/i
 
 /**
  * Questions that seek confirmation or approval of the entire set rather than
@@ -117,7 +128,7 @@ const INFORMATIONAL_PREAMBLE_RE =
  * or a "before I [verb]" clause that signals the assistant is about to act on the whole set.
  */
 const CONFIRMATION_QUESTION_RE =
-  /\b(adjust|modify|tweak|change) (anything|something|any of (these|this|them))\b|\bbefore I (write|implement|proceed|start|begin|create|build|draft|send|submit|deploy|push|merge|ship)\b/i
+  /\b(adjust|modify|tweak|change) (anything|something|any of (these|this|them))\b|\bbefore I (write|implement|proceed|start|begin|create|build|draft|send|submit|deploy|push|merge|ship)\b|\bready to (execute|proceed|go|start|begin|ship|deploy|move|continue|implement|build|run|launch|push|merge|kick)\b/i
 
 /**
  * Checks whether a question string indicates the user should SELECT from the
@@ -247,6 +258,18 @@ export function detectChoices(text: string): DetectedChoices | null {
       continue
     }
 
+    // Reject lists where any item's content is too long to be a choice.
+    // Real choices are brief labels with optional descriptions; paragraph-length
+    // items are explanatory content (insights, findings, design decisions).
+    const anyItemTooLong = itemLines.some((line) => {
+      const content = line.replace(/^(?:\d+|[a-zA-Z])[.)]\s+/, '')
+      return content.length > MAX_ITEM_CONTENT_LENGTH
+    })
+    if (anyItemTooLong) {
+      i = j
+      continue
+    }
+
     // Look for a question within 1–3 non-empty lines after the list.
     // The question must appear before any intervening non-question content;
     // if a non-blank, non-question line appears first the association is lost.
@@ -276,9 +299,15 @@ export function detectChoices(text: string): DetectedChoices | null {
     // Also check for a question in the preamble (before the list).
     // Walk backwards from the line before the first item, counting only
     // non-empty lines, and stop after 3 non-empty preamble lines scanned.
+    // Additionally cap at MAX_PREAMBLE_LINE_DISTANCE absolute lines to
+    // prevent associating semantically distant questions with the list.
     if (questionText === null) {
       let nonEmptyPreambleScanned = 0
-      for (let p = i - 1; p >= 0 && nonEmptyPreambleScanned < 3; p--) {
+      for (
+        let p = i - 1;
+        p >= 0 && p >= i - MAX_PREAMBLE_LINE_DISTANCE && nonEmptyPreambleScanned < 3;
+        p--
+      ) {
         const preamble = lines[p].trim()
         if (preamble === '') continue
         nonEmptyPreambleScanned++
@@ -294,14 +323,16 @@ export function detectChoices(text: string): DetectedChoices | null {
       continue
     }
 
-    // Check preamble for informational context (e.g. "you should see:").
-    // If the text right before the list describes expected outcomes/steps,
-    // the list is not a set of choices even if a selection question follows.
-    // We scan up to 2 non-empty preamble lines to catch cases where the
-    // recap language is separated by a short introductory sentence.
+    // Check preamble for informational context (e.g. "you should see:",
+    // "worth noting", "insight", etc.). If the text before the list describes
+    // expected outcomes, observations, or commentary, the list is not a set of
+    // choices even if a selection question is nearby. We scan up to 3 non-empty
+    // preamble lines within the same distance cap used for question scanning,
+    // so the informational check window is at least as wide as the question
+    // scan window.
     let hasInformationalPreamble = false
     let nonEmptyPreambleLinesChecked = 0
-    for (let p = i - 1; p >= 0 && p >= i - 4; p--) {
+    for (let p = i - 1; p >= 0 && p >= i - MAX_PREAMBLE_LINE_DISTANCE; p--) {
       const preamble = lines[p].trim()
       if (preamble === '') continue
       nonEmptyPreambleLinesChecked++
@@ -309,7 +340,7 @@ export function detectChoices(text: string): DetectedChoices | null {
         hasInformationalPreamble = true
         break
       }
-      if (nonEmptyPreambleLinesChecked >= 2) break
+      if (nonEmptyPreambleLinesChecked >= 3) break
     }
 
     if (hasInformationalPreamble) {
