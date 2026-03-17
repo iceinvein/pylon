@@ -1,4 +1,6 @@
+import { AnimatePresence, motion } from 'framer-motion'
 import { User } from 'lucide-react'
+import { useEffect, useState } from 'react'
 
 type ContentBlock = {
   type: string
@@ -15,6 +17,17 @@ type UserMessageProps = {
 }
 
 export function UserMessage({ message }: UserMessageProps) {
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!lightboxSrc) return
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setLightboxSrc(null)
+    }
+    document.addEventListener('keydown', handleKey)
+    return () => document.removeEventListener('keydown', handleKey)
+  }, [lightboxSrc])
+
   const rawContent =
     message.content ?? (message.message as Record<string, unknown> | undefined)?.content
 
@@ -38,6 +51,29 @@ export function UserMessage({ message }: UserMessageProps) {
 
   return (
     <div className="flex gap-3 px-6 py-3">
+      <AnimatePresence>
+        {lightboxSrc && (
+          <motion.div
+            className="fixed inset-0 z-[100] flex cursor-zoom-out items-center justify-center bg-black/80 backdrop-blur-sm"
+            onClick={() => setLightboxSrc(null)}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+          >
+            <motion.img
+              src={lightboxSrc}
+              alt="Preview"
+              className="max-h-[90vh] max-w-[90vw] rounded-lg object-contain shadow-2xl"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ duration: 0.15 }}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-[var(--color-accent)]/15">
         <User size={13} className="text-[var(--color-accent-text)]" />
       </div>
@@ -45,18 +81,27 @@ export function UserMessage({ message }: UserMessageProps) {
         <span className="font-semibold text-[var(--color-base-text)] text-sm">You</span>
         {images.length > 0 && (
           <div className="mt-2 space-y-2">
-            {images.map((img, i) => (
-              <div
-                key={i}
-                className="overflow-hidden rounded-lg border border-[var(--color-base-border)]"
-              >
-                <img
-                  src={`data:${img.source?.media_type};base64,${img.source?.data}`}
-                  alt="attachment"
-                  className="max-h-64 max-w-full object-contain"
-                />
-              </div>
-            ))}
+            {images.map((img, i) => {
+              const src = `data:${img.source?.media_type};base64,${img.source?.data}`
+              return (
+                <div
+                  key={i}
+                  className="overflow-hidden rounded-lg border border-[var(--color-base-border)]"
+                >
+                  <button
+                    type="button"
+                    onClick={() => setLightboxSrc(src)}
+                    className="cursor-zoom-in"
+                  >
+                    <img
+                      src={src}
+                      alt="attachment"
+                      className="max-h-64 max-w-full object-contain"
+                    />
+                  </button>
+                </div>
+              )
+            })}
           </div>
         )}
         {text && (
