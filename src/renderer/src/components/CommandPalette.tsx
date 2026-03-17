@@ -1,26 +1,26 @@
-import { Archive, DollarSign, Eraser, FolderOpen, GitCommit, RotateCcw, Search } from 'lucide-react'
+import { RotateCcw, Search } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { type CommandContext, getCommands, type SlashCommand } from '../lib/command-registry'
 import { resumeStoredSession, type StoredSession } from '../lib/resume-session'
 import { timeAgo } from '../lib/utils'
 import { useSessionStore } from '../store/session-store'
 import { useTabStore } from '../store/tab-store'
 import { useUiStore } from '../store/ui-store'
 
-type Command = {
+type PaletteItem = {
   id: string
   label: string
   description: string
-  icon: typeof Search
+  icon: SlashCommand['icon']
   section: 'session' | 'global' | 'recent'
+  keywords?: string[]
   action: () => void
 }
 
 export function CommandPalette() {
   const { commandPaletteOpen, toggleCommandPalette } = useUiStore()
-  const { tabs, activeTabId, addTab, updateTab } = useTabStore()
-  const setMessages = useSessionStore((s) => s.setMessages)
-  const clearTasks = useSessionStore((s) => s.clearTasks)
+  const { tabs, activeTabId, addTab } = useTabStore()
   const [query, setQuery] = useState('')
   const [selectedIdx, setSelectedIdx] = useState(0)
   const [recentSessions, setRecentSessions] = useState<StoredSession[]>([])
@@ -30,11 +30,23 @@ export function CommandPalette() {
   const activeTab = tabs.find((t) => t.id === activeTabId)
   const sessionId = activeTab?.sessionId ?? null
 
+  // Build the command context from current state
+  // Note: permissionMode is local state in SessionView, not in the session store.
+  // We default to 'default' here — the status command uses it for informational display only.
+  const sessions = useSessionStore((s) => s.sessions)
+  const session = sessionId ? sessions.get(sessionId) : undefined
+  const context: CommandContext = {
+    sessionId,
+    activeTabId: activeTabId ?? null,
+    cwd: activeTab?.cwd ?? null,
+    model: session?.model ?? 'claude-opus-4-6',
+    permissionMode: 'default',
+  }
+
   // Load recent sessions when palette opens
   useEffect(() => {
     if (!commandPaletteOpen) return
     window.api.listSessions().then((sessions) => {
-      // Filter out sessions already open in tabs
       const openSessionIds = new Set(tabs.map((t) => t.sessionId).filter(Boolean))
       const available = (sessions as StoredSession[]).filter((s) => !openSessionIds.has(s.id))
       setRecentSessions(available.slice(0, 10))
@@ -47,88 +59,30 @@ export function CommandPalette() {
     addTab(session.cwd, title, session.id)
   }
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: handleResumeSession is an async function that would need complex useCallback wrapping; recentSessions already captures the data dependency
-  const commands = useMemo(() => {
-    const cmds: Command[] = []
+  // biome-ignore lint/correctness/useExhaustiveDependencies: handleResumeSession captures data via recentSessions; context is rebuilt each render
+  const items = useMemo(() => {
+    const result: PaletteItem[] = []
 
-    // Session-specific commands — only show when a session is active
-    if (sessionId && activeTabId) {
-      cmds.push(
-        {
-          id: 'clear',
-          label: 'Clear chat',
-          description: 'Clear conversation and start fresh in this tab',
-          icon: Eraser,
-          section: 'session',
-          action: async () => {
-            toggleCommandPalette()
-            // Stop current session if running
-            try {
-              await window.api.stopSession(sessionId)
-            } catch {}
-            // Clean up session data from store
-            setMessages(sessionId, [])
-            clearTasks(sessionId)
-            // Clear tab's session — next message triggers ensureSession() for a fresh one
-            updateTab(activeTabId, { sessionId: null })
-          },
+    // Registry commands
+    for (const cmd of getCommands(context)) {
+      result.push({
+        id: cmd.id,
+        label: cmd.label,
+        description: cmd.description,
+        icon: cmd.icon,
+        section: cmd.section,
+        keywords: cmd.keywords,
+        action: () => {
+          toggleCommandPalette()
+          cmd.execute(context)
         },
-        {
-          id: 'commit',
-          label: 'Commit',
-          description: 'Commit current changes with AI-generated message',
-          icon: GitCommit,
-          section: 'session',
-          action: async () => {
-            toggleCommandPalette()
-            // Append user message to store so ChatView can detect the commit turn
-            useSessionStore.getState().appendMessage(sessionId, { type: 'user', content: 'commit' })
-            await window.api.sendMessage(sessionId, 'commit', [])
-          },
-        },
-        {
-          id: 'compact',
-          label: 'Compact conversation',
-          description: 'Summarize and compress history to save context',
-          icon: Archive,
-          section: 'session',
-          action: async () => {
-            toggleCommandPalette()
-            await window.api.sendMessage(sessionId, '/compact', [])
-          },
-        },
-        {
-          id: 'cost',
-          label: 'Show cost',
-          description: 'Display token usage and cost',
-          icon: DollarSign,
-          section: 'session',
-          action: async () => {
-            toggleCommandPalette()
-            await window.api.sendMessage(sessionId, '/cost', [])
-          },
-        },
-      )
+      })
     }
 
-    // Global commands
-    cmds.push({
-      id: 'open-folder',
-      label: 'Open folder',
-      description: 'Open a project folder in a new tab',
-      icon: FolderOpen,
-      section: 'global',
-      action: async () => {
-        toggleCommandPalette()
-        const path = await window.api.openFolder()
-        if (path) addTab(path)
-      },
-    })
-
-    // Recent sessions as individual commands
+    // Recent sessions
     for (const session of recentSessions) {
       const label = session.title || session.cwd.split('/').pop() || 'Untitled'
-      cmds.push({
+      result.push({
         id: `resume-${session.id}`,
         label,
         description: `${session.cwd} · ${timeAgo(session.updated_at)}`,
@@ -138,23 +92,24 @@ export function CommandPalette() {
       })
     }
 
-    return cmds
+    return result
   }, [
     sessionId,
     activeTabId,
     toggleCommandPalette,
     addTab,
-    updateTab,
-    setMessages,
-    clearTasks,
     recentSessions,
+    context.model,
+    context.cwd,
   ])
 
-  const filtered = commands.filter(
-    (cmd) =>
-      cmd.label.toLowerCase().includes(query.toLowerCase()) ||
-      cmd.description.toLowerCase().includes(query.toLowerCase()),
-  )
+  const filtered = items.filter((item) => {
+    const q = query.toLowerCase()
+    if (item.label.toLowerCase().includes(q)) return true
+    if (item.description.toLowerCase().includes(q)) return true
+    if (item.keywords?.some((kw) => kw.toLowerCase().includes(q))) return true
+    return false
+  })
 
   // Group filtered commands by section
   const sessionCmds = filtered.filter((c) => c.section === 'session')
@@ -163,7 +118,6 @@ export function CommandPalette() {
   const sections = [sessionCmds, globalCmds, recentCmds].filter((s) => s.length > 0)
   const showSections = sections.length > 1
 
-  // Flat list for keyboard navigation (session → global → recent)
   const flatList = [...sessionCmds, ...globalCmds, ...recentCmds]
 
   // Cmd+K / Ctrl+K toggle and Escape
@@ -181,7 +135,6 @@ export function CommandPalette() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [commandPaletteOpen, toggleCommandPalette])
 
-  // Reset on open
   useEffect(() => {
     if (commandPaletteOpen) {
       setQuery('')
@@ -190,16 +143,13 @@ export function CommandPalette() {
     }
   }, [commandPaletteOpen])
 
-  // Reset selection on query change
   // biome-ignore lint/correctness/useExhaustiveDependencies: intentional trigger on query change
   useEffect(() => {
     setSelectedIdx(0)
   }, [query])
 
-  // Scroll selected into view
   useEffect(() => {
     if (!listRef.current) return
-    // Find the actual button elements (skip section headers)
     const buttons = listRef.current.querySelectorAll('button')
     buttons[selectedIdx]?.scrollIntoView({ block: 'nearest' })
   }, [selectedIdx])
@@ -221,7 +171,6 @@ export function CommandPalette() {
 
   if (!commandPaletteOpen) return null
 
-  // Track the global index across sections for highlighting
   let globalIdx = 0
 
   return (
@@ -234,13 +183,11 @@ export function CommandPalette() {
           exit={{ opacity: 0 }}
           transition={{ duration: 0.1 }}
         >
-          {/* Backdrop */}
           <motion.div
             className="absolute inset-0 bg-black/60 backdrop-blur-[2px]"
             onClick={toggleCommandPalette}
           />
 
-          {/* Palette */}
           <motion.div
             className="relative w-full max-w-[420px] overflow-hidden rounded-xl border border-[var(--color-base-border)]/80 bg-[var(--color-base-surface)]/95 shadow-[0_20px_60px_rgba(0,0,0,0.5)] backdrop-blur-xl"
             initial={{ scale: 0.96, opacity: 0, y: -10 }}
@@ -248,7 +195,6 @@ export function CommandPalette() {
             exit={{ scale: 0.96, opacity: 0, y: -10 }}
             transition={{ duration: 0.12, ease: [0.32, 0.72, 0, 1] }}
           >
-            {/* Search input */}
             <div className="flex items-center gap-2.5 border-[var(--color-base-border-subtle)]/80 border-b px-4 py-3">
               <Search size={14} className="flex-shrink-0 text-[var(--color-base-text-muted)]" />
               <input
@@ -266,7 +212,6 @@ export function CommandPalette() {
               </kbd>
             </div>
 
-            {/* Command list */}
             <div ref={listRef} className="max-h-[300px] overflow-y-auto p-1.5">
               {flatList.length === 0 ? (
                 <div className="px-3 py-8 text-center text-[var(--color-base-text-muted)] text-xs">
@@ -274,7 +219,6 @@ export function CommandPalette() {
                 </div>
               ) : (
                 <>
-                  {/* Session commands */}
                   {sessionCmds.length > 0 && (
                     <>
                       {showSections && (
@@ -296,7 +240,6 @@ export function CommandPalette() {
                     </>
                   )}
 
-                  {/* Global commands */}
                   {globalCmds.length > 0 && (
                     <>
                       {showSections && (
@@ -318,7 +261,6 @@ export function CommandPalette() {
                     </>
                   )}
 
-                  {/* Recent sessions */}
                   {recentCmds.length > 0 && (
                     <>
                       {showSections && (
@@ -343,7 +285,6 @@ export function CommandPalette() {
               )}
             </div>
 
-            {/* Footer */}
             <div className="flex items-center gap-3 border-[var(--color-base-border-subtle)]/60 border-t px-4 py-2">
               <span className="flex items-center gap-1 text-[10px] text-[var(--color-base-text-faint)]">
                 <kbd className="rounded border border-[var(--color-base-border)]/50 bg-[var(--color-base-raised)]/40 px-1 py-px text-[9px]">
@@ -376,7 +317,7 @@ function CommandRow({
   isSelected,
   onSelect,
 }: {
-  cmd: Command
+  cmd: PaletteItem
   isSelected: boolean
   onSelect: () => void
 }) {
