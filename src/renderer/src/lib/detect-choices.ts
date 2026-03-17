@@ -150,6 +150,197 @@ function isInformationalPreamble(preamble: string): boolean {
   return INFORMATIONAL_PREAMBLE_RE.test(preamble)
 }
 
+// ---------------------------------------------------------------------------
+// Option-labeled item detection (e.g. "**Option A** — description")
+// ---------------------------------------------------------------------------
+
+/** Keywords that identify option-labeled choice items. */
+const OPTION_KEYWORDS = /Option|Choice|Approach|Plan|Strategy|Alternative|Path|Solution/
+
+/** Separator patterns tried in priority order (em/en-dash, colon, spaced hyphen). */
+const OPTION_SEP_PATTERNS = [/^\s*[—–]\s*(.+)$/, /^\s*:\s*(.+)$/, /^\s*-\s+(.+)$/]
+
+/**
+ * Tries to parse a line as an option-labeled item (e.g. "**Option A** — desc").
+ * Bold wrappers are stripped before matching so all formatting variants converge.
+ * Returns null if the line doesn't match.
+ */
+function matchOptionItem(
+  rawLine: string,
+): { identifier: string; keyword: string; label: string; description: string } | null {
+  const stripped = stripBold(rawLine.trim())
+
+  const prefixRe = new RegExp(`^(${OPTION_KEYWORDS.source})\\s+([A-Za-z\\d]+)\\s*(.*)$`, 'i')
+  const m = stripped.match(prefixRe)
+  if (!m) return null
+
+  const keyword = m[1]
+  const identifier = m[2].toUpperCase()
+  const label = `${keyword} ${m[2]}`
+  const afterPrefix = m[3]
+
+  // Try each separator pattern in priority order
+  for (const sep of OPTION_SEP_PATTERNS) {
+    const sepMatch = afterPrefix.match(sep)
+    if (sepMatch) {
+      return { identifier, keyword, label, description: sepMatch[1].trim() }
+    }
+  }
+
+  return null
+}
+
+/**
+ * Second-pass detection for option-labeled choices.
+ * Handles patterns like "**Option A** — desc", "Choice B: desc", etc.
+ * Called when the primary numbered/lettered detection found nothing.
+ */
+function detectOptionLabeledChoices(lines: string[]): DetectedChoices | null {
+  let i = 0
+
+  while (i < lines.length) {
+    const trimmed = lines[i].trim()
+    const firstItem = matchOptionItem(trimmed)
+
+    if (!firstItem) {
+      i++
+      continue
+    }
+
+    // Collect consecutive option items with the same keyword.
+    const itemLines: string[] = [trimmed]
+    const parsedItems = [firstItem]
+    let j = i + 1
+
+    while (j < lines.length) {
+      const candidate = lines[j].trim()
+      if (candidate === '') {
+        j++
+        continue
+      }
+
+      const parsed = matchOptionItem(candidate)
+      if (parsed && parsed.keyword.toLowerCase() === firstItem.keyword.toLowerCase()) {
+        itemLines.push(candidate)
+        parsedItems.push(parsed)
+        j++
+      } else {
+        break
+      }
+    }
+
+    const count = itemLines.length
+    if (count < 2 || count > 6) {
+      i = j
+      continue
+    }
+
+    // Validate sequential identifiers (A→B→C or 1→2→3).
+    const ids = parsedItems.map((p) => p.identifier)
+    let sequenceValid = true
+
+    if (ids.every((id) => /^[A-Z]$/i.test(id))) {
+      const base = ids[0].charCodeAt(0)
+      for (let k = 0; k < ids.length; k++) {
+        if (ids[k].charCodeAt(0) !== base + k) {
+          sequenceValid = false
+          break
+        }
+      }
+    } else if (ids.every((id) => /^\d+$/.test(id))) {
+      for (let k = 0; k < ids.length; k++) {
+        if (Number(ids[k]) !== k + 1) {
+          sequenceValid = false
+          break
+        }
+      }
+    } else {
+      sequenceValid = false
+    }
+
+    if (!sequenceValid) {
+      i = j
+      continue
+    }
+
+    // Content length check — descriptions that are full paragraphs are informational.
+    if (parsedItems.some((p) => p.description.length > MAX_ITEM_CONTENT_LENGTH)) {
+      i = j
+      continue
+    }
+
+    // Look for a question within 1–3 non-empty lines after the list.
+    let questionText: string | null = null
+    let nonEmptyLinesScanned = 0
+    let k = j
+
+    while (k < lines.length && nonEmptyLinesScanned < 3) {
+      const candidate = lines[k].trim()
+      k++
+      if (candidate === '') continue
+      nonEmptyLinesScanned++
+      if (candidate.includes('?')) {
+        questionText = candidate
+        break
+      }
+      break
+    }
+
+    // Check preamble for question.
+    if (questionText === null) {
+      let nonEmptyPreambleScanned = 0
+      for (
+        let p = i - 1;
+        p >= 0 && p >= i - MAX_PREAMBLE_LINE_DISTANCE && nonEmptyPreambleScanned < 3;
+        p--
+      ) {
+        const preamble = lines[p].trim()
+        if (preamble === '') continue
+        nonEmptyPreambleScanned++
+        if (preamble.includes('?')) {
+          questionText = preamble
+          break
+        }
+      }
+    }
+
+    if (questionText === null || !isSelectionQuestion(questionText)) {
+      i = j
+      continue
+    }
+
+    // Check informational preamble.
+    let hasInformationalPreamble = false
+    let nonEmptyPreambleLinesChecked = 0
+    for (let p = i - 1; p >= 0 && p >= i - MAX_PREAMBLE_LINE_DISTANCE; p--) {
+      const preamble = lines[p].trim()
+      if (preamble === '') continue
+      nonEmptyPreambleLinesChecked++
+      if (isInformationalPreamble(preamble)) {
+        hasInformationalPreamble = true
+        break
+      }
+      if (nonEmptyPreambleLinesChecked >= 3) break
+    }
+
+    if (hasInformationalPreamble) {
+      i = j
+      continue
+    }
+
+    // Build choices from parsed items.
+    const choices: DetectedChoice[] = parsedItems.map((parsed, idx) => ({
+      label: parsed.label,
+      description: parsed.description,
+      rawText: itemLines[idx],
+    }))
+
+    return { choices, questionText }
+  }
+
+  return null
+}
+
 /**
  * Detects numbered or lettered choice lists (2–6 items) in assistant text.
  *
@@ -359,5 +550,6 @@ export function detectChoices(text: string): DetectedChoices | null {
     return { choices, questionText }
   }
 
-  return null
+  // Second pass: option-labeled items (e.g. "**Option A** — desc").
+  return detectOptionLabeledChoices(lines)
 }

@@ -617,25 +617,37 @@ export const ChatView = memo(function ChatView({ sessionId, isActive }: ChatView
     if (streaming) return null
     if (sessionQuestions.length > 0 || sessionPermissions.length > 0) return null
 
-    // Find the last assistant message with text content
+    // With includePartialMessages, each tool_use arrives in its own assistant
+    // message. Scan backwards through the current turn's assistant messages to
+    // check for AskUserQuestion tool calls AND collect text for choice detection.
+    let firstText: string | null = null
     for (let i = visibleMessages.length - 1; i >= 0; i--) {
       const msg = visibleMessages[i] as SdkMessage
 
-      // If we hit a user message first, no actionable choices
-      if (msg.type === 'user' && !isToolResultMessage(msg)) return null
+      // If we hit a user message, the turn boundary is reached
+      if (msg.type === 'user' && !isToolResultMessage(msg)) break
 
       if (msg.type === 'assistant') {
         const messageObj = msg.message as { content?: AssistantContentBlock[] } | undefined
         const content = (messageObj?.content ?? msg.content ?? []) as AssistantContentBlock[]
-        const textBlocks = content.filter((b) => b.type === 'text' && b.text)
-        if (textBlocks.length === 0) continue
 
-        const fullText = textBlocks.map((b) => (b as { text?: string }).text ?? '').join('\n')
-        return detectChoices(fullText)
+        // Skip choice detection when the assistant used AskUserQuestion —
+        // the SDK's formal question mechanism (QuestionPrompt) handles it.
+        if (content.some((b) => b.type === 'tool_use' && b.name === 'AskUserQuestion')) {
+          return null
+        }
+
+        // Capture the first (most recent) assistant message with text
+        if (firstText === null) {
+          const textBlocks = content.filter((b) => b.type === 'text' && b.text)
+          if (textBlocks.length > 0) {
+            firstText = textBlocks.map((b) => (b as { text?: string }).text ?? '').join('\n')
+          }
+        }
       }
     }
 
-    return null
+    return firstText ? detectChoices(firstText) : null
   }, [visibleMessages, streaming, sessionQuestions.length, sessionPermissions.length])
 
   const commitTurnIndices = useMemo(() => {

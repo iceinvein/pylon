@@ -859,4 +859,207 @@ And even more text separating things.
       expect(result?.choices).toHaveLength(2)
     })
   })
+
+  describe('option-labeled choices (Option A/B/C style)', () => {
+    test('detects bold option labels with em-dash separator', () => {
+      const text = `This is a meaningful design choice. Here's the trade-off:
+
+**Option A** — Add lightweight markdown support to SystemMessage
+**Option B** — Change the commands to not emit markdown
+**Option C** — Import ReactMarkdown for full markdown
+
+Which approach do you prefer?`
+
+      const result = detectChoices(text)
+      expect(result).not.toBeNull()
+      expect(result?.choices).toHaveLength(3)
+      expect(result?.choices[0].label).toBe('Option A')
+      expect(result?.choices[0].description).toBe(
+        'Add lightweight markdown support to SystemMessage',
+      )
+      expect(result?.choices[1].label).toBe('Option B')
+      expect(result?.choices[2].label).toBe('Option C')
+      expect(result?.questionText).toContain('Which approach do you prefer?')
+    })
+
+    test('detects plain option labels without bold', () => {
+      const text = `Option A — Fast execution with less accuracy
+Option B — Accurate but slower
+
+Which do you prefer?`
+
+      const result = detectChoices(text)
+      expect(result).not.toBeNull()
+      expect(result?.choices).toHaveLength(2)
+      expect(result?.choices[0].label).toBe('Option A')
+      expect(result?.choices[0].description).toBe('Fast execution with less accuracy')
+    })
+
+    test('detects option labels with colon separator', () => {
+      const text = `**Option A**: Use SQLite for simplicity
+**Option B**: Use PostgreSQL for scalability
+
+Which option?`
+
+      const result = detectChoices(text)
+      expect(result).not.toBeNull()
+      expect(result?.choices).toHaveLength(2)
+      expect(result?.choices[0].label).toBe('Option A')
+      expect(result?.choices[0].description).toBe('Use SQLite for simplicity')
+    })
+
+    test('detects option labels with spaced hyphen separator', () => {
+      const text = `Option A - Minimal changes
+Option B - Full refactor
+
+Which approach?`
+
+      const result = detectChoices(text)
+      expect(result).not.toBeNull()
+      expect(result?.choices).toHaveLength(2)
+    })
+
+    test('detects Choice keyword', () => {
+      const text = `**Choice A** — Keep the existing API
+**Choice B** — Redesign from scratch
+
+Which do you prefer?`
+
+      const result = detectChoices(text)
+      expect(result).not.toBeNull()
+      expect(result?.choices[0].label).toBe('Choice A')
+      expect(result?.choices[1].label).toBe('Choice B')
+    })
+
+    test('detects Approach keyword', () => {
+      const text = `**Approach A** — Conservative migration
+**Approach B** — Big bang rewrite
+
+Which approach?`
+
+      const result = detectChoices(text)
+      expect(result).not.toBeNull()
+      expect(result?.choices[0].label).toBe('Approach A')
+    })
+
+    test('detects numbered option identifiers', () => {
+      const text = `**Option 1** — Quick fix
+**Option 2** — Proper refactor
+
+Which option?`
+
+      const result = detectChoices(text)
+      expect(result).not.toBeNull()
+      expect(result?.choices).toHaveLength(2)
+      expect(result?.choices[0].label).toBe('Option 1')
+      expect(result?.choices[1].label).toBe('Option 2')
+    })
+
+    test('detects option labels with blank lines between items', () => {
+      const text = `**Option A** — Use React
+
+**Option B** — Use Vue
+
+**Option C** — Use Svelte
+
+Which framework do you prefer?`
+
+      const result = detectChoices(text)
+      expect(result).not.toBeNull()
+      expect(result?.choices).toHaveLength(3)
+    })
+
+    test('detects option labels with preamble question', () => {
+      const text = `Which would you prefer?
+
+**Option A** — Keep it simple
+**Option B** — Make it powerful`
+
+      const result = detectChoices(text)
+      expect(result).not.toBeNull()
+      expect(result?.choices).toHaveLength(2)
+    })
+
+    test('returns null for non-sequential identifiers', () => {
+      const text = `**Option A** — First
+**Option C** — Third (skipped B)
+
+Which option?`
+
+      expect(detectChoices(text)).toBeNull()
+    })
+
+    test('returns null for mixed keywords', () => {
+      const text = `**Option A** — First approach
+**Choice B** — Second approach
+
+Which do you prefer?`
+
+      expect(detectChoices(text)).toBeNull()
+    })
+
+    test('returns null for single option item', () => {
+      const text = `**Option A** — The only choice
+
+Which option?`
+
+      expect(detectChoices(text)).toBeNull()
+    })
+
+    test('returns null for option items without question', () => {
+      const text = `**Option A** — First approach
+**Option B** — Second approach`
+
+      expect(detectChoices(text)).toBeNull()
+    })
+
+    test('returns null for action-offer question with options', () => {
+      const text = `**Option A** — Quick fix
+**Option B** — Full refactor
+
+Want me to go with Option A?`
+
+      expect(detectChoices(text)).toBeNull()
+    })
+
+    test('returns null for informational preamble with options', () => {
+      const text = `Key findings:
+
+**Option A** — Has a bug
+**Option B** — Works fine
+
+Which option?`
+
+      expect(detectChoices(text)).toBeNull()
+    })
+
+    test('returns null for paragraph-length option descriptions', () => {
+      const text = `**Option A** — This is a very long description that goes into extensive detail about the architecture, covering multiple aspects of the system design including the database schema, the API layer, the frontend components, and the deployment strategy which makes it clearly explanatory
+**Option B** — Short
+
+Which option?`
+
+      expect(detectChoices(text)).toBeNull()
+    })
+
+    test('exact screenshot reproduction: design trade-off with 3 options', () => {
+      const text = `This is a meaningful design choice. Here's the trade-off:
+
+**Option A** — Add lightweight markdown support to \`SystemMessage\` (regex for \`**bold**\` + \`whitespace-pre-line\`). This means any future system message with bold or newlines "just works."
+
+**Option B** — Change the \`/status\` and \`/help\` commands to not emit markdown — just plain text. Keep \`SystemMessage\` dead-simple.
+
+**Option C** — Import \`ReactMarkdown\` into \`SystemMessage\` for full markdown. Most powerful but heaviest change.
+
+Which approach do you prefer? I'd lean toward **A** — a tiny inline parser keeps the component lightweight while supporting the formatted output our commands need. But your call.`
+
+      const result = detectChoices(text)
+      expect(result).not.toBeNull()
+      expect(result?.choices).toHaveLength(3)
+      expect(result?.choices[0].label).toBe('Option A')
+      expect(result?.choices[1].label).toBe('Option B')
+      expect(result?.choices[2].label).toBe('Option C')
+      expect(result?.questionText).toContain('Which approach do you prefer?')
+    })
+  })
 })
