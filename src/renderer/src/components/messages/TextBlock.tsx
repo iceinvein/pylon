@@ -181,7 +181,7 @@ function InsightCard({ text }: { text: string }) {
         <div
           className={
             proseClasses +
-            ' prose-li:text-[var(--color-base-text)] prose-p:text-[var(--color-base-text)] prose-strong:text-[var(--color-special)]'
+            'prose-li:text-[var(--color-base-text)] prose-p:text-[var(--color-base-text)] prose-strong:text-[var(--color-special)]'
           }
         >
           <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>

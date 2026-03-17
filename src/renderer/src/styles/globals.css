@@ -84,9 +84,13 @@ body {
   *,
   *::before,
   *::after {
+    /* biome-ignore lint/complexity/noImportantStyles: required to override all animations for prefers-reduced-motion a11y */
     animation-duration: 0.01ms !important;
+    /* biome-ignore lint/complexity/noImportantStyles: required to override all animations for prefers-reduced-motion a11y */
     animation-iteration-count: 1 !important;
+    /* biome-ignore lint/complexity/noImportantStyles: required to override all transitions for prefers-reduced-motion a11y */
     transition-duration: 0.01ms !important;
+    /* biome-ignore lint/complexity/noImportantStyles: required to override scroll-behavior for prefers-reduced-motion a11y */
     scroll-behavior: auto !important;
   }
 }

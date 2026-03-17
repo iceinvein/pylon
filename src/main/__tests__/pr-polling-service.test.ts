@@ -190,7 +190,10 @@ describe('PrPollingService', () => {
   test('poll upserts PRs into pr_cache', async () => {
     await service.poll()
 
-    const rows = rawDb.query('SELECT * FROM pr_cache ORDER BY pr_number').all() as any[]
+    const rows = rawDb.query('SELECT * FROM pr_cache ORDER BY pr_number').all() as Record<
+      string,
+      unknown
+    >[]
     expect(rows).toHaveLength(2)
     expect(rows[0].pr_number).toBe(1)
     expect(rows[0].title).toBe('Fix bug')
@@ -205,14 +208,16 @@ describe('PrPollingService', () => {
 
     // Mark PR #1 as seen
     service.markSeen('acme/app', 1)
-    const before = rawDb
-      .query('SELECT last_seen_at FROM pr_cache WHERE pr_number = ?')
-      .get(1) as any
+    const before = rawDb.query('SELECT last_seen_at FROM pr_cache WHERE pr_number = ?').get(1) as {
+      last_seen_at: number | null
+    }
     expect(before.last_seen_at).toBeGreaterThan(0)
 
     // Re-poll — last_seen_at should be preserved
     await service.poll()
-    const after = rawDb.query('SELECT last_seen_at FROM pr_cache WHERE pr_number = ?').get(1) as any
+    const after = rawDb.query('SELECT last_seen_at FROM pr_cache WHERE pr_number = ?').get(1) as {
+      last_seen_at: number | null
+    }
     expect(after.last_seen_at).toBe(before.last_seen_at)
   })
 
@@ -290,7 +295,11 @@ describe('PrPollingService', () => {
   test('stale PRs are marked as closed', async () => {
     await service.poll()
     expect(
-      (rawDb.query('SELECT COUNT(*) as c FROM pr_cache WHERE state = ?').get('open') as any).c,
+      (
+        rawDb.query('SELECT COUNT(*) as c FROM pr_cache WHERE state = ?').get('open') as {
+          c: number
+        }
+      ).c,
     ).toBe(2)
 
     // Next poll only returns PR #1 (PR #2 was merged/closed)
@@ -317,10 +326,12 @@ describe('PrPollingService', () => {
 
     await service.poll()
     const openCount = (
-      rawDb.query('SELECT COUNT(*) as c FROM pr_cache WHERE state = ?').get('open') as any
+      rawDb.query('SELECT COUNT(*) as c FROM pr_cache WHERE state = ?').get('open') as { c: number }
     ).c
     const closedCount = (
-      rawDb.query('SELECT COUNT(*) as c FROM pr_cache WHERE state = ?').get('closed') as any
+      rawDb.query('SELECT COUNT(*) as c FROM pr_cache WHERE state = ?').get('closed') as {
+        c: number
+      }
     ).c
     expect(openCount).toBe(1)
     expect(closedCount).toBe(1)
