@@ -30,9 +30,7 @@ export function AssistantMessage({ content, toolResultMap, showHeader }: Assista
       )}
       <div className="min-w-0 flex-1 space-y-1">
         {showHeader && (
-          <span className="font-semibold text-[var(--color-base-text)] text-sm">
-            Claude
-          </span>
+          <span className="font-semibold text-[var(--color-base-text)] text-sm">Claude</span>
         )}
         {content.map((block, i) => {
           if (block.type === 'text' && block.text) {

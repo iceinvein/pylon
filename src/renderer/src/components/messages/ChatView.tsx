@@ -371,6 +371,18 @@ export const ChatView = memo(function ChatView({ sessionId, isActive }: ChatView
     return () => observer.disconnect()
   })
 
+  // Count user-initiated messages (excluding tool_result) so we can detect
+  // when the user sends a new message without accessing visibleMessages inside
+  // the effect (which would trigger exhaustive-deps warnings).
+  const userMessageCount = useMemo(() => {
+    let count = 0
+    for (const raw of visibleMessages) {
+      const msg = raw as SdkMessage
+      if (msg.type === 'user' && !isToolResultMessage(msg)) count++
+    }
+    return count
+  }, [visibleMessages])
+
   // Scroll to bottom on discrete events: new messages arriving, new
   // permission/question prompts, or streaming ending. This covers the gap
   // between the user sending a message and streaming starting — without this,
@@ -379,6 +391,7 @@ export const ChatView = memo(function ChatView({ sessionId, isActive }: ChatView
     messages: visibleMessages.length,
     permissions: sessionPermissions.length,
     questions: sessionQuestions.length,
+    userMessages: userMessageCount,
   })
 
   useEffect(() => {
@@ -387,10 +400,26 @@ export const ChatView = memo(function ChatView({ sessionId, isActive }: ChatView
       visibleMessages.length > prev.messages ||
       sessionPermissions.length > prev.permissions ||
       sessionQuestions.length > prev.questions
+
+    // Detect if the user just sent a new message. Sending a message is an
+    // explicit action — always scroll to bottom so the user sees their own
+    // message, even if they were scrolled up reading history.
+    const userSentMessage = userMessageCount > prev.userMessages
+
     contentCountRef.current = {
       messages: visibleMessages.length,
       permissions: sessionPermissions.length,
       questions: sessionQuestions.length,
+      userMessages: userMessageCount,
+    }
+
+    if (userSentMessage) {
+      isNearBottomRef.current = true
+      requestAnimationFrame(() => {
+        const container = scrollContainerRef.current
+        if (container) container.scrollTop = container.scrollHeight
+      })
+      return
     }
 
     if (!isNearBottomRef.current) return
@@ -401,7 +430,13 @@ export const ChatView = memo(function ChatView({ sessionId, isActive }: ChatView
         if (container) container.scrollTop = container.scrollHeight
       })
     }
-  }, [visibleMessages.length, sessionPermissions.length, sessionQuestions.length, streaming])
+  }, [
+    visibleMessages.length,
+    sessionPermissions.length,
+    sessionQuestions.length,
+    streaming,
+    userMessageCount,
+  ])
 
   // Listen for flow-scroll-to-message events from the FlowPanel
   const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -479,9 +514,7 @@ export const ChatView = memo(function ChatView({ sessionId, isActive }: ChatView
         )}
         <div className="min-w-0 flex-1 space-y-1">
           {showHeader && (
-            <span className="font-semibold text-[var(--color-base-text)] text-sm">
-              Claude
-            </span>
+            <span className="font-semibold text-[var(--color-base-text)] text-sm">Claude</span>
           )}
           {content.map((block, i) => {
             if (block.type === 'tool_use' && block.name === 'Agent' && block.id) {
