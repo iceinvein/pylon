@@ -62,6 +62,24 @@ export function SystemMessage({ content, subtype }: SystemMessageProps) {
     )
   }
 
+  const isMultiline = content.includes('\n')
+
+  // Multi-line content (e.g. /status, /help) → card with left accent stripe
+  if (isMultiline) {
+    return (
+      <div className="my-1.5 mr-6 ml-[3.75rem]">
+        <div className="rounded-lg border border-[var(--color-base-border)]/30 bg-[var(--color-base-raised)]/20">
+          <div className="border-[var(--color-base-text-faint)]/40 border-l-2 px-4 py-3">
+            <div className="whitespace-pre-line text-[var(--color-base-text-muted)] text-xs leading-relaxed">
+              {parseBold(content)}
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Single-line content → compact inline
   return (
     <div className="flex items-start gap-2 py-1.5 pr-6 pl-[3.75rem]">
       <Info size={12} className="mt-0.5 flex-shrink-0 text-[var(--color-base-text-faint)]" />
@@ -71,9 +89,7 @@ export function SystemMessage({ content, subtype }: SystemMessageProps) {
             [{subtype}]
           </span>
         )}
-        <span className="whitespace-pre-line text-[var(--color-base-text-muted)] text-xs">
-          {parseBold(content)}
-        </span>
+        <span className="text-[var(--color-base-text-muted)] text-xs">{parseBold(content)}</span>
       </div>
     </div>
   )
