@@ -344,9 +344,7 @@ function CommandRow({
         <Icon size={14} />
       </div>
       <div className="min-w-0 flex-1">
-        <p
-          className={`text-sm transition-colors duration-75 ${isSelected ? 'text-[var(--color-base-text)]' : 'text-[var(--color-base-text)]'}`}
-        >
+        <p className="text-[var(--color-base-text)] text-sm transition-colors duration-75">
           {cmd.label}
         </p>
         <p className="text-[11px] text-[var(--color-base-text-muted)] leading-tight">
