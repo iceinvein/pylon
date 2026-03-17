@@ -45,13 +45,13 @@ export function HomePage() {
             variants={fadeUp}
           />
           <motion.h1
-            className="font-display text-5xl text-[var(--color-base-text)] italic tracking-tight"
+            className="font-display text-5xl text-base-text italic tracking-tight"
             variants={fadeUp}
           >
             Pylon
           </motion.h1>
           <motion.p
-            className="mt-3 max-w-xs text-[var(--color-base-text-secondary)] text-base leading-relaxed"
+            className="mt-3 max-w-xs text-base text-base-text-secondary leading-relaxed"
             variants={fadeUp}
           >
             Your code, with an architect beside you.
@@ -60,7 +60,7 @@ export function HomePage() {
             <button
               type="button"
               onClick={openFolder}
-              className="mt-8 inline-flex items-center gap-2.5 rounded-lg bg-[var(--color-accent)] px-5 py-2.5 font-semibold text-sm text-white transition-all hover:bg-[var(--color-accent-hover)] active:scale-[0.98]"
+              className="mt-8 inline-flex items-center gap-2.5 rounded-lg bg-accent px-5 py-2.5 font-semibold text-sm text-white transition-all hover:bg-accent-hover active:scale-[0.98]"
             >
               <FolderOpen size={16} />
               Open Folder
@@ -68,7 +68,7 @@ export function HomePage() {
           </motion.div>
           {projects.length === 0 && (
             <motion.p
-              className="mt-6 max-w-xs text-[var(--color-base-text-faint)] text-xs leading-relaxed"
+              className="mt-6 max-w-xs text-base-text-faint text-xs leading-relaxed"
               variants={fadeUp}
             >
               Point Pylon at any project. It reads your code, runs commands, edits files, and
@@ -86,20 +86,15 @@ export function HomePage() {
                   type="button"
                   key={project.path}
                   onClick={() => openPath(project.path)}
-                  className="group flex w-full items-start gap-3 rounded-lg p-3 text-left transition-colors hover:bg-[var(--color-base-raised)]"
+                  className="group flex w-full items-start gap-3 rounded-lg p-3 text-left transition-colors hover:bg-base-raised"
                 >
-                  <Folder
-                    size={14}
-                    className="mt-0.5 flex-shrink-0 text-[var(--color-base-text-muted)]"
-                  />
+                  <Folder size={14} className="mt-0.5 shrink-0 text-base-text-muted" />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium text-[var(--color-base-text)] text-sm">
+                    <p className="truncate font-medium text-base-text text-sm">
                       {project.path.split('/').pop()}
                     </p>
-                    <p className="truncate text-[var(--color-base-text-muted)] text-xs">
-                      {project.path}
-                    </p>
-                    <p className="mt-0.5 text-[11px] text-[var(--color-base-text-faint)]">
+                    <p className="truncate text-base-text-muted text-xs">{project.path}</p>
+                    <p className="mt-0.5 text-[11px] text-base-text-faint">
                       {timeAgo(project.lastUsed)}
                     </p>
                   </div>

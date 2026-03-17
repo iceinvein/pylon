@@ -35,20 +35,20 @@ export function ConflictResolver({ conflicts, onApply, onCancel }: ConflictResol
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between border-[var(--color-base-border-subtle)] border-b px-3 py-2">
-        <p className="font-medium text-[var(--color-base-text)] text-xs">Conflict Resolution</p>
+      <div className="flex items-center justify-between border-base-border-subtle border-b px-3 py-2">
+        <p className="font-medium text-base-text text-xs">Conflict Resolution</p>
         <div className="flex gap-2">
           <button
             type="button"
             onClick={acceptAll}
-            className="text-[10px] text-[var(--color-base-text-muted)] hover:text-[var(--color-base-text)]"
+            className="text-[10px] text-base-text-muted hover:text-base-text"
           >
             Accept all
           </button>
           <button
             type="button"
             onClick={onCancel}
-            className="text-[10px] text-[var(--color-base-text-muted)] hover:text-[var(--color-error)]"
+            className="text-[10px] text-base-text-muted hover:text-error"
           >
             Cancel
           </button>
@@ -59,16 +59,16 @@ export function ConflictResolver({ conflicts, onApply, onCancel }: ConflictResol
         {conflicts.map((conflict) => (
           <div
             key={conflict.filePath}
-            className="mb-2 rounded-lg border border-[var(--color-base-border)] bg-[var(--color-base-surface)]/50"
+            className="mb-2 rounded-lg border border-base-border bg-base-surface/50"
           >
             <label className="flex cursor-pointer items-center gap-2 p-2.5">
               <input
                 type="checkbox"
                 checked={accepted.has(conflict.filePath)}
                 onChange={() => toggleFile(conflict.filePath)}
-                className="h-3 w-3 rounded border-[var(--color-base-border)] bg-[var(--color-base-raised)] accent-amber-600"
+                className="h-3 w-3 rounded border-base-border bg-base-raised accent-amber-600"
               />
-              <span className="min-w-0 flex-1 truncate font-[family-name:var(--font-mono)] text-[var(--color-base-text)] text-xs">
+              <span className="min-w-0 flex-1 truncate font-mono text-base-text text-xs">
                 {conflict.filePath}
               </span>
               <span className={`text-[10px] ${confidenceColors[conflict.confidence]}`}>
@@ -78,16 +78,14 @@ export function ConflictResolver({ conflicts, onApply, onCancel }: ConflictResol
                 )}
               </span>
             </label>
-            <div className="border-[var(--color-base-border-subtle)] border-t px-3 py-2">
-              <p className="text-[10px] text-[var(--color-base-text-muted)]">
-                {conflict.explanation}
-              </p>
+            <div className="border-base-border-subtle border-t px-3 py-2">
+              <p className="text-[10px] text-base-text-muted">{conflict.explanation}</p>
             </div>
           </div>
         ))}
       </div>
 
-      <div className="border-[var(--color-base-border-subtle)] border-t p-3">
+      <div className="border-base-border-subtle border-t p-3">
         <button
           type="button"
           onClick={handleApply}

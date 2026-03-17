@@ -31,7 +31,7 @@ export function ContextIndicator({ sessionId }: ContextIndicatorProps) {
         max={100}
         aria-label="Context window usage"
       />
-      <div className="h-[3px] w-full min-w-[60px] overflow-hidden rounded-full bg-[var(--color-base-raised)]">
+      <div className="h-0.75 w-full min-w-15 overflow-hidden rounded-full bg-base-raised">
         <div
           className={`h-full rounded-full transition-[width,background-color] duration-300 ${color.bar}`}
           style={{ width: `${percent}%` }}

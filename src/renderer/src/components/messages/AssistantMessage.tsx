@@ -22,16 +22,14 @@ type AssistantMessageProps = {
 
 export function AssistantMessage({ content, toolResultMap, showHeader }: AssistantMessageProps) {
   return (
-    <div className={`flex gap-3 px-6 py-2 ${showHeader ? '' : 'pl-[3.75rem]'}`}>
+    <div className={`flex gap-3 px-6 py-2 ${showHeader ? '' : 'pl-15'}`}>
       {showHeader && (
-        <div className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-[var(--color-base-raised)]">
-          <Sparkles size={13} className="text-[var(--color-base-text-muted)]" />
+        <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-base-raised">
+          <Sparkles size={13} className="text-base-text-muted" />
         </div>
       )}
       <div className="min-w-0 flex-1 space-y-1">
-        {showHeader && (
-          <span className="font-semibold text-[var(--color-base-text)] text-sm">Claude</span>
-        )}
+        {showHeader && <span className="font-semibold text-base-text text-sm">Claude</span>}
         {content.map((block, i) => {
           if (block.type === 'text' && block.text) {
             return <TextBlock key={i} text={block.text} />

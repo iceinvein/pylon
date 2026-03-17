@@ -109,23 +109,23 @@ function FileDiffView({ filePath, sessionCwd, sessionId, status, onBack }: FileD
   return (
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header with back + filename + refresh */}
-      <div className="flex items-center gap-2 border-[var(--color-base-border-subtle)] border-b px-2 py-2">
+      <div className="flex items-center gap-2 border-base-border-subtle border-b px-2 py-2">
         <button
           type="button"
           onClick={onBack}
-          className="flex-shrink-0 rounded p-1 text-[var(--color-base-text-muted)] transition-colors hover:bg-[var(--color-base-raised)] hover:text-[var(--color-base-text)]"
+          className="shrink-0 rounded p-1 text-base-text-muted transition-colors hover:bg-base-raised hover:text-base-text"
           title="Back to file list"
         >
           <ArrowLeft size={14} />
         </button>
-        <Icon size={13} className={`flex-shrink-0 ${iconColor}`} />
-        <span className="min-w-0 flex-1 truncate font-[family-name:var(--font-mono)] text-[var(--color-base-text)] text-xs">
+        <Icon size={13} className={`shrink-0 ${iconColor}`} />
+        <span className="min-w-0 flex-1 truncate font-mono text-base-text text-xs">
           {relativePath}
         </span>
         <button
           type="button"
           onClick={fetchDiff}
-          className="flex-shrink-0 rounded p-1 text-[var(--color-base-text-faint)] transition-colors hover:bg-[var(--color-base-raised)] hover:text-[var(--color-base-text-secondary)]"
+          className="shrink-0 rounded p-1 text-base-text-faint transition-colors hover:bg-base-raised hover:text-base-text-secondary"
           title="Refresh diff"
         >
           <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
@@ -136,10 +136,10 @@ function FileDiffView({ filePath, sessionCwd, sessionId, status, onBack }: FileD
       <div className="flex-1 overflow-y-auto">
         {loading && !diffData ? (
           <div className="flex items-center justify-center py-12">
-            <RefreshCw size={16} className="animate-spin text-[var(--color-base-text-faint)]" />
+            <RefreshCw size={16} className="animate-spin text-base-text-faint" />
           </div>
         ) : error ? (
-          <div className="px-4 py-8 text-center text-[var(--color-error)] text-xs">{error}</div>
+          <div className="px-4 py-8 text-center text-error text-xs">{error}</div>
         ) : (
           <DiffView hunks={hunks} />
         )}
@@ -176,18 +176,14 @@ function FileRow({ filePath, sessionCwd, status, onSelect }: FileRowProps) {
     <button
       type="button"
       onClick={onSelect}
-      className="group flex w-full items-center gap-2 rounded px-2 py-1.5 text-left transition-colors hover:bg-[var(--color-base-raised)]/60"
+      className="group flex w-full items-center gap-2 rounded px-2 py-1.5 text-left transition-colors hover:bg-base-raised/60"
     >
-      <Icon size={13} className={`flex-shrink-0 ${iconColor}`} />
-      <span className="min-w-0 flex-1 truncate font-[family-name:var(--font-mono)] text-xs">
-        {dir && <span className="text-[var(--color-base-text-faint)]">{dir}</span>}
-        <span className="text-[var(--color-base-text)]">{name}</span>
+      <Icon size={13} className={`shrink-0 ${iconColor}`} />
+      <span className="min-w-0 flex-1 truncate font-mono text-xs">
+        {dir && <span className="text-base-text-faint">{dir}</span>}
+        <span className="text-base-text">{name}</span>
       </span>
-      <span
-        className={`flex-shrink-0 font-[family-name:var(--font-mono)] font-semibold text-[10px] ${labelColor}`}
-      >
-        {label}
-      </span>
+      <span className={`shrink-0 font-mono font-semibold text-[10px] ${labelColor}`}>{label}</span>
     </button>
   )
 }
@@ -305,7 +301,7 @@ export function ChangesPanel() {
   if (!sessionId) {
     return (
       <div className="flex h-full items-center justify-center p-4">
-        <p className="text-[var(--color-base-text-faint)] text-xs">No active session</p>
+        <p className="text-base-text-faint text-xs">No active session</p>
       </div>
     )
   }
@@ -313,8 +309,8 @@ export function ChangesPanel() {
   if (changedFiles.length === 0) {
     return (
       <div className="flex h-full flex-col items-center justify-center p-4">
-        <FileText size={20} className="mb-2 text-[var(--color-base-text-faint)]" />
-        <p className="text-[var(--color-base-text-faint)] text-xs">No files changed yet</p>
+        <FileText size={20} className="mb-2 text-base-text-faint" />
+        <p className="text-base-text-faint text-xs">No files changed yet</p>
       </div>
     )
   }
@@ -362,9 +358,9 @@ export function ChangesPanel() {
 
             {/* Worktree actions */}
             {isWorktreeSession && (
-              <div className="border-[var(--color-base-border-subtle)] border-t px-3 py-3">
+              <div className="border-base-border-subtle border-t px-3 py-3">
                 {mergeSuccess ? (
-                  <div className="flex items-center gap-2 rounded bg-[var(--color-success)]/40 px-3 py-2 text-emerald-400 text-xs">
+                  <div className="flex items-center gap-2 rounded bg-success/40 px-3 py-2 text-emerald-400 text-xs">
                     <Check size={14} />
                     <span>
                       Merged into {worktreeInfo?.originalBranch ?? 'original branch'} and cleaned up
@@ -373,15 +369,15 @@ export function ChangesPanel() {
                 ) : (
                   <>
                     {mergeError && (
-                      <div className="mb-2 rounded bg-[var(--color-error)]/40 px-3 py-2">
-                        <div className="flex items-start gap-2 text-[var(--color-error)] text-xs">
-                          <AlertTriangle size={14} className="mt-0.5 flex-shrink-0" />
+                      <div className="mb-2 rounded bg-error/40 px-3 py-2">
+                        <div className="flex items-start gap-2 text-error text-xs">
+                          <AlertTriangle size={14} className="mt-0.5 shrink-0" />
                           <div>
                             <p>{mergeError.message}</p>
                             {mergeError.files && mergeError.files.length > 0 && (
-                              <ul className="mt-1 list-inside list-disc text-[var(--color-error)]/80">
+                              <ul className="mt-1 list-inside list-disc text-error/80">
                                 {mergeError.files.map((f) => (
-                                  <li key={f} className="font-[family-name:var(--font-mono)]">
+                                  <li key={f} className="font-mono">
                                     {f}
                                   </li>
                                 ))}
@@ -413,7 +409,7 @@ export function ChangesPanel() {
                             type="button"
                             onClick={handleDiscardCleanup}
                             disabled={discardLoading}
-                            className="rounded bg-[var(--color-error)] px-2 py-1.5 font-medium text-[11px] text-white transition-colors hover:bg-[var(--color-error)] disabled:opacity-50"
+                            className="rounded bg-error px-2 py-1.5 font-medium text-[11px] text-white transition-colors hover:bg-error disabled:opacity-50"
                           >
                             {discardLoading ? (
                               <Loader2 size={11} className="animate-spin" />
@@ -424,7 +420,7 @@ export function ChangesPanel() {
                           <button
                             type="button"
                             onClick={() => setShowDiscardConfirm(false)}
-                            className="rounded px-2 py-1.5 text-[11px] text-[var(--color-base-text-muted)] transition-colors hover:bg-[var(--color-base-raised)] hover:text-[var(--color-base-text)]"
+                            className="rounded px-2 py-1.5 text-[11px] text-base-text-muted transition-colors hover:bg-base-raised hover:text-base-text"
                           >
                             Cancel
                           </button>
@@ -434,7 +430,7 @@ export function ChangesPanel() {
                           type="button"
                           onClick={() => setShowDiscardConfirm(true)}
                           disabled={mergeLoading || discardLoading}
-                          className="flex items-center gap-1.5 rounded border border-[var(--color-base-border)] px-3 py-1.5 text-[var(--color-base-text-secondary)] text-xs transition-colors hover:border-[var(--color-error)] hover:bg-[var(--color-error)]/30 hover:text-[var(--color-error)] disabled:opacity-50"
+                          className="flex items-center gap-1.5 rounded border border-base-border px-3 py-1.5 text-base-text-secondary text-xs transition-colors hover:border-error hover:bg-error/30 hover:text-error disabled:opacity-50"
                         >
                           <Trash2 size={13} />
                           Discard
@@ -442,15 +438,10 @@ export function ChangesPanel() {
                       )}
                     </div>
 
-                    <p className="mt-1.5 text-[10px] text-[var(--color-base-text-faint)]">
+                    <p className="mt-1.5 text-[10px] text-base-text-faint">
                       Merges{' '}
-                      <span className="text-[var(--color-base-text-muted)]">
-                        {worktreeInfo?.worktreeBranch}
-                      </span>{' '}
-                      →{' '}
-                      <span className="text-[var(--color-base-text-muted)]">
-                        {worktreeInfo?.originalBranch}
-                      </span>
+                      <span className="text-base-text-muted">{worktreeInfo?.worktreeBranch}</span> →{' '}
+                      <span className="text-base-text-muted">{worktreeInfo?.originalBranch}</span>
                     </p>
                   </>
                 )}

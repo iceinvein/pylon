@@ -17,13 +17,13 @@ export function TodoWriteTool({ input }: TodoWriteToolProps) {
 
   return (
     <div className="space-y-1.5">
-      <div className="flex items-center gap-3 text-[var(--color-base-text-muted)] text-xs">
+      <div className="flex items-center gap-3 text-base-text-muted text-xs">
         <span>
-          <span className="text-[var(--color-success)]">{completed}</span> done
+          <span className="text-success">{completed}</span> done
         </span>
         {inProgress > 0 && (
           <span>
-            <span className="text-[var(--color-warning)]">{inProgress}</span> active
+            <span className="text-warning">{inProgress}</span> active
           </span>
         )}
         <span>{todos.length} total</span>
@@ -32,25 +32,19 @@ export function TodoWriteTool({ input }: TodoWriteToolProps) {
         {todos.map((todo, i) => (
           <div key={i} className="flex items-start gap-2 py-0.5">
             {todo.status === 'completed' ? (
-              <CheckCircle size={13} className="mt-px flex-shrink-0 text-[var(--color-success)]" />
+              <CheckCircle size={13} className="mt-px shrink-0 text-success" />
             ) : todo.status === 'in_progress' ? (
-              <Loader
-                size={13}
-                className="mt-px flex-shrink-0 animate-spin text-[var(--color-warning)]"
-              />
+              <Loader size={13} className="mt-px shrink-0 animate-spin text-warning" />
             ) : (
-              <Circle
-                size={13}
-                className="mt-px flex-shrink-0 text-[var(--color-base-text-faint)]"
-              />
+              <Circle size={13} className="mt-px shrink-0 text-base-text-faint" />
             )}
             <span
               className={`text-xs ${
                 todo.status === 'completed'
-                  ? 'text-[var(--color-base-text-muted)] line-through'
+                  ? 'text-base-text-muted line-through'
                   : todo.status === 'in_progress'
-                    ? 'text-[var(--color-base-text)]'
-                    : 'text-[var(--color-base-text-secondary)]'
+                    ? 'text-base-text'
+                    : 'text-base-text-secondary'
               }`}
             >
               {todo.status === 'in_progress' && todo.activeForm ? todo.activeForm : todo.content}

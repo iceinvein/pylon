@@ -86,15 +86,13 @@ function CodeBlock({ className, children }: { className?: string; children?: Rea
   const label = isAnsi ? 'output' : language || 'code'
 
   return (
-    <div className="group relative my-3 overflow-hidden rounded-lg border border-[var(--color-base-border-subtle)] bg-[var(--color-base-surface)]">
-      <div className="flex items-center justify-between border-[var(--color-base-border-subtle)]/60 border-b bg-[var(--color-base-surface)]/80 px-3 py-1.5">
-        <span className="font-[family-name:var(--font-mono)] text-[11px] text-[var(--color-base-text-muted)]">
-          {label}
-        </span>
+    <div className="group relative my-3 overflow-hidden rounded-lg border border-base-border-subtle bg-base-surface">
+      <div className="flex items-center justify-between border-base-border-subtle/60 border-b bg-base-surface/80 px-3 py-1.5">
+        <span className="font-mono text-[11px] text-base-text-muted">{label}</span>
         <button
           type="button"
           onClick={handleCopy}
-          className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-[var(--color-base-text-muted)] transition-colors hover:bg-[var(--color-base-raised)] hover:text-[var(--color-base-text)]"
+          className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-base-text-muted transition-colors hover:bg-base-raised hover:text-base-text"
         >
           {copied ? <Check size={11} /> : <Copy size={11} />}
           {copied ? 'Copied' : 'Copy'}
@@ -106,9 +104,7 @@ function CodeBlock({ className, children }: { className?: string; children?: Rea
         <SyntaxOutput html={highlightedHtml} />
       ) : (
         <pre className="overflow-x-auto p-3">
-          <code className="font-[family-name:var(--font-mono)] text-[var(--color-base-text)] text-xs leading-relaxed">
-            {code}
-          </code>
+          <code className="font-mono text-base-text text-xs leading-relaxed">{code}</code>
         </pre>
       )}
     </div>
@@ -120,7 +116,7 @@ function AnsiOutput({ code }: { code: string }) {
   const html = ansiToHtml(code)
   return (
     <pre
-      className="overflow-x-auto p-3 font-[family-name:var(--font-mono)] text-[var(--color-base-text)] text-xs leading-relaxed"
+      className="overflow-x-auto p-3 font-mono text-base-text text-xs leading-relaxed"
       // biome-ignore lint/security/noDangerouslySetInnerHtml: sanitized HTML from ansi-to-html (escapeXML: true)
       dangerouslySetInnerHTML={{ __html: html }}
     />
@@ -131,7 +127,7 @@ function AnsiOutput({ code }: { code: string }) {
 function SyntaxOutput({ html }: { html: string }) {
   return (
     <div
-      className="shiki-wrapper [&_pre]:!bg-transparent [&_code]:!bg-transparent overflow-x-auto p-3 font-[family-name:var(--font-mono)] text-xs leading-relaxed"
+      className="shiki-wrapper overflow-x-auto p-3 font-mono text-xs leading-relaxed [&_code]:bg-transparent! [&_pre]:bg-transparent!"
       // biome-ignore lint/security/noDangerouslySetInnerHtml: sanitized HTML from Shiki tokenizer (HTML-escapes all code)
       dangerouslySetInnerHTML={{ __html: html }}
     />
@@ -144,7 +140,7 @@ const markdownComponents: React.ComponentProps<typeof ReactMarkdown>['components
     if (isInline) {
       return (
         <code
-          className="rounded bg-[var(--color-base-raised)] px-1.5 py-0.5 font-[family-name:var(--font-mono)] text-[var(--color-accent-text)] text-xs"
+          className="rounded bg-base-raised px-1.5 py-0.5 font-mono text-accent-text text-xs"
           {...props}
         >
           {children}
@@ -168,26 +164,38 @@ function MarkdownContent({ text }: { text: string }) {
   )
 }
 
+const insightMarkdownComponents: React.ComponentProps<typeof ReactMarkdown>['components'] = {
+  ...markdownComponents,
+  code({ className, children, ...props }) {
+    const isInline = !className && !String(children).includes('\n')
+    if (isInline) {
+      return (
+        <code
+          className="rounded bg-special-muted px-1.5 py-0.5 font-mono text-special-text text-xs"
+          {...props}
+        >
+          {children}
+        </code>
+      )
+    }
+    return <CodeBlock className={className}>{children}</CodeBlock>
+  },
+  strong({ children }) {
+    return <strong className="text-special-text">{children}</strong>
+  },
+}
+
 function InsightCard({ text }: { text: string }) {
   return (
-    <div className="my-3 overflow-hidden rounded-lg border border-[var(--color-special)]/25 bg-gradient-to-br from-[var(--color-special)]/10 to-[var(--color-base-surface)]/80">
-      <div className="border-[var(--color-special)]/30 border-l-2 px-4 py-3">
-        <div className="mb-2 flex items-center gap-2">
-          <Lightbulb size={14} className="text-[var(--color-special)]" />
-          <span className="font-semibold text-[var(--color-special)] text-xs uppercase tracking-wide">
-            Insight
-          </span>
-        </div>
-        <div
-          className={
-            proseClasses +
-            'prose-li:text-[var(--color-base-text)] prose-p:text-[var(--color-base-text)] prose-strong:text-[var(--color-special)]'
-          }
-        >
-          <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-            {text}
-          </ReactMarkdown>
-        </div>
+    <div className="my-3 border-special/30 border-l-2 px-4 py-3">
+      <div className="mb-2.5 flex items-center gap-1.5">
+        <Lightbulb size={12} className="text-special/50" />
+        <span className="text-[11px] text-special/50 tracking-wide">Insight</span>
+      </div>
+      <div className={proseClasses}>
+        <ReactMarkdown remarkPlugins={[remarkGfm]} components={insightMarkdownComponents}>
+          {text}
+        </ReactMarkdown>
       </div>
     </div>
   )
@@ -235,8 +243,8 @@ export function TextBlock({ text, isStreaming }: TextBlockProps) {
     return (
       <>
         {settled && <SettledMarkdown text={settled} />}
-        <div className="prose prose-invert prose-sm max-w-none prose-p:text-[var(--color-base-text)]">
-          <span className="whitespace-pre-wrap text-[var(--color-base-text)]">{tail}</span>
+        <div className="prose prose-invert prose-sm max-w-none prose-p:text-base-text">
+          <span className="whitespace-pre-wrap text-base-text">{tail}</span>
         </div>
       </>
     )

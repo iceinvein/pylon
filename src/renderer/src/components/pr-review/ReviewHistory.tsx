@@ -50,12 +50,10 @@ export function ReviewHistory() {
   return (
     <div>
       <div className="flex items-center gap-2 px-2.5 py-1.5">
-        <span className="font-medium text-[10px] text-[var(--color-base-text-faint)] uppercase tracking-wider">
+        <span className="font-medium text-[10px] text-base-text-faint uppercase tracking-wider">
           Past reviews
         </span>
-        <span className="text-[10px] text-[var(--color-base-text-faint)] tabular-nums">
-          {pastReviews.length}
-        </span>
+        <span className="text-[10px] text-base-text-faint tabular-nums">{pastReviews.length}</span>
       </div>
       <div className="space-y-px">
         {pastReviews.map((r) => {
@@ -69,9 +67,7 @@ export function ReviewHistory() {
             <div
               key={r.id}
               className={`group flex items-center rounded-md transition-colors ${
-                isActive
-                  ? 'bg-[var(--color-base-raised)]/60'
-                  : 'hover:bg-[var(--color-base-raised)]/30'
+                isActive ? 'bg-base-raised/60' : 'hover:bg-base-raised/30'
               }`}
             >
               <button
@@ -79,26 +75,24 @@ export function ReviewHistory() {
                 onClick={() => loadReview(r.id)}
                 className="flex min-w-0 flex-1 items-center gap-2.5 px-2.5 py-2"
               >
-                <StatusIcon size={12} className={`flex-shrink-0 ${config.color}`} />
-                <span className="text-[11px] text-[var(--color-base-text-secondary)]">
-                  {timeAgo(r.createdAt)}
-                </span>
-                <span className="truncate text-[11px] text-[var(--color-base-text-faint)]">
+                <StatusIcon size={12} className={`shrink-0 ${config.color}`} />
+                <span className="text-[11px] text-base-text-secondary">{timeAgo(r.createdAt)}</span>
+                <span className="truncate text-[11px] text-base-text-faint">
                   {r.focus.join(', ')}
                 </span>
                 {r.costUsd > 0 && (
-                  <span className="flex-shrink-0 font-mono text-[10px] text-[var(--color-base-text-faint)]">
+                  <span className="shrink-0 font-mono text-[10px] text-base-text-faint">
                     {formatCost(r.costUsd)}
                   </span>
                 )}
-                <span className={`ml-auto flex-shrink-0 font-medium text-[11px] ${config.color}`}>
+                <span className={`ml-auto shrink-0 font-medium text-[11px] ${config.color}`}>
                   {config.label(findingsCount)}
                 </span>
               </button>
               <button
                 type="button"
                 onClick={() => deleteReview(r.id)}
-                className="flex-shrink-0 p-1.5 text-[var(--color-base-text-faint)] opacity-0 transition-all hover:text-[var(--color-error)] group-hover:opacity-100"
+                className="shrink-0 p-1.5 text-base-text-faint opacity-0 transition-all hover:text-error group-hover:opacity-100"
                 title="Delete"
               >
                 <Trash2 size={10} />

@@ -75,7 +75,7 @@ export function UsageDashboard() {
 
   if (error) {
     return (
-      <div className="mt-12 flex items-center justify-center text-[var(--color-error)] text-sm">
+      <div className="mt-12 flex items-center justify-center text-error text-sm">
         Failed to load usage data. Try closing and reopening Settings.
       </div>
     )
@@ -83,7 +83,7 @@ export function UsageDashboard() {
 
   if (loading || !stats) {
     return (
-      <div className="mt-12 flex items-center justify-center text-[var(--color-base-text-muted)] text-sm">
+      <div className="mt-12 flex items-center justify-center text-base-text-muted text-sm">
         Loading usage data...
       </div>
     )
@@ -102,8 +102,8 @@ export function UsageDashboard() {
             onClick={() => setPeriod(p.id)}
             className={`rounded-md px-3 py-1.5 text-xs transition-colors ${
               period === p.id
-                ? 'bg-[var(--color-base-raised)] text-[var(--color-base-text)]'
-                : 'text-[var(--color-base-text-muted)] hover:bg-[var(--color-base-surface)] hover:text-[var(--color-base-text)]'
+                ? 'bg-base-raised text-base-text'
+                : 'text-base-text-muted hover:bg-base-surface hover:text-base-text'
             }`}
           >
             {p.label}
@@ -130,8 +130,8 @@ export function UsageDashboard() {
       {/* Cost Over Time */}
       {dailyCosts.length > 0 && (
         <section>
-          <h3 className="mb-3 font-medium text-[var(--color-base-text)] text-sm">Cost Over Time</h3>
-          <div className="rounded-lg border border-[var(--color-base-border-subtle)] bg-[var(--color-base-surface)]/50 p-4">
+          <h3 className="mb-3 font-medium text-base-text text-sm">Cost Over Time</h3>
+          <div className="rounded-lg border border-base-border-subtle bg-base-surface/50 p-4">
             <ResponsiveContainer width="100%" height={220}>
               <AreaChart data={dailyCosts}>
                 <defs>
@@ -185,10 +185,8 @@ export function UsageDashboard() {
       <div className="grid grid-cols-2 gap-4">
         {costByModel.length > 0 && (
           <section>
-            <h3 className="mb-3 font-medium text-[var(--color-base-text)] text-sm">
-              Cost by Model
-            </h3>
-            <div className="rounded-lg border border-[var(--color-base-border-subtle)] bg-[var(--color-base-surface)]/50 p-4">
+            <h3 className="mb-3 font-medium text-base-text text-sm">Cost by Model</h3>
+            <div className="rounded-lg border border-base-border-subtle bg-base-surface/50 p-4">
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={costByModel} layout="vertical">
                   <CartesianGrid strokeDasharray="3 3" stroke="#292524" horizontal={false} />
@@ -235,10 +233,8 @@ export function UsageDashboard() {
 
         {tokensByDay.length > 0 && (
           <section>
-            <h3 className="mb-3 font-medium text-[var(--color-base-text)] text-sm">
-              Tokens by Day
-            </h3>
-            <div className="rounded-lg border border-[var(--color-base-border-subtle)] bg-[var(--color-base-surface)]/50 p-4">
+            <h3 className="mb-3 font-medium text-base-text text-sm">Tokens by Day</h3>
+            <div className="rounded-lg border border-base-border-subtle bg-base-surface/50 p-4">
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={tokensByDay}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#292524" />
@@ -293,13 +289,11 @@ export function UsageDashboard() {
       {/* Cost by Project */}
       {costByProject.length > 0 && (
         <section>
-          <h3 className="mb-3 font-medium text-[var(--color-base-text)] text-sm">
-            Cost by Project
-          </h3>
-          <div className="overflow-hidden rounded-lg border border-[var(--color-base-border-subtle)] bg-[var(--color-base-surface)]/50">
+          <h3 className="mb-3 font-medium text-base-text text-sm">Cost by Project</h3>
+          <div className="overflow-hidden rounded-lg border border-base-border-subtle bg-base-surface/50">
             <table className="w-full text-xs">
               <thead>
-                <tr className="border-[var(--color-base-border-subtle)] border-b text-[var(--color-base-text-muted)]">
+                <tr className="border-base-border-subtle border-b text-base-text-muted">
                   <th className="px-4 py-2.5 text-left font-medium">Project</th>
                   <th className="px-4 py-2.5 text-right font-medium">Sessions</th>
                   <th className="px-4 py-2.5 text-right font-medium">Tokens</th>
@@ -310,29 +304,26 @@ export function UsageDashboard() {
                 {costByProject.map((p) => (
                   <tr
                     key={p.project}
-                    className="border-[var(--color-base-border-subtle)]/50 border-b text-[var(--color-base-text)] last:border-0"
+                    className="border-base-border-subtle/50 border-b text-base-text last:border-0"
                   >
                     <td className="px-4 py-2.5">
                       <div className="flex items-center gap-2">
-                        <FolderOpen
-                          size={12}
-                          className="flex-shrink-0 text-[var(--color-base-text-muted)]"
-                        />
+                        <FolderOpen size={12} className="shrink-0 text-base-text-muted" />
                         <div className="min-w-0">
                           <div className="truncate font-medium">{projectName(p.project)}</div>
-                          <div className="truncate text-[10px] text-[var(--color-base-text-faint)]">
+                          <div className="truncate text-[10px] text-base-text-faint">
                             {p.project}
                           </div>
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-2.5 text-right text-[var(--color-base-text-secondary)]">
+                    <td className="px-4 py-2.5 text-right text-base-text-secondary">
                       {p.sessions}
                     </td>
-                    <td className="px-4 py-2.5 text-right text-[var(--color-base-text-secondary)]">
+                    <td className="px-4 py-2.5 text-right text-base-text-secondary">
                       {formatTokens(p.inputTokens + p.outputTokens)}
                     </td>
-                    <td className="px-4 py-2.5 text-right font-mono text-[var(--color-warning)]/80">
+                    <td className="px-4 py-2.5 text-right font-mono text-warning/80">
                       {formatCost(p.cost)}
                     </td>
                   </tr>
@@ -346,13 +337,11 @@ export function UsageDashboard() {
       {/* Top Sessions Table */}
       {topSessions.length > 0 && (
         <section>
-          <h3 className="mb-3 font-medium text-[var(--color-base-text)] text-sm">
-            Most Expensive Sessions
-          </h3>
-          <div className="overflow-hidden rounded-lg border border-[var(--color-base-border-subtle)] bg-[var(--color-base-surface)]/50">
+          <h3 className="mb-3 font-medium text-base-text text-sm">Most Expensive Sessions</h3>
+          <div className="overflow-hidden rounded-lg border border-base-border-subtle bg-base-surface/50">
             <table className="w-full text-xs">
               <thead>
-                <tr className="border-[var(--color-base-border-subtle)] border-b text-[var(--color-base-text-muted)]">
+                <tr className="border-base-border-subtle border-b text-base-text-muted">
                   <th className="px-4 py-2.5 text-left font-medium">Session</th>
                   <th className="px-4 py-2.5 text-left font-medium">Model</th>
                   <th className="px-4 py-2.5 text-right font-medium">Tokens</th>
@@ -364,19 +353,19 @@ export function UsageDashboard() {
                 {topSessions.map((s) => (
                   <tr
                     key={s.id}
-                    className="border-[var(--color-base-border-subtle)]/50 border-b text-[var(--color-base-text)] last:border-0"
+                    className="border-base-border-subtle/50 border-b text-base-text last:border-0"
                   >
-                    <td className="max-w-[200px] truncate px-4 py-2.5">{s.title || 'Untitled'}</td>
-                    <td className="px-4 py-2.5 text-[var(--color-base-text-secondary)]">
+                    <td className="max-w-50 truncate px-4 py-2.5">{s.title || 'Untitled'}</td>
+                    <td className="px-4 py-2.5 text-base-text-secondary">
                       {MODEL_LABELS[s.model] ?? s.model}
                     </td>
-                    <td className="px-4 py-2.5 text-right text-[var(--color-base-text-secondary)]">
+                    <td className="px-4 py-2.5 text-right text-base-text-secondary">
                       {formatTokens(s.inputTokens + s.outputTokens)}
                     </td>
-                    <td className="px-4 py-2.5 text-right font-mono text-[var(--color-warning)]/80">
+                    <td className="px-4 py-2.5 text-right font-mono text-warning/80">
                       {formatCost(s.cost)}
                     </td>
-                    <td className="px-4 py-2.5 text-right text-[var(--color-base-text-muted)]">
+                    <td className="px-4 py-2.5 text-right text-base-text-muted">
                       {timeAgo(s.createdAt)}
                     </td>
                   </tr>
@@ -389,7 +378,7 @@ export function UsageDashboard() {
 
       {/* Empty State */}
       {summary.sessionCount === 0 && (
-        <div className="mt-8 text-center text-[var(--color-base-text-muted)] text-sm">
+        <div className="mt-8 text-center text-base-text-muted text-sm">
           No usage data yet. Start a session to see analytics here.
         </div>
       )}
@@ -407,12 +396,12 @@ function SummaryCard({
   value: string
 }) {
   return (
-    <div className="rounded-lg border border-[var(--color-base-border-subtle)] bg-[var(--color-base-surface)]/50 px-4 py-3">
-      <div className="flex items-center gap-1.5 text-[var(--color-base-text-muted)]">
+    <div className="rounded-lg border border-base-border-subtle bg-base-surface/50 px-4 py-3">
+      <div className="flex items-center gap-1.5 text-base-text-muted">
         <Icon size={12} />
         <span className="text-xs">{label}</span>
       </div>
-      <div className="mt-1 font-medium text-[var(--color-base-text)] text-sm">{value}</div>
+      <div className="mt-1 font-medium text-base-text text-sm">{value}</div>
     </div>
   )
 }

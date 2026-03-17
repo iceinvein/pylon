@@ -49,11 +49,11 @@ export function GitGraphTab({ cwd }: GitGraphTabProps) {
   if (error) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-2 p-4">
-        <p className="text-[var(--color-error)] text-xs">{error}</p>
+        <p className="text-error text-xs">{error}</p>
         <button
           type="button"
           onClick={() => fetchGraph(cwd)}
-          className="rounded bg-[var(--color-base-raised)] px-3 py-1 text-[var(--color-base-text)] text-xs hover:bg-[var(--color-base-border)]"
+          className="rounded bg-base-raised px-3 py-1 text-base-text text-xs hover:bg-base-border"
         >
           Retry
         </button>
@@ -64,23 +64,21 @@ export function GitGraphTab({ cwd }: GitGraphTabProps) {
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="flex items-center gap-2 border-[var(--color-base-border-subtle)] border-b px-3 py-1.5">
+      <div className="flex items-center gap-2 border-base-border-subtle border-b px-3 py-1.5">
         {currentBranch && (
-          <span className="flex items-center gap-1.5 text-[var(--color-warning)] text-xs">
+          <span className="flex items-center gap-1.5 text-warning text-xs">
             <GitBranch size={11} />
             <span className="truncate">{currentBranch.name}</span>
           </span>
         )}
-        <span className="ml-auto text-[10px] text-[var(--color-base-text-faint)]">
-          {commits.length} commits
-        </span>
+        <span className="ml-auto text-[10px] text-base-text-faint">{commits.length} commits</span>
         <button
           type="button"
           onClick={() => {
             fetchGraph(cwd)
             fetchBranches(cwd)
           }}
-          className="rounded p-1 text-[var(--color-base-text-muted)] hover:bg-[var(--color-base-raised)] hover:text-[var(--color-base-text)]"
+          className="rounded p-1 text-base-text-muted hover:bg-base-raised hover:text-base-text"
         >
           <RefreshCw size={11} className={loading ? 'animate-spin' : ''} />
         </button>
@@ -104,8 +102,8 @@ export function GitGraphTab({ cwd }: GitGraphTabProps) {
               key={commit.hash}
               type="button"
               onClick={() => selectCommit(selectedCommit === commit.hash ? null : commit.hash)}
-              className={`absolute right-0 left-0 flex items-center overflow-hidden text-left transition-colors hover:bg-[var(--color-base-raised)]/50 ${
-                selectedCommit === commit.hash ? 'bg-[var(--color-base-raised)]/70' : ''
+              className={`absolute right-0 left-0 flex items-center overflow-hidden text-left transition-colors hover:bg-base-raised/50 ${
+                selectedCommit === commit.hash ? 'bg-base-raised/70' : ''
               }`}
               style={{
                 top: i * GRAPH_CONSTANTS.ROW_HEIGHT,
@@ -114,21 +112,21 @@ export function GitGraphTab({ cwd }: GitGraphTabProps) {
                 paddingRight: 8,
               }}
             >
-              <span className="min-w-0 flex-1 truncate text-[var(--color-base-text)] text-xs">
+              <span className="min-w-0 flex-1 truncate text-base-text text-xs">
                 {commit.message}
               </span>
-              <span className="ml-2 flex-shrink-0 font-[family-name:var(--font-mono)] text-[10px] text-[var(--color-base-text-faint)]">
+              <span className="ml-2 shrink-0 font-mono text-[10px] text-base-text-faint">
                 {commit.shortHash}
               </span>
               {commit.refs.length > 0 && (
-                <div className="ml-1.5 flex flex-shrink-0 gap-1">
+                <div className="ml-1.5 flex shrink-0 gap-1">
                   {commit.refs.slice(0, 2).map((ref) => (
                     <span
                       key={ref.name}
                       className={`whitespace-nowrap rounded px-1 py-0.5 text-[9px] ${
                         ref.isCurrent
-                          ? 'bg-[var(--color-accent-muted)]/50 text-[var(--color-warning)]'
-                          : 'bg-[var(--color-base-raised)] text-[var(--color-base-text-muted)]'
+                          ? 'bg-accent-muted/50 text-warning'
+                          : 'bg-base-raised text-base-text-muted'
                       }`}
                     >
                       {ref.name}
@@ -142,7 +140,7 @@ export function GitGraphTab({ cwd }: GitGraphTabProps) {
 
         {loading && (
           <div className="flex justify-center py-4">
-            <Loader2 size={14} className="animate-spin text-[var(--color-base-text-faint)]" />
+            <Loader2 size={14} className="animate-spin text-base-text-faint" />
           </div>
         )}
       </div>

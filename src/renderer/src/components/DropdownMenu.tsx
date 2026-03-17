@@ -56,7 +56,7 @@ export function DropdownMenu({
         onClick={() => setOpen((v) => !v)}
         className={
           triggerClassName ??
-          'flex h-7 items-center gap-1 rounded-full border border-[var(--color-base-border)]/50 px-2.5 text-[var(--color-base-text-secondary)] text-xs transition-colors hover:border-[var(--color-base-border)] hover:text-[var(--color-base-text)]'
+          'flex h-7 items-center gap-1 rounded-full border border-base-border/50 px-2.5 text-base-text-secondary text-xs transition-colors hover:border-base-border hover:text-base-text'
         }
       >
         {triggerIcon}
@@ -66,7 +66,7 @@ export function DropdownMenu({
       <AnimatePresence>
         {open && (
           <motion.div
-            className="absolute bottom-full left-0 z-50 mb-1 overflow-hidden rounded-lg border border-[var(--color-base-border)] bg-[var(--color-base-raised)] py-1 shadow-xl"
+            className="absolute bottom-full left-0 z-50 mb-1 overflow-hidden rounded-lg border border-base-border bg-base-raised py-1 shadow-xl"
             style={{ minWidth }}
             initial={{ opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
@@ -81,14 +81,12 @@ export function DropdownMenu({
                   onChange(item.id)
                   setOpen(false)
                 }}
-                className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs transition-colors hover:bg-[var(--color-base-border)]/50 ${
-                  item.id === value
-                    ? 'text-[var(--color-base-text)]'
-                    : 'text-[var(--color-base-text-secondary)]'
+                className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs transition-colors hover:bg-base-border/50 ${
+                  item.id === value ? 'text-base-text' : 'text-base-text-secondary'
                 }`}
               >
                 <span
-                  className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${item.id === value ? 'bg-[var(--color-accent)]' : 'bg-transparent'}`}
+                  className={`h-1.5 w-1.5 shrink-0 rounded-full ${item.id === value ? 'bg-accent' : 'bg-transparent'}`}
                 />
                 {item.icon}
                 {item.label}

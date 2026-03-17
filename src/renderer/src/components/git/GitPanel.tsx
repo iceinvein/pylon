@@ -23,9 +23,7 @@ export function GitPanel() {
   if (!cwd) {
     return (
       <div className="flex h-full items-center justify-center p-4">
-        <p className="text-[var(--color-base-text-faint)] text-xs">
-          Open a project to use Git tools
-        </p>
+        <p className="text-base-text-faint text-xs">Open a project to use Git tools</p>
       </div>
     )
   }
@@ -33,7 +31,7 @@ export function GitPanel() {
   return (
     <div className="flex h-full flex-col">
       {/* Tab strip */}
-      <div className="flex border-[var(--color-base-border-subtle)] border-b">
+      <div className="flex border-base-border-subtle border-b">
         {TAB_CONFIG.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
@@ -41,8 +39,8 @@ export function GitPanel() {
             onClick={() => setActiveTab(id)}
             className={`flex flex-1 items-center justify-center gap-1.5 px-3 py-2.5 text-xs transition-colors ${
               activeTab === id
-                ? 'border-[var(--color-accent)] border-b-2 text-[var(--color-base-text)]'
-                : 'text-[var(--color-base-text-muted)] hover:text-[var(--color-base-text)]'
+                ? 'border-accent border-b-2 text-base-text'
+                : 'text-base-text-muted hover:text-base-text'
             }`}
           >
             <Icon size={13} />

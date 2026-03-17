@@ -84,9 +84,9 @@ export function FindingCard({ finding, checked, isPosting, onToggle, onPost }: P
     >
       <div className="flex gap-3 p-3">
         {/* Checkbox / Posting spinner / Posted indicator */}
-        <div className="flex flex-shrink-0 flex-col items-center gap-1 pt-0.5">
+        <div className="flex shrink-0 flex-col items-center gap-1 pt-0.5">
           {isPosting ? (
-            <Loader2 size={14} className="animate-spin text-[var(--color-base-text-secondary)]" />
+            <Loader2 size={14} className="animate-spin text-base-text-secondary" />
           ) : finding.posted ? (
             <CheckCircle2 size={14} className="text-emerald-500" />
           ) : (
@@ -94,7 +94,7 @@ export function FindingCard({ finding, checked, isPosting, onToggle, onPost }: P
               type="checkbox"
               checked={checked}
               onChange={onToggle}
-              className="h-3.5 w-3.5 rounded border-[var(--color-base-border)] bg-[var(--color-base-raised)] accent-[var(--color-accent)]"
+              className="h-3.5 w-3.5 rounded border-base-border bg-base-raised accent-accent"
             />
           )}
         </div>
@@ -106,7 +106,7 @@ export function FindingCard({ finding, checked, isPosting, onToggle, onPost }: P
           <div className="flex items-start gap-2">
             <Icon
               size={13}
-              className={`mt-0.5 flex-shrink-0 ${finding.posted ? 'text-emerald-500' : style.text}`}
+              className={`mt-0.5 shrink-0 ${finding.posted ? 'text-emerald-500' : style.text}`}
             />
             <div className="min-w-0 flex-1">
               <div className="flex items-baseline gap-2">
@@ -115,24 +115,22 @@ export function FindingCard({ finding, checked, isPosting, onToggle, onPost }: P
                 >
                   {finding.posted ? 'Posted' : style.label}
                 </span>
-                <span className="font-medium text-[var(--color-base-text)] text-xs">
-                  {finding.title}
-                </span>
+                <span className="font-medium text-base-text text-xs">{finding.title}</span>
                 {finding.domain && (
-                  <span className="rounded bg-[var(--color-base-raised)] px-1.5 py-0.5 font-medium text-[9px] text-[var(--color-base-text-muted)] uppercase tracking-wider">
+                  <span className="rounded bg-base-raised px-1.5 py-0.5 font-medium text-[9px] text-base-text-muted uppercase tracking-wider">
                     {DOMAIN_LABELS[finding.domain] ?? finding.domain}
                   </span>
                 )}
               </div>
               {finding.file && (
-                <div className="mt-0.5 font-[family-name:var(--font-mono)] text-[11px] text-[var(--color-base-text-muted)]">
+                <div className="mt-0.5 font-mono text-[11px] text-base-text-muted">
                   {finding.file}
                   {finding.line ? `:${finding.line}` : ''}
                 </div>
               )}
             </div>
           </div>
-          <p className="mt-2 pl-5 text-[var(--color-base-text-secondary)] text-xs leading-relaxed">
+          <p className="mt-2 pl-5 text-base-text-secondary text-xs leading-relaxed">
             {finding.description}
           </p>
         </div>
@@ -143,7 +141,7 @@ export function FindingCard({ finding, checked, isPosting, onToggle, onPost }: P
             type="button"
             onClick={onPost}
             title="Post this finding"
-            className="flex-shrink-0 self-start rounded p-1.5 text-[var(--color-base-text-faint)] opacity-0 transition-all hover:bg-[var(--color-base-border)]/50 hover:text-[var(--color-base-text)] group-hover:opacity-100"
+            className="shrink-0 self-start rounded p-1.5 text-base-text-faint opacity-0 transition-all hover:bg-base-border/50 hover:text-base-text group-hover:opacity-100"
           >
             <Send size={12} />
           </button>

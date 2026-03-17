@@ -71,8 +71,9 @@ class ServerManager {
 
     const url = `http://localhost:${port}`
 
-    // Wait for server to be ready
-    await waitForServer(url, child)
+    // Wait for server to be ready — check both IPv4 and IPv6 to handle
+    // servers that bind to either address family
+    await waitForServer(port, child)
 
     const managed: ManagedServer = { refCount: 1, port, process: child, url }
     this.servers.set(cwd, managed)
@@ -167,9 +168,25 @@ export async function findFreePort(startPort: number): Promise<number> {
   )
 }
 
-function checkPort(port: number): Promise<boolean> {
+/**
+ * Check if a port is in use on BOTH IPv4 (127.0.0.1) and IPv6 (::1).
+ *
+ * On modern macOS/Linux, `localhost` may resolve to `::1` first.
+ * Tools like Vite bind to `localhost` which means `::1` — so a check
+ * against only `127.0.0.1` would miss them (ECONNREFUSED), wrongly
+ * reporting the port as free. We check both address families.
+ */
+async function checkPort(port: number): Promise<boolean> {
+  const [v4, v6] = await Promise.all([
+    checkPortOnHost(port, '127.0.0.1'),
+    checkPortOnHost(port, '::1'),
+  ])
+  return v4 || v6
+}
+
+function checkPortOnHost(port: number, host: string): Promise<boolean> {
   return new Promise((resolve) => {
-    const conn = createConnection({ port, host: '127.0.0.1' })
+    const conn = createConnection({ port, host })
     conn.on('connect', () => {
       conn.destroy()
       resolve(true)
@@ -182,9 +199,17 @@ function checkPort(port: number): Promise<boolean> {
   })
 }
 
-async function waitForServer(url: string, child: ChildProcess): Promise<void> {
+/**
+ * Wait for a server to become ready on the given port.
+ *
+ * Checks both IPv4 and IPv6 loopback addresses since the server
+ * may bind to either. Uses explicit IP addresses to avoid accidentally
+ * connecting to a DIFFERENT server on localhost via DNS resolution.
+ */
+async function waitForServer(port: number, child: ChildProcess): Promise<void> {
   const start = Date.now()
   let delay = HEALTH_CHECK_INITIAL_MS
+  const urls = [`http://127.0.0.1:${port}`, `http://[::1]:${port}`]
 
   while (Date.now() - start < HEALTH_CHECK_TIMEOUT_MS) {
     // Check if child process died
@@ -192,20 +217,28 @@ async function waitForServer(url: string, child: ChildProcess): Promise<void> {
       throw new Error(`Dev server exited with code ${child.exitCode} before becoming ready`)
     }
 
-    try {
-      const response = await fetch(url, { signal: AbortSignal.timeout(2000) })
-      if (response.ok || response.status < 500) {
+    // Try both IPv4 and IPv6 — server is ready if either responds
+    const results = await Promise.allSettled(
+      urls.map((url) =>
+        fetch(url, { signal: AbortSignal.timeout(2000) }).then((r) => ({
+          ok: r.ok || r.status < 500,
+        })),
+      ),
+    )
+
+    for (const result of results) {
+      if (result.status === 'fulfilled' && result.value.ok) {
         return // Server is ready
       }
-    } catch {
-      // Not ready yet — retry
     }
 
     await new Promise((resolve) => setTimeout(resolve, delay))
     delay = Math.min(delay * 2, HEALTH_CHECK_MAX_MS)
   }
 
-  throw new Error(`Dev server did not respond at ${url} within ${HEALTH_CHECK_TIMEOUT_MS / 1000}s`)
+  throw new Error(
+    `Dev server did not respond on port ${port} within ${HEALTH_CHECK_TIMEOUT_MS / 1000}s`,
+  )
 }
 
 export const serverManager = new ServerManager()

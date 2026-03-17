@@ -32,7 +32,7 @@ export function PrRaiseFiles({ info }: Props) {
   return (
     <div className="flex h-full min-h-0">
       {/* File tree */}
-      <div className="w-56 flex-shrink-0 overflow-y-auto border-[var(--color-base-border-subtle)] border-r">
+      <div className="w-56 shrink-0 overflow-y-auto border-base-border-subtle border-r">
         {info.files.map((file) => (
           <button
             key={file.path}
@@ -40,21 +40,15 @@ export function PrRaiseFiles({ info }: Props) {
             onClick={() => setSelectedFile(file.path)}
             className={`flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors ${
               activeFile === file.path
-                ? 'bg-[var(--color-base-raised)] text-[var(--color-base-text)]'
-                : 'text-[var(--color-base-text-secondary)] hover:bg-[var(--color-base-raised)]/50 hover:text-[var(--color-base-text)]'
+                ? 'bg-base-raised text-base-text'
+                : 'text-base-text-secondary hover:bg-base-raised/50 hover:text-base-text'
             }`}
           >
-            <FileText size={12} className="flex-shrink-0 text-[var(--color-base-text-faint)]" />
-            <span className="min-w-0 truncate font-[family-name:var(--font-mono)]">
-              {file.path.split('/').pop()}
-            </span>
+            <FileText size={12} className="shrink-0 text-base-text-faint" />
+            <span className="min-w-0 truncate font-mono">{file.path.split('/').pop()}</span>
             <span className="ml-auto flex gap-1 text-[10px]">
-              {file.insertions > 0 && (
-                <span className="text-[var(--color-success)]">+{file.insertions}</span>
-              )}
-              {file.deletions > 0 && (
-                <span className="text-[var(--color-error)]">-{file.deletions}</span>
-              )}
+              {file.insertions > 0 && <span className="text-success">+{file.insertions}</span>}
+              {file.deletions > 0 && <span className="text-error">-{file.deletions}</span>}
             </span>
           </button>
         ))}
@@ -63,54 +57,51 @@ export function PrRaiseFiles({ info }: Props) {
       {/* Diff viewer */}
       <div className="min-w-0 flex-1 overflow-y-auto">
         {activeFile && (
-          <div className="border-[var(--color-base-border-subtle)] border-b bg-[var(--color-base-surface)]/30 px-4 py-2 font-[family-name:var(--font-mono)] text-[12px] text-[var(--color-base-text-secondary)]">
+          <div className="border-base-border-subtle border-b bg-base-surface/30 px-4 py-2 font-mono text-[12px] text-base-text-secondary">
             {activeFile}
           </div>
         )}
-        <div className="font-[family-name:var(--font-mono)] text-[12px] leading-5">
+        <div className="font-mono text-[12px] leading-5">
           {hunks.length === 0 ? (
-            <div className="flex items-center justify-center py-12 text-[var(--color-base-text-faint)] text-xs">
+            <div className="flex items-center justify-center py-12 text-base-text-faint text-xs">
               {activeFile ? 'Binary file or no diff available' : 'Select a file'}
             </div>
           ) : (
             hunks.map((hunk, hi) => (
-              <div
-                key={hi}
-                className="border-[var(--color-base-border-subtle)]/40 border-b last:border-b-0"
-              >
+              <div key={hi} className="border-base-border-subtle/40 border-b last:border-b-0">
                 {hunk.lines.map((line, li) => (
                   <div
                     key={`${hi}-${li}`}
                     className={`flex ${
                       line.type === 'added'
-                        ? 'bg-[var(--color-success)]/15'
+                        ? 'bg-success/15'
                         : line.type === 'removed'
-                          ? 'bg-[var(--color-error)]/15'
+                          ? 'bg-error/15'
                           : ''
                     }`}
                   >
-                    <span className="w-12 flex-shrink-0 select-none px-2 text-right text-[var(--color-base-text-faint)]">
+                    <span className="w-12 shrink-0 select-none px-2 text-right text-base-text-faint">
                       {line.oldLineNo ?? ''}
                     </span>
-                    <span className="w-12 flex-shrink-0 select-none px-2 text-right text-[var(--color-base-text-faint)]">
+                    <span className="w-12 shrink-0 select-none px-2 text-right text-base-text-faint">
                       {line.newLineNo ?? ''}
                     </span>
-                    <span className="w-5 flex-shrink-0 select-none text-center">
+                    <span className="w-5 shrink-0 select-none text-center">
                       {line.type === 'added' ? (
-                        <span className="text-[var(--color-success)]">+</span>
+                        <span className="text-success">+</span>
                       ) : line.type === 'removed' ? (
-                        <span className="text-[var(--color-error)]">-</span>
+                        <span className="text-error">-</span>
                       ) : (
-                        <span className="text-[var(--color-base-text-faint)]"> </span>
+                        <span className="text-base-text-faint"> </span>
                       )}
                     </span>
                     <span
                       className={`min-w-0 flex-1 whitespace-pre-wrap break-all pr-4 ${
                         line.type === 'added'
-                          ? 'text-[var(--color-success)]'
+                          ? 'text-success'
                           : line.type === 'removed'
-                            ? 'text-[var(--color-error)]'
-                            : 'text-[var(--color-base-text-secondary)]'
+                            ? 'text-error'
+                            : 'text-base-text-secondary'
                       }`}
                     >
                       {line.content}

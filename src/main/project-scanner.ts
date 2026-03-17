@@ -124,9 +124,21 @@ export function scanProject(cwd: string): ProjectScan {
   return result
 }
 
-export function checkPortInUse(port: number): Promise<boolean> {
+/**
+ * Check if a port is in use on either IPv4 or IPv6 loopback.
+ * Modern tools (Vite, Next.js) may bind to `::1` only when using `localhost`.
+ */
+export async function checkPortInUse(port: number): Promise<boolean> {
+  const [v4, v6] = await Promise.all([
+    checkPortOnHost(port, '127.0.0.1'),
+    checkPortOnHost(port, '::1'),
+  ])
+  return v4 || v6
+}
+
+function checkPortOnHost(port: number, host: string): Promise<boolean> {
   return new Promise((resolve) => {
-    const conn = createConnection({ port, host: '127.0.0.1' })
+    const conn = createConnection({ port, host })
     conn.on('connect', () => {
       conn.destroy()
       resolve(true)

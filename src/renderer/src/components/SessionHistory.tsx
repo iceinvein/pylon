@@ -35,7 +35,7 @@ export function SessionHistory() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-8 text-[var(--color-base-text-faint)] text-sm">
+      <div className="flex items-center justify-center py-8 text-base-text-faint text-sm">
         Loading...
       </div>
     )
@@ -51,21 +51,21 @@ export function SessionHistory() {
           type="button"
           key={session.id}
           onClick={() => handleResume(session)}
-          className="group flex w-full items-start gap-3 rounded-lg p-3 text-left transition-colors hover:bg-[var(--color-base-raised)]"
+          className="group flex w-full items-start gap-3 rounded-lg p-3 text-left transition-colors hover:bg-base-raised"
         >
-          <Folder size={14} className="mt-0.5 flex-shrink-0 text-[var(--color-base-text-muted)]" />
+          <Folder size={14} className="mt-0.5 shrink-0 text-base-text-muted" />
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[var(--color-base-text)] text-sm">
+            <p className="truncate text-base-text text-sm">
               {session.title || session.cwd.split('/').pop() || 'Untitled'}
             </p>
-            <p className="truncate text-[var(--color-base-text-muted)] text-xs">{session.cwd}</p>
+            <p className="truncate text-base-text-muted text-xs">{session.cwd}</p>
             <div className="mt-1 flex items-center gap-3">
-              <span className="flex items-center gap-1 text-[var(--color-base-text-faint)] text-xs">
+              <span className="flex items-center gap-1 text-base-text-faint text-xs">
                 <Clock size={10} />
                 {timeAgo(session.updated_at)}
               </span>
               {session.total_cost_usd > 0 && (
-                <span className="flex items-center gap-1 text-[var(--color-base-text-faint)] text-xs">
+                <span className="flex items-center gap-1 text-base-text-faint text-xs">
                   <DollarSign size={10} />
                   {formatCost(session.total_cost_usd)}
                 </span>
@@ -75,7 +75,7 @@ export function SessionHistory() {
           <button
             type="button"
             onClick={(e) => handleDelete(e, session.id)}
-            className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded text-[var(--color-base-text-faint)] opacity-0 transition-all hover:bg-[var(--color-base-border)] hover:text-[var(--color-error)] group-hover:opacity-100"
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-base-text-faint opacity-0 transition-all hover:bg-base-border hover:text-error group-hover:opacity-100"
           >
             <Trash2 size={12} />
           </button>

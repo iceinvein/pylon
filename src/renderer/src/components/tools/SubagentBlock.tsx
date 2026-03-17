@@ -133,25 +133,25 @@ export function SubagentBlock({
         <motion.span
           animate={{ rotate: expanded ? 90 : 0 }}
           transition={{ duration: 0.15 }}
-          className="flex-shrink-0 text-[var(--color-base-text-faint)]"
+          className="shrink-0 text-base-text-faint"
         >
           <ChevronRight size={14} />
         </motion.span>
-        <Bot size={14} className="flex-shrink-0 text-[var(--color-info)]" />
-        <span className="font-medium text-[var(--color-base-text)] text-sm">{agentType}</span>
+        <Bot size={14} className="shrink-0 text-info" />
+        <span className="font-medium text-base-text text-sm">{agentType}</span>
         <StatusIcon
           size={12}
-          className={`flex-shrink-0 ${statusColor} ${status === 'running' ? 'animate-spin' : ''}`}
+          className={`shrink-0 ${statusColor} ${status === 'running' ? 'animate-spin' : ''}`}
         />
         {!expanded && (
           <>
             {status === 'done' && toolUseCount > 0 && (
-              <span className="text-[var(--color-base-text-faint)] text-xs">
+              <span className="text-base-text-faint text-xs">
                 {toolUseCount} tool{toolUseCount !== 1 ? 's' : ''}
               </span>
             )}
             {preview && (
-              <span className="min-w-0 flex-1 truncate text-[var(--color-base-text-muted)] text-sm italic">
+              <span className="min-w-0 flex-1 truncate text-base-text-muted text-sm italic">
                 {preview}
               </span>
             )}
@@ -169,14 +169,14 @@ export function SubagentBlock({
             transition={{ duration: 0.2, ease: 'easeOut' }}
             className="overflow-hidden"
           >
-            <div className="ml-5 max-h-96 overflow-y-auto border-[var(--color-info)]/30 border-l-2 pt-1 pl-3">
+            <div className="ml-5 max-h-96 overflow-y-auto border-info/30 border-l-2 pt-1 pl-3">
               {/* Prompt */}
               {prompt && (
-                <div className="mb-2 rounded bg-[var(--color-base-surface)]/40 px-3 py-2">
-                  <p className="mb-1 font-medium text-[10px] text-[var(--color-base-text-faint)] uppercase tracking-wider">
+                <div className="mb-2 rounded bg-base-surface/40 px-3 py-2">
+                  <p className="mb-1 font-medium text-[10px] text-base-text-faint uppercase tracking-wider">
                     Prompt
                   </p>
-                  <p className="whitespace-pre-wrap text-[var(--color-base-text-secondary)] text-xs leading-relaxed">
+                  <p className="whitespace-pre-wrap text-base-text-secondary text-xs leading-relaxed">
                     {prompt}
                   </p>
                 </div>
@@ -232,17 +232,17 @@ export function SubagentBlock({
               {streamingText && (
                 <div className="py-1">
                   <TextBlock text={streamingText} isStreaming />
-                  <span className="inline-block h-3.5 w-0.5 animate-pulse bg-[var(--color-info)] align-text-bottom" />
+                  <span className="inline-block h-3.5 w-0.5 animate-pulse bg-info align-text-bottom" />
                 </div>
               )}
 
               {/* Final result (returned to parent as tool_result) */}
               {result && status !== 'running' && (
-                <div className="mt-1 mb-1 rounded bg-[var(--color-base-surface)]/40 px-3 py-2">
-                  <p className="mb-1 font-medium text-[10px] text-[var(--color-base-text-faint)] uppercase tracking-wider">
+                <div className="mt-1 mb-1 rounded bg-base-surface/40 px-3 py-2">
+                  <p className="mb-1 font-medium text-[10px] text-base-text-faint uppercase tracking-wider">
                     Result
                   </p>
-                  <div className="text-[var(--color-base-text-secondary)] text-xs leading-relaxed">
+                  <div className="text-base-text-secondary text-xs leading-relaxed">
                     <TextBlock text={result} />
                   </div>
                 </div>

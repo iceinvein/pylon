@@ -16,16 +16,16 @@ export function ThinkingBlock({ thinking }: ThinkingBlockProps) {
         className="flex w-full items-center gap-2 py-0.5 text-left"
       >
         {expanded ? (
-          <ChevronDown size={14} className="flex-shrink-0 text-[var(--color-base-text-faint)]" />
+          <ChevronDown size={14} className="shrink-0 text-base-text-faint" />
         ) : (
-          <ChevronRight size={14} className="flex-shrink-0 text-[var(--color-base-text-faint)]" />
+          <ChevronRight size={14} className="shrink-0 text-base-text-faint" />
         )}
-        <CircleDot size={14} className="flex-shrink-0 text-[var(--color-base-text-muted)]" />
-        <span className="font-medium text-[var(--color-base-text)] text-sm">Thinking</span>
+        <CircleDot size={14} className="shrink-0 text-base-text-muted" />
+        <span className="font-medium text-base-text text-sm">Thinking</span>
       </button>
       {expanded && (
-        <div className="mt-1 ml-8 rounded border border-[var(--color-base-border-subtle)] bg-[var(--color-base-surface)]/50 px-3 py-2">
-          <p className="whitespace-pre-wrap text-[var(--color-base-text-secondary)] text-xs leading-relaxed">
+        <div className="mt-1 ml-8 rounded border border-base-border-subtle bg-base-surface/50 px-3 py-2">
+          <p className="whitespace-pre-wrap text-base-text-secondary text-xs leading-relaxed">
             {thinking}
           </p>
         </div>

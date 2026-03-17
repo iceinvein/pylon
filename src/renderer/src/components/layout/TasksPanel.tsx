@@ -12,11 +12,9 @@ type TasksPanelProps = {
 }
 
 function TaskIcon({ status }: { status: TaskItem['status'] }) {
-  if (status === 'completed')
-    return <CheckCircle size={11} className="text-[var(--color-success)]" />
-  if (status === 'in_progress')
-    return <Loader size={11} className="animate-spin text-[var(--color-warning)]" />
-  return <Circle size={11} className="text-[var(--color-base-text-faint)]" />
+  if (status === 'completed') return <CheckCircle size={11} className="text-success" />
+  if (status === 'in_progress') return <Loader size={11} className="animate-spin text-warning" />
+  return <Circle size={11} className="text-base-text-faint" />
 }
 
 export function TasksPanel({ sessionId, isProcessing, isCompacting }: TasksPanelProps) {
@@ -47,12 +45,12 @@ export function TasksPanel({ sessionId, isProcessing, isCompacting }: TasksPanel
           <button
             type="button"
             onClick={() => setExpanded((v) => !v)}
-            className="flex flex-shrink-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] text-[var(--color-base-text-muted)] transition-colors hover:bg-[var(--color-base-raised)]/50"
+            className="flex shrink-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] text-base-text-muted transition-colors hover:bg-base-raised/50"
           >
             {/* Tiny progress bar */}
-            <div className="h-1 w-8 overflow-hidden rounded-full bg-[var(--color-base-raised)]">
+            <div className="h-1 w-8 overflow-hidden rounded-full bg-base-raised">
               <motion.div
-                className={`h-full rounded-full ${allDone ? 'bg-[var(--color-success)]' : 'bg-[var(--color-accent)]'}`}
+                className={`h-full rounded-full ${allDone ? 'bg-success' : 'bg-accent'}`}
                 animate={{ width: `${total > 0 ? (completed / total) * 100 : 0}%` }}
                 transition={{ duration: 0.3, ease: 'easeOut' }}
               />
@@ -85,16 +83,16 @@ export function TasksPanel({ sessionId, isProcessing, isCompacting }: TasksPanel
             <div className="max-h-32 space-y-0.5 overflow-y-auto pb-1.5 pl-1">
               {tasks.map((task) => (
                 <div key={task.id} className="flex items-start gap-1.5 py-0.5">
-                  <span className="mt-px flex-shrink-0">
+                  <span className="mt-px shrink-0">
                     <TaskIcon status={task.status} />
                   </span>
                   <span
                     className={`text-[11px] leading-relaxed ${
                       task.status === 'completed'
-                        ? 'text-[var(--color-base-text-faint)] line-through'
+                        ? 'text-base-text-faint line-through'
                         : task.status === 'in_progress'
-                          ? 'text-[var(--color-base-text)]'
-                          : 'text-[var(--color-base-text-secondary)]'
+                          ? 'text-base-text'
+                          : 'text-base-text-secondary'
                     }`}
                   >
                     {task.status === 'in_progress' && task.activeForm

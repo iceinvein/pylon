@@ -87,8 +87,8 @@ export function ThinkingIndicator({ isCompacting }: ThinkingIndicatorProps) {
 
   return (
     <span>
-      <span className="text-[var(--color-base-text-muted)] text-xs">{displayText}</span>
-      <span className="inline-block h-3 w-0.5 animate-pulse bg-[var(--color-accent)] align-text-bottom" />
+      <span className="text-base-text-muted text-xs">{displayText}</span>
+      <span className="inline-block h-3 w-0.5 animate-pulse bg-accent align-text-bottom" />
     </span>
   )
 }

@@ -23,7 +23,7 @@ function BranchIndicator({ status }: { status: GitBranchStatus }) {
 
   return (
     <span className={`flex items-center gap-1.5 text-xs ${textColor}`}>
-      <GitBranch size={12} className="flex-shrink-0" />
+      <GitBranch size={12} className="shrink-0" />
       {parts.join(' ')}
     </span>
   )
@@ -35,17 +35,15 @@ export function StatusBar({ cwd: _cwd, branchStatus }: StatusBarProps) {
   const isGitOpen = sidebarView === 'git'
 
   if (!branchStatus?.isGitRepo || !branchStatus.branch) {
-    return (
-      <div className="h-6 border-[var(--color-base-border-subtle)] border-t bg-[var(--color-base-bg)]" />
-    )
+    return <div className="h-6 border-base-border-subtle border-t bg-base-bg" />
   }
 
   return (
-    <div className="flex h-6 items-center border-[var(--color-base-border-subtle)] border-t bg-[var(--color-base-bg)] px-3">
+    <div className="flex h-6 items-center border-base-border-subtle border-t bg-base-bg px-3">
       <button
         type="button"
         onClick={() => setSidebarView(isGitOpen ? 'home' : 'git')}
-        className={`rounded px-1 py-0.5 transition-colors hover:bg-[var(--color-base-raised)] ${isGitOpen ? 'bg-[var(--color-base-raised)]' : ''}`}
+        className={`rounded px-1 py-0.5 transition-colors hover:bg-base-raised ${isGitOpen ? 'bg-base-raised' : ''}`}
       >
         <BranchIndicator status={branchStatus} />
       </button>

@@ -29,7 +29,7 @@ function InlineHighlight({
             className={
               isHighlighted
                 ? type === 'removed'
-                  ? 'rounded-xs bg-[var(--color-error)]/50'
+                  ? 'rounded-xs bg-error/50'
                   : 'rounded-xs bg-emerald-700/50'
                 : ''
             }
@@ -53,23 +53,19 @@ function DiffLineRow({ line, pairedContent }: { line: DiffLine; pairedContent?: 
   return (
     <div
       className={`flex gap-0 ${
-        line.type === 'removed'
-          ? 'bg-[var(--color-error)]/30'
-          : line.type === 'added'
-            ? 'bg-[var(--color-success)]/30'
-            : ''
+        line.type === 'removed' ? 'bg-error/30' : line.type === 'added' ? 'bg-success/30' : ''
       }`}
     >
-      <span className="w-8 flex-shrink-0 select-none pr-1 text-right text-[var(--color-base-text-faint)]">
+      <span className="w-8 shrink-0 select-none pr-1 text-right text-base-text-faint">
         {lineNo}
       </span>
       <span
-        className={`w-4 flex-shrink-0 select-none text-center ${
+        className={`w-4 shrink-0 select-none text-center ${
           line.type === 'removed'
-            ? 'text-[var(--color-error)]'
+            ? 'text-error'
             : line.type === 'added'
               ? 'text-emerald-500'
-              : 'text-[var(--color-base-text-faint)]'
+              : 'text-base-text-faint'
         }`}
       >
         {line.type === 'removed' ? '-' : line.type === 'added' ? '+' : ' '}
@@ -77,10 +73,10 @@ function DiffLineRow({ line, pairedContent }: { line: DiffLine; pairedContent?: 
       <span
         className={`min-w-0 flex-1 whitespace-pre ${
           line.type === 'removed'
-            ? 'text-[var(--color-error)]/90'
+            ? 'text-error/90'
             : line.type === 'added'
               ? 'text-emerald-300/90'
-              : 'text-[var(--color-base-text-secondary)]'
+              : 'text-base-text-secondary'
         }`}
       >
         {pairedContent !== undefined ? (
@@ -127,15 +123,15 @@ export function DiffView({
   }, [findings])
 
   if (hunks.length === 0) {
-    return <div className="px-3 py-2 text-[var(--color-base-text-faint)] text-xs">No changes</div>
+    return <div className="px-3 py-2 text-base-text-faint text-xs">No changes</div>
   }
 
   return (
-    <div className="overflow-x-auto font-[family-name:var(--font-mono)] text-xs leading-5">
+    <div className="overflow-x-auto font-mono text-xs leading-5">
       {hunks.map((hunk, hi) => (
         <div key={hi}>
           {hi > 0 && (
-            <div className="border-[var(--color-base-border-subtle)]/50 border-y bg-[var(--color-base-surface)]/30 px-2 py-0.5 text-center text-[var(--color-base-text-faint)]">
+            <div className="border-base-border-subtle/50 border-y bg-base-surface/30 px-2 py-0.5 text-center text-base-text-faint">
               ⋯
             </div>
           )}

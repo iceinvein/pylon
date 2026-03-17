@@ -8,7 +8,7 @@ type GenericToolProps = {
 export function GenericTool({ input, result }: GenericToolProps) {
   return (
     <div>
-      <pre className="overflow-x-auto rounded bg-[var(--color-base-raised)] p-2 font-[family-name:var(--font-mono)] text-[var(--color-base-text)] text-xs">
+      <pre className="overflow-x-auto rounded bg-base-raised p-2 font-mono text-base-text text-xs">
         {JSON.stringify(input, null, 2)}
       </pre>
       {result && <CollapsibleOutput text={result} />}

@@ -217,14 +217,14 @@ export function ToolUseBlock({ toolName, input, result }: ToolUseBlockProps) {
         <motion.span
           animate={{ rotate: expanded ? 90 : 0 }}
           transition={{ duration: 0.15 }}
-          className="flex-shrink-0 text-[var(--color-base-text-faint)]"
+          className="shrink-0 text-base-text-faint"
         >
           <ChevronRight size={14} />
         </motion.span>
-        <Icon size={14} className={`flex-shrink-0 ${info.iconColor}`} />
-        <span className="font-medium text-[var(--color-base-text)] text-sm">{info.label}</span>
+        <Icon size={14} className={`shrink-0 ${info.iconColor}`} />
+        <span className="font-medium text-base-text text-sm">{info.label}</span>
         {info.summary && !expanded && (
-          <span className="min-w-0 flex-1 truncate text-[var(--color-base-text-muted)] text-sm">
+          <span className="min-w-0 flex-1 truncate text-base-text-muted text-sm">
             {info.summary}
           </span>
         )}
@@ -238,7 +238,7 @@ export function ToolUseBlock({ toolName, input, result }: ToolUseBlockProps) {
             transition={{ duration: 0.2, ease: 'easeOut' }}
             className="overflow-hidden"
           >
-            <div className="mt-1 ml-8 rounded border border-[var(--color-base-border)] bg-[var(--color-base-surface)] px-3 py-2">
+            <div className="mt-1 ml-8 rounded border border-base-border bg-base-surface px-3 py-2">
               <ToolRenderer toolName={toolName} input={input} result={result} />
             </div>
           </motion.div>

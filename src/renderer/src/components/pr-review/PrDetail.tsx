@@ -42,10 +42,10 @@ function PrBody({ body }: { body: string }) {
   }, [body])
 
   return (
-    <div className="relative rounded-lg bg-[var(--color-base-surface)]/60">
+    <div className="relative rounded-lg bg-base-surface/60">
       <div
         ref={contentRef}
-        className={`prose prose-invert prose-xs max-w-none overflow-hidden prose-img:rounded prose-blockquote:border-[var(--color-base-border)] p-3 prose-a:text-[var(--color-info)] prose-blockquote:text-[var(--color-base-text-muted)] prose-code:text-[var(--color-base-text)] prose-headings:text-[var(--color-base-text)] prose-strong:text-[var(--color-base-text)] text-[var(--color-base-text-secondary)] text-xs leading-relaxed prose-a:no-underline hover:prose-a:underline ${!expanded && needsTruncation ? 'pr-body-collapsed' : ''}`}
+        className={`prose prose-invert prose-xs max-w-none overflow-hidden prose-img:rounded prose-blockquote:border-base-border p-3 prose-a:text-info prose-blockquote:text-base-text-muted prose-code:text-base-text prose-headings:text-base-text prose-strong:text-base-text text-base-text-secondary text-xs leading-relaxed prose-a:no-underline hover:prose-a:underline ${!expanded && needsTruncation ? 'pr-body-collapsed' : ''}`}
         style={!expanded && needsTruncation ? { maxHeight: COLLAPSED_HEIGHT } : undefined}
       >
         <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw, rehypeSanitize]}>
@@ -55,12 +55,12 @@ function PrBody({ body }: { body: string }) {
       {needsTruncation && (
         <>
           {!expanded && (
-            <div className="pointer-events-none absolute right-0 bottom-7 left-0 h-8 bg-gradient-to-t from-[var(--color-base-surface)]/60 to-transparent" />
+            <div className="pointer-events-none absolute right-0 bottom-7 left-0 h-8 bg-linear-to-t from-base-surface/60 to-transparent" />
           )}
           <button
             type="button"
             onClick={() => setExpanded((e) => !e)}
-            className="flex w-full cursor-pointer items-center justify-center gap-1 rounded-b-lg py-1 text-[var(--color-base-text-muted)] text-xs transition-colors hover:text-[var(--color-base-text)]"
+            className="flex w-full cursor-pointer items-center justify-center gap-1 rounded-b-lg py-1 text-base-text-muted text-xs transition-colors hover:text-base-text"
           >
             {expanded ? (
               <>
@@ -147,7 +147,7 @@ export function PrDetail() {
 
   if (!selectedPr) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-3 text-[var(--color-base-text-faint)]">
+      <div className="flex h-full flex-col items-center justify-center gap-3 text-base-text-faint">
         <GitPullRequest size={32} strokeWidth={1.5} />
         <span className="text-sm">Select a PR to review</span>
       </div>
@@ -157,7 +157,7 @@ export function PrDetail() {
   if (prDetailLoading) {
     return (
       <div className="flex h-full items-center justify-center">
-        <Loader2 size={16} className="animate-spin text-[var(--color-base-text-muted)]" />
+        <Loader2 size={16} className="animate-spin text-base-text-muted" />
       </div>
     )
   }
@@ -180,38 +180,36 @@ export function PrDetail() {
   return (
     <div className="flex h-full flex-col">
       {/* PR Header with review button */}
-      <div className="border-[var(--color-base-border-subtle)] border-b bg-[var(--color-base-bg)]/50 px-5 py-3">
+      <div className="border-base-border-subtle border-b bg-base-bg/50 px-5 py-3">
         <div className="flex items-start gap-3">
           <PrIcon
             size={18}
-            className={`mt-0.5 flex-shrink-0 ${pr.isDraft ? 'text-[var(--color-base-text-muted)]' : 'text-emerald-500'}`}
+            className={`mt-0.5 shrink-0 ${pr.isDraft ? 'text-base-text-muted' : 'text-emerald-500'}`}
           />
           <div className="min-w-0 flex-1">
             <div className="flex items-baseline gap-2">
-              <h2 className="font-semibold text-[var(--color-base-text)] text-sm">{pr.title}</h2>
-              <span className="flex-shrink-0 text-[var(--color-base-text-faint)] text-xs">
-                #{pr.number}
-              </span>
+              <h2 className="font-semibold text-base-text text-sm">{pr.title}</h2>
+              <span className="shrink-0 text-base-text-faint text-xs">#{pr.number}</span>
             </div>
-            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[var(--color-base-text-muted)]">
+            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-base-text-muted">
               <span className="flex items-center gap-1">
                 <User size={10} /> {pr.author}
               </span>
-              <span className="flex items-center gap-1 font-[family-name:var(--font-mono)]">
+              <span className="flex items-center gap-1 font-mono">
                 <GitBranch size={10} />
-                <span className="text-[var(--color-base-text-secondary)]">{pr.headBranch}</span>
-                <span className="text-[var(--color-base-text-faint)]">&rarr;</span>
+                <span className="text-base-text-secondary">{pr.headBranch}</span>
+                <span className="text-base-text-faint">&rarr;</span>
                 <span>{pr.baseBranch}</span>
               </span>
-              <span className="flex items-center gap-1.5 font-[family-name:var(--font-mono)] tabular-nums">
+              <span className="flex items-center gap-1.5 font-mono tabular-nums">
                 <span className="text-emerald-500">+{pr.additions}</span>
-                <span className="text-[var(--color-error)]">-{pr.deletions}</span>
+                <span className="text-error">-{pr.deletions}</span>
               </span>
               <a
                 href={pr.url}
                 target="_blank"
                 rel="noreferrer"
-                className="flex items-center gap-1 transition-colors hover:text-[var(--color-base-text)]"
+                className="flex items-center gap-1 transition-colors hover:text-base-text"
                 onClick={(e) => {
                   e.preventDefault()
                   window.open(pr.url, '_blank')
@@ -227,14 +225,14 @@ export function PrDetail() {
             <button
               type="button"
               onClick={() => setShowReviewModal(true)}
-              className="flex flex-shrink-0 items-center gap-1.5 rounded-lg bg-[var(--color-base-text)] px-3.5 py-1.5 font-semibold text-[12px] text-[var(--color-base-bg)] transition-colors hover:bg-white"
+              className="flex shrink-0 items-center gap-1.5 rounded-lg bg-base-text px-3.5 py-1.5 font-semibold text-[12px] text-base-bg transition-colors hover:bg-white"
             >
               {isDone ? <RotateCw size={12} /> : <Play size={12} />}
               {isDone ? 'Re-run' : 'Review'}
             </button>
           )}
           {isRunning && (
-            <span className="flex flex-shrink-0 items-center gap-1.5 rounded-lg border border-[var(--color-base-border)] px-3 py-1.5 text-[11px] text-[var(--color-base-text-secondary)]">
+            <span className="flex shrink-0 items-center gap-1.5 rounded-lg border border-base-border px-3 py-1.5 text-[11px] text-base-text-secondary">
               <Loader2 size={11} className="animate-spin" />
               Reviewing...
             </span>
@@ -280,13 +278,13 @@ export function PrDetail() {
       {isDone && prDetail && (
         <div className="flex min-h-0 flex-1 flex-col">
           {/* Review history bar */}
-          <div className="border-[var(--color-base-border-subtle)] border-b px-3 py-1.5">
+          <div className="border-base-border-subtle border-b px-3 py-1.5">
             <ReviewHistory />
           </div>
 
           {/* Two-pane layout */}
           <div className="flex min-h-0 flex-1">
-            <div className="flex-shrink-0" style={{ width: treeWidth }}>
+            <div className="shrink-0" style={{ width: treeWidth }}>
               <DiffFileTree
                 files={prDetail.files}
                 findings={activeFindings}
@@ -298,9 +296,9 @@ export function PrDetail() {
             {/* biome-ignore lint/a11y/noStaticElementInteractions: mouse-only resize handle */}
             <div
               onMouseDown={onResizeStart}
-              className="group relative w-0 flex-shrink-0 cursor-col-resize"
+              className="group relative w-0 shrink-0 cursor-col-resize"
             >
-              <div className="absolute inset-y-0 -left-px w-[3px] transition-colors group-hover:bg-[var(--color-base-text-faint)] group-active:bg-[var(--color-base-text-muted)]" />
+              <div className="absolute inset-y-0 -left-px w-0.75 transition-colors group-hover:bg-base-text-faint group-active:bg-base-text-muted" />
             </div>
             <div className="min-w-0 flex-1">
               <DiffPane

@@ -64,19 +64,19 @@ export function PrList() {
     : 'All repos'
 
   return (
-    <div className="flex h-full flex-col border-[var(--color-base-border-subtle)] border-r">
-      <div className="border-[var(--color-base-border-subtle)] border-b p-3">
+    <div className="flex h-full flex-col border-base-border-subtle border-r">
+      <div className="border-base-border-subtle border-b p-3">
         {/* Repo filter dropdown */}
         <div ref={repoMenuRef} className="relative">
           <button
             type="button"
             onClick={() => setRepoMenuOpen((v) => !v)}
-            className="flex w-full items-center justify-between rounded-md bg-[var(--color-base-raised)] px-2.5 py-1.5 text-[var(--color-base-text)] text-xs ring-1 ring-[var(--color-base-border)] transition-colors hover:ring-[var(--color-base-border)]"
+            className="flex w-full items-center justify-between rounded-md bg-base-raised px-2.5 py-1.5 text-base-text text-xs ring-1 ring-base-border transition-colors hover:ring-base-border"
           >
             <span className="truncate">{selectedLabel}</span>
             <ChevronDown
               size={12}
-              className={`ml-1.5 flex-shrink-0 text-[var(--color-base-text-muted)] transition-transform ${repoMenuOpen ? 'rotate-180' : ''}`}
+              className={`ml-1.5 shrink-0 text-base-text-muted transition-transform ${repoMenuOpen ? 'rotate-180' : ''}`}
             />
           </button>
           <AnimatePresence>
@@ -86,7 +86,7 @@ export function PrList() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -4 }}
                 transition={{ duration: 0.12 }}
-                className="absolute top-full right-0 left-0 z-50 mt-1 max-h-60 overflow-y-auto rounded-lg border border-[var(--color-base-border)] bg-[var(--color-base-surface)] py-1 shadow-xl"
+                className="absolute top-full right-0 left-0 z-50 mt-1 max-h-60 overflow-y-auto rounded-lg border border-base-border bg-base-surface py-1 shadow-xl"
               >
                 <button
                   type="button"
@@ -94,18 +94,12 @@ export function PrList() {
                     setSelectedRepo(null)
                     setRepoMenuOpen(false)
                   }}
-                  className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-xs transition-colors hover:bg-[var(--color-base-raised)]"
+                  className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-xs transition-colors hover:bg-base-raised"
                 >
-                  <span className={`h-3 w-3 flex-shrink-0 ${!selectedRepo ? '' : 'opacity-0'}`}>
-                    {!selectedRepo && <Check size={12} className="text-[var(--color-base-text)]" />}
+                  <span className={`h-3 w-3 shrink-0 ${!selectedRepo ? '' : 'opacity-0'}`}>
+                    {!selectedRepo && <Check size={12} className="text-base-text" />}
                   </span>
-                  <span
-                    className={
-                      !selectedRepo
-                        ? 'text-[var(--color-base-text)]'
-                        : 'text-[var(--color-base-text-secondary)]'
-                    }
-                  >
+                  <span className={!selectedRepo ? 'text-base-text' : 'text-base-text-secondary'}>
                     All repos
                   </span>
                 </button>
@@ -119,15 +113,13 @@ export function PrList() {
                         setSelectedRepo(r.fullName)
                         setRepoMenuOpen(false)
                       }}
-                      className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-xs transition-colors hover:bg-[var(--color-base-raised)]"
+                      className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-xs transition-colors hover:bg-base-raised"
                     >
-                      <span className={`h-3 w-3 flex-shrink-0 ${isSelected ? '' : 'opacity-0'}`}>
-                        {isSelected && (
-                          <Check size={12} className="text-[var(--color-base-text)]" />
-                        )}
+                      <span className={`h-3 w-3 shrink-0 ${isSelected ? '' : 'opacity-0'}`}>
+                        {isSelected && <Check size={12} className="text-base-text" />}
                       </span>
                       <span
-                        className={`truncate ${isSelected ? 'text-[var(--color-base-text)]' : 'text-[var(--color-base-text-secondary)]'}`}
+                        className={`truncate ${isSelected ? 'text-base-text' : 'text-base-text-secondary'}`}
                       >
                         {r.fullName}
                       </span>
@@ -142,14 +134,14 @@ export function PrList() {
         <div className="relative mt-2">
           <Search
             size={13}
-            className="absolute top-1/2 left-2.5 -translate-y-1/2 text-[var(--color-base-text-muted)]"
+            className="absolute top-1/2 left-2.5 -translate-y-1/2 text-base-text-muted"
           />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Filter PRs..."
-            className="w-full rounded-md bg-[var(--color-base-raised)] py-1.5 pr-3 pl-8 text-[var(--color-base-text)] text-xs placeholder-[var(--color-base-text-faint)] outline-none ring-1 ring-[var(--color-base-border)] focus:ring-[var(--color-accent)]"
+            className="w-full rounded-md bg-base-raised py-1.5 pr-3 pl-8 text-base-text text-xs placeholder-base-text-faint outline-none ring-1 ring-base-border focus:ring-accent"
           />
         </div>
       </div>
@@ -157,10 +149,10 @@ export function PrList() {
       <div className="flex-1 overflow-y-auto p-2">
         {prsLoading || reposLoading ? (
           <div className="flex items-center justify-center py-8">
-            <Loader2 size={16} className="animate-spin text-[var(--color-base-text-muted)]" />
+            <Loader2 size={16} className="animate-spin text-base-text-muted" />
           </div>
         ) : filteredPrs.length === 0 ? (
-          <div className="py-8 text-center text-[var(--color-base-text-muted)] text-xs">
+          <div className="py-8 text-center text-base-text-muted text-xs">
             {repos.length === 0
               ? 'No GitHub projects found. Add a project first.'
               : 'No open PRs found.'}

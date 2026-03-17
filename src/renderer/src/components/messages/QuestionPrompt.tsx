@@ -83,21 +83,18 @@ export function QuestionPrompt({ question, onRespond }: QuestionPromptProps) {
     hasTextQuestions
 
   return (
-    <div className="my-2 mr-6 ml-[3.75rem] rounded-lg border border-[var(--color-info)]/40 bg-[var(--color-info)]/15 p-4">
+    <div className="my-2 mr-6 ml-15 rounded-lg border border-info/40 bg-info/15 p-4">
       <div className="space-y-4">
         {question.questions.map((q, qi) => (
           <div key={qi} className="flex items-start gap-3">
-            <MessageCircleQuestion
-              size={16}
-              className="mt-0.5 flex-shrink-0 text-[var(--color-info)]"
-            />
+            <MessageCircleQuestion size={16} className="mt-0.5 shrink-0 text-info" />
             <div className="min-w-0 flex-1">
               {q.header && (
-                <span className="mb-1.5 inline-block rounded-full bg-[var(--color-info)]/40 px-2 py-0.5 font-medium text-[10px] text-[var(--color-info)] uppercase tracking-wide">
+                <span className="mb-1.5 inline-block rounded-full bg-info/40 px-2 py-0.5 font-medium text-[10px] text-info uppercase tracking-wide">
                   {q.header}
                 </span>
               )}
-              <p className="text-[var(--color-base-text)] text-sm">{q.question}</p>
+              <p className="text-base-text text-sm">{q.question}</p>
               {q.options.length > 0 ? (
                 <div className="mt-2 space-y-1.5">
                   {q.options.map((opt, oi) => {
@@ -116,22 +113,20 @@ export function QuestionPrompt({ question, onRespond }: QuestionPromptProps) {
                         className={`w-full rounded border px-3 py-2 text-left transition-colors ${
                           submitted
                             ? isSelected
-                              ? 'border-[var(--color-info)]/60 bg-[var(--color-info)]/30'
-                              : 'border-[var(--color-base-border-subtle)]/40 bg-[var(--color-base-surface)]/20 opacity-50'
+                              ? 'border-info/60 bg-info/30'
+                              : 'border-base-border-subtle/40 bg-base-surface/20 opacity-50'
                             : isSelected
-                              ? 'border-[var(--color-info)]/60 bg-[var(--color-info)]/30'
-                              : 'border-[var(--color-base-border)]/60 bg-[var(--color-base-raised)]/30 hover:border-[var(--color-info)]/40 hover:bg-[var(--color-base-raised)]/50'
+                              ? 'border-info/60 bg-info/30'
+                              : 'border-base-border/60 bg-base-raised/30 hover:border-info/40 hover:bg-base-raised/50'
                         }`}
                       >
                         <span
-                          className={`font-medium text-sm ${isSelected ? 'text-[var(--color-info)]' : 'text-[var(--color-base-text)]'}`}
+                          className={`font-medium text-sm ${isSelected ? 'text-info' : 'text-base-text'}`}
                         >
                           {opt.label}
                         </span>
                         {opt.description && (
-                          <p className="mt-0.5 text-[var(--color-base-text-muted)] text-xs">
-                            {opt.description}
-                          </p>
+                          <p className="mt-0.5 text-base-text-muted text-xs">{opt.description}</p>
                         )}
                       </button>
                     )
@@ -161,14 +156,14 @@ export function QuestionPrompt({ question, onRespond }: QuestionPromptProps) {
                         .trim()
                     : null
                   return (
-                    <div className="mt-2 rounded border border-[var(--color-base-border)]/50 bg-[var(--color-base-surface)]/60 px-3 py-2 transition-all duration-150 ease-out">
+                    <div className="mt-2 rounded border border-base-border/50 bg-base-surface/60 px-3 py-2 transition-all duration-150 ease-out">
                       <div key={focusedIdx ?? 'empty'} className="animate-[fadeIn_150ms_ease-out]">
                         {cleaned ? (
-                          <pre className="max-h-48 overflow-y-auto whitespace-pre-wrap font-[family-name:var(--font-mono)] text-[var(--color-base-text)] text-xs leading-relaxed">
+                          <pre className="max-h-48 overflow-y-auto whitespace-pre-wrap font-mono text-base-text text-xs leading-relaxed">
                             {cleaned}
                           </pre>
                         ) : (
-                          <p className="py-0.5 text-[11px] text-[var(--color-base-text-faint)] italic">
+                          <p className="py-0.5 text-[11px] text-base-text-faint italic">
                             Hover an option to see its preview
                           </p>
                         )}
@@ -177,9 +172,7 @@ export function QuestionPrompt({ question, onRespond }: QuestionPromptProps) {
                   )
                 })()}
               {q.multiSelect && !submitted && (
-                <p className="mt-1.5 text-[10px] text-[var(--color-base-text-faint)]">
-                  Select multiple options
-                </p>
+                <p className="mt-1.5 text-[10px] text-base-text-faint">Select multiple options</p>
               )}
             </div>
           </div>
@@ -192,7 +185,7 @@ export function QuestionPrompt({ question, onRespond }: QuestionPromptProps) {
               type="button"
               disabled={!allAnswered}
               onClick={handleSubmit}
-              className="rounded-md bg-[var(--color-info)] px-4 py-1.5 font-medium text-white text-xs transition-colors hover:brightness-110 disabled:opacity-40"
+              className="rounded-md bg-info px-4 py-1.5 font-medium text-white text-xs transition-colors hover:brightness-110 disabled:opacity-40"
             >
               Reply
             </button>
@@ -248,7 +241,7 @@ function TextInput({
         onKeyDown={handleKeyDown}
         disabled={disabled}
         placeholder="Type your answer..."
-        className="w-full rounded border border-[var(--color-base-border)]/60 bg-[var(--color-base-raised)]/30 px-3 py-2 text-[var(--color-base-text)] text-sm placeholder:text-[var(--color-base-text-faint)] focus:border-[var(--color-info)]/60 focus:outline-none disabled:opacity-50"
+        className="w-full rounded border border-base-border/60 bg-base-raised/30 px-3 py-2 text-base-text text-sm placeholder:text-base-text-faint focus:border-info/60 focus:outline-none disabled:opacity-50"
       />
     </div>
   )

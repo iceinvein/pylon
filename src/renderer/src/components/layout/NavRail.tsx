@@ -9,7 +9,7 @@ export function NavRail() {
 
   return (
     <div
-      className="flex w-[52px] flex-col items-center gap-1.5 border-[var(--color-base-border-subtle)] border-r bg-[var(--color-base-bg)] pt-12 pb-3"
+      className="flex w-13 flex-col items-center gap-1.5 border-base-border-subtle border-r bg-base-bg pt-12 pb-3"
       style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
     >
       <NavButton
@@ -45,7 +45,7 @@ export function NavRail() {
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           transition={{ duration: 0.1 }}
-          className="relative flex h-9 w-9 items-center justify-center rounded-lg text-[var(--color-base-text-muted)] transition-colors hover:text-[var(--color-base-text)]"
+          className="relative flex h-9 w-9 items-center justify-center rounded-lg text-base-text-muted transition-colors hover:text-base-text"
         >
           <Settings size={18} />
         </motion.button>
@@ -75,21 +75,19 @@ function NavButton({
       whileTap={{ scale: 0.95 }}
       transition={{ duration: 0.1 }}
       className={`relative flex h-9 w-9 items-center justify-center rounded-lg transition-colors ${
-        active
-          ? 'text-[var(--color-accent-text)]'
-          : 'text-[var(--color-base-text-muted)] hover:text-[var(--color-base-text)]'
+        active ? 'text-accent-text' : 'text-base-text-muted hover:text-base-text'
       }`}
     >
       {active && (
         <motion.span
           layoutId="nav-active"
-          className="absolute inset-0 rounded-lg bg-[var(--color-accent)]/15"
+          className="absolute inset-0 rounded-lg bg-accent/15"
           transition={{ duration: 0.15, ease: 'easeOut' }}
         />
       )}
       <Icon size={18} className="relative z-10" />
       {badge != null && badge > 0 && (
-        <span className="absolute -top-0.5 -right-0.5 z-20 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--color-info)] px-1 font-medium text-[10px] text-white">
+        <span className="absolute -top-0.5 -right-0.5 z-20 flex h-4 min-w-4 items-center justify-center rounded-full bg-info px-1 font-medium text-[10px] text-white">
           {badge > 99 ? '99+' : badge}
         </span>
       )}

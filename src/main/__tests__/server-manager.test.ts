@@ -9,17 +9,34 @@ describe('ServerManager', () => {
       expect(port).toBe(59123)
     })
 
-    test('increments port if starting port is taken', async () => {
+    test('increments port if starting port is taken on IPv4', async () => {
       const net = await import('node:net')
-      // Occupy a port
+      // Occupy a port on IPv4
       const server = net.createServer()
-      await new Promise<void>((resolve) => server.listen(59200, resolve))
+      await new Promise<void>((resolve) => server.listen(59200, '127.0.0.1', resolve))
 
       try {
         const { findFreePort } = await import('../server-manager')
         const port = await findFreePort(59200)
         expect(port).toBeGreaterThan(59200)
         expect(port).toBeLessThanOrEqual(59210)
+      } finally {
+        await new Promise<void>((resolve) => server.close(() => resolve()))
+      }
+    })
+
+    test('increments port if starting port is taken on IPv6 only', async () => {
+      const net = await import('node:net')
+      // Occupy a port on IPv6 ONLY — this is the scenario that caused
+      // electron-vite's server (binding to ::1) to be missed
+      const server = net.createServer()
+      await new Promise<void>((resolve) => server.listen(59201, '::1', resolve))
+
+      try {
+        const { findFreePort } = await import('../server-manager')
+        const port = await findFreePort(59201)
+        expect(port).toBeGreaterThan(59201)
+        expect(port).toBeLessThanOrEqual(59211)
       } finally {
         await new Promise<void>((resolve) => server.close(() => resolve()))
       }

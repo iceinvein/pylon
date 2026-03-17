@@ -12,10 +12,10 @@ export function CommitDetail({ commit }: CommitDetailProps) {
   }, [commit.hash])
 
   return (
-    <div className="border-[var(--color-base-border-subtle)]/60 border-t bg-[var(--color-base-surface)]/40 px-4 py-2.5">
-      <div className="flex items-center gap-2 text-[10px] text-[var(--color-base-text-muted)]">
+    <div className="border-base-border-subtle/60 border-t bg-base-surface/40 px-4 py-2.5">
+      <div className="flex items-center gap-2 text-[10px] text-base-text-muted">
         <span className="flex items-center gap-1">
-          <User size={9} className="text-[var(--color-base-text-faint)]" />
+          <User size={9} className="text-base-text-faint" />
           {commit.author}
         </span>
         <span>•</span>
@@ -24,7 +24,7 @@ export function CommitDetail({ commit }: CommitDetailProps) {
         <button
           type="button"
           onClick={handleCopyHash}
-          className="flex items-center gap-0.5 font-[family-name:var(--font-mono)] text-[var(--color-base-text-faint)] transition-colors hover:text-[var(--color-base-text-secondary)]"
+          className="flex items-center gap-0.5 font-mono text-base-text-faint transition-colors hover:text-base-text-secondary"
           title="Copy full hash"
         >
           {commit.shortHash}
@@ -38,10 +38,10 @@ export function CommitDetail({ commit }: CommitDetailProps) {
               key={ref.name}
               className={`flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] ${
                 ref.type === 'tag'
-                  ? 'bg-[var(--color-special)]/50 text-[var(--color-special)]'
+                  ? 'bg-special/50 text-special'
                   : ref.isCurrent
-                    ? 'bg-[var(--color-accent-muted)]/50 text-[var(--color-warning)]'
-                    : 'bg-[var(--color-base-raised)] text-[var(--color-base-text-secondary)]'
+                    ? 'bg-accent-muted/50 text-warning'
+                    : 'bg-base-raised text-base-text-secondary'
               }`}
             >
               {ref.type === 'tag' ? <Tag size={8} /> : <GitBranch size={8} />}

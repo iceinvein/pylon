@@ -40,30 +40,28 @@ export function BranchList({ branches, onCheckout, onScrollTo }: BranchListProps
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className={`flex items-center gap-1.5 rounded px-2 py-1 text-xs transition-colors hover:bg-[var(--color-base-raised)] ${
-          open
-            ? 'bg-[var(--color-base-raised)] text-[var(--color-base-text)]'
-            : 'text-[var(--color-base-text-secondary)]'
+        className={`flex items-center gap-1.5 rounded px-2 py-1 text-xs transition-colors hover:bg-base-raised ${
+          open ? 'bg-base-raised text-base-text' : 'text-base-text-secondary'
         }`}
       >
         <GitBranch size={11} />
-        <span className="max-w-[120px] truncate">{current?.name ?? 'branches'}</span>
+        <span className="max-w-30 truncate">{current?.name ?? 'branches'}</span>
         {current && (current.ahead > 0 || current.behind > 0) && (
-          <span className="text-[10px] text-[var(--color-base-text-muted)]">
+          <span className="text-[10px] text-base-text-muted">
             {current.ahead > 0 && `↑${current.ahead}`}
             {current.behind > 0 && `↓${current.behind}`}
           </span>
         )}
         <ChevronDown
           size={10}
-          className={`text-[var(--color-base-text-faint)] transition-transform ${open ? 'rotate-180' : ''}`}
+          className={`text-base-text-faint transition-transform ${open ? 'rotate-180' : ''}`}
         />
       </button>
 
       {open && (
-        <div className="absolute top-full left-0 z-50 mt-1 max-h-[320px] min-w-[200px] overflow-y-auto rounded-lg border border-[var(--color-base-border)] bg-[var(--color-base-surface)] p-1.5 shadow-xl">
+        <div className="absolute top-full left-0 z-50 mt-1 max-h-80 min-w-50 overflow-y-auto rounded-lg border border-base-border bg-base-surface p-1.5 shadow-xl">
           {local.length > 0 && (
-            <p className="mb-1 px-2 font-medium text-[9px] text-[var(--color-base-text-muted)] uppercase tracking-wider">
+            <p className="mb-1 px-2 font-medium text-[9px] text-base-text-muted uppercase tracking-wider">
               Local
             </p>
           )}
@@ -79,12 +77,12 @@ export function BranchList({ branches, onCheckout, onScrollTo }: BranchListProps
                 onCheckout(b.name)
                 setOpen(false)
               }}
-              className={`flex w-full items-center gap-1.5 rounded px-2 py-1.5 text-left text-xs transition-colors hover:bg-[var(--color-base-raised)] ${
-                b.isCurrent ? 'text-[var(--color-warning)]' : 'text-[var(--color-base-text)]'
+              className={`flex w-full items-center gap-1.5 rounded px-2 py-1.5 text-left text-xs transition-colors hover:bg-base-raised ${
+                b.isCurrent ? 'text-warning' : 'text-base-text'
               }`}
               title={`Double-click to checkout ${b.name}`}
             >
-              <GitBranch size={11} className="flex-shrink-0" />
+              <GitBranch size={11} className="shrink-0" />
               <span className="min-w-0 flex-1 truncate">{b.name}</span>
               {b.ahead > 0 && (
                 <span className="flex items-center gap-0.5 text-[10px] text-emerald-500">
@@ -92,7 +90,7 @@ export function BranchList({ branches, onCheckout, onScrollTo }: BranchListProps
                 </span>
               )}
               {b.behind > 0 && (
-                <span className="flex items-center gap-0.5 text-[10px] text-[var(--color-warning)]">
+                <span className="flex items-center gap-0.5 text-[10px] text-warning">
                   <ArrowDownToLine size={9} /> {b.behind}
                 </span>
               )}
@@ -104,7 +102,7 @@ export function BranchList({ branches, onCheckout, onScrollTo }: BranchListProps
               <button
                 type="button"
                 onClick={() => setShowRemotes(!showRemotes)}
-                className="mt-1 flex w-full items-center gap-1 rounded px-2 py-1 text-[9px] text-[var(--color-base-text-muted)] uppercase tracking-wider hover:bg-[var(--color-base-raised)] hover:text-[var(--color-base-text-secondary)]"
+                className="mt-1 flex w-full items-center gap-1 rounded px-2 py-1 text-[9px] text-base-text-muted uppercase tracking-wider hover:bg-base-raised hover:text-base-text-secondary"
               >
                 {showRemotes ? <ChevronDown size={9} /> : <ChevronRight size={9} />}
                 Remotes ({remote.length})
@@ -118,9 +116,9 @@ export function BranchList({ branches, onCheckout, onScrollTo }: BranchListProps
                       onScrollTo(b.headHash)
                       setOpen(false)
                     }}
-                    className="flex w-full items-center gap-1.5 rounded px-2 py-1.5 text-left text-[var(--color-base-text-muted)] text-xs transition-colors hover:bg-[var(--color-base-raised)] hover:text-[var(--color-base-text-secondary)]"
+                    className="flex w-full items-center gap-1.5 rounded px-2 py-1.5 text-left text-base-text-muted text-xs transition-colors hover:bg-base-raised hover:text-base-text-secondary"
                   >
-                    <GitBranch size={11} className="flex-shrink-0" />
+                    <GitBranch size={11} className="shrink-0" />
                     <span className="min-w-0 flex-1 truncate">{b.name}</span>
                   </button>
                 ))}

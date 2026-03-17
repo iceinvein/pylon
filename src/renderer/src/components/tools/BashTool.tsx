@@ -12,8 +12,8 @@ export function BashTool({ input, result }: BashToolProps) {
   return (
     <div>
       <div className="flex items-start gap-2">
-        <Terminal size={13} className="mt-0.5 flex-shrink-0 text-[var(--color-success)]" />
-        <pre className="min-w-0 flex-1 overflow-x-auto whitespace-pre-wrap rounded bg-[var(--color-base-raised)] px-2 py-1.5 font-[family-name:var(--font-mono)] text-[var(--color-success)] text-xs">
+        <Terminal size={13} className="mt-0.5 shrink-0 text-success" />
+        <pre className="min-w-0 flex-1 overflow-x-auto whitespace-pre-wrap rounded bg-base-raised px-2 py-1.5 font-mono text-success text-xs">
           {command}
         </pre>
       </div>

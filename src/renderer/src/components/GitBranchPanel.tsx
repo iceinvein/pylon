@@ -46,28 +46,28 @@ function CommitSection({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-1.5 rounded px-1.5 py-1 text-left text-xs transition-colors hover:bg-[var(--color-base-raised)]/60"
+        className="flex w-full items-center gap-1.5 rounded px-1.5 py-1 text-left text-xs transition-colors hover:bg-base-raised/60"
       >
         {open ? (
-          <ChevronDown size={12} className="flex-shrink-0 text-[var(--color-base-text-muted)]" />
+          <ChevronDown size={12} className="shrink-0 text-base-text-muted" />
         ) : (
-          <ChevronRight size={12} className="flex-shrink-0 text-[var(--color-base-text-muted)]" />
+          <ChevronRight size={12} className="shrink-0 text-base-text-muted" />
         )}
-        <span className={`flex-shrink-0 ${colorClass}`}>{icon}</span>
-        <span className="font-medium text-[var(--color-base-text)]">{label}</span>
-        <span className="text-[var(--color-base-text-faint)]">{commits.length}</span>
+        <span className={`shrink-0 ${colorClass}`}>{icon}</span>
+        <span className="font-medium text-base-text">{label}</span>
+        <span className="text-base-text-faint">{commits.length}</span>
       </button>
       {open && (
-        <div className="ml-3 border-[var(--color-base-border-subtle)]/60 border-l pl-2">
+        <div className="ml-3 border-base-border-subtle/60 border-l pl-2">
           {commits.map((commit) => (
             <div
               key={commit.hash}
-              className="flex items-start gap-2 rounded px-1.5 py-[3px] text-xs transition-colors hover:bg-[var(--color-base-raised)]/40"
+              className="flex items-start gap-2 rounded px-1.5 py-0.75 text-xs transition-colors hover:bg-base-raised/40"
             >
-              <span className="flex-shrink-0 font-mono text-[var(--color-base-text-faint)]">
+              <span className="shrink-0 font-mono text-base-text-faint">
                 {commit.hash.slice(0, 7)}
               </span>
-              <span className="text-[var(--color-base-text-secondary)]">{commit.message}</span>
+              <span className="text-base-text-secondary">{commit.message}</span>
             </div>
           ))}
           {footer}
@@ -129,47 +129,36 @@ export function GitBranchPanel({ cwd, branchStatus, onClose }: GitBranchPanelPro
   const upstreamName = branchStatus.hasUpstream ? `origin/${branchStatus.branch}` : null
 
   return (
-    <div className="flex h-full flex-col bg-[var(--color-base-bg)]">
+    <div className="flex h-full flex-col bg-base-bg">
       {/* Header — branch name + metadata summary */}
-      <div className="flex items-center justify-between border-[var(--color-base-border-subtle)] border-b px-3 py-2">
+      <div className="flex items-center justify-between border-base-border-subtle border-b px-3 py-2">
         <div className="flex min-w-0 items-center gap-2">
-          <GitBranch size={13} className="flex-shrink-0 text-[var(--color-base-text-muted)]" />
+          <GitBranch size={13} className="shrink-0 text-base-text-muted" />
           <div className="flex min-w-0 items-center gap-1.5 text-xs">
-            <span className="truncate font-semibold text-[var(--color-base-text)]">
-              {branchStatus.branch}
-            </span>
+            <span className="truncate font-semibold text-base-text">{branchStatus.branch}</span>
             {fetching ? (
-              <Loader2
-                size={10}
-                className="flex-shrink-0 animate-spin text-[var(--color-base-text-faint)]"
-              />
+              <Loader2 size={10} className="shrink-0 animate-spin text-base-text-faint" />
             ) : (
               <>
                 {behind > 0 && (
-                  <span
-                    className="flex-shrink-0 text-[var(--color-warning)]/80"
-                    title={`${behind} behind`}
-                  >
+                  <span className="shrink-0 text-warning/80" title={`${behind} behind`}>
                     {behind}↓
                   </span>
                 )}
                 {ahead > 0 && (
-                  <span
-                    className="flex-shrink-0 text-[var(--color-info)]/80"
-                    title={`${ahead} ahead`}
-                  >
+                  <span className="shrink-0 text-info/80" title={`${ahead} ahead`}>
                     {ahead}↑
                   </span>
                 )}
                 {ahead === 0 && behind === 0 && branchStatus.hasUpstream && (
-                  <span className="flex-shrink-0 text-[var(--color-success)]/70">✓</span>
+                  <span className="shrink-0 text-success/70">✓</span>
                 )}
               </>
             )}
             {upstreamName && (
               <>
-                <span className="flex-shrink-0 text-[var(--color-base-text-faint)]">⇄</span>
-                <span className="truncate text-[var(--color-base-text-muted)]">{upstreamName}</span>
+                <span className="shrink-0 text-base-text-faint">⇄</span>
+                <span className="truncate text-base-text-muted">{upstreamName}</span>
               </>
             )}
           </div>
@@ -177,7 +166,7 @@ export function GitBranchPanel({ cwd, branchStatus, onClose }: GitBranchPanelPro
         <button
           type="button"
           onClick={onClose}
-          className="flex-shrink-0 rounded p-0.5 text-[var(--color-base-text-faint)] transition-colors hover:bg-[var(--color-base-raised)] hover:text-[var(--color-base-text)]"
+          className="shrink-0 rounded p-0.5 text-base-text-faint transition-colors hover:bg-base-raised hover:text-base-text"
           title="Close branch panel"
         >
           <X size={14} />
@@ -187,16 +176,14 @@ export function GitBranchPanel({ cwd, branchStatus, onClose }: GitBranchPanelPro
       {/* Body — collapsible sections */}
       <div className="flex-1 space-y-1 overflow-y-auto px-1.5 py-2">
         {fetching ? (
-          <div className="flex items-center gap-2 px-2 py-2 text-[var(--color-base-text-muted)] text-xs">
+          <div className="flex items-center gap-2 px-2 py-2 text-base-text-muted text-xs">
             <Loader2 size={12} className="animate-spin" />
             Fetching from origin…
           </div>
         ) : (
           <>
             {!branchStatus.hasUpstream && (
-              <div className="px-2 py-1 text-[var(--color-base-text-muted)] text-xs">
-                No upstream configured
-              </div>
+              <div className="px-2 py-1 text-base-text-muted text-xs">No upstream configured</div>
             )}
 
             {/* Incoming (behind) commits */}
@@ -209,7 +196,7 @@ export function GitBranchPanel({ cwd, branchStatus, onClose }: GitBranchPanelPro
                 footer={
                   <>
                     {comparison.filesChanged > 0 && (
-                      <div className="px-1.5 py-1 text-[10px] text-[var(--color-base-text-faint)]">
+                      <div className="px-1.5 py-1 text-[10px] text-base-text-faint">
                         {comparison.filesChanged} file{comparison.filesChanged !== 1 ? 's' : ''}{' '}
                         changed
                       </div>
@@ -220,7 +207,7 @@ export function GitBranchPanel({ cwd, branchStatus, onClose }: GitBranchPanelPro
                           type="button"
                           onClick={handlePull}
                           disabled={pulling}
-                          className="flex w-full items-center justify-center gap-1.5 rounded bg-[var(--color-base-raised)] px-2 py-1 text-[var(--color-base-text)] text-xs transition-colors hover:bg-[var(--color-base-border)] disabled:opacity-50"
+                          className="flex w-full items-center justify-center gap-1.5 rounded bg-base-raised px-2 py-1 text-base-text text-xs transition-colors hover:bg-base-border disabled:opacity-50"
                         >
                           {pulling ? (
                             <>
@@ -253,18 +240,14 @@ export function GitBranchPanel({ cwd, branchStatus, onClose }: GitBranchPanelPro
 
             {/* Up to date */}
             {ahead === 0 && behind === 0 && branchStatus.hasUpstream && (
-              <div className="px-2 py-1 text-[var(--color-success)]/70 text-xs">
-                ✓ Up to date with origin
-              </div>
+              <div className="px-2 py-1 text-success/70 text-xs">✓ Up to date with origin</div>
             )}
 
             {/* Pull result toast */}
             {pullResult && (
               <div
                 className={`mx-1.5 mt-1 rounded px-2 py-1.5 text-xs ${
-                  pullResult.success
-                    ? 'bg-[var(--color-success)]/30 text-[var(--color-success)]'
-                    : 'bg-[var(--color-error)]/30 text-[var(--color-error)]'
+                  pullResult.success ? 'bg-success/30 text-success' : 'bg-error/30 text-error'
                 }`}
               >
                 {pullResult.success ? 'Pulled successfully' : pullResult.error}

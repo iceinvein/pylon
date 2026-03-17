@@ -33,18 +33,16 @@ export function EditTool({ input }: EditToolProps) {
 
   return (
     <div className="space-y-1.5">
-      <div className="flex items-center gap-2 text-[var(--color-base-text-secondary)] text-xs">
-        <FileText size={13} className="flex-shrink-0 text-yellow-400" />
-        <span className="font-[family-name:var(--font-mono)] text-[var(--color-base-text)]">
-          {path}
-        </span>
+      <div className="flex items-center gap-2 text-base-text-secondary text-xs">
+        <FileText size={13} className="shrink-0 text-yellow-400" />
+        <span className="font-mono text-base-text">{path}</span>
       </div>
       {summaryParts.length > 0 && (
-        <div className="text-[var(--color-base-text-muted)] text-xs">
+        <div className="text-base-text-muted text-xs">
           {isCreate ? 'Created' : 'Updated'} &mdash; {summaryParts.join(', ')}
         </div>
       )}
-      <div className="rounded border border-[var(--color-base-border-subtle)] bg-[var(--color-base-bg)]/60">
+      <div className="rounded border border-base-border-subtle bg-base-bg/60">
         <DiffView hunks={hunks} />
       </div>
     </div>

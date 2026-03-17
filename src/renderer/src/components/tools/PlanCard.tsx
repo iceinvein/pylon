@@ -50,18 +50,16 @@ export function PlanCard({ plan, sessionId, sectionTitles }: PlanCardProps) {
 
   return (
     <div
-      className={`max-w-[520px] overflow-hidden rounded-lg border ${statusColor} bg-[var(--color-base-surface)]/80`}
+      className={`max-w-130 overflow-hidden rounded-lg border ${statusColor} bg-base-surface/80`}
     >
       {/* Header */}
-      <div className="flex items-center gap-2.5 border-[var(--color-base-border-subtle)] border-b px-4 py-3">
-        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md bg-violet-900/30">
+      <div className="flex items-center gap-2.5 border-base-border-subtle border-b px-4 py-3">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-violet-900/30">
           <ClipboardList size={16} className="text-violet-400" />
         </div>
         <div className="min-w-0 flex-1">
-          <div className="truncate font-semibold text-[13px] text-[var(--color-base-text)]">
-            {fileName}
-          </div>
-          <div className="text-[11px] text-[var(--color-base-text-muted)]">
+          <div className="truncate font-semibold text-[13px] text-base-text">{fileName}</div>
+          <div className="text-[11px] text-base-text-muted">
             {plan.relativePath} · {sectionTitles.length} section
             {sectionTitles.length !== 1 ? 's' : ''}
           </div>
@@ -79,25 +77,20 @@ export function PlanCard({ plan, sessionId, sectionTitles }: PlanCardProps) {
       {sectionTitles.length > 0 && (
         <div className="flex flex-col gap-1 px-4 py-2.5">
           {sectionTitles.slice(0, 6).map((title, i) => (
-            <div
-              key={title}
-              className="flex items-center gap-2 text-[var(--color-base-text-secondary)] text-xs"
-            >
-              <span className="text-[var(--color-base-text-faint)]">{i + 1}.</span>
+            <div key={title} className="flex items-center gap-2 text-base-text-secondary text-xs">
+              <span className="text-base-text-faint">{i + 1}.</span>
               <span className="truncate">{title}</span>
             </div>
           ))}
           {sectionTitles.length > 6 && (
-            <div className="text-[var(--color-base-text-faint)] text-xs">
-              + {sectionTitles.length - 6} more
-            </div>
+            <div className="text-base-text-faint text-xs">+ {sectionTitles.length - 6} more</div>
           )}
         </div>
       )}
 
       {/* Action bar */}
       {plan.status === 'pending' && (
-        <div className="flex items-center gap-2 border-[var(--color-base-border-subtle)] border-t px-4 py-2.5">
+        <div className="flex items-center gap-2 border-base-border-subtle border-t px-4 py-2.5">
           <button
             type="button"
             onClick={handleOpenReview}
@@ -109,7 +102,7 @@ export function PlanCard({ plan, sessionId, sectionTitles }: PlanCardProps) {
             type="button"
             onClick={handleApprove}
             disabled={!canAct}
-            className="rounded-md border border-[var(--color-base-border)] bg-[var(--color-base-raised)] px-4 py-2 text-[13px] text-[var(--color-base-text)] transition-colors hover:bg-[var(--color-base-border)] disabled:opacity-40"
+            className="rounded-md border border-base-border bg-base-raised px-4 py-2 text-[13px] text-base-text transition-colors hover:bg-base-border disabled:opacity-40"
           >
             Approve
           </button>
@@ -117,11 +110,11 @@ export function PlanCard({ plan, sessionId, sectionTitles }: PlanCardProps) {
       )}
 
       {plan.status === 'changes_requested' && (
-        <div className="flex items-center gap-2 border-[var(--color-base-border-subtle)] border-t px-4 py-2.5">
+        <div className="flex items-center gap-2 border-base-border-subtle border-t px-4 py-2.5">
           <button
             type="button"
             onClick={handleOpenReview}
-            className="flex-1 rounded-md border border-[var(--color-accent)]/50 bg-[var(--color-accent)]/20 px-4 py-2 font-medium text-[13px] text-[var(--color-accent-text)] transition-colors hover:bg-[var(--color-accent)]/40"
+            className="flex-1 rounded-md border border-accent/50 bg-accent/20 px-4 py-2 font-medium text-[13px] text-accent-text transition-colors hover:bg-accent/40"
           >
             Review Again
           </button>

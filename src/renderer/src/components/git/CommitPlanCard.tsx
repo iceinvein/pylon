@@ -20,15 +20,12 @@ export function CommitPlanCard({
   const [message, setMessage] = useState(group.message)
 
   return (
-    <div className="rounded-lg border border-[var(--color-base-border)] bg-[var(--color-base-surface)]/50">
+    <div className="rounded-lg border border-base-border bg-base-surface/50">
       <div className="flex items-start gap-2 p-3">
-        <GripVertical
-          size={14}
-          className="mt-0.5 flex-shrink-0 cursor-grab text-[var(--color-base-text-faint)]"
-        />
+        <GripVertical size={14} className="mt-0.5 shrink-0 cursor-grab text-base-text-faint" />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[var(--color-base-raised)] font-medium text-[10px] text-[var(--color-base-text-secondary)]">
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-base-raised font-medium text-[10px] text-base-text-secondary">
               {group.order}
             </span>
             {editing ? (
@@ -46,7 +43,7 @@ export function CommitPlanCard({
                     onEditMessage(message)
                   }
                 }}
-                className="min-w-0 flex-1 rounded bg-[var(--color-base-raised)] px-2 py-0.5 font-[family-name:var(--font-mono)] text-[var(--color-base-text)] text-xs outline-none ring-1 ring-amber-600"
+                className="min-w-0 flex-1 rounded bg-base-raised px-2 py-0.5 font-mono text-base-text text-xs outline-none ring-1 ring-amber-600"
                 // biome-ignore lint/a11y/noAutofocus: intentional focus on edit mode
                 autoFocus
               />
@@ -54,22 +51,20 @@ export function CommitPlanCard({
               <button
                 type="button"
                 onClick={() => setEditing(true)}
-                className="min-w-0 flex-1 truncate text-left font-[family-name:var(--font-mono)] text-[var(--color-base-text)] text-xs hover:text-[var(--color-warning)]"
+                className="min-w-0 flex-1 truncate text-left font-mono text-base-text text-xs hover:text-warning"
                 title="Click to edit"
               >
                 {group.message}
               </button>
             )}
           </div>
-          <p className="mt-1 text-[10px] text-[var(--color-base-text-muted)]">
-            {group.files.length} files
-          </p>
+          <p className="mt-1 text-[10px] text-base-text-muted">{group.files.length} files</p>
         </div>
         <button
           type="button"
           onClick={onExecute}
           disabled={executing}
-          className="flex-shrink-0 rounded bg-emerald-600 p-1.5 text-white transition-colors hover:bg-emerald-500 disabled:opacity-50"
+          className="shrink-0 rounded bg-emerald-600 p-1.5 text-white transition-colors hover:bg-emerald-500 disabled:opacity-50"
           title="Commit this group"
         >
           <Play size={11} />
@@ -79,22 +74,17 @@ export function CommitPlanCard({
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
-        className="flex w-full items-center gap-1 border-[var(--color-base-border-subtle)] border-t px-3 py-1.5 text-[10px] text-[var(--color-base-text-muted)] hover:bg-[var(--color-base-raised)]/50"
+        className="flex w-full items-center gap-1 border-base-border-subtle border-t px-3 py-1.5 text-[10px] text-base-text-muted hover:bg-base-raised/50"
       >
         {expanded ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
         Files & rationale
       </button>
 
       {expanded && (
-        <div className="border-[var(--color-base-border-subtle)] border-t px-3 py-2">
-          <p className="mb-2 text-[10px] text-[var(--color-base-text-muted)] italic">
-            {group.rationale}
-          </p>
+        <div className="border-base-border-subtle border-t px-3 py-2">
+          <p className="mb-2 text-[10px] text-base-text-muted italic">{group.rationale}</p>
           {group.files.map((f) => (
-            <div
-              key={f.path}
-              className="font-[family-name:var(--font-mono)] text-[10px] text-[var(--color-base-text-secondary)]"
-            >
+            <div key={f.path} className="font-mono text-[10px] text-base-text-secondary">
               {f.path}
             </div>
           ))}

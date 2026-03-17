@@ -15,14 +15,10 @@ export function GlobGrepTool({ input, toolName, result }: GlobGrepToolProps) {
   return (
     <div>
       <div className="flex items-center gap-2 text-xs">
-        <Search size={13} className="flex-shrink-0 text-[var(--color-special)]" />
-        <span className="font-[family-name:var(--font-mono)] text-[var(--color-base-text)]">
-          {pattern}
-        </span>
-        {path && <span className="text-[var(--color-base-text-muted)]">in {path}</span>}
-        <span className="ml-auto text-[var(--color-base-text-faint)]">
-          {isGrep ? 'grep' : 'glob'}
-        </span>
+        <Search size={13} className="shrink-0 text-special" />
+        <span className="font-mono text-base-text">{pattern}</span>
+        {path && <span className="text-base-text-muted">in {path}</span>}
+        <span className="ml-auto text-base-text-faint">{isGrep ? 'grep' : 'glob'}</span>
       </div>
       {result && <CollapsibleOutput text={result} />}
     </div>

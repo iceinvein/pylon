@@ -32,6 +32,8 @@
   --color-warning: #c49a4a;
   --color-info: #5a8ac4;
   --color-special: #9a7bc4;
+  --color-special-text: #c8b0e8;
+  --color-special-muted: #9a7bc420;
 }
 
 body {

@@ -12,7 +12,7 @@ function parseBold(text: string): ReactNode[] {
   return parts.map((part, i) => {
     if (part.startsWith('**') && part.endsWith('**')) {
       return (
-        <strong key={i} className="font-semibold text-[var(--color-base-text-secondary)]">
+        <strong key={i} className="font-semibold text-base-text-secondary">
           {part.slice(2, -2)}
         </strong>
       )
@@ -52,11 +52,10 @@ export function SystemMessage({ content, subtype }: SystemMessageProps) {
   const skillName = isSkillContent(content)
   if (skillName || looksLikeSkillContent(content)) {
     return (
-      <div className="flex items-center gap-2 py-1 pr-6 pl-[3.75rem]">
-        <Zap size={12} className="flex-shrink-0 text-[var(--color-special)]/70" />
-        <span className="text-[var(--color-base-text-muted)] text-xs">
-          Loaded skill{' '}
-          <span className="text-[var(--color-base-text-secondary)]">{skillName ?? 'unknown'}</span>
+      <div className="flex items-center gap-2 py-1 pr-6 pl-15">
+        <Zap size={12} className="shrink-0 text-special/70" />
+        <span className="text-base-text-muted text-xs">
+          Loaded skill <span className="text-base-text-secondary">{skillName ?? 'unknown'}</span>
         </span>
       </div>
     )
@@ -67,10 +66,10 @@ export function SystemMessage({ content, subtype }: SystemMessageProps) {
   // Multi-line content (e.g. /status, /help) → card with left accent stripe
   if (isMultiline) {
     return (
-      <div className="my-1.5 mr-6 ml-[3.75rem]">
-        <div className="rounded-lg border border-[var(--color-base-border)]/30 bg-[var(--color-base-raised)]/20">
-          <div className="border-[var(--color-base-text-faint)]/40 border-l-2 px-4 py-3">
-            <div className="whitespace-pre-line text-[var(--color-base-text-muted)] text-xs leading-relaxed">
+      <div className="my-1.5 mr-6 ml-15">
+        <div className="rounded-lg border border-base-border/30 bg-base-raised/20">
+          <div className="border-base-text-faint/40 border-l-2 px-4 py-3">
+            <div className="whitespace-pre-line text-base-text-muted text-xs leading-relaxed">
               {parseBold(content)}
             </div>
           </div>
@@ -81,15 +80,13 @@ export function SystemMessage({ content, subtype }: SystemMessageProps) {
 
   // Single-line content → compact inline
   return (
-    <div className="flex items-start gap-2 py-1.5 pr-6 pl-[3.75rem]">
-      <Info size={12} className="mt-0.5 flex-shrink-0 text-[var(--color-base-text-faint)]" />
+    <div className="flex items-start gap-2 py-1.5 pr-6 pl-15">
+      <Info size={12} className="mt-0.5 shrink-0 text-base-text-faint" />
       <div className="min-w-0">
         {subtype && (
-          <span className="mr-2 font-medium text-[var(--color-base-text-faint)] text-xs">
-            [{subtype}]
-          </span>
+          <span className="mr-2 font-medium text-base-text-faint text-xs">[{subtype}]</span>
         )}
-        <span className="text-[var(--color-base-text-muted)] text-xs">{parseBold(content)}</span>
+        <span className="text-base-text-muted text-xs">{parseBold(content)}</span>
       </div>
     </div>
   )

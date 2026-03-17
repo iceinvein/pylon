@@ -23,12 +23,12 @@ export function ResultMessage({
 }: ResultMessageProps) {
   if (isError) {
     return (
-      <div className="my-2 mr-6 ml-[3.75rem] rounded-lg border border-[var(--color-error)]/50 bg-[var(--color-error)]/20 px-4 py-3">
+      <div className="my-2 mr-6 ml-15 rounded-lg border border-error/50 bg-error/20 px-4 py-3">
         <div className="flex items-center gap-2">
-          <XCircle size={14} className="text-[var(--color-error)]" />
-          <span className="font-medium text-[var(--color-error)] text-sm">Error</span>
+          <XCircle size={14} className="text-error" />
+          <span className="font-medium text-error text-sm">Error</span>
         </div>
-        {errorMessage && <p className="mt-2 text-[var(--color-error)] text-xs">{errorMessage}</p>}
+        {errorMessage && <p className="mt-2 text-error text-xs">{errorMessage}</p>}
       </div>
     )
   }
@@ -45,8 +45,8 @@ export function ResultMessage({
   if (stats.length === 0) return <div className="h-3" />
 
   return (
-    <div className="px-6 pt-1 pb-2 pl-[3.75rem]">
-      <span className="text-[10px] text-[var(--color-base-text-faint)]">{stats.join(' · ')}</span>
+    <div className="px-6 pt-1 pb-2 pl-15">
+      <span className="text-[10px] text-base-text-faint">{stats.join(' · ')}</span>
     </div>
   )
 }

@@ -10,13 +10,11 @@ export function ReadTool({ input }: ReadToolProps) {
   const endLine = input.end_line ?? input.limit
 
   return (
-    <div className="flex items-center gap-2 text-[var(--color-base-text-secondary)] text-xs">
-      <FileText size={13} className="flex-shrink-0 text-[var(--color-info)]" />
-      <span className="min-w-0 truncate font-[family-name:var(--font-mono)] text-[var(--color-base-text)]">
-        {path}
-      </span>
+    <div className="flex items-center gap-2 text-base-text-secondary text-xs">
+      <FileText size={13} className="shrink-0 text-info" />
+      <span className="min-w-0 truncate font-mono text-base-text">{path}</span>
       {startLine !== undefined && (
-        <span className="flex-shrink-0 text-[var(--color-base-text-muted)]">
+        <span className="shrink-0 text-base-text-muted">
           lines {String(startLine)}
           {endLine !== undefined ? `–${String(endLine)}` : '+'}
         </span>

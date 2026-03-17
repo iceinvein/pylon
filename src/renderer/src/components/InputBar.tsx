@@ -269,7 +269,7 @@ export function InputBar({
   const permissionItems = PERMISSION_MODES.map((m) => ({
     id: m.id,
     label: m.label,
-    icon: <m.icon size={13} className="flex-shrink-0" />,
+    icon: <m.icon size={13} className="shrink-0" />,
   }))
 
   const isYolo = permissionMode === 'auto-approve'
@@ -291,9 +291,9 @@ export function InputBar({
   const canSend = (text.trim().length > 0 || attachments.length > 0) && !isRunning
 
   return (
-    <div className="relative bg-[var(--color-base-bg)]">
+    <div className="relative bg-base-bg">
       {behindCount != null && behindCount > 0 && (
-        <div className="flex items-center gap-2 border-[var(--color-warning)]/20 border-b bg-[var(--color-warning)]/5 px-3 py-1.5 text-[var(--color-warning)] text-xs">
+        <div className="flex items-center gap-2 border-warning/20 border-b bg-warning/5 px-3 py-1.5 text-warning text-xs">
           <span>⚠</span>
           <span>
             Branch is {behindCount} commit{behindCount !== 1 ? 's' : ''} behind origin
@@ -304,7 +304,7 @@ export function InputBar({
         <AnimatePresence>
           {lightboxUrl && (
             <motion.div
-              className="fixed inset-0 z-[100] flex cursor-zoom-out items-center justify-center bg-black/80 backdrop-blur-sm"
+              className="fixed inset-0 z-100 flex cursor-zoom-out items-center justify-center bg-black/80 backdrop-blur-sm"
               onClick={() => setLightboxUrl(null)}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -330,18 +330,18 @@ export function InputBar({
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
-            className={`rounded-2xl border border-[var(--color-base-border)]/60 bg-[var(--color-base-surface)] transition-colors focus-within:border-[var(--color-accent)]/40 ${
-              isDragging ? 'border-[var(--color-accent)]/50 bg-[var(--color-accent)]/5' : ''
+            className={`rounded-2xl border border-base-border/60 bg-base-surface transition-colors focus-within:border-accent/40 ${
+              isDragging ? 'border-accent/50 bg-accent/5' : ''
             }`}
           >
             {/* Attachments */}
             {attachments.length > 0 && (
-              <div className="flex flex-wrap gap-2 border-[var(--color-base-border)]/50 border-b px-4 py-2">
+              <div className="flex flex-wrap gap-2 border-base-border/50 border-b px-4 py-2">
                 <AnimatePresence>
                   {attachments.map((att, i) => (
                     <motion.div
                       key={att.name + i}
-                      className={`group relative overflow-hidden rounded-lg border border-[var(--color-base-border)] bg-[var(--color-base-raised)] ${
+                      className={`group relative overflow-hidden rounded-lg border border-base-border bg-base-raised ${
                         att.type === 'image' ? 'h-16 w-16' : 'flex items-center gap-1.5 px-2 py-1.5'
                       }`}
                       initial={{ opacity: 0, scale: 0.9 }}
@@ -360,19 +360,19 @@ export function InputBar({
                             alt={att.name}
                             className="h-full w-full object-cover"
                           />
-                          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-1 pt-2 pb-0.5">
-                            <span className="block truncate text-[10px] text-[var(--color-base-text)] leading-tight">
+                          <div className="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/70 to-transparent px-1 pt-2 pb-0.5">
+                            <span className="block truncate text-[10px] text-base-text leading-tight">
                               {att.name}
                             </span>
                           </div>
                         </button>
                       ) : (
                         <>
-                          <Image size={14} className="text-[var(--color-base-text-muted)]" />
-                          <span className="max-w-[120px] truncate text-[var(--color-base-text-secondary)] text-xs">
+                          <Image size={14} className="text-base-text-muted" />
+                          <span className="max-w-30 truncate text-base-text-secondary text-xs">
                             {att.name}
                           </span>
-                          <span className="text-[var(--color-base-text-faint)] text-xs">
+                          <span className="text-base-text-faint text-xs">
                             {(att.size / 1024).toFixed(0)}KB
                           </span>
                         </>
@@ -380,7 +380,7 @@ export function InputBar({
                       <button
                         type="button"
                         onClick={() => removeAttachment(i)}
-                        className="absolute top-0.5 right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-black/60 text-[var(--color-base-text)] opacity-0 transition-opacity group-hover:opacity-100"
+                        className="absolute top-0.5 right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-black/60 text-base-text opacity-0 transition-opacity group-hover:opacity-100"
                       >
                         <X size={9} />
                       </button>
@@ -400,7 +400,7 @@ export function InputBar({
               placeholder={sessionId ? 'Ask Claude anything...' : 'Open a project to begin'}
               disabled={!sessionId && false}
               rows={3}
-              className="min-h-[80px] w-full resize-none bg-transparent px-4 pt-3 pb-2 text-[var(--color-base-text)] text-sm leading-relaxed placeholder-[var(--color-base-text-faint)] outline-none"
+              className="min-h-20 w-full resize-none bg-transparent px-4 pt-3 pb-2 text-base-text text-sm leading-relaxed placeholder-base-text-faint outline-none"
             />
 
             {/* Toolbar row */}
@@ -419,7 +419,7 @@ export function InputBar({
                 onClick={() => fileInputRef.current?.click()}
                 title="Attach file"
                 aria-label="Attach file"
-                className="flex h-7 w-7 items-center justify-center rounded-full border border-[var(--color-base-border)]/50 text-[var(--color-base-text-secondary)] transition-colors hover:border-[var(--color-base-border)] hover:text-[var(--color-base-text)]"
+                className="flex h-7 w-7 items-center justify-center rounded-full border border-base-border/50 text-base-text-secondary transition-colors hover:border-base-border hover:text-base-text"
               >
                 <Paperclip size={13} />
               </button>
@@ -460,7 +460,7 @@ export function InputBar({
                     key="stop"
                     onClick={onStop}
                     title="Stop"
-                    className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--color-error)] text-white transition-colors hover:brightness-110"
+                    className="flex h-7 w-7 items-center justify-center rounded-lg bg-error text-white transition-colors hover:brightness-110"
                     initial={{ scale: 0.8, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0.8, opacity: 0 }}
@@ -474,7 +474,7 @@ export function InputBar({
                     onClick={handleSend}
                     disabled={!canSend}
                     title="Send"
-                    className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--color-accent)] text-white transition-colors hover:bg-[var(--color-accent-hover)] disabled:cursor-not-allowed disabled:opacity-30"
+                    className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-30"
                     initial={{ scale: 0.8, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0.8, opacity: 0 }}

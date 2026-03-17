@@ -155,7 +155,7 @@ export function FlowPanel() {
   if (!sessionId) {
     return (
       <div className="flex h-full items-center justify-center p-4">
-        <p className="text-[var(--color-base-text-faint)] text-xs">No active session</p>
+        <p className="text-base-text-faint text-xs">No active session</p>
       </div>
     )
   }
@@ -165,10 +165,8 @@ export function FlowPanel() {
   if (nodeCount === 0) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-2 p-4">
-        <Workflow size={20} className="text-[var(--color-base-text-faint)]" />
-        <p className="text-[var(--color-base-text-faint)] text-xs">
-          Flow will appear as the agent works
-        </p>
+        <Workflow size={20} className="text-base-text-faint" />
+        <p className="text-base-text-faint text-xs">Flow will appear as the agent works</p>
       </div>
     )
   }
@@ -199,7 +197,7 @@ export function FlowPanel() {
                 return (
                   <div key={`edge-${i}`} className="relative" style={{ height: 4 }}>
                     <div
-                      className="absolute border-[var(--color-error)]/40 border-l border-dashed"
+                      className="absolute border-error/40 border-l border-dashed"
                       style={{ left: SPINE_LEFT - CONTENT_LEFT, top: 0, bottom: 0 }}
                     />
                   </div>
@@ -217,7 +215,7 @@ export function FlowPanel() {
                 >
                   {/* Sub-lane line */}
                   <div
-                    className="absolute top-0 bottom-0 bg-[var(--color-base-border)]/50"
+                    className="absolute top-0 bottom-0 bg-base-border/50"
                     style={{
                       left: SPINE_LEFT - CONTENT_LEFT + PARALLEL_INDENT,
                       width: 1,
@@ -232,7 +230,7 @@ export function FlowPanel() {
                       >
                         {/* Parallel dot */}
                         <div
-                          className="relative flex flex-shrink-0 items-center"
+                          className="relative flex shrink-0 items-center"
                           style={{
                             width: 12,
                             marginLeft: SPINE_LEFT - CONTENT_LEFT + PARALLEL_INDENT - 6,
@@ -265,7 +263,7 @@ export function FlowPanel() {
               >
                 {/* Dot on the spine */}
                 <div
-                  className="relative flex flex-shrink-0 items-center"
+                  className="relative flex shrink-0 items-center"
                   style={{
                     width: 20,
                     marginLeft: SPINE_LEFT - CONTENT_LEFT - 4,
@@ -276,7 +274,7 @@ export function FlowPanel() {
                   {/* Horizontal connector for loud nodes */}
                   {!isQuiet && (
                     <div
-                      className="absolute bg-[var(--color-base-border)]/40"
+                      className="absolute bg-base-border/40"
                       style={{ left: 16, width: 8, height: 1, top: '50%' }}
                     />
                   )}

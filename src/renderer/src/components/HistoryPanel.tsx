@@ -126,20 +126,18 @@ export function HistoryPanel() {
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      <div className="border-[var(--color-base-border-subtle)] border-b px-4 py-3">
+      <div className="border-base-border-subtle border-b px-4 py-3">
         <SectionHeader>History</SectionHeader>
       </div>
       <div className="flex-1 overflow-y-auto px-2 py-2">
         {loading ? (
-          <div className="flex items-center justify-center py-8 text-[var(--color-base-text-faint)] text-xs">
+          <div className="flex items-center justify-center py-8 text-base-text-faint text-xs">
             Loading...
           </div>
         ) : groups.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-center">
-            <p className="text-[var(--color-base-text-muted)] text-xs">No sessions yet</p>
-            <p className="mt-1 text-[11px] text-[var(--color-base-text-faint)]">
-              Open a folder to get started
-            </p>
+            <p className="text-base-text-muted text-xs">No sessions yet</p>
+            <p className="mt-1 text-[11px] text-base-text-faint">Open a folder to get started</p>
           </div>
         ) : (
           groups.map((group) => {
@@ -149,29 +147,23 @@ export function HistoryPanel() {
                 <button
                   type="button"
                   onClick={() => toggleCollapsed(group.projectPath)}
-                  className="group flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-[var(--color-base-raised)]/50"
+                  className="group flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-base-raised/50"
                 >
                   {isCollapsed ? (
-                    <ChevronRight
-                      size={12}
-                      className="flex-shrink-0 text-[var(--color-base-text-faint)]"
-                    />
+                    <ChevronRight size={12} className="shrink-0 text-base-text-faint" />
                   ) : (
-                    <ChevronDown
-                      size={12}
-                      className="flex-shrink-0 text-[var(--color-base-text-faint)]"
-                    />
+                    <ChevronDown size={12} className="shrink-0 text-base-text-faint" />
                   )}
-                  <Folder size={12} className="flex-shrink-0 text-[var(--color-base-text-muted)]" />
-                  <span className="min-w-0 flex-1 truncate font-medium text-[11px] text-[var(--color-base-text-secondary)]">
+                  <Folder size={12} className="shrink-0 text-base-text-muted" />
+                  <span className="min-w-0 flex-1 truncate font-medium text-[11px] text-base-text-secondary">
                     {group.projectName}
                   </span>
-                  <span className="flex-shrink-0 rounded-full bg-[var(--color-base-raised)] px-1.5 py-0.5 text-[10px] text-[var(--color-base-text-muted)]">
+                  <span className="shrink-0 rounded-full bg-base-raised px-1.5 py-0.5 text-[10px] text-base-text-muted">
                     {group.sessions.length}
                   </span>
                 </button>
                 {!isCollapsed && (
-                  <div className="ml-3 border-[var(--color-base-border-subtle)]/50 border-l pl-1">
+                  <div className="ml-3 border-base-border-subtle/50 border-l pl-1">
                     {(expanded.has(group.projectPath)
                       ? group.sessions
                       : group.sessions.slice(0, PROJECT_SESSION_LIMIT)
@@ -180,27 +172,27 @@ export function HistoryPanel() {
                         type="button"
                         key={session.id}
                         onClick={() => handleResume(session)}
-                        className="group flex w-full items-start gap-2 rounded-lg px-2 py-2 text-left transition-colors hover:bg-[var(--color-base-raised)]/60"
+                        className="group flex w-full items-start gap-2 rounded-lg px-2 py-2 text-left transition-colors hover:bg-base-raised/60"
                       >
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-[var(--color-base-text)] text-xs">
+                          <p className="truncate text-base-text text-xs">
                             {session.title || 'Untitled'}
                           </p>
                           {session.worktree_branch && (
                             <div className="mt-0.5 flex items-center gap-1">
-                              <GitBranch size={9} className="text-[var(--color-accent)]" />
-                              <span className="text-[10px] text-[var(--color-accent)]/80">
+                              <GitBranch size={9} className="text-accent" />
+                              <span className="text-[10px] text-accent/80">
                                 {session.worktree_branch}
                               </span>
                             </div>
                           )}
                           <div className="mt-0.5 flex items-center gap-2.5">
-                            <span className="flex items-center gap-1 text-[11px] text-[var(--color-base-text-faint)]">
+                            <span className="flex items-center gap-1 text-[11px] text-base-text-faint">
                               <Clock size={9} />
                               {timeAgo(session.updated_at)}
                             </span>
                             {session.total_cost_usd > 0 && (
-                              <span className="flex items-center gap-1 text-[11px] text-[var(--color-base-text-faint)]">
+                              <span className="flex items-center gap-1 text-[11px] text-base-text-faint">
                                 <DollarSign size={9} />
                                 {formatCost(session.total_cost_usd)}
                               </span>
@@ -210,7 +202,7 @@ export function HistoryPanel() {
                         <button
                           type="button"
                           onClick={(e) => handleDelete(e, session.id)}
-                          className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded text-[var(--color-base-text-faint)] opacity-0 transition-all hover:bg-[var(--color-base-border)] hover:text-[var(--color-error)] group-hover:opacity-100"
+                          className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-base-text-faint opacity-0 transition-all hover:bg-base-border hover:text-error group-hover:opacity-100"
                         >
                           <Trash2 size={11} />
                         </button>
@@ -223,7 +215,7 @@ export function HistoryPanel() {
                           onClick={() =>
                             setExpanded((prev) => new Set([...prev, group.projectPath]))
                           }
-                          className="w-full rounded-md px-2 py-1.5 text-center text-[11px] text-[var(--color-base-text-muted)] transition-colors hover:bg-[var(--color-base-raised)]/50 hover:text-[var(--color-base-text-secondary)]"
+                          className="w-full rounded-md px-2 py-1.5 text-center text-[11px] text-base-text-muted transition-colors hover:bg-base-raised/50 hover:text-base-text-secondary"
                         >
                           Show {group.sessions.length - PROJECT_SESSION_LIMIT} more
                         </button>

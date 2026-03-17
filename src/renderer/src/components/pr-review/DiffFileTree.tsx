@@ -89,21 +89,21 @@ export function DiffFileTree({ files, findings, selectedFile, onSelectFile }: Pr
   const generalFindings = findings.filter((f) => !f.file)
 
   return (
-    <div className="flex h-full flex-col overflow-y-auto border-[var(--color-base-border-subtle)] border-r bg-[var(--color-base-bg)]/50">
+    <div className="flex h-full flex-col overflow-y-auto border-base-border-subtle border-r bg-base-bg/50">
       {/* Overview entry */}
       <button
         type="button"
         onClick={() => onSelectFile(null)}
-        className={`flex items-center gap-2 border-[var(--color-base-border-subtle)]/50 border-b px-3 py-2 text-left text-[11px] transition-colors ${
+        className={`flex items-center gap-2 border-base-border-subtle/50 border-b px-3 py-2 text-left text-[11px] transition-colors ${
           selectedFile === null
-            ? 'bg-[var(--color-base-raised)]/60 text-[var(--color-base-text)]'
-            : 'text-[var(--color-base-text-secondary)] hover:bg-[var(--color-base-raised)]/30'
+            ? 'bg-base-raised/60 text-base-text'
+            : 'text-base-text-secondary hover:bg-base-raised/30'
         }`}
       >
-        <Eye size={12} className="flex-shrink-0 text-[var(--color-base-text-muted)]" />
+        <Eye size={12} className="shrink-0 text-base-text-muted" />
         <span className="flex-1">Overview</span>
         {generalFindings.length > 0 && (
-          <span className="rounded-full bg-[var(--color-base-text-faint)] px-1.5 py-0.5 font-medium text-[9px] text-white tabular-nums">
+          <span className="rounded-full bg-base-text-faint px-1.5 py-0.5 font-medium text-[9px] text-white tabular-nums">
             {generalFindings.length}
           </span>
         )}
@@ -162,15 +162,13 @@ function DirContent({
               onClick={() => onSelectFile(file.path)}
               className={`flex w-full items-center gap-1.5 py-1 pr-2 text-left text-[11px] transition-colors ${
                 selectedFile === file.path
-                  ? 'bg-[var(--color-base-raised)]/60 text-[var(--color-base-text)]'
-                  : 'text-[var(--color-base-text-secondary)] hover:bg-[var(--color-base-raised)]/30 hover:text-[var(--color-base-text)]'
+                  ? 'bg-base-raised/60 text-base-text'
+                  : 'text-base-text-secondary hover:bg-base-raised/30 hover:text-base-text'
               }`}
               style={{ paddingLeft: `${(depth + 1) * 12 + 8}px` }}
             >
-              <FileText size={11} className="flex-shrink-0 text-[var(--color-base-text-faint)]" />
-              <span className="min-w-0 flex-1 truncate font-[family-name:var(--font-mono)]">
-                {fileName}
-              </span>
+              <FileText size={11} className="shrink-0 text-base-text-faint" />
+              <span className="min-w-0 flex-1 truncate font-mono">{fileName}</span>
               {severityCounts.length > 0 && (
                 <span className="flex items-center gap-0.5">
                   {severityCounts.map(({ severity, count }) => (
@@ -183,9 +181,9 @@ function DirContent({
                   ))}
                 </span>
               )}
-              <span className="flex-shrink-0 font-[family-name:var(--font-mono)] text-[10px] tabular-nums">
+              <span className="shrink-0 font-mono text-[10px] tabular-nums">
                 <span className="text-emerald-600">+{file.additions}</span>{' '}
-                <span className="text-[var(--color-error)]">-{file.deletions}</span>
+                <span className="text-error">-{file.deletions}</span>
               </span>
             </button>
           )
@@ -215,12 +213,12 @@ function DirEntry({
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
-        className="flex w-full items-center gap-1.5 py-1 pr-2 text-left text-[11px] text-[var(--color-base-text-muted)] transition-colors hover:text-[var(--color-base-text)]"
+        className="flex w-full items-center gap-1.5 py-1 pr-2 text-left text-[11px] text-base-text-muted transition-colors hover:text-base-text"
         style={{ paddingLeft: `${depth * 12 + 8}px` }}
       >
-        <Chevron size={10} className="flex-shrink-0" />
-        <FolderOpen size={11} className="flex-shrink-0 text-[var(--color-base-text-faint)]" />
-        <span className="truncate font-[family-name:var(--font-mono)]">{dir.name}</span>
+        <Chevron size={10} className="shrink-0" />
+        <FolderOpen size={11} className="shrink-0 text-base-text-faint" />
+        <span className="truncate font-mono">{dir.name}</span>
       </button>
       {expanded && (
         <DirContent

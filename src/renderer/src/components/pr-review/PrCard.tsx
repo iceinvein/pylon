@@ -25,31 +25,28 @@ export function PrCard({ pr, selected, onClick }: PrCardProps) {
       onClick={onClick}
       className={`w-full rounded-lg border px-3 py-2.5 text-left transition-colors ${
         selected
-          ? 'border-[var(--color-base-border)] bg-[var(--color-base-raised)]'
-          : 'border-transparent hover:bg-[var(--color-base-raised)]/50'
+          ? 'border-base-border bg-base-raised'
+          : 'border-transparent hover:bg-base-raised/50'
       }`}
     >
       <div className="flex items-start gap-2">
         {pr.isDraft ? (
-          <GitPullRequestDraft
-            size={14}
-            className="mt-0.5 flex-shrink-0 text-[var(--color-base-text-muted)]"
-          />
+          <GitPullRequestDraft size={14} className="mt-0.5 shrink-0 text-base-text-muted" />
         ) : (
-          <GitPrIcon size={14} className="mt-0.5 flex-shrink-0 text-[var(--color-success)]" />
+          <GitPrIcon size={14} className="mt-0.5 shrink-0 text-success" />
         )}
         <div className="min-w-0 flex-1">
-          <div className="truncate text-[var(--color-base-text)] text-sm">{pr.title}</div>
-          <div className="mt-0.5 flex items-center gap-2 text-[var(--color-base-text-muted)] text-xs">
+          <div className="truncate text-base-text text-sm">{pr.title}</div>
+          <div className="mt-0.5 flex items-center gap-2 text-base-text-muted text-xs">
             <span>#{pr.number}</span>
             <span>{pr.author}</span>
             <span>{timeAgo(pr.updatedAt)}</span>
           </div>
           <div className="mt-1 flex items-center gap-2 text-xs">
-            <span className="text-[var(--color-success)]">+{pr.additions}</span>
-            <span className="text-[var(--color-error)]">-{pr.deletions}</span>
+            <span className="text-success">+{pr.additions}</span>
+            <span className="text-error">-{pr.deletions}</span>
             {pr.isDraft && (
-              <span className="rounded bg-[var(--color-base-border)] px-1.5 py-0.5 text-[10px] text-[var(--color-base-text-secondary)]">
+              <span className="rounded bg-base-border px-1.5 py-0.5 text-[10px] text-base-text-secondary">
                 Draft
               </span>
             )}

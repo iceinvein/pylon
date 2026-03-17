@@ -26,9 +26,9 @@ function LoudNode({ node, onClick, isParallel }: FlowNodeProps) {
       onClick={() => onClick(node.messageIndices)}
     >
       <div className={`flex items-center gap-2 ${isParallel ? 'px-2 py-1.5' : 'px-3 py-2'}`}>
-        <Icon size={isParallel ? 12 : 14} className={`flex-shrink-0 ${style.color}`} />
+        <Icon size={isParallel ? 12 : 14} className={`shrink-0 ${style.color}`} />
         <span
-          className={`min-w-0 flex-1 truncate font-medium text-[var(--color-base-text)] ${isParallel ? 'text-[10px]' : 'text-xs'}`}
+          className={`min-w-0 flex-1 truncate font-medium text-base-text ${isParallel ? 'text-[10px]' : 'text-xs'}`}
         >
           {node.label}
         </span>
@@ -39,7 +39,7 @@ function LoudNode({ node, onClick, isParallel }: FlowNodeProps) {
               e.stopPropagation()
               setExpanded((v) => !v)
             }}
-            className="flex-shrink-0 text-[var(--color-base-text-faint)] hover:text-[var(--color-base-text)]"
+            className="shrink-0 text-base-text-faint hover:text-base-text"
           >
             <ChevronRight
               size={12}
@@ -49,13 +49,13 @@ function LoudNode({ node, onClick, isParallel }: FlowNodeProps) {
         )}
       </div>
       {expanded && (
-        <div className="border-[var(--color-base-border-subtle)]/50 border-t px-3 py-1">
+        <div className="border-base-border-subtle/50 border-t px-3 py-1">
           {node.details.map((d, i) => (
             <div
               key={i}
-              className="flex items-center gap-1.5 py-0.5 text-[10px] text-[var(--color-base-text-muted)]"
+              className="flex items-center gap-1.5 py-0.5 text-[10px] text-base-text-muted"
             >
-              <span className="text-[var(--color-base-text-faint)]">{d.toolName}</span>
+              <span className="text-base-text-faint">{d.toolName}</span>
               <span className="truncate">{d.summary}</span>
             </div>
           ))}
@@ -72,7 +72,7 @@ function QuietNode({ node, onClick }: FlowNodeProps) {
   return (
     <button
       type="button"
-      className={`cursor-pointer py-0.5 text-[10px] leading-tight ${isThink ? 'text-[var(--color-base-text-muted)] italic' : 'text-[var(--color-base-text-secondary)]'}`}
+      className={`cursor-pointer py-0.5 text-[10px] leading-tight ${isThink ? 'text-base-text-muted italic' : 'text-base-text-secondary'}`}
       onClick={() => onClick(node.messageIndices)}
     >
       {node.label}

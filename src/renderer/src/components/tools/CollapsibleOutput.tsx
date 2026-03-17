@@ -39,13 +39,13 @@ export function CollapsibleOutput({
         <button
           type="button"
           onClick={handleCopy}
-          className="absolute top-1.5 right-2 z-10 flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-[var(--color-base-text-muted)] transition-colors hover:bg-[var(--color-base-border)] hover:text-[var(--color-base-text)]"
+          className="absolute top-1.5 right-2 z-10 flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-base-text-muted transition-colors hover:bg-base-border hover:text-base-text"
         >
           {copied ? <Check size={11} /> : <Copy size={11} />}
           {copied ? 'Copied' : 'Copy'}
         </button>
         <div
-          className="overflow-x-auto rounded bg-[var(--color-base-raised)]/60 px-3 py-2 font-[family-name:var(--font-mono)] text-[var(--color-base-text)] text-xs leading-relaxed"
+          className="overflow-x-auto rounded bg-base-raised/60 px-3 py-2 font-mono text-base-text text-xs leading-relaxed"
           style={
             expanded && needsTruncation
               ? { maxHeight: maxExpandedHeight, overflowY: 'auto' }
@@ -67,7 +67,7 @@ export function CollapsibleOutput({
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
-          className="mt-1 flex items-center gap-1 text-[11px] text-[var(--color-base-text-muted)] transition-colors hover:text-[var(--color-base-text)]"
+          className="mt-1 flex items-center gap-1 text-[11px] text-base-text-muted transition-colors hover:text-base-text"
         >
           {expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
           {expanded ? 'Collapse' : `Show all (${totalLines} lines)`}

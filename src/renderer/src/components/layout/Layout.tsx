@@ -102,7 +102,7 @@ export function Layout({ children }: LayoutProps) {
   )
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[var(--color-base-bg)] text-[var(--color-base-text)]">
+    <div className="flex h-screen w-screen overflow-hidden bg-base-bg text-base-text">
       {/* Drag region for macOS title bar */}
       <div
         className="fixed top-0 right-0 left-0 z-50 h-12"
@@ -117,7 +117,7 @@ export function Layout({ children }: LayoutProps) {
             animate={{ width: panelWidth + 5, opacity: 1 }}
             exit={{ width: 0, opacity: 0 }}
             transition={{ duration: 0.15, ease: [0.25, 0.1, 0.25, 1] }}
-            className="flex flex-shrink-0 overflow-hidden bg-[var(--color-base-bg)] pt-12"
+            className="flex shrink-0 overflow-hidden bg-base-bg pt-12"
           >
             <div className="min-w-0 flex-1">
               <HistoryPanel />
@@ -126,7 +126,7 @@ export function Layout({ children }: LayoutProps) {
             {/* biome-ignore lint/a11y/noStaticElementInteractions: mouse-only resize handle */}
             <div
               onMouseDown={handleDragStart}
-              className="flex w-1 flex-shrink-0 cursor-col-resize items-center justify-center border-[var(--color-base-border-subtle)] border-r bg-[var(--color-base-bg)] transition-colors hover:bg-[var(--color-base-border)] active:bg-[var(--color-base-text-faint)]"
+              className="flex w-1 shrink-0 cursor-col-resize items-center justify-center border-base-border-subtle border-r bg-base-bg transition-colors hover:bg-base-border active:bg-base-text-faint"
             />
           </motion.div>
         )}
@@ -140,7 +140,7 @@ export function Layout({ children }: LayoutProps) {
             animate={{ width: gitPanelWidth + 5, opacity: 1 }}
             exit={{ width: 0, opacity: 0 }}
             transition={{ duration: 0.15, ease: [0.25, 0.1, 0.25, 1] }}
-            className="flex flex-shrink-0 overflow-hidden pt-12"
+            className="flex shrink-0 overflow-hidden pt-12"
           >
             <div className="min-w-0 flex-1">
               <GitPanel />
@@ -149,7 +149,7 @@ export function Layout({ children }: LayoutProps) {
             {/* biome-ignore lint/a11y/noStaticElementInteractions: mouse-only resize handle */}
             <div
               onMouseDown={handleGitDragStart}
-              className="flex w-1 flex-shrink-0 cursor-col-resize items-center justify-center border-[var(--color-base-border-subtle)] border-r bg-[var(--color-base-bg)] transition-colors hover:bg-[var(--color-base-border)] active:bg-[var(--color-base-text-faint)]"
+              className="flex w-1 shrink-0 cursor-col-resize items-center justify-center border-base-border-subtle border-r bg-base-bg transition-colors hover:bg-base-border active:bg-base-text-faint"
             />
           </motion.div>
         )}

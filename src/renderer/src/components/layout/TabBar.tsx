@@ -10,13 +10,13 @@ import { WorktreeDialog } from '../WorktreeDialog'
 
 function StatusDot({ status }: { status: SessionStatus | undefined }) {
   if (!status || status === 'empty' || status === 'done') {
-    return <span className="h-2 w-2 rounded-full bg-[var(--color-base-text-faint)]" />
+    return <span className="h-2 w-2 rounded-full bg-base-text-faint" />
   }
   if (status === 'running' || status === 'starting' || status === 'waiting') {
-    return <span className="h-2 w-2 animate-pulse rounded-full bg-[var(--color-success)]" />
+    return <span className="h-2 w-2 animate-pulse rounded-full bg-success" />
   }
   if (status === 'error') {
-    return <span className="h-2 w-2 rounded-full bg-[var(--color-error)]" />
+    return <span className="h-2 w-2 rounded-full bg-error" />
   }
   return null
 }
@@ -49,19 +49,17 @@ const TabItem = memo(function TabItem({
       }}
       className={`group flex h-7 min-w-0 flex-1 cursor-pointer items-center gap-1.5 rounded-md px-3 text-xs transition-colors ${
         isActive
-          ? 'bg-[var(--color-base-raised)] text-[var(--color-base-text)]'
-          : 'text-[var(--color-base-text-secondary)] hover:bg-[var(--color-base-raised)]/60 hover:text-[var(--color-base-text)]'
+          ? 'bg-base-raised text-base-text'
+          : 'text-base-text-secondary hover:bg-base-raised/60 hover:text-base-text'
       }`}
     >
       <StatusDot status={session?.status} />
       <span className="min-w-0 flex-1 truncate">{session?.title || tab.label}</span>
-      <div className="relative ml-1 flex h-5 flex-shrink-0 items-center justify-center">
+      <div className="relative ml-1 flex h-5 shrink-0 items-center justify-center">
         {shortcutNum !== null && (
           <span
             className={`px-1 text-[11px] tabular-nums transition-opacity group-hover:opacity-0 ${
-              isActive
-                ? 'text-[var(--color-base-text-muted)]'
-                : 'text-[var(--color-base-text-faint)]'
+              isActive ? 'text-base-text-muted' : 'text-base-text-faint'
             }`}
           >
             ⌘{shortcutNum}
@@ -74,7 +72,7 @@ const TabItem = memo(function TabItem({
             onClose()
           }}
           aria-label="Close tab"
-          className="absolute inset-0 flex items-center justify-center rounded opacity-0 transition-opacity hover:bg-[var(--color-base-text-faint)] group-hover:opacity-100"
+          className="absolute inset-0 flex items-center justify-center rounded opacity-0 transition-opacity hover:bg-base-text-faint group-hover:opacity-100"
         >
           <X size={10} />
         </button>
@@ -93,7 +91,7 @@ export function TabBar() {
   return (
     <>
       <div
-        className="flex h-9 items-center border-[var(--color-base-border-subtle)] border-b bg-[var(--color-base-bg)] px-1"
+        className="flex h-9 items-center border-base-border-subtle border-b bg-base-bg px-1"
         style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
       >
         <div className="flex min-w-0 flex-1 items-center gap-0.5">
@@ -115,7 +113,7 @@ export function TabBar() {
           onClick={() => setNewTabPopoverOpen(!newTabPopoverOpen)}
           title="New Tab"
           aria-label="New Tab"
-          className="ml-1 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md text-[var(--color-base-text-muted)] transition-colors hover:bg-[var(--color-base-raised)] hover:text-[var(--color-base-text)]"
+          className="ml-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-base-text-muted transition-colors hover:bg-base-raised hover:text-base-text"
         >
           <Plus size={14} />
         </button>

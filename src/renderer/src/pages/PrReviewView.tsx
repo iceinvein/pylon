@@ -17,7 +17,7 @@ export function PrReviewView() {
     <div className="flex h-full">
       {isReady ? (
         <>
-          <div className="w-[280px] flex-shrink-0">
+          <div className="w-70 shrink-0">
             <PrList />
           </div>
           <div className="min-w-0 flex-1">

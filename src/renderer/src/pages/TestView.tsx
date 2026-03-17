@@ -1,12 +1,14 @@
 import {
   AlertTriangle,
   Bug,
+  Check,
   ChevronDown,
   ChevronRight,
   FileCode2,
   Folder,
   Info,
   Loader2,
+  Minus,
   Play,
   Plus,
   Square,
@@ -203,7 +205,7 @@ export function TestView() {
   return (
     <div className="flex h-full">
       {/* Left panel — resizable sidebar */}
-      <div className="flex flex-shrink-0 flex-col overflow-y-auto" style={{ width: sidebarWidth }}>
+      <div className="flex shrink-0 flex-col overflow-y-auto" style={{ width: sidebarWidth }}>
         {/* Project Picker */}
         <ProjectPicker
           projects={projects}
@@ -268,7 +270,7 @@ export function TestView() {
       {/* biome-ignore lint/a11y/noStaticElementInteractions: mouse-only resize handle */}
       <div
         onMouseDown={handleSidebarDragStart}
-        className="flex w-1 flex-shrink-0 cursor-col-resize items-center justify-center border-[var(--color-base-border-subtle)] border-r bg-[var(--color-base-bg)] transition-colors hover:bg-[var(--color-base-border)] active:bg-[var(--color-base-text-faint)]"
+        className="flex w-1 shrink-0 cursor-col-resize items-center justify-center border-base-border-subtle border-r bg-base-bg transition-colors hover:bg-base-border active:bg-base-text-faint"
       />
 
       {/* Right panel */}
@@ -321,34 +323,29 @@ function ProjectPicker({ projects, selectedProject, onSelect }: ProjectPickerPro
   }, [open])
 
   return (
-    <div
-      ref={containerRef}
-      className="relative border-[var(--color-base-border-subtle)] border-b p-3"
-    >
-      <span className="mb-1 block text-[var(--color-base-text-secondary)] text-xs">Project</span>
+    <div ref={containerRef} className="relative border-base-border-subtle border-b p-3">
+      <span className="mb-1 block text-base-text-secondary text-xs">Project</span>
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="flex w-full items-center gap-2 rounded-lg border border-[var(--color-base-border)] bg-[var(--color-base-raised)] px-3 py-2 text-left text-sm transition-colors hover:border-[var(--color-base-border)]"
+        className="flex w-full items-center gap-2 rounded-lg border border-base-border bg-base-raised px-3 py-2 text-left text-sm transition-colors hover:border-base-border"
       >
         {selectedProject ? (
           <>
-            <Folder size={14} className="flex-shrink-0 text-[var(--color-base-text-muted)]" />
-            <span className="min-w-0 flex-1 truncate text-[var(--color-base-text)]">
+            <Folder size={14} className="shrink-0 text-base-text-muted" />
+            <span className="min-w-0 flex-1 truncate text-base-text">
               {basename(selectedProject)}
             </span>
           </>
         ) : (
-          <span className="flex-1 text-[var(--color-base-text-muted)]">Select a project…</span>
+          <span className="flex-1 text-base-text-muted">Select a project…</span>
         )}
         <ChevronDown
-          className={`h-4 w-4 flex-shrink-0 text-[var(--color-base-text-muted)] transition-transform ${open ? 'rotate-180' : ''}`}
+          className={`h-4 w-4 shrink-0 text-base-text-muted transition-transform ${open ? 'rotate-180' : ''}`}
         />
       </button>
       {selectedProject && (
-        <p className="mt-1 truncate text-[11px] text-[var(--color-base-text-faint)]">
-          {selectedProject}
-        </p>
+        <p className="mt-1 truncate text-[11px] text-base-text-faint">{selectedProject}</p>
       )}
 
       <AnimatePresence>
@@ -358,10 +355,10 @@ function ProjectPicker({ projects, selectedProject, onSelect }: ProjectPickerPro
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.12 }}
-            className="absolute right-3 left-3 z-50 mt-1 max-h-64 overflow-y-auto rounded-xl border border-[var(--color-base-border)] bg-[var(--color-base-surface)] py-1 shadow-2xl"
+            className="absolute right-3 left-3 z-50 mt-1 max-h-64 overflow-y-auto rounded-xl border border-base-border bg-base-surface py-1 shadow-2xl"
           >
             {projects.length === 0 ? (
-              <div className="px-3 py-3 text-center text-[var(--color-base-text-faint)] text-xs">
+              <div className="px-3 py-3 text-center text-base-text-faint text-xs">
                 No recent projects
               </div>
             ) : (
@@ -373,24 +370,17 @@ function ProjectPicker({ projects, selectedProject, onSelect }: ProjectPickerPro
                     onSelect(p.path)
                     setOpen(false)
                   }}
-                  className={`flex w-full items-start gap-2.5 px-3 py-2 text-left transition-colors hover:bg-[var(--color-base-raised)]/60 ${
-                    selectedProject === p.path ? 'bg-[var(--color-base-raised)]/40' : ''
+                  className={`flex w-full items-start gap-2.5 px-3 py-2 text-left transition-colors hover:bg-base-raised/60 ${
+                    selectedProject === p.path ? 'bg-base-raised/40' : ''
                   }`}
                 >
-                  <Folder
-                    size={13}
-                    className="mt-0.5 flex-shrink-0 text-[var(--color-base-text-faint)]"
-                  />
+                  <Folder size={13} className="mt-0.5 shrink-0 text-base-text-faint" />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium text-[var(--color-base-text)] text-xs">
+                    <p className="truncate font-medium text-base-text text-xs">
                       {basename(p.path)}
                     </p>
-                    <p className="truncate text-[11px] text-[var(--color-base-text-faint)]">
-                      {p.path}
-                    </p>
-                    <p className="text-[10px] text-[var(--color-base-text-faint)]">
-                      {timeAgo(p.lastUsed)}
-                    </p>
+                    <p className="truncate text-[11px] text-base-text-faint">{p.path}</p>
+                    <p className="text-[10px] text-base-text-faint">{timeAgo(p.lastUsed)}</p>
                   </div>
                 </button>
               ))
@@ -442,68 +432,105 @@ function ServerSection({
     onSetCustomUrl(v || null)
   }
 
+  const portInUse = projectScan?.serverRunning ?? false
+
   return (
-    <div className="border-[var(--color-base-border-subtle)] border-b p-3">
-      <h3 className="mb-2 font-semibold text-[var(--color-base-text-secondary)] text-xs uppercase tracking-wider">
+    <div className="border-base-border-subtle border-b p-3">
+      <h3 className="mb-2 font-semibold text-base-text-secondary text-xs uppercase tracking-wider">
         Server
       </h3>
 
       {scanLoading && (
-        <div className="flex items-center gap-2 text-[var(--color-base-text-secondary)] text-xs">
+        <div className="flex items-center gap-2 text-base-text-secondary text-xs">
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          <span>Scanning project...</span>
+          <span>Scanning project…</span>
         </div>
       )}
 
       {!scanLoading && !showCustomInput && projectScan && !projectScan.error && (
-        <div className="space-y-1">
+        <div className="space-y-2">
+          {/* Framework & detected info */}
           {projectScan.framework && (
-            <div className="flex items-center gap-2 text-xs">
-              <span className="text-[var(--color-base-text)]">{projectScan.framework}</span>
-              {projectScan.detectedUrl && (
-                <span className="truncate text-[var(--color-base-text-muted)]">
-                  {projectScan.detectedUrl}
-                </span>
+            <div className="rounded-lg border border-base-border-subtle bg-base-raised p-2">
+              <div className="flex items-center justify-between">
+                <span className="font-medium text-base-text text-xs">{projectScan.framework}</span>
+                {projectScan.detectedPort && (
+                  <span className="font-mono text-[11px] text-base-text-muted">
+                    :{projectScan.detectedPort}
+                  </span>
+                )}
+              </div>
+              {projectScan.devCommand && (
+                <div className="mt-1 truncate font-mono text-[11px] text-base-text-faint">
+                  {projectScan.devCommand}
+                </div>
               )}
             </div>
           )}
+
+          {/* Port status */}
+          {projectScan.detectedPort && (
+            <div className="flex items-center gap-1.5 text-xs">
+              <span
+                className={`h-2 w-2 shrink-0 rounded-full ${portInUse ? 'bg-yellow-500' : 'bg-success'}`}
+              />
+              <span className={portInUse ? 'text-yellow-400' : 'text-success'}>
+                Port {projectScan.detectedPort} {portInUse ? 'in use' : 'available'}
+              </span>
+            </div>
+          )}
+
+          {/* Auto-start mode info */}
           {autoStartServer && projectScan.devCommand && (
             <div className="flex items-center gap-1.5 text-xs">
-              <span className="h-2 w-2 flex-shrink-0 rounded-full bg-[var(--color-info)]" />
-              <span className="text-[var(--color-info)]">Auto-start enabled</span>
+              <Zap size={12} className="shrink-0 text-info" />
+              <span className="text-info">
+                {portInUse ? 'Will auto-select free port' : 'Will start on detected port'}
+              </span>
+            </div>
+          )}
+          {autoStartServer && !projectScan.devCommand && (
+            <div className="flex items-center gap-1.5 text-xs">
+              <AlertTriangle size={12} className="shrink-0 text-yellow-400" />
+              <span className="text-yellow-400">No dev command found</span>
             </div>
           )}
           {!autoStartServer && !showCustomInput && (
             <div className="flex items-center gap-1.5 text-xs">
-              <span className="h-2 w-2 flex-shrink-0 rounded-full bg-[var(--color-base-text-muted)]" />
-              <span className="text-[var(--color-base-text-secondary)]">Manual mode</span>
+              <span className="h-2 w-2 shrink-0 rounded-full bg-base-text-muted" />
+              <span className="text-base-text-secondary">
+                Manual — server must be running externally
+              </span>
             </div>
           )}
         </div>
       )}
 
       {!scanLoading && !showCustomInput && (!projectScan || projectScan.error) && (
-        <p className="text-[var(--color-base-text-muted)] text-xs">
+        <p className="text-base-text-muted text-xs">
           {projectScan?.error ? projectScan.error : 'No project selected'}
         </p>
       )}
 
       {showCustomInput && (
-        <input
-          type="url"
-          value={inputValue}
-          onChange={(e) => handleCustomUrlChange(e.target.value)}
-          placeholder="https://localhost:3000"
-          className="w-full rounded-lg border border-[var(--color-base-border)] bg-[var(--color-base-raised)] px-3 py-1.5 text-[var(--color-base-text)] text-sm placeholder:text-[var(--color-base-text-muted)] focus:border-[var(--color-info)] focus:outline-none"
-        />
+        <div className="space-y-1">
+          <input
+            type="url"
+            value={inputValue}
+            onChange={(e) => handleCustomUrlChange(e.target.value)}
+            placeholder="http://localhost:3000"
+            className="w-full rounded-lg border border-base-border bg-base-raised px-3 py-1.5 text-base-text text-sm placeholder:text-base-text-muted focus:border-info focus:outline-none"
+          />
+          <p className="text-[11px] text-base-text-faint">Point to an already-running server</p>
+        </div>
       )}
 
       <button
         type="button"
         onClick={handleToggleCustom}
-        className="mt-2 text-[var(--color-info)] text-xs transition-colors hover:text-[var(--color-info)]"
+        className="mt-2 text-info text-xs transition-colors hover:text-info"
       >
-        {showCustomInput ? 'Use auto-start server' : 'Use custom URL'}
+        {showCustomInput ? '← Use auto-start' : 'Use custom URL instead'}
       </button>
     </div>
   )
@@ -535,13 +562,13 @@ function GoalSection({
   onKeyDown,
 }: GoalSectionProps) {
   return (
-    <div className="border-[var(--color-base-border-subtle)] border-b p-3">
-      <h3 className="mb-2 font-semibold text-[var(--color-base-text-secondary)] text-xs uppercase tracking-wider">
+    <div className="border-base-border-subtle border-b p-3">
+      <h3 className="mb-2 font-semibold text-base-text-secondary text-xs uppercase tracking-wider">
         What to Test
       </h3>
 
       {goalsLoading && (
-        <div className="mb-2 flex items-center gap-2 text-[var(--color-base-text-secondary)] text-xs">
+        <div className="mb-2 flex items-center gap-2 text-base-text-secondary text-xs">
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
           <span>Analyzing project…</span>
         </div>
@@ -550,22 +577,30 @@ function GoalSection({
       {suggestedGoals.length > 0 && (
         <div className="mb-2 space-y-1.5">
           {suggestedGoals.map((goal) => (
-            <label key={goal.id} className="flex cursor-pointer items-start gap-2">
-              <input
-                type="checkbox"
-                checked={goal.selected}
-                onChange={() => onToggleGoal(goal.id)}
-                className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 cursor-pointer accent-blue-500"
-              />
+            <button
+              key={goal.id}
+              type="button"
+              onClick={() => onToggleGoal(goal.id)}
+              className="flex w-full cursor-pointer items-start gap-2 text-left"
+            >
+              <span
+                className={`mt-0.5 flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border transition-colors ${
+                  goal.selected
+                    ? 'border-info bg-info text-white'
+                    : 'border-base-border bg-base-raised'
+                }`}
+              >
+                {goal.selected && <Check size={10} strokeWidth={3} />}
+              </span>
               <div className="min-w-0">
-                <span className="block text-[var(--color-base-text)] text-xs leading-tight">
+                <span
+                  className={`block text-xs leading-tight transition-colors ${goal.selected ? 'text-base-text' : 'text-base-text-muted'}`}
+                >
                   {goal.title}
                 </span>
-                {goal.area && (
-                  <span className="text-[var(--color-base-text-muted)] text-xs">{goal.area}</span>
-                )}
+                {goal.area && <span className="text-[11px] text-base-text-faint">{goal.area}</span>}
               </div>
-            </label>
+            </button>
           ))}
         </div>
       )}
@@ -574,13 +609,11 @@ function GoalSection({
         <div className="mb-2 space-y-1">
           {customGoals.map((goal, i) => (
             <div key={i} className="flex items-center gap-1.5">
-              <span className="min-w-0 flex-1 truncate text-[var(--color-base-text)] text-xs">
-                {goal}
-              </span>
+              <span className="min-w-0 flex-1 truncate text-base-text text-xs">{goal}</span>
               <button
                 type="button"
                 onClick={() => onRemoveCustomGoal(i)}
-                className="flex-shrink-0 text-[var(--color-base-text-muted)] transition-colors hover:text-[var(--color-error)]"
+                className="shrink-0 text-base-text-muted transition-colors hover:text-error"
                 aria-label="Remove goal"
               >
                 <X className="h-3 w-3" />
@@ -598,13 +631,13 @@ function GoalSection({
           onChange={(e) => onCustomGoalInputChange(e.target.value)}
           onKeyDown={onKeyDown}
           placeholder="Add custom goal…"
-          className="min-w-0 flex-1 rounded-lg border border-[var(--color-base-border)] bg-[var(--color-base-raised)] px-2.5 py-1.5 text-[var(--color-base-text)] text-xs placeholder:text-[var(--color-base-text-muted)] focus:border-[var(--color-info)] focus:outline-none"
+          className="min-w-0 flex-1 rounded-lg border border-base-border bg-base-raised px-2.5 py-1.5 text-base-text text-xs placeholder:text-base-text-muted focus:border-info focus:outline-none"
         />
         <button
           type="button"
           onClick={onAddCustomGoal}
           disabled={!customGoalInput.trim()}
-          className="flex-shrink-0 rounded-lg border border-[var(--color-base-border)] bg-[var(--color-base-raised)] p-1.5 text-[var(--color-base-text-secondary)] transition-colors hover:text-[var(--color-base-text)] disabled:opacity-40"
+          className="shrink-0 rounded-lg border border-base-border bg-base-raised p-1.5 text-base-text-secondary transition-colors hover:text-base-text disabled:opacity-40"
           aria-label="Add goal"
         >
           <Plus className="h-3.5 w-3.5" />
@@ -634,14 +667,14 @@ function AdvancedSection({
   const [open, setOpen] = useState(false)
 
   return (
-    <div className="border-[var(--color-base-border-subtle)] border-b">
+    <div className="border-base-border-subtle border-b">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-1.5 px-3 py-2.5 text-left text-[var(--color-base-text-secondary)] text-xs transition-colors hover:text-[var(--color-base-text)]"
+        className="flex w-full items-center gap-1.5 px-3 py-2.5 text-left text-base-text-secondary text-xs transition-colors hover:text-base-text"
       >
         <ChevronRight
-          className={`h-3.5 w-3.5 flex-shrink-0 transition-transform ${open ? 'rotate-90' : ''}`}
+          className={`h-3.5 w-3.5 shrink-0 transition-transform ${open ? 'rotate-90' : ''}`}
         />
         <span className="font-semibold uppercase tracking-wider">Advanced</span>
       </button>
@@ -649,32 +682,26 @@ function AdvancedSection({
       {open && (
         <div className="space-y-3 px-3 pb-3">
           <label className="block">
-            <span className="mb-1 block text-[var(--color-base-text-secondary)] text-xs">
-              E2E Output Path
-            </span>
+            <span className="mb-1 block text-base-text-secondary text-xs">E2E Output Path</span>
             <input
               type="text"
               value={e2ePath}
               onChange={(e) => onE2ePathChange(e.target.value)}
-              className="w-full rounded-lg border border-[var(--color-base-border)] bg-[var(--color-base-raised)] px-3 py-1.5 text-[var(--color-base-text)] text-sm focus:border-[var(--color-info)] focus:outline-none"
+              className="w-full rounded-lg border border-base-border bg-base-raised px-3 py-1.5 text-base-text text-sm focus:border-info focus:outline-none"
             />
-            {e2eReason && (
-              <p className="mt-1 text-[var(--color-base-text-muted)] text-xs">{e2eReason}</p>
-            )}
+            {e2eReason && <p className="mt-1 text-base-text-muted text-xs">{e2eReason}</p>}
           </label>
 
           <div>
-            <span className="mb-1 block text-[var(--color-base-text-secondary)] text-xs">
-              Strategy
-            </span>
+            <span className="mb-1 block text-base-text-secondary text-xs">Strategy</span>
             <div className="flex gap-2">
               <button
                 type="button"
                 onClick={() => onModeChange('manual')}
                 className={`flex-1 rounded-lg border px-3 py-1.5 text-xs transition-colors ${
                   mode === 'manual'
-                    ? 'border-[var(--color-info)] bg-[var(--color-info)]/20 text-[var(--color-info)]'
-                    : 'border-[var(--color-base-border)] bg-[var(--color-base-raised)] text-[var(--color-base-text-secondary)] hover:text-[var(--color-base-text)]'
+                    ? 'border-info bg-info/20 text-info'
+                    : 'border-base-border bg-base-raised text-base-text-secondary hover:text-base-text'
                 }`}
               >
                 Manual
@@ -684,8 +711,8 @@ function AdvancedSection({
                 onClick={() => onModeChange('requirements')}
                 className={`flex-1 rounded-lg border px-3 py-1.5 text-xs transition-colors ${
                   mode === 'requirements'
-                    ? 'border-[var(--color-info)] bg-[var(--color-info)]/20 text-[var(--color-info)]'
-                    : 'border-[var(--color-base-border)] bg-[var(--color-base-raised)] text-[var(--color-base-text-secondary)] hover:text-[var(--color-base-text)]'
+                    ? 'border-info bg-info/20 text-info'
+                    : 'border-base-border bg-base-raised text-base-text-secondary hover:text-base-text'
                 }`}
               >
                 Requirements
@@ -722,37 +749,51 @@ function LaunchButtons({
   const autoExploreEnabled = hasProject && hasUrl
 
   return (
-    <div className="space-y-2 border-[var(--color-base-border-subtle)] border-b p-3">
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={onStart}
-          disabled={!canStart}
-          className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-[var(--color-info)] px-3 py-2 font-medium text-sm text-white transition-colors hover:bg-[var(--color-info)] disabled:bg-[var(--color-base-border)] disabled:text-[var(--color-base-text-muted)]"
-        >
-          <Play className="h-4 w-4" />
-          Start
-        </button>
-        <div className="flex items-center gap-1.5 rounded-lg border border-[var(--color-base-border)] bg-[var(--color-base-raised)] px-2 py-1.5">
-          <span className="text-[var(--color-base-text-muted)] text-xs">Agents</span>
-          <select
-            value={agentCount}
-            onChange={(e) => onSetAgentCount(Number(e.target.value))}
-            className="appearance-none bg-transparent pr-1 text-center text-[var(--color-base-text)] text-sm focus:outline-none"
+    <div className="space-y-2 border-base-border-subtle border-b p-3">
+      <div className="space-y-1.5">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onStart}
+            disabled={!canStart}
+            className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-info px-3 py-2 font-medium text-sm text-white transition-colors hover:bg-info disabled:bg-base-border disabled:text-base-text-muted"
           >
-            {[1, 2, 3, 4, 5].map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-          </select>
+            <Play className="h-4 w-4" />
+            Start
+          </button>
+          <div className="flex items-center gap-1 rounded-lg border border-base-border bg-base-raised px-1 py-0.5">
+            <button
+              type="button"
+              onClick={() => onSetAgentCount(agentCount - 1)}
+              disabled={agentCount <= 1}
+              className="flex h-7 w-7 items-center justify-center rounded-md text-base-text-muted transition-colors hover:bg-base-border hover:text-base-text disabled:opacity-30 disabled:hover:bg-transparent"
+            >
+              <Minus size={14} />
+            </button>
+            <span className="w-5 text-center font-mono text-base-text text-sm">{agentCount}</span>
+            <button
+              type="button"
+              onClick={() => onSetAgentCount(agentCount + 1)}
+              disabled={agentCount >= 5}
+              className="flex h-7 w-7 items-center justify-center rounded-md text-base-text-muted transition-colors hover:bg-base-border hover:text-base-text disabled:opacity-30 disabled:hover:bg-transparent"
+            >
+              <Plus size={14} />
+            </button>
+          </div>
         </div>
+        {agentCount > 1 && (
+          <p
+            className={`text-[11px] ${agentCount >= 4 ? 'text-yellow-400' : 'text-base-text-faint'}`}
+          >
+            {agentCount} parallel agents — {agentCount}x token usage
+          </p>
+        )}
       </div>
       <button
         type="button"
         onClick={onAutoExplore}
         disabled={!autoExploreEnabled}
-        className="flex w-full items-center justify-center gap-2 rounded-lg border border-[var(--color-base-border)] bg-[var(--color-base-raised)] px-3 py-2 font-medium text-[var(--color-base-text)] text-sm transition-colors hover:bg-[var(--color-base-border)] disabled:opacity-40"
+        className="flex w-full items-center justify-center gap-2 rounded-lg border border-base-border bg-base-raised px-3 py-2 font-medium text-base-text text-sm transition-colors hover:bg-base-border disabled:opacity-40"
       >
         <Zap className="h-4 w-4 text-yellow-400" />
         Auto-explore everything
@@ -784,7 +825,7 @@ function ExplorationList({
   if (explorations.length === 0) {
     return (
       <div className="p-3">
-        <p className="text-[var(--color-base-text-muted)] text-xs">No explorations yet</p>
+        <p className="text-base-text-muted text-xs">No explorations yet</p>
       </div>
     )
   }
@@ -843,10 +884,10 @@ function ExplorationGroup({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-1.5 px-3 py-2 text-left text-[var(--color-base-text-secondary)] text-xs transition-colors hover:text-[var(--color-base-text)]"
+        className="flex w-full items-center gap-1.5 px-3 py-2 text-left text-base-text-secondary text-xs transition-colors hover:text-base-text"
       >
         <ChevronRight
-          className={`h-3 w-3 flex-shrink-0 transition-transform ${open ? 'rotate-90' : ''}`}
+          className={`h-3 w-3 shrink-0 transition-transform ${open ? 'rotate-90' : ''}`}
         />
         <span className="font-semibold uppercase tracking-wider">
           {label} ({count})
@@ -892,18 +933,16 @@ function ExplorationRow({
       type="button"
       onClick={() => onSelect(exploration.id)}
       className={`group w-full rounded-lg px-2.5 py-2 text-left text-xs transition-colors ${
-        isSelected
-          ? 'bg-[var(--color-base-border)]/50 text-[var(--color-base-text)]'
-          : 'text-[var(--color-base-text)] hover:bg-[var(--color-base-raised)]/50'
+        isSelected ? 'bg-base-border/50 text-base-text' : 'text-base-text hover:bg-base-raised/50'
       }`}
     >
       <div className="flex items-center gap-2">
         <span
-          className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${STATUS_COLORS[exploration.status] ?? 'bg-[var(--color-base-text-muted)]'}`}
+          className={`h-1.5 w-1.5 shrink-0 rounded-full ${STATUS_COLORS[exploration.status] ?? 'bg-base-text-muted'}`}
         />
         <span className="min-w-0 flex-1 truncate">{truncateGoal(exploration.goal)}</span>
         {exploration.findingsCount > 0 && (
-          <span className="flex-shrink-0 text-xs text-yellow-500">{exploration.findingsCount}</span>
+          <span className="shrink-0 text-xs text-yellow-500">{exploration.findingsCount}</span>
         )}
         {isRunning ? (
           <button
@@ -912,7 +951,7 @@ function ExplorationRow({
               e.stopPropagation()
               onStop(exploration.id)
             }}
-            className="flex-shrink-0 text-[var(--color-base-text-muted)] opacity-0 transition-all hover:text-[var(--color-error)] group-hover:opacity-100"
+            className="shrink-0 text-base-text-muted opacity-0 transition-all hover:text-error group-hover:opacity-100"
             aria-label="Stop exploration"
           >
             <Square className="h-3 w-3" />
@@ -924,14 +963,14 @@ function ExplorationRow({
               e.stopPropagation()
               onDelete(exploration.id)
             }}
-            className="flex-shrink-0 text-[var(--color-base-text-muted)] opacity-0 transition-all hover:text-[var(--color-error)] group-hover:opacity-100"
+            className="shrink-0 text-base-text-muted opacity-0 transition-all hover:text-error group-hover:opacity-100"
             aria-label="Delete exploration"
           >
             <Trash2 className="h-3 w-3" />
           </button>
         )}
       </div>
-      <div className="mt-0.5 ml-3.5 text-[var(--color-base-text-muted)] text-xs">
+      <div className="mt-0.5 ml-3.5 text-base-text-muted text-xs">
         {formatDate(exploration.createdAt)}
       </div>
     </button>
@@ -1004,7 +1043,7 @@ function ExplorationDetail({
 
       {/* Error banner */}
       {exploration.errorMessage && (
-        <div className="mx-4 mt-3 rounded-lg border border-[var(--color-error)]/30 bg-[var(--color-error)]/10 px-3 py-2 text-[var(--color-error)] text-sm">
+        <div className="mx-4 mt-3 rounded-lg border border-error/30 bg-error/10 px-3 py-2 text-error text-sm">
           {exploration.errorMessage}
         </div>
       )}
@@ -1019,19 +1058,19 @@ function ExplorationDetail({
       {/* Findings */}
       {displayFindings.length > 0 && (
         <div className="px-4 py-3">
-          <h3 className="mb-2 flex items-center gap-2 font-semibold text-[var(--color-base-text)] text-sm">
+          <h3 className="mb-2 flex items-center gap-2 font-semibold text-base-text text-sm">
             <Bug className="h-4 w-4 text-yellow-400" />
             Findings ({displayFindings.length})
           </h3>
           {showBatchToggle && (
-            <div className="mb-2 flex items-center gap-1 rounded-lg bg-[var(--color-base-raised)] p-0.5">
+            <div className="mb-2 flex items-center gap-1 rounded-lg bg-base-raised p-0.5">
               <button
                 type="button"
                 onClick={() => setViewMode('single')}
                 className={`rounded px-2 py-1 text-xs ${
                   viewMode === 'single'
-                    ? 'bg-[var(--color-base-border)] text-[var(--color-base-text)]'
-                    : 'text-[var(--color-base-text-secondary)] hover:text-[var(--color-base-text)]'
+                    ? 'bg-base-border text-base-text'
+                    : 'text-base-text-secondary hover:text-base-text'
                 }`}
               >
                 This exploration
@@ -1041,8 +1080,8 @@ function ExplorationDetail({
                 onClick={() => setViewMode('batch')}
                 className={`rounded px-2 py-1 text-xs ${
                   viewMode === 'batch'
-                    ? 'bg-[var(--color-base-border)] text-[var(--color-base-text)]'
-                    : 'text-[var(--color-base-text-secondary)] hover:text-[var(--color-base-text)]'
+                    ? 'bg-base-border text-base-text'
+                    : 'text-base-text-secondary hover:text-base-text'
                 }`}
               >
                 All in batch ({batchFindings?.length ?? 0})
@@ -1070,8 +1109,8 @@ function ExplorationDetail({
       {/* Generated tests */}
       {tests.length > 0 && (
         <div className="px-4 py-3">
-          <h3 className="mb-2 flex items-center gap-2 font-semibold text-[var(--color-base-text)] text-sm">
-            <FileCode2 className="h-4 w-4 text-[var(--color-success)]" />
+          <h3 className="mb-2 flex items-center gap-2 font-semibold text-base-text text-sm">
+            <FileCode2 className="h-4 w-4 text-success" />
             Generated Tests ({tests.length})
           </h3>
           <div className="space-y-1">
@@ -1095,23 +1134,21 @@ type StatusBarProps = {
 
 function StatusBar({ exploration, findingsCount, testsCount }: StatusBarProps) {
   return (
-    <div className="flex items-center gap-4 border-[var(--color-base-border-subtle)] border-b px-4 py-3 text-sm">
+    <div className="flex items-center gap-4 border-base-border-subtle border-b px-4 py-3 text-sm">
       <div className="flex items-center gap-2">
         <span
-          className={`h-2.5 w-2.5 rounded-full ${STATUS_COLORS[exploration.status] ?? 'bg-[var(--color-base-text-muted)]'}`}
+          className={`h-2.5 w-2.5 rounded-full ${STATUS_COLORS[exploration.status] ?? 'bg-base-text-muted'}`}
         />
-        <span className="text-[var(--color-base-text)] capitalize">{exploration.status}</span>
+        <span className="text-base-text capitalize">{exploration.status}</span>
       </div>
-      <div className="text-[var(--color-base-text-secondary)]">
+      <div className="text-base-text-secondary">
         {findingsCount} {findingsCount === 1 ? 'finding' : 'findings'}
       </div>
-      <div className="text-[var(--color-base-text-secondary)]">
+      <div className="text-base-text-secondary">
         {testsCount} {testsCount === 1 ? 'test' : 'tests'}
       </div>
       {exploration.totalCostUsd > 0 && (
-        <div className="ml-auto text-[var(--color-base-text-muted)]">
-          {formatCost(exploration.totalCostUsd)}
-        </div>
+        <div className="ml-auto text-base-text-muted">{formatCost(exploration.totalCostUsd)}</div>
       )}
     </div>
   )
@@ -1133,12 +1170,12 @@ function StreamingPanel({ text }: { text: string }) {
   return (
     <div className="px-4 pt-3">
       <div className="mb-2 flex items-center gap-2">
-        <Loader2 className="h-4 w-4 animate-spin text-[var(--color-info)]" />
-        <span className="text-[var(--color-base-text-secondary)] text-xs">Exploring…</span>
+        <Loader2 className="h-4 w-4 animate-spin text-info" />
+        <span className="text-base-text-secondary text-xs">Exploring…</span>
       </div>
       <pre
         ref={ref}
-        className="max-h-[300px] overflow-auto whitespace-pre-wrap rounded-lg border border-[var(--color-base-border-subtle)] bg-[var(--color-base-surface)]/50 p-3 text-[var(--color-base-text)] text-xs"
+        className="max-h-75 overflow-auto whitespace-pre-wrap rounded-lg border border-base-border-subtle bg-base-surface/50 p-3 text-base-text text-xs"
       >
         {text}
       </pre>
@@ -1186,19 +1223,19 @@ function AgentActivityPanel({
         className="mb-2 flex items-center gap-2"
       >
         {isRunning ? (
-          <Loader2 className="h-4 w-4 animate-spin text-[var(--color-info)]" />
+          <Loader2 className="h-4 w-4 animate-spin text-info" />
         ) : (
           <ChevronRight
-            className={`h-4 w-4 text-[var(--color-base-text-faint)] transition-transform ${!collapsed ? 'rotate-90' : ''}`}
+            className={`h-4 w-4 text-base-text-faint transition-transform ${!collapsed ? 'rotate-90' : ''}`}
           />
         )}
-        <span className="text-[var(--color-base-text-secondary)] text-xs">
+        <span className="text-base-text-secondary text-xs">
           {isRunning ? 'Exploring' : 'Agent activity'}
           {toolUseCount > 0 && ` · ${toolUseCount} tool call${toolUseCount !== 1 ? 's' : ''}`}
         </span>
       </button>
       {!collapsed && (
-        <div className="max-h-[400px] space-y-1.5 overflow-y-auto rounded-lg border border-[var(--color-base-border-subtle)] bg-[var(--color-base-surface)]/50 p-3">
+        <div className="max-h-100 space-y-1.5 overflow-y-auto rounded-lg border border-base-border-subtle bg-base-surface/50 p-3">
           {messages
             .filter((m) => m.type !== 'tool_result') // Results shown inline with their tool_use
             .map((msg, i) => {
@@ -1217,7 +1254,7 @@ function AgentActivityPanel({
                 return (
                   <p
                     key={`t-${i}`}
-                    className="whitespace-pre-wrap text-[var(--color-base-text)] text-xs leading-relaxed"
+                    className="whitespace-pre-wrap text-base-text text-xs leading-relaxed"
                   >
                     {msg.text}
                   </p>
@@ -1227,7 +1264,7 @@ function AgentActivityPanel({
                 return (
                   <p
                     key={`th-${i}`}
-                    className="whitespace-pre-wrap text-[var(--color-base-text-muted)] text-xs italic leading-relaxed"
+                    className="whitespace-pre-wrap text-base-text-muted text-xs italic leading-relaxed"
                   >
                     {msg.text}
                   </p>
@@ -1255,9 +1292,9 @@ function FindingCard({
   const Icon = SEVERITY_ICONS[finding.severity]
 
   return (
-    <div className="rounded-lg border border-[var(--color-base-border)] bg-[var(--color-base-raised)]/50 p-3">
+    <div className="rounded-lg border border-base-border bg-base-raised/50 p-3">
       <div className="flex items-start gap-2">
-        <Icon className="mt-0.5 h-4 w-4 flex-shrink-0 text-[var(--color-base-text-secondary)]" />
+        <Icon className="mt-0.5 h-4 w-4 shrink-0 text-base-text-secondary" />
         <div className="min-w-0 flex-1">
           <div className="mb-1 flex items-center gap-2">
             <span
@@ -1266,25 +1303,19 @@ function FindingCard({
               {finding.severity}
             </span>
             {goalText && (
-              <span className="truncate rounded bg-[var(--color-base-border)]/60 px-1.5 py-0.5 text-[10px] text-[var(--color-base-text-secondary)]">
+              <span className="truncate rounded bg-base-border/60 px-1.5 py-0.5 text-[10px] text-base-text-secondary">
                 {goalText}
               </span>
             )}
-            <span className="truncate font-medium text-[var(--color-base-text)] text-sm">
-              {finding.title}
-            </span>
+            <span className="truncate font-medium text-base-text text-sm">{finding.title}</span>
           </div>
-          <p className="mb-1 text-[var(--color-base-text-secondary)] text-xs">
-            {finding.description}
-          </p>
-          {finding.url && (
-            <p className="mb-1 truncate text-[var(--color-info)] text-xs">{finding.url}</p>
-          )}
+          <p className="mb-1 text-base-text-secondary text-xs">{finding.description}</p>
+          {finding.url && <p className="mb-1 truncate text-info text-xs">{finding.url}</p>}
           {finding.reproductionSteps.length > 0 && (
             <button
               type="button"
               onClick={() => setExpanded(!expanded)}
-              className="mt-1 flex items-center gap-1 text-[var(--color-base-text-muted)] text-xs transition-colors hover:text-[var(--color-base-text)]"
+              className="mt-1 flex items-center gap-1 text-base-text-muted text-xs transition-colors hover:text-base-text"
             >
               <ChevronRight
                 className={`h-3 w-3 transition-transform ${expanded ? 'rotate-90' : ''}`}
@@ -1293,7 +1324,7 @@ function FindingCard({
             </button>
           )}
           {expanded && (
-            <ol className="mt-2 list-inside list-decimal space-y-1 text-[var(--color-base-text-secondary)] text-xs">
+            <ol className="mt-2 list-inside list-decimal space-y-1 text-base-text-secondary text-xs">
               {finding.reproductionSteps.map((step, i) => (
                 <li key={i}>{step}</li>
               ))}
@@ -1321,20 +1352,20 @@ function GeneratedTestItem({ path, cwd }: { path: string; cwd: string }) {
   }
 
   return (
-    <div className="rounded-lg border border-[var(--color-base-border)] bg-[var(--color-base-raised)]/50">
+    <div className="rounded-lg border border-base-border bg-base-raised/50">
       <button
         type="button"
         onClick={handleExpand}
-        className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-[var(--color-base-border)]/30"
+        className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-base-border/30"
       >
         <ChevronRight
-          className={`h-3.5 w-3.5 flex-shrink-0 text-[var(--color-base-text-muted)] transition-transform ${expanded ? 'rotate-90' : ''}`}
+          className={`h-3.5 w-3.5 shrink-0 text-base-text-muted transition-transform ${expanded ? 'rotate-90' : ''}`}
         />
-        <FileCode2 className="h-4 w-4 flex-shrink-0 text-[var(--color-success)]" />
-        <span className="truncate text-[var(--color-base-text)]">{path}</span>
+        <FileCode2 className="h-4 w-4 shrink-0 text-success" />
+        <span className="truncate text-base-text">{path}</span>
       </button>
       {expanded && content !== null && (
-        <pre className="max-h-[400px] overflow-x-auto whitespace-pre-wrap border-[var(--color-base-border)] border-t px-3 pb-3 text-[var(--color-base-text-secondary)] text-xs">
+        <pre className="max-h-100 overflow-x-auto whitespace-pre-wrap border-base-border border-t px-3 pb-3 text-base-text-secondary text-xs">
           {content}
         </pre>
       )}
@@ -1348,22 +1379,18 @@ function EmptyState({ hasProject }: { hasProject: boolean }) {
   return (
     <div className="flex flex-1 items-center justify-center">
       <div className="text-center">
-        <Bug className="mx-auto mb-3 h-12 w-12 text-[var(--color-base-text-faint)]" />
+        <Bug className="mx-auto mb-3 h-12 w-12 text-base-text-faint" />
         {hasProject ? (
           <>
-            <p className="text-[var(--color-base-text-secondary)] text-sm">
-              No exploration selected
-            </p>
-            <p className="mt-1 text-[var(--color-base-text-muted)] text-xs">
+            <p className="text-base-text-secondary text-sm">No exploration selected</p>
+            <p className="mt-1 text-base-text-muted text-xs">
               Configure goals on the left and start an exploration
             </p>
           </>
         ) : (
           <>
-            <p className="text-[var(--color-base-text-secondary)] text-sm">
-              Select a project to get started
-            </p>
-            <p className="mt-1 text-[var(--color-base-text-muted)] text-xs">
+            <p className="text-base-text-secondary text-sm">Select a project to get started</p>
+            <p className="mt-1 text-base-text-muted text-xs">
               Choose a project from the dropdown to scan for server details and generate test goals
             </p>
           </>

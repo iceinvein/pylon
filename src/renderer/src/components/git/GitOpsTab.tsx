@@ -33,19 +33,19 @@ function CommandEntryCard({
   const plan = entry.plan
   return (
     <div className="mb-2">
-      <p className="mb-1 text-[var(--color-base-text)] text-xs">▸ {entry.request}</p>
+      <p className="mb-1 text-base-text text-xs">▸ {entry.request}</p>
 
       {entry.status === 'pending' && (
         <div className="flex items-center gap-2 pl-3">
-          <Loader2 size={11} className="animate-spin text-[var(--color-base-text-faint)]" />
-          <span className="text-[10px] text-[var(--color-base-text-muted)]">Interpreting...</span>
+          <Loader2 size={11} className="animate-spin text-base-text-faint" />
+          <span className="text-[10px] text-base-text-muted">Interpreting...</span>
         </div>
       )}
 
       {plan && entry.status === 'planned' && (
         <div className={`ml-3 rounded-lg border p-2.5 ${riskColors[plan.riskLevel]}`}>
           <div className="flex items-center justify-between">
-            <p className="text-[var(--color-base-text)] text-xs">{plan.interpretation}</p>
+            <p className="text-base-text text-xs">{plan.interpretation}</p>
             <span className={`font-medium text-[10px] ${riskLabels[plan.riskLevel].color}`}>
               {riskLabels[plan.riskLevel].text}
             </span>
@@ -53,19 +53,17 @@ function CommandEntryCard({
           <div className="mt-2 space-y-1">
             {plan.commands.map((cmd, i) => (
               <div key={i} className="flex items-start gap-2">
-                <code className="font-[family-name:var(--font-mono)] text-[10px] text-[var(--color-warning)]/80">
-                  {cmd.command}
-                </code>
+                <code className="font-mono text-[10px] text-warning/80">{cmd.command}</code>
               </div>
             ))}
           </div>
           {plan.warnings && plan.warnings.length > 0 && (
             <div className="mt-2 flex items-start gap-1.5">
-              <AlertTriangle size={10} className="mt-0.5 flex-shrink-0 text-yellow-500" />
+              <AlertTriangle size={10} className="mt-0.5 shrink-0 text-yellow-500" />
               <p className="text-[10px] text-yellow-400/80">{plan.warnings.join('. ')}</p>
             </div>
           )}
-          <p className="mt-2 text-[10px] text-[var(--color-base-text-muted)]">{plan.preview}</p>
+          <p className="mt-2 text-[10px] text-base-text-muted">{plan.preview}</p>
           <div className="mt-2 flex gap-2">
             <button
               type="button"
@@ -77,7 +75,7 @@ function CommandEntryCard({
             <button
               type="button"
               onClick={onCancel}
-              className="rounded px-2.5 py-1 text-[10px] text-[var(--color-base-text-muted)] hover:bg-[var(--color-base-raised)] hover:text-[var(--color-base-text)]"
+              className="rounded px-2.5 py-1 text-[10px] text-base-text-muted hover:bg-base-raised hover:text-base-text"
             >
               Cancel
             </button>
@@ -87,8 +85,8 @@ function CommandEntryCard({
 
       {entry.status === 'executing' && (
         <div className="ml-3 flex items-center gap-2">
-          <Loader2 size={11} className="animate-spin text-[var(--color-warning)]" />
-          <span className="text-[10px] text-[var(--color-warning)]">Executing...</span>
+          <Loader2 size={11} className="animate-spin text-warning" />
+          <span className="text-[10px] text-warning">Executing...</span>
         </div>
       )}
 
@@ -100,7 +98,7 @@ function CommandEntryCard({
       )}
 
       {entry.status === 'failed' && (
-        <div className="ml-3 flex items-center gap-2 text-[var(--color-error)]">
+        <div className="ml-3 flex items-center gap-2 text-error">
           <X size={11} />
           <span className="text-[10px]">{entry.error || 'Failed'}</span>
         </div>
@@ -151,10 +149,8 @@ export function GitOpsTab({ cwd, sessionId }: GitOpsTabProps) {
       <div className="flex-1 overflow-y-auto p-3">
         {commandHistory.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center gap-2">
-            <p className="text-[var(--color-base-text-faint)] text-xs">
-              Type a git command in plain English
-            </p>
-            <p className="text-[10px] text-[var(--color-base-text-faint)]">
+            <p className="text-base-text-faint text-xs">Type a git command in plain English</p>
+            <p className="text-[10px] text-base-text-faint">
               e.g. "undo my last commit" or "squash the last 3 commits"
             </p>
           </div>
@@ -171,17 +167,15 @@ export function GitOpsTab({ cwd, sessionId }: GitOpsTabProps) {
       </div>
 
       {error && (
-        <div className="border-[var(--color-base-border-subtle)] border-t bg-[var(--color-error)]/30 px-3 py-1.5 text-[10px] text-[var(--color-error)]">
+        <div className="border-base-border-subtle border-t bg-error/30 px-3 py-1.5 text-[10px] text-error">
           {error}
         </div>
       )}
 
       {/* Input */}
-      <div className="border-[var(--color-base-border-subtle)] border-t p-3">
-        <div className="flex items-center gap-2 rounded bg-[var(--color-base-raised)] px-3 py-2 ring-1 ring-[var(--color-base-border)] focus-within:ring-[var(--color-accent)]">
-          <span className="font-[family-name:var(--font-mono)] text-[var(--color-warning)] text-xs">
-            git ▸
-          </span>
+      <div className="border-base-border-subtle border-t p-3">
+        <div className="flex items-center gap-2 rounded bg-base-raised px-3 py-2 ring-1 ring-base-border focus-within:ring-accent">
+          <span className="font-mono text-warning text-xs">git ▸</span>
           <input
             ref={inputRef}
             type="text"
@@ -192,13 +186,13 @@ export function GitOpsTab({ cwd, sessionId }: GitOpsTabProps) {
             }}
             placeholder="Describe what you want to do..."
             disabled={!sessionId}
-            className="min-w-0 flex-1 bg-transparent text-[var(--color-base-text)] text-xs outline-none placeholder:text-[var(--color-base-text-faint)]"
+            className="min-w-0 flex-1 bg-transparent text-base-text text-xs outline-none placeholder:text-base-text-faint"
           />
           <button
             type="button"
             onClick={handleSubmit}
             disabled={!input.trim() || !sessionId}
-            className="rounded p-1 text-[var(--color-base-text-muted)] transition-colors hover:text-[var(--color-warning)] disabled:opacity-50"
+            className="rounded p-1 text-base-text-muted transition-colors hover:text-warning disabled:opacity-50"
           >
             <Send size={12} />
           </button>

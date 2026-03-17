@@ -63,25 +63,25 @@ export function ReviewSection({ index, title, body, comment, onSetComment }: Rev
   return (
     <div
       className={`border-l-[3px] px-5 py-4 transition-colors ${
-        hasComment ? 'border-l-amber-500 bg-[var(--color-accent-hover)]/5' : 'border-l-transparent'
+        hasComment ? 'border-l-amber-500 bg-accent-hover/5' : 'border-l-transparent'
       }`}
     >
       <div className="flex items-start gap-3">
         <button
           type="button"
           onClick={() => setCollapsed(!collapsed)}
-          className="mt-0.5 flex-shrink-0 text-[var(--color-base-text-faint)] transition-colors hover:text-[var(--color-base-text-secondary)]"
+          className="mt-0.5 shrink-0 text-base-text-faint transition-colors hover:text-base-text-secondary"
         >
           {collapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
         </button>
-        <span className="min-w-[24px] pt-0.5 font-semibold text-[var(--color-base-text-muted)] text-xs tabular-nums">
+        <span className="min-w-6 pt-0.5 font-semibold text-base-text-muted text-xs tabular-nums">
           {index + 1}
         </span>
         <div className="min-w-0 flex-1">
           <button
             type="button"
             onClick={() => setCollapsed(!collapsed)}
-            className="text-left font-medium text-[13px] text-[var(--color-base-text)] leading-relaxed transition-colors hover:text-[var(--color-base-text)]"
+            className="text-left font-medium text-[13px] text-base-text leading-relaxed transition-colors hover:text-base-text"
           >
             {title}
           </button>
@@ -94,10 +94,10 @@ export function ReviewSection({ index, title, body, comment, onSetComment }: Rev
         <button
           type="button"
           onClick={handleStartComment}
-          className={`flex-shrink-0 p-1 transition-colors ${
+          className={`shrink-0 p-1 transition-colors ${
             hasComment
-              ? 'text-[var(--color-warning)] hover:text-[var(--color-warning)]'
-              : 'text-[var(--color-base-text-faint)] hover:text-[var(--color-base-text-secondary)]'
+              ? 'text-warning hover:text-warning'
+              : 'text-base-text-faint hover:text-base-text-secondary'
           }`}
           title="Add comment"
         >
@@ -107,36 +107,36 @@ export function ReviewSection({ index, title, body, comment, onSetComment }: Rev
 
       {/* Comment bubble */}
       {hasComment && !editing && !collapsed && (
-        <div className="mt-3 ml-[44px] rounded-md border border-[var(--color-accent)]/30 bg-[var(--color-accent-hover)]/10 px-3 py-2">
+        <div className="mt-3 ml-11 rounded-md border border-accent/30 bg-accent-hover/10 px-3 py-2">
           <div className="mb-1 flex items-center gap-1.5">
-            <div className="flex h-4 w-4 items-center justify-center rounded-full bg-[var(--color-accent-hover)]/30">
-              <span className="font-bold text-[9px] text-[var(--color-warning)]">U</span>
+            <div className="flex h-4 w-4 items-center justify-center rounded-full bg-accent-hover/30">
+              <span className="font-bold text-[9px] text-warning">U</span>
             </div>
-            <span className="font-semibold text-[10px] text-[var(--color-warning)]">COMMENT</span>
+            <span className="font-semibold text-[10px] text-warning">COMMENT</span>
             <button
               type="button"
               onClick={handleRemove}
-              className="ml-auto text-[var(--color-base-text-faint)] hover:text-[var(--color-base-text-secondary)]"
+              className="ml-auto text-base-text-faint hover:text-base-text-secondary"
             >
               <X size={12} />
             </button>
           </div>
-          <p className="text-[var(--color-base-text)] text-xs leading-relaxed">{comment}</p>
+          <p className="text-base-text text-xs leading-relaxed">{comment}</p>
         </div>
       )}
 
       {/* Comment editor */}
       {editing && !collapsed && (
-        <div className="mt-3 ml-[44px]">
+        <div className="mt-3 ml-11">
           <textarea
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Add your feedback..."
-            className="w-full resize-none rounded-md border border-[var(--color-accent)]/30 bg-[var(--color-accent-hover)]/10 px-3 py-2 text-[var(--color-base-text)] text-xs leading-relaxed outline-none placeholder:text-[var(--color-base-text-faint)] focus:border-[var(--color-accent)]/50"
+            className="w-full resize-none rounded-md border border-accent/30 bg-accent-hover/10 px-3 py-2 text-base-text text-xs leading-relaxed outline-none placeholder:text-base-text-faint focus:border-accent/50"
             rows={3}
           />
-          <div className="mt-1 text-[10px] text-[var(--color-base-text-faint)]">
+          <div className="mt-1 text-[10px] text-base-text-faint">
             Cmd+Enter to save · Esc to cancel
           </div>
         </div>

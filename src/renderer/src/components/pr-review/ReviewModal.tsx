@@ -79,19 +79,19 @@ export function ReviewModal({ onStart, onClose, isRerun }: Props) {
       {/* Modal */}
       {/* biome-ignore lint/a11y/noStaticElementInteractions: click handler prevents backdrop close propagation */}
       <div
-        className="relative w-full max-w-sm rounded-xl border border-[var(--color-base-border)] bg-[var(--color-base-surface)] shadow-2xl"
+        className="relative w-full max-w-sm rounded-xl border border-base-border bg-base-surface shadow-2xl"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-[var(--color-base-border-subtle)] border-b px-5 py-3.5">
-          <h3 className="font-semibold text-[var(--color-base-text)] text-sm">
+        <div className="flex items-center justify-between border-base-border-subtle border-b px-5 py-3.5">
+          <h3 className="font-semibold text-base-text text-sm">
             {isRerun ? 'Re-run Review' : 'Start Review'}
           </h3>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md p-1 text-[var(--color-base-text-muted)] transition-colors hover:bg-[var(--color-base-raised)] hover:text-[var(--color-base-text)]"
+            className="rounded-md p-1 text-base-text-muted transition-colors hover:bg-base-raised hover:text-base-text"
           >
             <X size={14} />
           </button>
@@ -99,7 +99,7 @@ export function ReviewModal({ onStart, onClose, isRerun }: Props) {
 
         {/* Focus areas */}
         <div className="px-5 py-4">
-          <p className="mb-3 font-medium text-[11px] text-[var(--color-base-text-muted)] uppercase tracking-wider">
+          <p className="mb-3 font-medium text-[11px] text-base-text-muted uppercase tracking-wider">
             Focus areas
           </p>
           <div className="space-y-1.5">
@@ -113,15 +113,15 @@ export function ReviewModal({ onStart, onClose, isRerun }: Props) {
                   onClick={() => toggle(opt.id)}
                   className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-all ${
                     isSelected
-                      ? 'bg-[var(--color-base-raised)] ring-1 ring-[var(--color-base-border)]'
-                      : 'hover:bg-[var(--color-base-raised)]/50'
+                      ? 'bg-base-raised ring-1 ring-base-border'
+                      : 'hover:bg-base-raised/50'
                   }`}
                 >
                   <div
                     className={`flex h-5 w-5 items-center justify-center rounded ${
                       isSelected
-                        ? 'bg-[var(--color-base-text)] text-[var(--color-base-bg)]'
-                        : 'border border-[var(--color-base-border)] text-[var(--color-base-text-faint)]'
+                        ? 'bg-base-text text-base-bg'
+                        : 'border border-base-border text-base-text-faint'
                     }`}
                   >
                     {isSelected && <Icon size={11} strokeWidth={2.5} />}
@@ -130,21 +130,15 @@ export function ReviewModal({ onStart, onClose, isRerun }: Props) {
                     <div className="flex items-center gap-2">
                       <Icon
                         size={12}
-                        className={
-                          isSelected
-                            ? 'text-[var(--color-base-text)]'
-                            : 'text-[var(--color-base-text-muted)]'
-                        }
+                        className={isSelected ? 'text-base-text' : 'text-base-text-muted'}
                       />
                       <span
-                        className={`font-medium text-[12px] ${isSelected ? 'text-[var(--color-base-text)]' : 'text-[var(--color-base-text-secondary)]'}`}
+                        className={`font-medium text-[12px] ${isSelected ? 'text-base-text' : 'text-base-text-secondary'}`}
                       >
                         {opt.label}
                       </span>
                     </div>
-                    <p className="mt-0.5 text-[10px] text-[var(--color-base-text-muted)]">
-                      {opt.description}
-                    </p>
+                    <p className="mt-0.5 text-[10px] text-base-text-muted">{opt.description}</p>
                   </div>
                 </button>
               )
@@ -153,8 +147,8 @@ export function ReviewModal({ onStart, onClose, isRerun }: Props) {
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between border-[var(--color-base-border-subtle)] border-t px-5 py-3.5">
-          <span className="text-[11px] text-[var(--color-base-text-muted)]">
+        <div className="flex items-center justify-between border-base-border-subtle border-t px-5 py-3.5">
+          <span className="text-[11px] text-base-text-muted">
             {selected.length} area{selected.length !== 1 ? 's' : ''} selected
           </span>
           <button
@@ -164,7 +158,7 @@ export function ReviewModal({ onStart, onClose, isRerun }: Props) {
               onClose()
             }}
             disabled={selected.length === 0}
-            className="flex items-center gap-1.5 rounded-lg bg-[var(--color-base-text)] px-4 py-2 font-semibold text-[12px] text-[var(--color-base-bg)] transition-colors hover:bg-white disabled:opacity-30"
+            className="flex items-center gap-1.5 rounded-lg bg-base-text px-4 py-2 font-semibold text-[12px] text-base-bg transition-colors hover:bg-white disabled:opacity-30"
           >
             <Play size={12} />
             {isRerun ? 'Re-run' : 'Start Review'}

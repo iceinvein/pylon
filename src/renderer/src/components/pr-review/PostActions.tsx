@@ -75,11 +75,11 @@ export function PostActions({ repoFullName, prNumber }: Props) {
   const isPosting = postingBatch !== null
 
   return (
-    <div className="border-[var(--color-base-border-subtle)] border-t bg-[var(--color-base-bg)]/80">
+    <div className="border-base-border-subtle border-t bg-base-bg/80">
       {/* Success banner */}
       {successMsg && (
-        <div className="flex items-center gap-2 bg-[var(--color-success)]/40 px-5 py-2 text-emerald-400 text-xs">
-          <Check size={12} className="flex-shrink-0" />
+        <div className="flex items-center gap-2 bg-success/40 px-5 py-2 text-emerald-400 text-xs">
+          <Check size={12} className="shrink-0" />
           {successMsg}
         </div>
       )}
@@ -90,7 +90,7 @@ export function PostActions({ repoFullName, prNumber }: Props) {
             type="button"
             onClick={selectedFindingIds.size > 0 ? clearFindingSelection : selectAllFindings}
             disabled={isPosting}
-            className="text-[var(--color-base-text-muted)] text-xs transition-colors hover:text-[var(--color-base-text)] disabled:pointer-events-none disabled:opacity-30"
+            className="text-base-text-muted text-xs transition-colors hover:text-base-text disabled:pointer-events-none disabled:opacity-30"
           >
             {selectedFindingIds.size > 0 ? 'Deselect all' : 'Select all'}
           </button>
@@ -122,7 +122,7 @@ export function PostActions({ repoFullName, prNumber }: Props) {
             type="button"
             onClick={() => postSelectedAsReview(repoFullName, prNumber)}
             disabled={selectedCount === 0 || isPosting}
-            className="flex items-center gap-1.5 rounded-lg border border-[var(--color-base-border)] px-3 py-1.5 text-[var(--color-base-text)] text-xs transition-colors hover:border-[var(--color-base-border)] hover:bg-[var(--color-base-raised)] disabled:pointer-events-none disabled:opacity-30"
+            className="flex items-center gap-1.5 rounded-lg border border-base-border px-3 py-1.5 text-base-text text-xs transition-colors hover:border-base-border hover:bg-base-raised disabled:pointer-events-none disabled:opacity-30"
           >
             {postingBatch === 'selected' ? (
               <Loader2 size={11} className="animate-spin" />
@@ -136,7 +136,7 @@ export function PostActions({ repoFullName, prNumber }: Props) {
             type="button"
             onClick={() => postAllAsReview(repoFullName, prNumber)}
             disabled={isPosting}
-            className="flex items-center gap-1.5 rounded-lg bg-[var(--color-base-text)] px-3 py-1.5 font-medium text-[var(--color-base-bg)] text-xs transition-colors hover:bg-white disabled:pointer-events-none disabled:opacity-30"
+            className="flex items-center gap-1.5 rounded-lg bg-base-text px-3 py-1.5 font-medium text-base-bg text-xs transition-colors hover:bg-white disabled:pointer-events-none disabled:opacity-30"
           >
             {postingBatch === 'all' ? (
               <Loader2 size={12} className="animate-spin" />

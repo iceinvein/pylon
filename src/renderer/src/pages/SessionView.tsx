@@ -301,15 +301,12 @@ export function SessionView({ tab, isActive }: SessionViewProps) {
                   variants={stagger(0.06)}
                 >
                   <motion.p
-                    className="font-display text-2xl text-[var(--color-base-text-secondary)] italic"
+                    className="font-display text-2xl text-base-text-secondary italic"
                     variants={fadeUpSmall}
                   >
                     What shall we build?
                   </motion.p>
-                  <motion.p
-                    className="mt-2 text-[var(--color-base-text-faint)] text-sm"
-                    variants={fadeUpSmall}
-                  >
+                  <motion.p className="mt-2 text-base-text-faint text-sm" variants={fadeUpSmall}>
                     Try one of these, or type your own below.
                   </motion.p>
                   <div className="mt-6 flex flex-col gap-2">
@@ -324,23 +321,23 @@ export function SessionView({ tab, isActive }: SessionViewProps) {
                         key={prompt}
                         onClick={() => handleSend(prompt, [])}
                         variants={fadeUpSmall}
-                        className="rounded-lg border border-[var(--color-base-border)]/50 px-4 py-2.5 text-left text-[var(--color-base-text-secondary)] text-sm transition-all hover:border-[var(--color-accent)]/30 hover:bg-[var(--color-accent)]/5 hover:text-[var(--color-base-text)]"
+                        className="rounded-lg border border-base-border/50 px-4 py-2.5 text-left text-base-text-secondary text-sm transition-all hover:border-accent/30 hover:bg-accent/5 hover:text-base-text"
                       >
                         {prompt}
                       </motion.button>
                     ))}
                   </div>
                   <motion.p
-                    className="mt-4 text-[11px] text-[var(--color-base-text-faint)]"
+                    className="mt-4 text-[11px] text-base-text-faint"
                     variants={fadeUpSmall}
                   >
                     Type{' '}
-                    <kbd className="rounded border border-[var(--color-base-border)] px-1 py-0.5 text-[10px]">
+                    <kbd className="rounded border border-base-border px-1 py-0.5 text-[10px]">
                       /
                     </kbd>{' '}
                     for commands
                     {' · '}
-                    <kbd className="rounded border border-[var(--color-base-border)] px-1 py-0.5 text-[10px]">
+                    <kbd className="rounded border border-base-border px-1 py-0.5 text-[10px]">
                       ⌘K
                     </kbd>{' '}
                     palette
@@ -384,14 +381,14 @@ export function SessionView({ tab, isActive }: SessionViewProps) {
                   animate={{ width: flowPanelWidth + 5, opacity: 1 }}
                   exit={{ width: 0, opacity: 0 }}
                   transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
-                  className="flex flex-shrink-0 overflow-hidden"
+                  className="flex shrink-0 overflow-hidden"
                 >
                   {/* biome-ignore lint/a11y/noStaticElementInteractions: mouse-only resize handle */}
                   <div
                     onMouseDown={handleFlowDragStart}
-                    className="flex w-1 flex-shrink-0 cursor-col-resize items-center justify-center border-[var(--color-base-border-subtle)] border-l bg-[var(--color-base-bg)] transition-colors hover:bg-[var(--color-base-border)] active:bg-[var(--color-base-text-faint)]"
+                    className="flex w-1 shrink-0 cursor-col-resize items-center justify-center border-base-border-subtle border-l bg-base-bg transition-colors hover:bg-base-border active:bg-base-text-faint"
                   />
-                  <div className="flex min-w-0 flex-1 flex-col bg-[var(--color-base-bg)]">
+                  <div className="flex min-w-0 flex-1 flex-col bg-base-bg">
                     <PanelHeader
                       icon={<Workflow size={13} />}
                       title="Flow"
@@ -412,14 +409,14 @@ export function SessionView({ tab, isActive }: SessionViewProps) {
                   animate={{ width: panelWidth + 5, opacity: 1 }}
                   exit={{ width: 0, opacity: 0 }}
                   transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
-                  className="flex flex-shrink-0 overflow-hidden"
+                  className="flex shrink-0 overflow-hidden"
                 >
                   {/* biome-ignore lint/a11y/noStaticElementInteractions: mouse-only resize handle */}
                   <div
                     onMouseDown={handleChangesDragStart}
-                    className="flex w-1 flex-shrink-0 cursor-col-resize items-center justify-center border-[var(--color-base-border-subtle)] border-l bg-[var(--color-base-bg)] transition-colors hover:bg-[var(--color-base-border)] active:bg-[var(--color-base-text-faint)]"
+                    className="flex w-1 shrink-0 cursor-col-resize items-center justify-center border-base-border-subtle border-l bg-base-bg transition-colors hover:bg-base-border active:bg-base-text-faint"
                   />
-                  <div className="flex min-w-0 flex-1 flex-col bg-[var(--color-base-bg)]">
+                  <div className="flex min-w-0 flex-1 flex-col bg-base-bg">
                     <PanelHeader
                       icon={<GitCompareArrows size={13} />}
                       title="Changes"
@@ -442,14 +439,14 @@ export function SessionView({ tab, isActive }: SessionViewProps) {
                   animate={{ width: infoPanelWidth + 5, opacity: 1 }}
                   exit={{ width: 0, opacity: 0 }}
                   transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
-                  className="flex flex-shrink-0 overflow-hidden"
+                  className="flex shrink-0 overflow-hidden"
                 >
                   {/* biome-ignore lint/a11y/noStaticElementInteractions: mouse-only resize handle */}
                   <div
                     onMouseDown={handleInfoDragStart}
-                    className="flex w-1 flex-shrink-0 cursor-col-resize items-center justify-center border-[var(--color-base-border-subtle)] border-l bg-[var(--color-base-bg)] transition-colors hover:bg-[var(--color-base-border)] active:bg-[var(--color-base-text-faint)]"
+                    className="flex w-1 shrink-0 cursor-col-resize items-center justify-center border-base-border-subtle border-l bg-base-bg transition-colors hover:bg-base-border active:bg-base-text-faint"
                   />
-                  <div className="flex min-w-0 flex-1 flex-col bg-[var(--color-base-bg)]">
+                  <div className="flex min-w-0 flex-1 flex-col bg-base-bg">
                     <PanelHeader
                       icon={<Info size={13} />}
                       title="Session"
@@ -462,21 +459,21 @@ export function SessionView({ tab, isActive }: SessionViewProps) {
             </AnimatePresence>
 
             {/* Icon strip — icons only, labels in panel headers */}
-            <div className="flex flex-shrink-0 flex-col items-center gap-0.5 border-[var(--color-base-border-subtle)] border-l bg-[var(--color-base-bg)] pt-1">
+            <div className="flex shrink-0 flex-col items-center gap-0.5 border-base-border-subtle border-l bg-base-bg pt-1">
               <button
                 type="button"
                 onClick={() => setShowFlow((v) => !v)}
                 title={showFlow ? 'Hide flow' : 'Show flow'}
-                className={`group flex h-9 w-9 items-center justify-center rounded-lg transition-colors hover:bg-[var(--color-base-raised)]/60 ${
-                  showFlow ? 'bg-[var(--color-accent)]/10' : ''
+                className={`group flex h-9 w-9 items-center justify-center rounded-lg transition-colors hover:bg-base-raised/60 ${
+                  showFlow ? 'bg-accent/10' : ''
                 }`}
               >
                 <Workflow
                   size={17}
                   className={`transition-colors ${
                     showFlow
-                      ? 'text-[var(--color-accent-text)]'
-                      : 'text-[var(--color-base-text-muted)] group-hover:text-[var(--color-base-text)]'
+                      ? 'text-accent-text'
+                      : 'text-base-text-muted group-hover:text-base-text'
                   }`}
                 />
               </button>
@@ -484,20 +481,20 @@ export function SessionView({ tab, isActive }: SessionViewProps) {
                 type="button"
                 onClick={() => setShowChanges((v) => !v)}
                 title={showChanges ? 'Hide changed files' : 'Show changed files'}
-                className={`group relative flex h-9 w-9 items-center justify-center rounded-lg transition-colors hover:bg-[var(--color-base-raised)]/60 ${
-                  showChanges ? 'bg-[var(--color-accent)]/10' : ''
+                className={`group relative flex h-9 w-9 items-center justify-center rounded-lg transition-colors hover:bg-base-raised/60 ${
+                  showChanges ? 'bg-accent/10' : ''
                 }`}
               >
                 <GitCompareArrows
                   size={17}
                   className={`transition-colors ${
                     showChanges
-                      ? 'text-[var(--color-accent-text)]'
-                      : 'text-[var(--color-base-text-muted)] group-hover:text-[var(--color-base-text)]'
+                      ? 'text-accent-text'
+                      : 'text-base-text-muted group-hover:text-base-text'
                   }`}
                 />
                 {changedFiles.length > 0 && (
-                  <span className="absolute top-0.5 right-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-[var(--color-accent)] px-0.5 font-medium text-[8px] text-white">
+                  <span className="absolute top-0.5 right-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-accent px-0.5 font-medium text-[8px] text-white">
                     {changedFiles.length}
                   </span>
                 )}
@@ -506,16 +503,16 @@ export function SessionView({ tab, isActive }: SessionViewProps) {
                 type="button"
                 onClick={() => setShowInfo((v) => !v)}
                 title={showInfo ? 'Hide session info' : 'Show session info'}
-                className={`group flex h-9 w-9 items-center justify-center rounded-lg transition-colors hover:bg-[var(--color-base-raised)]/60 ${
-                  showInfo ? 'bg-[var(--color-accent)]/10' : ''
+                className={`group flex h-9 w-9 items-center justify-center rounded-lg transition-colors hover:bg-base-raised/60 ${
+                  showInfo ? 'bg-accent/10' : ''
                 }`}
               >
                 <Info
                   size={17}
                   className={`transition-colors ${
                     showInfo
-                      ? 'text-[var(--color-accent-text)]'
-                      : 'text-[var(--color-base-text-muted)] group-hover:text-[var(--color-base-text)]'
+                      ? 'text-accent-text'
+                      : 'text-base-text-muted group-hover:text-base-text'
                   }`}
                 />
               </button>
@@ -524,11 +521,11 @@ export function SessionView({ tab, isActive }: SessionViewProps) {
                   type="button"
                   onClick={() => usePrRaiseStore.getState().openOverlay(sessionId)}
                   title="Raise pull request"
-                  className="group flex h-9 w-9 items-center justify-center rounded-lg transition-colors hover:bg-[var(--color-base-raised)]/60"
+                  className="group flex h-9 w-9 items-center justify-center rounded-lg transition-colors hover:bg-base-raised/60"
                 >
                   <GitPullRequestArrow
                     size={17}
-                    className="text-[var(--color-info)] transition-colors group-hover:brightness-125"
+                    className="text-info transition-colors group-hover:brightness-125"
                   />
                 </button>
               )}

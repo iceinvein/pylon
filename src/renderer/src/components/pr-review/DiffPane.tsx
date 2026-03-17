@@ -159,14 +159,14 @@ export function DiffPane({
     const generalFindings = findings.filter((f) => !f.file)
     return (
       <div className="flex h-full flex-col">
-        <div className="flex items-center gap-2 border-[var(--color-base-border-subtle)] border-b bg-[var(--color-base-surface)]/30 px-4 py-2">
-          <Eye size={12} className="text-[var(--color-base-text-muted)]" />
-          <span className="font-medium text-[11px] text-[var(--color-base-text)]">Overview</span>
-          <span className="text-[11px] text-[var(--color-base-text-faint)]">General findings</span>
+        <div className="flex items-center gap-2 border-base-border-subtle border-b bg-base-surface/30 px-4 py-2">
+          <Eye size={12} className="text-base-text-muted" />
+          <span className="font-medium text-[11px] text-base-text">Overview</span>
+          <span className="text-[11px] text-base-text-faint">General findings</span>
         </div>
         <div className="flex-1 overflow-y-auto p-4">
           {generalFindings.length === 0 ? (
-            <div className="flex flex-col items-center justify-center gap-2 py-16 text-[var(--color-base-text-faint)]">
+            <div className="flex flex-col items-center justify-center gap-2 py-16 text-base-text-faint">
               <CheckCircle2 size={24} strokeWidth={1.5} />
               <p className="text-xs">No general findings</p>
               <p className="text-[10px]">Select a file from the tree to view inline findings</p>
@@ -203,42 +203,42 @@ export function DiffPane({
   return (
     <div className="flex h-full flex-col">
       {/* Toolbar */}
-      <div className="flex items-center gap-3 border-[var(--color-base-border-subtle)] border-b bg-[var(--color-base-surface)]/30 px-4 py-2">
-        <div className="min-w-0 flex-1 truncate font-[family-name:var(--font-mono)] text-[11px]">
-          {dirPath && <span className="text-[var(--color-base-text-faint)]">{dirPath}/</span>}
-          <span className="text-[var(--color-base-text)]">{fileName}</span>
+      <div className="flex items-center gap-3 border-base-border-subtle border-b bg-base-surface/30 px-4 py-2">
+        <div className="min-w-0 flex-1 truncate font-mono text-[11px]">
+          {dirPath && <span className="text-base-text-faint">{dirPath}/</span>}
+          <span className="text-base-text">{fileName}</span>
         </div>
         {file && (
-          <span className="flex-shrink-0 font-[family-name:var(--font-mono)] text-[10px] tabular-nums">
+          <span className="shrink-0 font-mono text-[10px] tabular-nums">
             <span className="text-emerald-500">+{file.additions}</span>{' '}
-            <span className="text-[var(--color-error)]">-{file.deletions}</span>
+            <span className="text-error">-{file.deletions}</span>
           </span>
         )}
         {/* Finding navigation */}
         {fileFindings.length > 0 && (
-          <div className="flex flex-shrink-0 items-center overflow-hidden rounded-md border border-[var(--color-base-border)] bg-[var(--color-base-raised)]">
+          <div className="flex shrink-0 items-center overflow-hidden rounded-md border border-base-border bg-base-raised">
             <button
               type="button"
               onClick={goPrev}
-              className="px-1.5 py-1 text-[var(--color-base-text)] transition-colors hover:bg-[var(--color-base-border)] hover:text-white"
+              className="px-1.5 py-1 text-base-text transition-colors hover:bg-base-border hover:text-white"
               title="Previous finding (Shift+F)"
             >
               <ChevronUp size={13} strokeWidth={2.5} />
             </button>
             <span
-              className="cursor-default border-[var(--color-base-border)] border-x px-2.5 py-1 font-medium text-[11px] text-[var(--color-base-text)] tabular-nums"
+              className="cursor-default border-base-border border-x px-2.5 py-1 font-medium text-[11px] text-base-text tabular-nums"
               title={`${fileFindings.length} finding${fileFindings.length !== 1 ? 's' : ''} in this file`}
             >
               {activeFindingIdx >= 0 ? (
                 <>
                   <span className="text-white">{activeFindingIdx + 1}</span>
-                  <span className="text-[var(--color-base-text-muted)]"> / </span>
+                  <span className="text-base-text-muted"> / </span>
                   <span>{fileFindings.length}</span>
                 </>
               ) : (
                 <>
                   {fileFindings.length}{' '}
-                  <span className="font-normal text-[10px] text-[var(--color-base-text-secondary)]">
+                  <span className="font-normal text-[10px] text-base-text-secondary">
                     finding{fileFindings.length !== 1 ? 's' : ''}
                   </span>
                 </>
@@ -247,7 +247,7 @@ export function DiffPane({
             <button
               type="button"
               onClick={goNext}
-              className="px-1.5 py-1 text-[var(--color-base-text)] transition-colors hover:bg-[var(--color-base-border)] hover:text-white"
+              className="px-1.5 py-1 text-base-text transition-colors hover:bg-base-border hover:text-white"
               title="Next finding (F)"
             >
               <ChevronDown size={13} strokeWidth={2.5} />
@@ -255,14 +255,14 @@ export function DiffPane({
           </div>
         )}
         {/* Mode toggle */}
-        <div className="flex flex-shrink-0 overflow-hidden rounded-md border border-[var(--color-base-border)]">
+        <div className="flex shrink-0 overflow-hidden rounded-md border border-base-border">
           <button
             type="button"
             onClick={() => setMode('unified')}
             className={`flex items-center gap-1 px-2 py-1 text-[10px] transition-colors ${
               mode === 'unified'
-                ? 'bg-[var(--color-base-border)] text-[var(--color-base-text)]'
-                : 'text-[var(--color-base-text-muted)] hover:text-[var(--color-base-text)]'
+                ? 'bg-base-border text-base-text'
+                : 'text-base-text-muted hover:text-base-text'
             }`}
             title="Unified view"
           >
@@ -274,8 +274,8 @@ export function DiffPane({
             onClick={() => setMode('split')}
             className={`flex items-center gap-1 px-2 py-1 text-[10px] transition-colors ${
               mode === 'split'
-                ? 'bg-[var(--color-base-border)] text-[var(--color-base-text)]'
-                : 'text-[var(--color-base-text-muted)] hover:text-[var(--color-base-text)]'
+                ? 'bg-base-border text-base-text'
+                : 'text-base-text-muted hover:text-base-text'
             }`}
             title="Side-by-side view"
           >
@@ -290,7 +290,7 @@ export function DiffPane({
         <div ref={scrollRef} className="h-full overflow-auto">
           {/* Unplaced findings (no line or line not in hunks) */}
           {unplacedFindings.length > 0 && (
-            <div className="space-y-1 border-[var(--color-base-border-subtle)] border-b bg-[var(--color-base-surface)]/20 p-3">
+            <div className="space-y-1 border-base-border-subtle border-b bg-base-surface/20 p-3">
               {unplacedFindings.map((f) => (
                 <DiffFindingAnnotation
                   key={f.id}
@@ -303,7 +303,7 @@ export function DiffPane({
             </div>
           )}
           {hunks.length === 0 ? (
-            <div className="flex items-center justify-center py-16 text-[var(--color-base-text-faint)] text-xs">
+            <div className="flex items-center justify-center py-16 text-base-text-faint text-xs">
               {rawDiff ? 'Binary file or no textual changes' : 'No diff available for this file'}
             </div>
           ) : mode === 'unified' ? (

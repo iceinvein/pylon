@@ -57,9 +57,9 @@ function ReviewStatusMessage() {
   }, [charIdx, phrase.length])
 
   return (
-    <span className="text-[var(--color-base-text-muted)]">
+    <span className="text-base-text-muted">
       {phrase.slice(0, charIdx)}
-      <span className="inline-block h-3 w-[3px] animate-pulse rounded-sm bg-[var(--color-base-text-faint)] align-text-bottom" />
+      <span className="inline-block h-3 w-0.75 animate-pulse rounded-sm bg-base-text-faint align-text-bottom" />
     </span>
   )
 }
@@ -254,29 +254,23 @@ export function ReviewProgress({ reviewId: _reviewId, onStop, isLive = true }: P
       : findings.length
 
   return (
-    <div className="flex h-full flex-col overflow-hidden rounded-lg border border-[var(--color-base-border-subtle)] bg-[var(--color-base-surface)]/40">
+    <div className="flex h-full flex-col overflow-hidden rounded-lg border border-base-border-subtle bg-base-surface/40">
       {/* Header */}
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
-        className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-xs transition-colors hover:bg-[var(--color-base-raised)]/40"
+        className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-xs transition-colors hover:bg-base-raised/40"
       >
         {isLive ? (
-          <Loader2
-            size={12}
-            className="flex-shrink-0 animate-spin text-[var(--color-base-text-secondary)]"
-          />
+          <Loader2 size={12} className="shrink-0 animate-spin text-base-text-secondary" />
         ) : (
-          <MessageSquareText
-            size={12}
-            className="flex-shrink-0 text-[var(--color-base-text-muted)]"
-          />
+          <MessageSquareText size={12} className="shrink-0 text-base-text-muted" />
         )}
-        <span className="min-w-0 truncate font-medium text-[var(--color-base-text)]">
+        <span className="min-w-0 truncate font-medium text-base-text">
           {isLive ? <ReviewStatusMessage /> : 'Review Output'}
         </span>
         {findingCount > 0 && (
-          <span className="rounded-full bg-[var(--color-base-raised)] px-2 py-0.5 text-[10px] text-[var(--color-base-text-secondary)] tabular-nums">
+          <span className="rounded-full bg-base-raised px-2 py-0.5 text-[10px] text-base-text-secondary tabular-nums">
             {findingCount} finding{findingCount !== 1 ? 's' : ''}
           </span>
         )}
@@ -288,7 +282,7 @@ export function ReviewProgress({ reviewId: _reviewId, onStop, isLive = true }: P
               e.stopPropagation()
               onStop()
             }}
-            className="flex items-center gap-1 rounded border border-[var(--color-base-border)] px-2 py-0.5 text-[var(--color-base-text-secondary)] transition-colors hover:border-[var(--color-error)] hover:bg-[var(--color-error)]/30 hover:text-[var(--color-error)]"
+            className="flex items-center gap-1 rounded border border-base-border px-2 py-0.5 text-base-text-secondary transition-colors hover:border-error hover:bg-error/30 hover:text-error"
           >
             <StopCircle size={10} />
             Stop
@@ -296,13 +290,13 @@ export function ReviewProgress({ reviewId: _reviewId, onStop, isLive = true }: P
         )}
         <ChevronDown
           size={12}
-          className={`flex-shrink-0 text-[var(--color-base-text-muted)] transition-transform duration-150 ${expanded ? '' : '-rotate-90'}`}
+          className={`shrink-0 text-base-text-muted transition-transform duration-150 ${expanded ? '' : '-rotate-90'}`}
         />
       </button>
 
       {/* Agent progress pills */}
       {agentProgress.length > 1 && (
-        <div className="flex flex-wrap gap-2 border-[var(--color-base-border-subtle)] border-t px-3 py-2">
+        <div className="flex flex-wrap gap-2 border-base-border-subtle border-t px-3 py-2">
           {agentProgress.map((agent) => (
             <div
               key={agent.agentId}
@@ -310,10 +304,10 @@ export function ReviewProgress({ reviewId: _reviewId, onStop, isLive = true }: P
                 agent.status === 'done'
                   ? 'bg-emerald-500/10 text-emerald-400'
                   : agent.status === 'error'
-                    ? 'bg-[var(--color-error)]/10 text-[var(--color-error)]'
+                    ? 'bg-error/10 text-error'
                     : agent.status === 'running'
-                      ? 'bg-[var(--color-base-raised)] text-[var(--color-base-text)]'
-                      : 'bg-[var(--color-base-raised)]/50 text-[var(--color-base-text-muted)]'
+                      ? 'bg-base-raised text-base-text'
+                      : 'bg-base-raised/50 text-base-text-muted'
               }`}
             >
               {agent.status === 'running' && <Loader2 size={9} className="animate-spin" />}
@@ -345,7 +339,7 @@ export function ReviewProgress({ reviewId: _reviewId, onStop, isLive = true }: P
           >
             <div
               ref={scrollRef}
-              className="min-h-0 flex-1 overflow-y-auto border-[var(--color-base-border-subtle)] border-t"
+              className="min-h-0 flex-1 overflow-y-auto border-base-border-subtle border-t"
             >
               {/* Streamed findings as they arrive */}
               {findings.length > 0 && (
@@ -355,26 +349,24 @@ export function ReviewProgress({ reviewId: _reviewId, onStop, isLive = true }: P
                     const Icon = config.icon
                     return (
                       <div key={i} className={`flex gap-3 px-4 py-3 ${config.bg}`}>
-                        <Icon size={14} className={`mt-0.5 flex-shrink-0 ${config.color}`} />
+                        <Icon size={14} className={`mt-0.5 shrink-0 ${config.color}`} />
                         <div className="min-w-0 flex-1">
                           <div className="flex items-baseline gap-2">
-                            <span className="font-medium text-[var(--color-base-text)] text-xs">
-                              {f.title}
-                            </span>
+                            <span className="font-medium text-base-text text-xs">{f.title}</span>
                             {f.domain && (
-                              <span className="rounded bg-[var(--color-base-raised)] px-1.5 py-0.5 font-medium text-[9px] text-[var(--color-base-text-muted)] uppercase tracking-wider">
+                              <span className="rounded bg-base-raised px-1.5 py-0.5 font-medium text-[9px] text-base-text-muted uppercase tracking-wider">
                                 {DOMAIN_LABELS[f.domain] ?? f.domain}
                               </span>
                             )}
                           </div>
                           {f.file && (
-                            <div className="mt-0.5 font-[family-name:var(--font-mono)] text-[11px] text-[var(--color-base-text-muted)]">
+                            <div className="mt-0.5 font-mono text-[11px] text-base-text-muted">
                               {f.file}
                               {f.line ? `:${f.line}` : ''}
                             </div>
                           )}
                           {f.description && (
-                            <p className="mt-1 text-[var(--color-base-text-secondary)] text-xs leading-relaxed">
+                            <p className="mt-1 text-base-text-secondary text-xs leading-relaxed">
                               {f.description}
                             </p>
                           )}
@@ -387,7 +379,7 @@ export function ReviewProgress({ reviewId: _reviewId, onStop, isLive = true }: P
 
               {/* Empty state while waiting for findings */}
               {isLive && findings.length === 0 && (
-                <div className="flex items-center justify-center py-8 text-[var(--color-base-text-faint)] text-xs">
+                <div className="flex items-center justify-center py-8 text-base-text-faint text-xs">
                   Waiting for findings...
                 </div>
               )}

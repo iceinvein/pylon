@@ -54,7 +54,7 @@ export function UserMessage({ message }: UserMessageProps) {
       <AnimatePresence>
         {lightboxSrc && (
           <motion.div
-            className="fixed inset-0 z-[100] flex cursor-zoom-out items-center justify-center bg-black/80 backdrop-blur-sm"
+            className="fixed inset-0 z-100 flex cursor-zoom-out items-center justify-center bg-black/80 backdrop-blur-sm"
             onClick={() => setLightboxSrc(null)}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -74,20 +74,17 @@ export function UserMessage({ message }: UserMessageProps) {
         )}
       </AnimatePresence>
 
-      <div className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-[var(--color-accent)]/15">
-        <User size={13} className="text-[var(--color-accent-text)]" />
+      <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent/15">
+        <User size={13} className="text-accent-text" />
       </div>
       <div className="min-w-0 flex-1">
-        <span className="font-semibold text-[var(--color-base-text)] text-sm">You</span>
+        <span className="font-semibold text-base-text text-sm">You</span>
         {images.length > 0 && (
           <div className="mt-2 space-y-2">
             {images.map((img, i) => {
               const src = `data:${img.source?.media_type};base64,${img.source?.data}`
               return (
-                <div
-                  key={i}
-                  className="overflow-hidden rounded-lg border border-[var(--color-base-border)]"
-                >
+                <div key={i} className="overflow-hidden rounded-lg border border-base-border">
                   <button
                     type="button"
                     onClick={() => setLightboxSrc(src)}
@@ -105,9 +102,7 @@ export function UserMessage({ message }: UserMessageProps) {
           </div>
         )}
         {text && (
-          <p className="mt-1 whitespace-pre-wrap text-[var(--color-base-text)] text-sm leading-relaxed">
-            {text}
-          </p>
+          <p className="mt-1 whitespace-pre-wrap text-base-text text-sm leading-relaxed">{text}</p>
         )}
       </div>
     </div>

@@ -12,8 +12,8 @@
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json --composite false",
     "typecheck:web": "tsc --noEmit -p tsconfig.web.json --composite false",
     "typecheck": "bun run typecheck:node && bun run typecheck:web",
-    "lint": "biome check src/",
-    "lint:fix": "biome check --write src/",
+    "lint": "tailwind-suggest-canonical-classes \"src/**/*.{tsx,jsx,ts,html}\" --css src/renderer/src/styles/globals.css --check && biome check src/",
+    "lint:fix": "tailwind-suggest-canonical-classes \"src/**/*.{tsx,jsx,ts,html}\" --css src/renderer/src/styles/globals.css && biome check --write src/",
     "format": "biome format --write src/"
   },
   "dependencies": {
@@ -43,6 +43,7 @@
   "devDependencies": {
     "@biomejs/biome": "^2.4.6",
     "@electron-toolkit/tsconfig": "^2.0.0",
+    "@laststance/tailwind-suggest-canonical-classes": "^0.1.1",
     "@tailwindcss/typography": "^0.5.19",
     "@types/better-sqlite3": "^7.6.13",
     "@types/diff": "^8.0.0",
