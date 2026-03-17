@@ -34,11 +34,16 @@ class ServerManager {
       return { url: existing.url, port: existing.port }
     }
 
+    logger.info(
+      `acquire: devCommand=${scan.devCommand}, detectedPort=${scan.detectedPort}, portOverride=${JSON.stringify(scan.portOverrideMethod)}`,
+    )
+
     if (!scan.devCommand) {
       throw new Error('No dev command detected. Use manual server mode instead.')
     }
 
     const port = await findFreePort(scan.detectedPort ?? 3000)
+    logger.info(`findFreePort(${scan.detectedPort ?? 3000}) => ${port}`)
     const overrideMethod = scan.portOverrideMethod ?? { type: 'env' as const }
     const { command, env } = buildServerCommand(scan.devCommand, overrideMethod, port)
 
@@ -51,8 +56,17 @@ class ServerManager {
       shell: true,
     })
 
+    child.stdout?.on('data', (chunk: Buffer) => {
+      logger.info(`[server:${port}:stdout] ${chunk.toString().trim()}`)
+    })
     child.stderr?.on('data', (chunk: Buffer) => {
-      logger.debug(`[server:${port}] ${chunk.toString().trim()}`)
+      logger.info(`[server:${port}:stderr] ${chunk.toString().trim()}`)
+    })
+    child.on('error', (err) => {
+      logger.error(`[server:${port}] spawn error: ${err.message}`)
+    })
+    child.on('exit', (code, signal) => {
+      logger.info(`[server:${port}] exited: code=${code}, signal=${signal}`)
     })
 
     const url = `http://localhost:${port}`

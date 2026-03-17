@@ -18,6 +18,7 @@ import { PanelHeader } from '../components/PanelHeader'
 import { PrRaiseOverlay } from '../components/pr-raise/PrRaiseOverlay'
 import { ReviewPanel } from '../components/review/ReviewPanel'
 import { SessionInfoPanel } from '../components/SessionInfoPanel'
+import { usePersistedWidth } from '../hooks/use-persisted-width'
 import { fadeUpSmall, stagger } from '../lib/animations'
 import { resumeStoredSession, type StoredSession } from '../lib/resume-session'
 import { usePrRaiseStore } from '../store/pr-raise-store'
@@ -261,71 +262,27 @@ export function SessionView({ tab, isActive }: SessionViewProps) {
   const [showChanges, setShowChanges] = useState(false)
   const [showFlow, setShowFlow] = useState(false)
   const [showInfo, setShowInfo] = useState(false)
-  const [panelWidth, setPanelWidth] = useState(360)
-  const [flowPanelWidth, setFlowPanelWidth] = useState(280)
-  const [infoPanelWidth, setInfoPanelWidth] = useState(260)
-  const dragging = useRef(false)
-  const dragStartX = useRef(0)
-  const dragStartWidth = useRef(0)
-
-  const MIN_PANEL_WIDTH = 300
-  const MAX_PANEL_WIDTH = 700
-  const MIN_FLOW_WIDTH = 220
-  const MAX_FLOW_WIDTH = 450
-  const MIN_INFO_WIDTH = 200
-  const MAX_INFO_WIDTH = 400
-
-  const makeDragHandler = useCallback(
-    (currentWidth: number, setWidth: (w: number) => void, min: number, max: number) =>
-      (e: React.MouseEvent) => {
-        e.preventDefault()
-        dragging.current = true
-        dragStartX.current = e.clientX
-        dragStartWidth.current = currentWidth
-
-        document.body.style.userSelect = 'none'
-        document.body.style.cursor = 'col-resize'
-
-        const handleMouseMove = (ev: MouseEvent) => {
-          if (!dragging.current) return
-          const delta = dragStartX.current - ev.clientX
-          setWidth(Math.min(max, Math.max(min, dragStartWidth.current + delta)))
-        }
-
-        const handleMouseUp = () => {
-          dragging.current = false
-          document.body.style.userSelect = ''
-          document.body.style.cursor = ''
-          document.removeEventListener('mousemove', handleMouseMove)
-          document.removeEventListener('mouseup', handleMouseUp)
-        }
-
-        document.addEventListener('mousemove', handleMouseMove)
-        document.addEventListener('mouseup', handleMouseUp)
-      },
-    [],
-  )
-
-  const handleChangesDragStart = useCallback(
-    (e: React.MouseEvent) => {
-      makeDragHandler(panelWidth, setPanelWidth, MIN_PANEL_WIDTH, MAX_PANEL_WIDTH)(e)
-    },
-    [panelWidth, makeDragHandler],
-  )
-
-  const handleFlowDragStart = useCallback(
-    (e: React.MouseEvent) => {
-      makeDragHandler(flowPanelWidth, setFlowPanelWidth, MIN_FLOW_WIDTH, MAX_FLOW_WIDTH)(e)
-    },
-    [flowPanelWidth, makeDragHandler],
-  )
-
-  const handleInfoDragStart = useCallback(
-    (e: React.MouseEvent) => {
-      makeDragHandler(infoPanelWidth, setInfoPanelWidth, MIN_INFO_WIDTH, MAX_INFO_WIDTH)(e)
-    },
-    [infoPanelWidth, makeDragHandler],
-  )
+  const { width: panelWidth, onDragStart: handleChangesDragStart } = usePersistedWidth({
+    key: 'changes-panel',
+    defaultWidth: 360,
+    min: 300,
+    max: 700,
+    direction: 'left',
+  })
+  const { width: flowPanelWidth, onDragStart: handleFlowDragStart } = usePersistedWidth({
+    key: 'flow-panel',
+    defaultWidth: 280,
+    min: 220,
+    max: 450,
+    direction: 'left',
+  })
+  const { width: infoPanelWidth, onDragStart: handleInfoDragStart } = usePersistedWidth({
+    key: 'info-panel',
+    defaultWidth: 260,
+    min: 200,
+    max: 400,
+    direction: 'left',
+  })
 
   return (
     <>

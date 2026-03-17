@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type {
   E2ePathResolution,
+  ExplorationAgentMessage,
   ExplorationMode,
   ExplorationUpdate,
   GoalSuggestionUpdate,
@@ -58,6 +59,7 @@ type TestStore = {
   streamingTexts: Record<string, string>
   findingsByExploration: Record<string, TestFinding[]>
   testsByExploration: Record<string, string[]>
+  agentMessagesByExploration: Record<string, ExplorationAgentMessage[]>
 
   // Actions
   loadProjects: () => Promise<void>
@@ -101,6 +103,7 @@ export const useTestStore = create<TestStore>((set, get) => ({
   streamingTexts: {},
   findingsByExploration: {},
   testsByExploration: {},
+  agentMessagesByExploration: {},
 
   loadProjects: async () => {
     try {
@@ -121,6 +124,7 @@ export const useTestStore = create<TestStore>((set, get) => ({
       customGoals: [],
       customUrl: null,
       selectedExplorationId: null,
+      agentMessagesByExploration: {},
     })
     // Trigger async operations
     get().scanProject(cwd)
@@ -197,11 +201,13 @@ export const useTestStore = create<TestStore>((set, get) => ({
         const newStreamingTexts = { ...s.streamingTexts }
         const newFindings = { ...s.findingsByExploration }
         const newTests = { ...s.testsByExploration }
+        const newAgentMessages = { ...s.agentMessagesByExploration }
 
         for (const exp of explorations) {
           newStreamingTexts[exp.id] = ''
           newFindings[exp.id] = []
           newTests[exp.id] = []
+          newAgentMessages[exp.id] = []
         }
 
         return {
@@ -210,6 +216,7 @@ export const useTestStore = create<TestStore>((set, get) => ({
           streamingTexts: newStreamingTexts,
           findingsByExploration: newFindings,
           testsByExploration: newTests,
+          agentMessagesByExploration: newAgentMessages,
         }
       })
     } catch (err) {
@@ -226,6 +233,7 @@ export const useTestStore = create<TestStore>((set, get) => ({
         streamingTexts: { ...s.streamingTexts, [exploration.id]: '' },
         findingsByExploration: { ...s.findingsByExploration, [exploration.id]: [] },
         testsByExploration: { ...s.testsByExploration, [exploration.id]: [] },
+        agentMessagesByExploration: { ...s.agentMessagesByExploration, [exploration.id]: [] },
       }))
     } catch (err) {
       console.error('startExploration failed:', err)
@@ -288,12 +296,14 @@ export const useTestStore = create<TestStore>((set, get) => ({
         const { [id]: _st, ...restStreaming } = s.streamingTexts
         const { [id]: _fi, ...restFindings } = s.findingsByExploration
         const { [id]: _te, ...restTests } = s.testsByExploration
+        const { [id]: _am, ...restAgentMessages } = s.agentMessagesByExploration
         return {
           explorations: s.explorations.filter((e) => e.id !== id),
           selectedExplorationId: s.selectedExplorationId === id ? null : s.selectedExplorationId,
           streamingTexts: restStreaming,
           findingsByExploration: restFindings,
           testsByExploration: restTests,
+          agentMessagesByExploration: restAgentMessages,
         }
       })
     } catch (err) {
@@ -360,6 +370,15 @@ export const useTestStore = create<TestStore>((set, get) => ({
             ...s.testsByExploration,
             [id]: [...existing, ...newPaths],
           }
+        }
+      }
+
+      // Append new agent messages
+      if (data.agentMessages && data.agentMessages.length > 0) {
+        const existing = s.agentMessagesByExploration[id] ?? []
+        updates.agentMessagesByExploration = {
+          ...s.agentMessagesByExploration,
+          [id]: [...existing, ...data.agentMessages],
         }
       }
 

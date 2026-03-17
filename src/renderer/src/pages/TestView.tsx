@@ -15,13 +15,16 @@ import {
   Zap,
 } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type {
+  ExplorationAgentMessage,
   ExplorationMode,
   FindingSeverity,
   SuggestedGoal,
   TestExploration,
 } from '../../../shared/types'
+import { ToolUseBlock } from '../components/tools/ToolUseBlock'
+import { usePersistedWidth } from '../hooks/use-persisted-width'
 import { timeAgo } from '../lib/utils'
 import { useTestStore } from '../store/test-store'
 
@@ -83,6 +86,14 @@ export function TestView() {
   const [mode, setMode] = useState<ExplorationMode>('manual')
   const [customGoalInput, setCustomGoalInput] = useState('')
 
+  const { width: sidebarWidth, onDragStart: handleSidebarDragStart } = usePersistedWidth({
+    key: 'test-sidebar',
+    defaultWidth: 300,
+    min: 240,
+    max: 500,
+    direction: 'right',
+  })
+
   const {
     selectedProject,
     projects,
@@ -97,6 +108,7 @@ export function TestView() {
     streamingTexts,
     findingsByExploration,
     testsByExploration,
+    agentMessagesByExploration,
     autoStartServer,
     agentCount,
     loadProjects,
@@ -132,6 +144,9 @@ export function TestView() {
   const streamingText = selectedExplorationId ? (streamingTexts[selectedExplorationId] ?? '') : ''
   const findings = selectedExplorationId ? (findingsByExploration[selectedExplorationId] ?? []) : []
   const tests = selectedExplorationId ? (testsByExploration[selectedExplorationId] ?? []) : []
+  const agentMessages = selectedExplorationId
+    ? (agentMessagesByExploration[selectedExplorationId] ?? [])
+    : []
 
   // Effective URL: custom override takes precedence over detected URL
   const effectiveUrl = customUrl ?? projectScan?.detectedUrl ?? null
@@ -187,8 +202,8 @@ export function TestView() {
 
   return (
     <div className="flex h-full">
-      {/* Left panel */}
-      <div className="flex w-[300px] flex-shrink-0 flex-col overflow-y-auto border-[var(--color-base-border-subtle)] border-r">
+      {/* Left panel — resizable sidebar */}
+      <div className="flex flex-shrink-0 flex-col overflow-y-auto" style={{ width: sidebarWidth }}>
         {/* Project Picker */}
         <ProjectPicker
           projects={projects}
@@ -249,12 +264,20 @@ export function TestView() {
         />
       </div>
 
+      {/* Resize handle */}
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: mouse-only resize handle */}
+      <div
+        onMouseDown={handleSidebarDragStart}
+        className="flex w-1 flex-shrink-0 cursor-col-resize items-center justify-center border-[var(--color-base-border-subtle)] border-r bg-[var(--color-base-bg)] transition-colors hover:bg-[var(--color-base-border)] active:bg-[var(--color-base-text-faint)]"
+      />
+
       {/* Right panel */}
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         {selectedExploration ? (
           <ExplorationDetail
             exploration={selectedExploration}
             streamingText={streamingText}
+            agentMessages={agentMessages}
             findings={findings}
             tests={tests}
             cwd={selectedProject ?? ''}
@@ -920,6 +943,7 @@ function ExplorationRow({
 type ExplorationDetailProps = {
   exploration: TestExploration
   streamingText: string
+  agentMessages: ExplorationAgentMessage[]
   findings: import('../../../shared/types').TestFinding[]
   tests: string[]
   cwd: string
@@ -928,21 +952,41 @@ type ExplorationDetailProps = {
 function ExplorationDetail({
   exploration,
   streamingText,
+  agentMessages,
   findings,
   tests,
   cwd,
 }: ExplorationDetailProps) {
   const [viewMode, setViewMode] = useState<'single' | 'batch'>('single')
 
-  // Use reactive selectors so batch findings update as explorations complete
-  const batchFindings = useTestStore((s) => {
+  // Pull stable store references for derived computation
+  const explorations = useTestStore((s) => s.explorations)
+  const findingsByExploration = useTestStore((s) => s.findingsByExploration)
+
+  // Derive batch findings via useMemo (not a Zustand selector) to avoid
+  // returning a new array reference on every store update, which causes
+  // an infinite re-render loop with useSyncExternalStore.
+  const batchFindings = useMemo(() => {
     if (!exploration.batchId) return null
-    return s.getBatchFindings(exploration.batchId)
-  })
-  const batchExplorationCount = useTestStore((s) => {
+    const batchExplorations = explorations.filter((e) => e.batchId === exploration.batchId)
+    const allFindings: Array<import('../../../shared/types').TestFinding & { goalText: string }> =
+      []
+    for (const exp of batchExplorations) {
+      const expFindings = findingsByExploration[exp.id] ?? []
+      for (const f of expFindings) {
+        allFindings.push({
+          ...f,
+          goalText: exp.goal.length > 50 ? `${exp.goal.slice(0, 50)}...` : exp.goal,
+        })
+      }
+    }
+    return allFindings
+  }, [exploration.batchId, explorations, findingsByExploration])
+
+  const batchExplorationCount = useMemo(() => {
     if (!exploration.batchId) return 0
-    return s.explorations.filter((e) => e.batchId === exploration.batchId).length
-  })
+    return explorations.filter((e) => e.batchId === exploration.batchId).length
+  }, [exploration.batchId, explorations])
 
   // Show toggle only if this exploration belongs to a batch with multiple explorations
   const showBatchToggle = exploration.batchId && batchExplorationCount > 1
@@ -965,8 +1009,12 @@ function ExplorationDetail({
         </div>
       )}
 
-      {/* Streaming text */}
-      {exploration.status === 'running' && streamingText && <StreamingPanel text={streamingText} />}
+      {/* Agent activity — shows tool calls when available, falls back to raw text */}
+      {agentMessages.length > 0 ? (
+        <AgentActivityPanel messages={agentMessages} isRunning={exploration.status === 'running'} />
+      ) : (
+        exploration.status === 'running' && streamingText && <StreamingPanel text={streamingText} />
+      )}
 
       {/* Findings */}
       {displayFindings.length > 0 && (
@@ -1094,6 +1142,102 @@ function StreamingPanel({ text }: { text: string }) {
       >
         {text}
       </pre>
+    </div>
+  )
+}
+
+// ── Agent Activity Panel ──────────────────────────────────────────────────────
+
+function AgentActivityPanel({
+  messages,
+  isRunning,
+}: {
+  messages: ExplorationAgentMessage[]
+  isRunning: boolean
+}) {
+  const bottomRef = useRef<HTMLDivElement>(null)
+  const [collapsed, setCollapsed] = useState(false)
+
+  // Auto-scroll when new messages arrive (only while running)
+  useEffect(() => {
+    if (isRunning && !collapsed) {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    }
+  }, [isRunning, collapsed])
+
+  // Build tool result map for pairing tool_use → tool_result
+  const toolResultMap = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const msg of messages) {
+      if (msg.type === 'tool_result') {
+        map.set(msg.toolUseId, msg.content)
+      }
+    }
+    return map
+  }, [messages])
+
+  const toolUseCount = messages.filter((m) => m.type === 'tool_use').length
+
+  return (
+    <div className="px-4 pt-3">
+      <button
+        type="button"
+        onClick={() => setCollapsed((v) => !v)}
+        className="mb-2 flex items-center gap-2"
+      >
+        {isRunning ? (
+          <Loader2 className="h-4 w-4 animate-spin text-[var(--color-info)]" />
+        ) : (
+          <ChevronRight
+            className={`h-4 w-4 text-[var(--color-base-text-faint)] transition-transform ${!collapsed ? 'rotate-90' : ''}`}
+          />
+        )}
+        <span className="text-[var(--color-base-text-secondary)] text-xs">
+          {isRunning ? 'Exploring' : 'Agent activity'}
+          {toolUseCount > 0 && ` · ${toolUseCount} tool call${toolUseCount !== 1 ? 's' : ''}`}
+        </span>
+      </button>
+      {!collapsed && (
+        <div className="max-h-[400px] space-y-1.5 overflow-y-auto rounded-lg border border-[var(--color-base-border-subtle)] bg-[var(--color-base-surface)]/50 p-3">
+          {messages
+            .filter((m) => m.type !== 'tool_result') // Results shown inline with their tool_use
+            .map((msg, i) => {
+              if (msg.type === 'tool_use') {
+                return (
+                  <ToolUseBlock
+                    key={msg.id || `tu-${i}`}
+                    toolName={msg.name}
+                    input={msg.input}
+                    toolUseId={msg.id}
+                    result={toolResultMap.get(msg.id)}
+                  />
+                )
+              }
+              if (msg.type === 'text') {
+                return (
+                  <p
+                    key={`t-${i}`}
+                    className="whitespace-pre-wrap text-[var(--color-base-text)] text-xs leading-relaxed"
+                  >
+                    {msg.text}
+                  </p>
+                )
+              }
+              if (msg.type === 'thinking') {
+                return (
+                  <p
+                    key={`th-${i}`}
+                    className="whitespace-pre-wrap text-[var(--color-base-text-muted)] text-xs italic leading-relaxed"
+                  >
+                    {msg.text}
+                  </p>
+                )
+              }
+              return null
+            })}
+          <div ref={bottomRef} />
+        </div>
+      )}
     </div>
   )
 }

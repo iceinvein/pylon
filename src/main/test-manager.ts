@@ -7,6 +7,7 @@ import { z } from 'zod'
 import { IPC } from '../shared/ipc-channels'
 import { log } from '../shared/logger'
 import type {
+  ExplorationAgentMessage,
   ExplorationMode,
   ExplorationStatus,
   ExplorationUpdate,
@@ -277,17 +278,26 @@ class TestManager {
 
     // Start server if auto-start is on
     let serverUrl = ''
+    logger.info(
+      `startBatch: autoStartServer=${config.autoStartServer}, projectScan=${!!config.projectScan}, devCommand=${config.projectScan?.devCommand ?? 'null'}, detectedPort=${config.projectScan?.detectedPort ?? 'null'}`,
+    )
     if (config.autoStartServer && config.projectScan) {
       try {
         const { url } = await serverManager.acquire(config.cwd, config.projectScan)
         serverUrl = url
+        logger.info(`Server acquired at ${url}`)
       } catch (err) {
         logger.error('Failed to start server:', err)
         throw new Error(`Server startup failed: ${String(err)}`)
       }
+    } else {
+      logger.warn(
+        `Server auto-start SKIPPED: autoStartServer=${config.autoStartServer}, hasProjectScan=${!!config.projectScan}`,
+      )
     }
 
     const effectiveUrl = serverUrl || config.projectScan?.detectedUrl || `http://localhost:3000`
+    logger.info(`effectiveUrl=${effectiveUrl} (serverUrl=${serverUrl || 'empty'})`)
 
     // Create exploration records (but don't run yet — we control concurrency)
     const explorations: TestExploration[] = []
@@ -472,8 +482,26 @@ class TestManager {
     let inputTokens = 0
     let outputTokens = 0
     let lastSendTime = 0
+    let accumulatedMessages: ExplorationAgentMessage[] = []
     const active = this.activeExplorations.get(explorationId)
     if (!active) return
+
+    const flushMessages = (
+      status: ExplorationUpdate['status'],
+      extra?: Partial<ExplorationUpdate>,
+    ) => {
+      const update: ExplorationUpdate = {
+        explorationId,
+        status,
+        streamingText: active.streamedText,
+        agentMessages: accumulatedMessages.length > 0 ? accumulatedMessages : undefined,
+        inputTokens,
+        outputTokens,
+        ...extra,
+      }
+      this.send(IPC.TEST_EXPLORATION_UPDATE, update)
+      accumulatedMessages = []
+    }
 
     try {
       for await (const message of query({
@@ -500,61 +528,68 @@ class TestManager {
           if (usage.output_tokens) outputTokens += usage.output_tokens
         }
 
-        // Extract streaming text from assistant messages
+        // Extract structured messages from assistant turns
         if (msg.role === 'assistant' && Array.isArray(msg.content)) {
           for (const block of msg.content as Array<Record<string, unknown>>) {
             if (block.type === 'text' && typeof block.text === 'string') {
               active.streamedText += `${block.text}\n`
+              accumulatedMessages.push({ type: 'text', text: block.text as string })
+            }
+            if (block.type === 'thinking' && typeof block.thinking === 'string') {
+              accumulatedMessages.push({ type: 'thinking', text: block.thinking as string })
+            }
+            if (block.type === 'tool_use' && typeof block.name === 'string') {
+              accumulatedMessages.push({
+                type: 'tool_use',
+                id: (block.id as string) ?? '',
+                name: block.name as string,
+                input: (block.input as Record<string, unknown>) ?? {},
+              })
             }
           }
         }
 
-        // Throttled IPC update
+        // Extract tool results from user messages
+        if (msg.role === 'user' && Array.isArray(msg.content)) {
+          for (const block of msg.content as Array<Record<string, unknown>>) {
+            if (block.type === 'tool_result' && typeof block.tool_use_id === 'string') {
+              const text =
+                typeof block.content === 'string'
+                  ? block.content
+                  : Array.isArray(block.content)
+                    ? (block.content as Array<{ type: string; text?: string }>)
+                        .filter((b) => b.type === 'text')
+                        .map((b) => b.text ?? '')
+                        .join('\n')
+                    : ''
+              accumulatedMessages.push({
+                type: 'tool_result',
+                toolUseId: block.tool_use_id as string,
+                content: text.slice(0, 2000),
+              })
+            }
+          }
+        }
+
+        // Throttled IPC update — accumulates messages between sends
         const now = Date.now()
         if (now - lastSendTime > STREAM_THROTTLE_MS) {
           lastSendTime = now
-          this.send(IPC.TEST_EXPLORATION_UPDATE, {
-            explorationId,
-            status: 'running',
-            streamingText: active.streamedText,
-            inputTokens,
-            outputTokens,
-          } satisfies ExplorationUpdate)
+          flushMessages('running')
         }
       }
 
-      // Success
+      // Success — flush any remaining messages
       this.updateStatus(explorationId, 'done', inputTokens, outputTokens)
-      this.send(IPC.TEST_EXPLORATION_UPDATE, {
-        explorationId,
-        status: 'done',
-        streamingText: active.streamedText,
-        inputTokens,
-        outputTokens,
-      } satisfies ExplorationUpdate)
+      flushMessages('done')
     } catch (err) {
       if (abortController.signal.aborted) {
-        // User stopped
         this.updateStatus(explorationId, 'stopped', inputTokens, outputTokens)
-        this.send(IPC.TEST_EXPLORATION_UPDATE, {
-          explorationId,
-          status: 'stopped',
-          streamingText: active.streamedText,
-          inputTokens,
-          outputTokens,
-        } satisfies ExplorationUpdate)
+        flushMessages('stopped')
       } else {
-        // Real error
         const errMsg = String(err)
         this.updateStatus(explorationId, 'error', inputTokens, outputTokens, errMsg)
-        this.send(IPC.TEST_EXPLORATION_UPDATE, {
-          explorationId,
-          status: 'error',
-          error: errMsg,
-          streamingText: active.streamedText,
-          inputTokens,
-          outputTokens,
-        } satisfies ExplorationUpdate)
+        flushMessages('error', { error: errMsg })
       }
     } finally {
       this.activeExplorations.delete(explorationId)

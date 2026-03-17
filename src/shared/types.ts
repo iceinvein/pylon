@@ -452,12 +452,19 @@ export type TestFinding = {
   createdAt: number
 }
 
+export type ExplorationAgentMessage =
+  | { type: 'tool_use'; id: string; name: string; input: Record<string, unknown> }
+  | { type: 'tool_result'; toolUseId: string; content: string }
+  | { type: 'text'; text: string }
+  | { type: 'thinking'; text: string }
+
 export type ExplorationUpdate = {
   explorationId: string
   status: ExplorationStatus
   findings?: TestFinding[]
   generatedTests?: string[]
   streamingText?: string
+  agentMessages?: ExplorationAgentMessage[]
   findingsCount?: number
   testsGenerated?: number
   error?: string
