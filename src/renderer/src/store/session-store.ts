@@ -309,4 +309,4 @@ export const useSessionStore = create<SessionStore>((set) => ({
     }),
 }))
 
-export type { SessionState, TaskItem, CachedDiff }
+export type { CachedDiff, SessionState, TaskItem }

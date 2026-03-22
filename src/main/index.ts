@@ -8,6 +8,7 @@ import { registerGitIpcHandlers, setGitWindow } from './git-ipc-handlers'
 import { registerIpcHandlers } from './ipc-handlers'
 import { prPollingService } from './pr-polling-service'
 import { prReviewManager } from './pr-review-manager'
+import { ClaudeProvider, CodexProvider, initModelDiscovery, registerProvider } from './providers'
 import { sessionManager } from './session-manager'
 import { testManager } from './test-manager'
 
@@ -76,6 +77,10 @@ app.whenReady().then(() => {
   })
 
   initDatabase()
+  registerProvider(new ClaudeProvider())
+  registerProvider(new CodexProvider())
+  // Load cached models from SQLite, then refresh in background if stale
+  initModelDiscovery()
   registerIpcHandlers()
   registerGitIpcHandlers()
 

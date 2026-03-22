@@ -27,6 +27,7 @@ const api = {
   setPermissionMode: (sessionId: string, mode: string) =>
     ipcRenderer.invoke(IPC.SESSION_SET_PERMISSION_MODE, { sessionId, mode }),
   getSessionInfo: (sessionId: string) => ipcRenderer.invoke(IPC.SESSION_GET_INFO, { sessionId }),
+  getProviderModels: () => ipcRenderer.invoke(IPC.PROVIDER_MODELS),
   getSettings: () => ipcRenderer.invoke(IPC.SETTINGS_GET),
   updateSettings: (key: string, value: unknown) =>
     ipcRenderer.invoke(IPC.SETTINGS_UPDATE, { key, value }),

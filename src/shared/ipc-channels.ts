@@ -109,6 +109,8 @@ export const IPC = {
   TEST_SUGGEST_GOALS: 'test:suggest-goals',
   TEST_GOAL_SUGGESTION: 'test:goal-suggestion',
   TEST_START_BATCH: 'test:start-batch',
+  // Provider
+  PROVIDER_MODELS: 'provider:models',
   // Tab Persistence
   TABS_GET: 'tabs:get',
 } as const

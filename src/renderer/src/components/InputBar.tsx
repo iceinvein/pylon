@@ -2,8 +2,10 @@ import {
   ArrowUp,
   Image,
   Paperclip,
+  Shield,
   ShieldAlert,
   ShieldCheck,
+  ShieldOff,
   SlidersHorizontal,
   Square,
   X,
@@ -29,16 +31,79 @@ import { useUiStore } from '../store/ui-store'
 import { ContextIndicator } from './ContextIndicator'
 import { DropdownMenu } from './DropdownMenu'
 
-const PERMISSION_MODES = [
-  { id: 'default' as const, label: 'Default', icon: ShieldCheck },
-  { id: 'auto-approve' as const, label: 'YOLO', icon: ShieldAlert },
+// ── Permission mode definitions per provider ─────
+
+type PermissionModeEntry = {
+  id: PermissionMode
+  label: string
+  icon: typeof ShieldCheck
+}
+
+const CLAUDE_PERMISSION_MODES: PermissionModeEntry[] = [
+  { id: 'default', label: 'Default', icon: ShieldCheck },
+  { id: 'auto-approve', label: 'YOLO', icon: ShieldAlert },
 ]
 
-const MODELS = [
-  { id: 'claude-opus-4-6', label: 'Opus 4.6' },
-  { id: 'claude-sonnet-4-6', label: 'Sonnet 4.6' },
-  { id: 'claude-haiku-4-5', label: 'Haiku 4.5' },
-] as const
+const CODEX_PERMISSION_MODES: PermissionModeEntry[] = [
+  { id: 'on-failure', label: 'On Failure', icon: ShieldCheck },
+  { id: 'on-request', label: 'On Request', icon: Shield },
+  { id: 'untrusted', label: 'Untrusted', icon: ShieldAlert },
+  { id: 'never', label: 'Full Auto', icon: ShieldOff },
+]
+
+// ── Fallback model list (used until IPC loads) ───
+
+type ProviderModelEntry = {
+  id: string
+  label: string
+  provider: string
+  supportsEffort: EffortLevel[]
+}
+
+const FALLBACK_MODELS: ProviderModelEntry[] = [
+  {
+    id: 'claude-opus-4-6',
+    label: 'Opus 4.6',
+    provider: 'claude',
+    supportsEffort: ['low', 'medium', 'high', 'max'],
+  },
+  {
+    id: 'claude-sonnet-4-6',
+    label: 'Sonnet 4.6',
+    provider: 'claude',
+    supportsEffort: ['low', 'medium', 'high'],
+  },
+  {
+    id: 'claude-haiku-4-5',
+    label: 'Haiku 4.5',
+    provider: 'claude',
+    supportsEffort: ['low', 'medium', 'high'],
+  },
+  {
+    id: 'gpt-5.4',
+    label: 'GPT-5.4',
+    provider: 'codex',
+    supportsEffort: ['low', 'medium', 'high', 'max'],
+  },
+  {
+    id: 'gpt-5.4-mini',
+    label: 'GPT-5.4 Mini',
+    provider: 'codex',
+    supportsEffort: ['low', 'medium', 'high', 'max'],
+  },
+  {
+    id: 'gpt-5.3-codex',
+    label: 'GPT-5.3 Codex',
+    provider: 'codex',
+    supportsEffort: ['low', 'medium', 'high', 'max'],
+  },
+  {
+    id: 'gpt-5.3-codex-spark',
+    label: 'GPT-5.3 Codex Spark',
+    provider: 'codex',
+    supportsEffort: ['low', 'medium', 'high', 'max'],
+  },
+]
 
 const EFFORT_LEVELS: { id: EffortLevel; label: string }[] = [
   { id: 'low', label: 'Low' },
@@ -78,6 +143,28 @@ export function InputBar({
   onStop,
   behindCount,
 }: InputBarProps) {
+  // ── Dynamic model catalog from provider registry ──
+  const [providerModels, setProviderModels] = useState<ProviderModelEntry[]>(FALLBACK_MODELS)
+  useEffect(() => {
+    window.api.getProviderModels().then((models) => {
+      if (models && models.length > 0) {
+        setProviderModels(
+          models.map((m) => ({
+            id: m.id,
+            label: m.label,
+            provider: m.provider,
+            supportsEffort: (m.supportsEffort ?? ['low', 'medium', 'high']) as EffortLevel[],
+          })),
+        )
+      }
+    })
+  }, [])
+
+  // Derive provider from currently selected model
+  const currentProvider = providerModels.find((m) => m.id === model)?.provider ?? 'claude'
+  const permissionModes =
+    currentProvider === 'codex' ? CODEX_PERMISSION_MODES : CLAUDE_PERMISSION_MODES
+
   // Restore draft from previous tab switch (if any)
   const savedDraft = useDraftStore.getState().getDraft(tabId)
   const [text, setText] = useState(savedDraft?.text ?? '')
@@ -264,16 +351,18 @@ export function InputBar({
     })
   }
 
-  // Build dropdown items with filtering
-  const effortItems = EFFORT_LEVELS.filter((e) => e.id !== 'max' || model === 'claude-opus-4-6')
-  const permissionItems = PERMISSION_MODES.map((m) => ({
+  // Build dropdown items with filtering — driven by the model's declared capabilities
+  const currentModelEntry = providerModels.find((m) => m.id === model)
+  const supportedEffort = currentModelEntry?.supportsEffort ?? ['low', 'medium', 'high']
+  const effortItems = EFFORT_LEVELS.filter((e) => supportedEffort.includes(e.id))
+  const permissionItems = permissionModes.map((m) => ({
     id: m.id,
     label: m.label,
     icon: <m.icon size={13} className="shrink-0" />,
   }))
 
-  const isYolo = permissionMode === 'auto-approve'
-  const currentMode = PERMISSION_MODES.find((m) => m.id === permissionMode) ?? PERMISSION_MODES[0]
+  const isYolo = permissionMode === 'auto-approve' || permissionMode === 'never'
+  const currentMode = permissionModes.find((m) => m.id === permissionMode) ?? permissionModes[0]
 
   // Effort trigger styling — purple for max, muted for low, default otherwise
   const effortTriggerClass =
@@ -397,7 +486,13 @@ export function InputBar({
               onChange={(e) => handleChange(e.target.value)}
               onKeyDown={handleKeyDown}
               onPaste={handlePaste}
-              placeholder={sessionId ? 'Ask Claude anything...' : 'Open a project to begin'}
+              placeholder={
+                sessionId
+                  ? currentProvider === 'codex'
+                    ? 'Ask Codex anything...'
+                    : 'Ask Claude anything...'
+                  : 'Open a project to begin'
+              }
               disabled={!sessionId && false}
               rows={3}
               className="min-h-20 w-full resize-none bg-transparent px-4 pt-3 pb-2 text-base-text text-sm leading-relaxed placeholder-base-text-faint outline-none"
@@ -425,9 +520,18 @@ export function InputBar({
               </button>
 
               <DropdownMenu
-                items={MODELS.map((m) => ({ id: m.id, label: m.label }))}
+                items={providerModels.map((m) => ({ id: m.id, label: m.label }))}
                 value={model}
-                onChange={onModelChange}
+                onChange={(id) => {
+                  onModelChange(id)
+                  // When switching providers, reset permission mode to the new provider's default
+                  const newProvider = providerModels.find((m) => m.id === id)?.provider
+                  const oldProvider = currentProvider
+                  if (newProvider && newProvider !== oldProvider) {
+                    const defaultMode = newProvider === 'codex' ? 'on-failure' : 'default'
+                    onPermissionModeChange(defaultMode as PermissionMode)
+                  }
+                }}
               />
 
               <DropdownMenu

@@ -91,7 +91,21 @@ export type QuestionResponse = {
   answers: Record<string, string>
 }
 
-export type PermissionMode = 'default' | 'auto-approve'
+/**
+ * Permission/approval mode union across all providers.
+ *
+ * Claude modes:   'default' (ask each tool) | 'auto-approve' (skip permission prompts)
+ * Codex modes:    'never' | 'on-request' | 'on-failure' | 'untrusted'
+ *
+ * The renderer shows the appropriate subset based on the selected model's provider.
+ */
+export type PermissionMode =
+  | 'default'
+  | 'auto-approve'
+  | 'never'
+  | 'on-request'
+  | 'on-failure'
+  | 'untrusted'
 
 export type EffortLevel = 'low' | 'medium' | 'high' | 'max'
 

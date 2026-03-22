@@ -6,12 +6,18 @@
  * Consumers should use `Math.max(sdkReported, KNOWN_CONTEXT_WINDOWS[model])`.
  */
 export const KNOWN_CONTEXT_WINDOWS: Record<string, number> = {
+  // Claude
   'claude-opus-4-6': 1_000_000,
   'claude-opus-4-20250514': 1_000_000,
   'claude-sonnet-4-6': 200_000,
   'claude-sonnet-4-20250514': 200_000,
   'claude-haiku-4-5': 200_000,
   'claude-haiku-3-20250307': 200_000,
+  // Codex / OpenAI
+  'gpt-5.4': 1_000_000,
+  'gpt-5.4-mini': 400_000,
+  'gpt-5.3-codex': 200_000,
+  'gpt-5.3-codex-spark': 200_000,
 }
 
 const DEFAULT_CONTEXT_WINDOW = 200_000

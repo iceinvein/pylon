@@ -294,6 +294,11 @@ export function registerIpcHandlers(): void {
     },
   )
 
+  ipcMain.handle(IPC.PROVIDER_MODELS, async () => {
+    const { getAllModels } = await import('./providers')
+    return getAllModels()
+  })
+
   ipcMain.handle(IPC.SETTINGS_GET, async () => {
     return getSettings()
   })

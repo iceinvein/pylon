@@ -21,6 +21,15 @@ type Api = {
   setEffort: (sessionId: string, effort: string) => Promise<boolean>
   setPermissionMode: (sessionId: string, mode: string) => Promise<boolean>
   getSessionInfo: (sessionId: string) => Promise<{ model: string; permissionMode: string } | null>
+  getProviderModels: () => Promise<
+    Array<{
+      id: string
+      label: string
+      provider: string
+      contextWindow: number
+      supportsEffort: string[]
+    }>
+  >
   getSettings: () => Promise<unknown>
   updateSettings: (key: string, value: unknown) => Promise<boolean>
   getSavedTabs: () => Promise<{

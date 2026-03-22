@@ -72,6 +72,9 @@ export function initDatabase(): Database.Database {
   if (!cols.some((c) => c.name === 'context_input_tokens')) {
     db.exec('ALTER TABLE sessions ADD COLUMN context_input_tokens INTEGER NOT NULL DEFAULT 0')
   }
+  if (!cols.some((c) => c.name === 'provider')) {
+    db.exec("ALTER TABLE sessions ADD COLUMN provider TEXT NOT NULL DEFAULT 'claude'")
+  }
 
   // PR Review tables
   db.exec(`

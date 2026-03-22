@@ -7,8 +7,10 @@ import {
   Info,
   Plug,
   Settings,
+  Shield,
   ShieldAlert,
   ShieldCheck,
+  ShieldOff,
 } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { lazy, Suspense, useEffect, useState } from 'react'
@@ -16,6 +18,7 @@ import type {
   AppSettings,
   GhCliStatus,
   InstalledPlugin,
+  PermissionMode,
   PluginManagementData,
   PluginMarketplace,
 } from '../../../shared/types'
@@ -25,25 +28,73 @@ const UsageDashboard = lazy(() =>
   import('./UsageDashboard').then((m) => ({ default: m.UsageDashboard })),
 )
 
-const MODELS = [
-  { id: 'claude-opus-4-6', label: 'Opus 4.6' },
-  { id: 'claude-sonnet-4-6', label: 'Sonnet 4.6' },
-  { id: 'claude-haiku-4-5', label: 'Haiku 4.5' },
-] as const
+// ── Permission mode definitions per provider (with descriptions for settings) ─
 
-const PERMISSION_MODES = [
+type PermissionModeOption = {
+  id: PermissionMode
+  label: string
+  icon: typeof ShieldCheck
+  description: string
+}
+
+const CLAUDE_PERMISSION_MODES: PermissionModeOption[] = [
   {
-    id: 'default' as const,
+    id: 'default',
     label: 'Default',
     icon: ShieldCheck,
     description: 'Ask before each tool use',
   },
   {
-    id: 'auto-approve' as const,
+    id: 'auto-approve',
     label: 'YOLO',
     icon: ShieldAlert,
     description: 'Auto-approve all tool permissions',
   },
+]
+
+const CODEX_PERMISSION_MODES: PermissionModeOption[] = [
+  {
+    id: 'on-failure',
+    label: 'On Failure',
+    icon: ShieldCheck,
+    description: 'Ask only when a command fails',
+  },
+  {
+    id: 'on-request',
+    label: 'On Request',
+    icon: Shield,
+    description: 'Ask when the model explicitly requests permission',
+  },
+  {
+    id: 'untrusted',
+    label: 'Untrusted',
+    icon: ShieldAlert,
+    description: 'Sandbox execution, ask before file writes',
+  },
+  {
+    id: 'never',
+    label: 'Full Auto',
+    icon: ShieldOff,
+    description: 'Auto-approve all commands without asking',
+  },
+]
+
+// ── Fallback model list (used until IPC loads) ───
+
+type ProviderModelEntry = {
+  id: string
+  label: string
+  provider: string
+}
+
+const FALLBACK_MODELS: ProviderModelEntry[] = [
+  { id: 'claude-opus-4-6', label: 'Opus 4.6', provider: 'claude' },
+  { id: 'claude-sonnet-4-6', label: 'Sonnet 4.6', provider: 'claude' },
+  { id: 'claude-haiku-4-5', label: 'Haiku 4.5', provider: 'claude' },
+  { id: 'gpt-5.4', label: 'GPT-5.4', provider: 'codex' },
+  { id: 'gpt-5.4-mini', label: 'GPT-5.4 Mini', provider: 'codex' },
+  { id: 'gpt-5.3-codex', label: 'GPT-5.3 Codex', provider: 'codex' },
+  { id: 'gpt-5.3-codex-spark', label: 'GPT-5.3 Codex Spark', provider: 'codex' },
 ]
 
 const TABS = [
@@ -177,10 +228,150 @@ function PluginsTabContent({
   )
 }
 
+function GeneralTab({
+  settings,
+  providerModels,
+  onUpdateSetting,
+}: {
+  settings: AppSettings
+  providerModels: ProviderModelEntry[]
+  onUpdateSetting: <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => void
+}) {
+  // Derive provider from the selected default model
+  const defaultProvider =
+    providerModels.find((m) => m.id === settings.defaultModel)?.provider ?? 'claude'
+  const permissionModes =
+    defaultProvider === 'codex' ? CODEX_PERMISSION_MODES : CLAUDE_PERMISSION_MODES
+
+  // Group models by provider for visual separation
+  const claudeModels = providerModels.filter((m) => m.provider === 'claude')
+  const codexModels = providerModels.filter((m) => m.provider === 'codex')
+
+  function handleModelChange(modelId: string) {
+    onUpdateSetting('defaultModel', modelId)
+    // When switching providers, reset permission mode to the new provider's default
+    const newProvider = providerModels.find((m) => m.id === modelId)?.provider
+    if (newProvider && newProvider !== defaultProvider) {
+      const newDefault: PermissionMode = newProvider === 'codex' ? 'on-failure' : 'default'
+      onUpdateSetting('defaultPermissionMode', newDefault)
+    }
+  }
+
+  const infoText =
+    defaultProvider === 'codex'
+      ? 'Codex approval modes control when the agent asks for permission. You can override the mode per-session from the input bar.'
+      : 'YOLO mode auto-approves all tool permissions but still prompts for questions that require your input. You can override the mode per-session from the input bar.'
+
+  return (
+    <div className="mt-8 space-y-8">
+      {/* Default Model */}
+      <section>
+        <span className="block font-medium text-base-text text-sm">Default Model</span>
+        <p className="mt-0.5 text-base-text-muted text-xs">Model used when creating new sessions</p>
+        <div className="mt-3 space-y-3">
+          {claudeModels.length > 0 && (
+            <div>
+              <span className="mb-1.5 block font-medium text-[10px] text-base-text-faint uppercase tracking-wider">
+                Claude
+              </span>
+              <div className="flex flex-wrap gap-2">
+                {claudeModels.map((m) => (
+                  <button
+                    type="button"
+                    key={m.id}
+                    onClick={() => handleModelChange(m.id)}
+                    className={`rounded-lg border px-3 py-2 text-xs transition-colors ${
+                      settings.defaultModel === m.id
+                        ? 'border-accent/60 bg-base-raised text-base-text'
+                        : 'border-base-border/50 text-base-text-secondary hover:border-base-border hover:text-base-text'
+                    }`}
+                  >
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {codexModels.length > 0 && (
+            <div>
+              <span className="mb-1.5 block font-medium text-[10px] text-base-text-faint uppercase tracking-wider">
+                Codex
+              </span>
+              <div className="flex flex-wrap gap-2">
+                {codexModels.map((m) => (
+                  <button
+                    type="button"
+                    key={m.id}
+                    onClick={() => handleModelChange(m.id)}
+                    className={`rounded-lg border px-3 py-2 text-xs transition-colors ${
+                      settings.defaultModel === m.id
+                        ? 'border-accent/60 bg-base-raised text-base-text'
+                        : 'border-base-border/50 text-base-text-secondary hover:border-base-border hover:text-base-text'
+                    }`}
+                  >
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Default Permission Mode */}
+      <section>
+        <span className="block font-medium text-base-text text-sm">Default Permission Mode</span>
+        <p className="mt-0.5 text-base-text-muted text-xs">
+          Permission behavior for new sessions (can be overridden per-session)
+        </p>
+        <div className="mt-3 space-y-2">
+          {permissionModes.map((m) => {
+            const ModeIcon = m.icon
+            const isSelected = settings.defaultPermissionMode === m.id
+            const isDangerous = m.id === 'auto-approve' || m.id === 'never'
+            return (
+              <button
+                type="button"
+                key={m.id}
+                onClick={() => onUpdateSetting('defaultPermissionMode', m.id)}
+                className={`flex w-full items-center gap-3 rounded-lg border px-4 py-3 text-left transition-colors ${
+                  isSelected
+                    ? isDangerous
+                      ? 'border-accent/50 bg-accent-muted/20 text-accent-text'
+                      : 'border-accent/60 bg-base-raised text-base-text'
+                    : 'border-base-border/50 text-base-text-secondary hover:border-base-border hover:text-base-text'
+                }`}
+              >
+                <ModeIcon size={16} className="shrink-0" />
+                <div className="flex-1">
+                  <div className="font-medium text-sm">{m.label}</div>
+                  <div
+                    className={`text-xs ${isSelected ? (isDangerous ? 'text-warning/70' : 'text-base-text-secondary') : 'text-base-text-muted'}`}
+                  >
+                    {m.description}
+                  </div>
+                </div>
+                <span
+                  className={`h-2 w-2 rounded-full ${isSelected ? (isDangerous ? 'bg-accent' : 'bg-base-text') : 'bg-transparent'}`}
+                />
+              </button>
+            )
+          })}
+        </div>
+        <div className="mt-3 flex items-start gap-2 rounded-md border border-base-border-subtle bg-base-surface/50 px-3 py-2">
+          <Info size={13} className="mt-0.5 shrink-0 text-base-text-faint" />
+          <p className="text-base-text-muted text-xs">{infoText}</p>
+        </div>
+      </section>
+    </div>
+  )
+}
+
 export function SettingsOverlay() {
   const { settingsOpen, setSettingsOpen } = useUiStore()
   const [settings, setSettings] = useState<AppSettings | null>(null)
   const [activeTab, setActiveTab] = useState<SettingsTab>('general')
+  const [providerModels, setProviderModels] = useState<ProviderModelEntry[]>(FALLBACK_MODELS)
   const [ghStatus, setGhStatus] = useState<GhCliStatus | null>(null)
   const [ghPath, setGhPath] = useState('')
   const [ghChecking, setGhChecking] = useState(false)
@@ -234,6 +425,11 @@ export function SettingsOverlay() {
   useEffect(() => {
     if (!settingsOpen) return
     window.api.getSettings().then((s) => setSettings(s as AppSettings))
+    window.api.getProviderModels().then((models) => {
+      if (models && models.length > 0) {
+        setProviderModels(models.map((m) => ({ id: m.id, label: m.label, provider: m.provider })))
+      }
+    })
   }, [settingsOpen])
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: recheckGh is stable intent
@@ -357,85 +553,11 @@ export function SettingsOverlay() {
             <div className="flex flex-1 flex-col overflow-y-auto">
               <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-8 py-6">
                 {activeTab === 'general' && settings && (
-                  <div className="mt-8 space-y-8">
-                    {/* Default Model */}
-                    <section>
-                      <span className="block font-medium text-base-text text-sm">
-                        Default Model
-                      </span>
-                      <p className="mt-0.5 text-base-text-muted text-xs">
-                        Model used when creating new sessions
-                      </p>
-                      <div className="mt-3 flex gap-2">
-                        {MODELS.map((m) => (
-                          <button
-                            type="button"
-                            key={m.id}
-                            onClick={() => updateSetting('defaultModel', m.id)}
-                            className={`rounded-lg border px-3 py-2 text-xs transition-colors ${
-                              settings.defaultModel === m.id
-                                ? 'border-accent/60 bg-base-raised text-base-text'
-                                : 'border-base-border/50 text-base-text-secondary hover:border-base-border hover:text-base-text'
-                            }`}
-                          >
-                            {m.label}
-                          </button>
-                        ))}
-                      </div>
-                    </section>
-
-                    {/* Default Permission Mode */}
-                    <section>
-                      <span className="block font-medium text-base-text text-sm">
-                        Default Permission Mode
-                      </span>
-                      <p className="mt-0.5 text-base-text-muted text-xs">
-                        Permission behavior for new sessions (can be overridden per-session)
-                      </p>
-                      <div className="mt-3 space-y-2">
-                        {PERMISSION_MODES.map((m) => {
-                          const Icon = m.icon
-                          const isSelected = settings.defaultPermissionMode === m.id
-                          const isYolo = m.id === 'auto-approve'
-                          return (
-                            <button
-                              type="button"
-                              key={m.id}
-                              onClick={() => updateSetting('defaultPermissionMode', m.id)}
-                              className={`flex w-full items-center gap-3 rounded-lg border px-4 py-3 text-left transition-colors ${
-                                isSelected
-                                  ? isYolo
-                                    ? 'border-accent/50 bg-accent-muted/20 text-accent-text'
-                                    : 'border-accent/60 bg-base-raised text-base-text'
-                                  : 'border-base-border/50 text-base-text-secondary hover:border-base-border hover:text-base-text'
-                              }`}
-                            >
-                              <Icon size={16} className="shrink-0" />
-                              <div className="flex-1">
-                                <div className="font-medium text-sm">{m.label}</div>
-                                <div
-                                  className={`text-xs ${isSelected ? (isYolo ? 'text-warning/70' : 'text-base-text-secondary') : 'text-base-text-muted'}`}
-                                >
-                                  {m.description}
-                                </div>
-                              </div>
-                              <span
-                                className={`h-2 w-2 rounded-full ${isSelected ? (isYolo ? 'bg-accent' : 'bg-base-text') : 'bg-transparent'}`}
-                              />
-                            </button>
-                          )
-                        })}
-                      </div>
-                      <div className="mt-3 flex items-start gap-2 rounded-md border border-base-border-subtle bg-base-surface/50 px-3 py-2">
-                        <Info size={13} className="mt-0.5 shrink-0 text-base-text-faint" />
-                        <p className="text-base-text-muted text-xs">
-                          YOLO mode auto-approves all tool permissions but still prompts for
-                          questions that require your input. You can override the mode per-session
-                          from the input bar.
-                        </p>
-                      </div>
-                    </section>
-                  </div>
+                  <GeneralTab
+                    settings={settings}
+                    providerModels={providerModels}
+                    onUpdateSetting={updateSetting}
+                  />
                 )}
 
                 {activeTab === 'plugins' && (

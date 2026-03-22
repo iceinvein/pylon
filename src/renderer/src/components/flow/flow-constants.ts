@@ -109,5 +109,5 @@ const NODE_STYLES: Record<ActivityType, NodeStyle> = {
   },
 }
 
+export type { DotShape, NodeStyle }
 export { NODE_STYLES }
-export type { NodeStyle, DotShape }

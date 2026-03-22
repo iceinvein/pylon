@@ -1,19 +1,13 @@
 import { execFile } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 import { existsSync } from 'node:fs'
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, rm } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { basename, join } from 'node:path'
 import { promisify } from 'node:util'
-import {
-  query,
-  type SDKResultMessage,
-  type Options as SdkOptions,
-} from '@anthropic-ai/claude-agent-sdk'
-import { app, type BrowserWindow } from 'electron'
+import type { BrowserWindow } from 'electron'
 import { IPC } from '../shared/ipc-channels'
 import { log } from '../shared/logger'
-import { resolveContextWindow } from '../shared/model-context'
 import type {
   EffortLevel,
   PermissionMode,
@@ -21,6 +15,13 @@ import type {
   QuestionResponse,
 } from '../shared/types'
 import { getDb } from './db'
+import {
+  type AgentSession,
+  getProvider,
+  getProviderForModel,
+  type NormalizedEvent,
+  type ProviderId,
+} from './providers'
 
 const logger = log.child('session-manager')
 
@@ -69,13 +70,14 @@ function slugify(text: string): string {
 
 type ActiveSession = {
   id: string
+  provider: ProviderId
   sdkSessionId: string | null
   cwd: string
   gitBaselineHash: string | null
   model: string
   permissionMode: PermissionMode
   effort: EffortLevel
-  queryInstance: ReturnType<typeof query> | null
+  agentSession: AgentSession | null
   abortController: AbortController
   pendingPermissions: Map<
     string,
@@ -182,6 +184,8 @@ export class SessionManager {
     const id = randomUUID()
     const now = Date.now()
     const sessionModel = model || 'claude-opus-4-6'
+    const provider = getProviderForModel(sessionModel)
+    const providerId: ProviderId = provider?.id ?? 'claude'
 
     let sessionCwd = cwd
     let worktreePath: string | null = null
@@ -200,7 +204,7 @@ export class SessionManager {
 
     const db = getDb()
     db.prepare(
-      'INSERT INTO sessions (id, cwd, status, model, title, created_at, updated_at, worktree_path, original_cwd, worktree_branch, original_branch, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO sessions (id, cwd, status, model, title, created_at, updated_at, worktree_path, original_cwd, worktree_branch, original_branch, source, provider) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
     ).run(
       id,
       sessionCwd,
@@ -214,17 +218,19 @@ export class SessionManager {
       worktreeBranch,
       originalBranch,
       source,
+      providerId,
     )
 
     this.sessions.set(id, {
       id,
+      provider: providerId,
       sdkSessionId: null,
       cwd: sessionCwd,
       gitBaselineHash: null,
       model: sessionModel,
       permissionMode: 'default',
       effort: 'high',
-      queryInstance: null,
+      agentSession: null,
       abortController: new AbortController(),
       pendingPermissions: new Map(),
       pendingQuestions: new Map(),
@@ -247,94 +253,40 @@ export class SessionManager {
 
     this.updateStatus(sessionId, 'starting')
 
-    const isResume = session.sdkSessionId !== null
-
     try {
-      const options: SdkOptions & Record<string, unknown> = {
+      // ── Create agent session via provider ──────────────
+      const provider = getProvider(session.provider)
+      const agentSession = provider.createSession({
         cwd: session.cwd,
         model: session.model,
-        abortController: session.abortController,
-        includePartialMessages: true,
-        promptSuggestions: true,
-        enableFileCheckpointing: true,
-        settingSources: ['user', 'project', 'local'],
         effort: session.effort,
+        permissionMode: session.permissionMode,
+        abortController: session.abortController,
         betas: ['context-1m-2025-08-07'],
-        canUseTool: async (toolName: string, input: Record<string, unknown>, opts) => {
+        resumeSessionId: session.sdkSessionId ?? undefined,
+        onBeforeToolUse: (toolName) => {
           // Capture git baseline on first file-modifying tool
           if (['Edit', 'Write'].includes(toolName)) {
             this.captureGitBaseline(sessionId).catch(() => {})
           }
-
-          // Intercept AskUserQuestion — route to question UI instead of permission prompt
-          if (toolName === 'AskUserQuestion') {
-            const answers = await this.requestQuestion(sessionId, input)
-            return {
-              behavior: 'allow' as const,
-              updatedInput: { ...input, answers },
-            }
-          }
-
-          // Auto-approve mode: skip permission prompt for all tools (questions still shown)
-          if (session.permissionMode === 'auto-approve') {
-            return { behavior: 'allow' as const, updatedInput: input }
-          }
-
-          const result = await this.requestPermission(sessionId, toolName, input, opts.suggestions)
-          if (result.behavior === 'allow') {
-            return { behavior: 'allow' as const, updatedInput: input }
-          }
-          return { behavior: 'deny' as const, message: result.message ?? 'User denied' }
         },
-      }
+        onPermissionRequest: (toolName, input, suggestions) =>
+          this.requestPermission(sessionId, toolName, input, suggestions),
+        onQuestionRequest: (input) => this.requestQuestion(sessionId, input),
+      })
+      session.agentSession = agentSession
 
-      if (isResume) {
-        options.resume = session.sdkSessionId ?? undefined
-      }
-
-      // Handle attachments: images saved to temp files, text files inlined in prompt
-      const imageAttachments = (attachments ?? []).filter(
+      // ── Persist user message ───────────────────────────
+      // Build user content blocks so the user message survives reload from DB.
+      // Attachment processing (temp files, inlining) is now handled by the provider.
+      const imageAtts = (attachments ?? []).filter(
         (a) => a.type === 'image' && a.content && a.mediaType,
       )
-      const fileAttachments = (attachments ?? []).filter((a) => a.type === 'file' && a.content)
-
-      const promptParts: string[] = []
-
-      // Save images to temp files and reference by path
-      if (imageAttachments.length > 0) {
-        const tmpDir = join(app.getPath('temp'), 'pylon-images')
-        await mkdir(tmpDir, { recursive: true })
-
-        for (const att of imageAttachments) {
-          const ext = att.mediaType?.split('/')[1] ?? 'png'
-          const filename = `${randomUUID()}.${ext}`
-          const filepath = join(tmpDir, filename)
-          await writeFile(filepath, Buffer.from(att.content, 'base64'))
-          promptParts.push(`[Attached image: ${filepath}]`)
-        }
-      }
-
-      // Inline text/data file contents directly in the prompt
-      for (const att of fileAttachments) {
-        promptParts.push(`<attached_file name="${att.name}">\n${att.content}\n</attached_file>`)
-      }
-
-      if (text) {
-        promptParts.push(text)
-      }
-
-      const prompt = promptParts.join('\n\n')
-
-      // Persist the user message (with image content blocks) so it survives reload from DB
       const userContent: Array<Record<string, unknown>> = []
-      for (const att of imageAttachments) {
+      for (const att of imageAtts) {
         userContent.push({
           type: 'image',
-          source: {
-            type: 'base64',
-            media_type: att.mediaType,
-            data: att.content,
-          },
+          source: { type: 'base64', media_type: att.mediaType, data: att.content },
         })
       }
       if (text) {
@@ -345,97 +297,11 @@ export class SessionManager {
         content: userContent.length === 1 && userContent[0]?.type === 'text' ? text : userContent,
       })
 
-      const q = query({ prompt, options })
-      session.queryInstance = q
-
       this.updateStatus(sessionId, 'running')
 
-      for await (const message of q) {
-        if (message.type === 'system' && 'session_id' in message) {
-          session.sdkSessionId = message.session_id as string
-          const db = getDb()
-          db.prepare('UPDATE sessions SET sdk_session_id = ? WHERE id = ?').run(
-            session.sdkSessionId,
-            sessionId,
-          )
-        }
-
-        this.persistMessage(sessionId, message)
-        this.send(IPC.SESSION_MESSAGE, { sessionId, message })
-        this.notifyMessageListeners(sessionId, message)
-
-        // Track latest context size from top-level message_start events
-        // (sum uncached + cache_read + cache_creation for true context size)
-        if (message.type === 'stream_event') {
-          const evt = (message as Record<string, unknown>).event as
-            | Record<string, unknown>
-            | undefined
-          if (evt?.type === 'message_start') {
-            const msgObj = evt.message as Record<string, unknown> | undefined
-            const usage = msgObj?.usage as Record<string, number> | undefined
-            if (usage) {
-              const total =
-                (usage.input_tokens ?? 0) +
-                (usage.cache_read_input_tokens ?? 0) +
-                (usage.cache_creation_input_tokens ?? 0)
-              if (total > 0) {
-                session.lastContextInputTokens = total
-              }
-            }
-          }
-        }
-
-        if (message.type === 'result') {
-          const result = message as SDKResultMessage
-
-          // Cache context window sizes from SDK result for dynamic token budgeting.
-          // Use resolveContextWindow() to take max(SDK-reported, known floor) —
-          // the SDK may report 200K even when the model actually supports 1M.
-          if (result.modelUsage) {
-            for (const [model, usage] of Object.entries(result.modelUsage)) {
-              if (usage.contextWindow > 0) {
-                const resolved = resolveContextWindow(model, usage.contextWindow)
-                const prev = this.modelContextWindows.get(model)
-                this.modelContextWindows.set(model, resolved)
-                if (prev !== resolved) {
-                  this.persistContextWindow(model, resolved)
-                }
-              }
-            }
-          }
-
-          if (result.total_cost_usd !== undefined) {
-            // Resolve context window from modelUsage (use resolved value that accounts for model floors)
-            const modelUsageEntries = Object.values(result.modelUsage ?? {})
-            const rawContextWindow = modelUsageEntries[0]?.contextWindow ?? 0
-            const resolvedContextWindow =
-              rawContextWindow > 0
-                ? resolveContextWindow(session.model, rawContextWindow)
-                : (this.modelContextWindows.get(session.model) ?? 0)
-
-            const db = getDb()
-            db.prepare(
-              'UPDATE sessions SET total_cost_usd = total_cost_usd + ?, input_tokens = input_tokens + ?, output_tokens = output_tokens + ?, context_window = ?, context_input_tokens = ?, updated_at = ? WHERE id = ?',
-            ).run(
-              result.total_cost_usd || 0,
-              result.usage?.input_tokens || 0,
-              result.usage?.output_tokens || 0,
-              resolvedContextWindow,
-              session.lastContextInputTokens,
-              Date.now(),
-              sessionId,
-            )
-          }
-          // Set title after first exchange
-          const currentTitle = (
-            getDb().prepare('SELECT title FROM sessions WHERE id = ?').get(sessionId) as
-              | { title: string }
-              | undefined
-          )?.title
-          if (currentTitle === '') {
-            this.setTitleFromMessage(sessionId, text)
-          }
-        }
+      // ── Consume normalized event stream ────────────────
+      for await (const event of agentSession.send(text, attachments as never)) {
+        this.handleProviderEvent(sessionId, session, text, event)
       }
 
       this.updateStatus(sessionId, 'done')
@@ -448,7 +314,98 @@ export class SessionManager {
         message: { type: 'error', error: errorMessage },
       })
     } finally {
-      session.queryInstance = null
+      session.agentSession = null
+    }
+  }
+
+  /**
+   * Process a single NormalizedEvent from the provider.
+   * raw_passthrough → persist + send to renderer (backward compat)
+   * Typed events → session manager bookkeeping (usage, session ID, etc.)
+   */
+  private handleProviderEvent(
+    sessionId: string,
+    session: ActiveSession,
+    userText: string,
+    event: NormalizedEvent,
+  ): void {
+    switch (event.type) {
+      // ── Raw SDK message: forward to renderer unchanged ──
+      case 'raw_passthrough':
+        if (event.persist) {
+          this.persistMessage(sessionId, event.message)
+        }
+        this.send(IPC.SESSION_MESSAGE, { sessionId, message: event.message })
+        this.notifyMessageListeners(sessionId, event.message)
+        break
+
+      // ── Session/thread ID assigned ──
+      case 'session_init':
+        if (event.sessionId) {
+          session.sdkSessionId = event.sessionId
+          const db = getDb()
+          db.prepare('UPDATE sessions SET sdk_session_id = ? WHERE id = ?').run(
+            session.sdkSessionId,
+            sessionId,
+          )
+        }
+        break
+
+      // ── Context usage tracking ──
+      case 'usage_update': {
+        const total =
+          event.inputTokens + (event.cachedInputTokens ?? 0) + (event.cacheCreationTokens ?? 0)
+        if (total > 0) {
+          session.lastContextInputTokens = total
+        }
+        break
+      }
+
+      // ── Turn complete: persist cost, usage, context windows ──
+      case 'turn_complete': {
+        // Cache context window sizes for dynamic token budgeting
+        if (event.modelContextWindows) {
+          for (const [model, size] of Object.entries(event.modelContextWindows)) {
+            const prev = this.modelContextWindows.get(model)
+            this.modelContextWindows.set(model, size)
+            if (prev !== size) {
+              this.persistContextWindow(model, size)
+            }
+          }
+        }
+
+        // Persist cost and usage
+        if (event.costUsd !== undefined || event.inputTokens > 0 || event.outputTokens > 0) {
+          const resolvedContextWindow = this.modelContextWindows.get(session.model) ?? 0
+
+          const db = getDb()
+          db.prepare(
+            'UPDATE sessions SET total_cost_usd = total_cost_usd + ?, input_tokens = input_tokens + ?, output_tokens = output_tokens + ?, context_window = ?, context_input_tokens = ?, updated_at = ? WHERE id = ?',
+          ).run(
+            event.costUsd || 0,
+            event.inputTokens || 0,
+            event.outputTokens || 0,
+            resolvedContextWindow,
+            session.lastContextInputTokens,
+            Date.now(),
+            sessionId,
+          )
+        }
+
+        // Set title after first exchange
+        const currentTitle = (
+          getDb().prepare('SELECT title FROM sessions WHERE id = ?').get(sessionId) as
+            | { title: string }
+            | undefined
+        )?.title
+        if (currentTitle === '') {
+          this.setTitleFromMessage(sessionId, userText)
+        }
+        break
+      }
+
+      // Other normalized events are informational — no session-manager action needed.
+      // The renderer receives them via raw_passthrough.
     }
   }
 
@@ -457,9 +414,9 @@ export class SessionManager {
     if (!session) return
     session.abortController.abort()
     session.abortController = new AbortController()
-    if (session.queryInstance) {
-      session.queryInstance.close()
-      session.queryInstance = null
+    if (session.agentSession) {
+      session.agentSession.stop()
+      session.agentSession = null
     }
     this.updateStatus(sessionId, 'done')
   }
@@ -515,15 +472,20 @@ export class SessionManager {
       logger.warn(`Worktree path missing for session ${sessionId}: ${row.worktree_path}`)
     }
 
+    // Determine provider from the session's model
+    const provider = getProviderForModel(row.model)
+    const providerId: ProviderId = provider?.id ?? 'claude'
+
     this.sessions.set(sessionId, {
       id: row.id,
+      provider: providerId,
       sdkSessionId: row.sdk_session_id,
       cwd: row.cwd,
       gitBaselineHash: row.git_baseline_hash,
       model: row.model,
       permissionMode: (row.permission_mode as PermissionMode) || 'default',
       effort: 'high',
-      queryInstance: null,
+      agentSession: null,
       abortController: new AbortController(),
       pendingPermissions: new Map(),
       pendingQuestions: new Map(),
@@ -603,34 +565,26 @@ export class SessionManager {
     const session = this.sessions.get(sessionId)
     if (!session) throw new Error('Session not found')
 
-    // Use a standalone SDK query() — NOT the user's active session — so the
-    // git AI request never appears in the chat UI or pollutes conversation context.
-    const combinedPrompt = `${systemPrompt}\n\n${prompt}`
-    const options: SdkOptions & Record<string, unknown> = {
+    // Use a standalone text-only query via the provider — NOT the user's active
+    // session — so the git AI request never appears in the chat UI.
+    const provider = getProvider(session.provider)
+    const textSession = provider.createSession({
       cwd: session.cwd,
       model: session.model,
+      effort: session.effort,
+      permissionMode: 'auto-approve',
       abortController: new AbortController(),
-      // `tools: []` disables ALL built-in tools so the model can only return text.
-      // (Note: `allowedTools` only controls auto-approval, not availability.)
-      tools: [],
-      permissionMode: 'acceptEdits' as const,
-    }
+      onPermissionRequest: async () => ({ behavior: 'allow' as const }),
+      onQuestionRequest: async () => ({}),
+    })
 
+    const combinedPrompt = `${systemPrompt}\n\n${prompt}`
     let responseText = ''
-    const q = query({ prompt: combinedPrompt, options })
-    for await (const message of q) {
-      const msg = message as { type?: string; content?: unknown; message?: { content?: unknown } }
-      // Extract text from both assistant turn messages and the final result
-      if (msg.type === 'assistant' || msg.type === 'result') {
-        const content = msg.message?.content ?? msg.content
-        if (typeof content === 'string') {
-          responseText = content
-        } else if (Array.isArray(content)) {
-          const text = (content as { type?: string; text?: string }[])
-            .filter((b) => b.type === 'text' && b.text)
-            .map((b) => b.text ?? '')
-            .join('')
-          if (text) responseText = text
+    for await (const event of textSession.sendTextOnly(combinedPrompt)) {
+      if (event.type === 'message_complete' && event.role === 'assistant') {
+        const textBlock = event.content.find((b) => b.type === 'text')
+        if (textBlock && textBlock.type === 'text') {
+          responseText = textBlock.text
         }
       }
     }

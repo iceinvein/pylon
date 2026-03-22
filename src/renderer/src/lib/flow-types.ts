@@ -31,4 +31,4 @@ type FlowGraph = {
   elements: FlowElement[]
 }
 
-export type { ActivityType, FlowNode, FlowElement, FlowGraph }
+export type { ActivityType, FlowElement, FlowGraph, FlowNode }
