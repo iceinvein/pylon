@@ -1,4 +1,5 @@
 import {
+  AlertTriangle,
   ChevronDown,
   ChevronUp,
   ExternalLink,
@@ -95,6 +96,7 @@ export function PrDetail() {
     selectedPr,
     prDetail,
     prDetailLoading,
+    prDetailError,
     activeReview,
     activeFindings,
     selectedFindingIds,
@@ -102,6 +104,7 @@ export function PrDetail() {
     stopReview,
     toggleFinding,
     postFinding,
+    selectPr,
   } = usePrReviewStore()
   const [showReviewModal, setShowReviewModal] = useState(false)
   const [selectedFile, setSelectedFile] = useState<string | null>(null)
@@ -158,6 +161,25 @@ export function PrDetail() {
     return (
       <div className="flex h-full items-center justify-center">
         <Loader2 size={16} className="animate-spin text-base-text-muted" />
+      </div>
+    )
+  }
+
+  if (prDetailError) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-3 px-8 text-center">
+        <AlertTriangle size={28} className="text-warning" />
+        <span className="font-medium text-base-text text-sm">Failed to load PR details</span>
+        <span className="max-w-md text-base-text-muted text-xs leading-relaxed">
+          {prDetailError}
+        </span>
+        <button
+          type="button"
+          onClick={() => selectedPr && selectPr(selectedPr)}
+          className="mt-1 rounded-md bg-base-raised px-3 py-1.5 text-base-text text-xs ring-1 ring-base-border transition-colors hover:bg-base-surface"
+        >
+          Retry
+        </button>
       </div>
     )
   }

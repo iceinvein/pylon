@@ -68,6 +68,7 @@ type PrReviewStore = {
   selectedPr: GhPullRequest | null
   prDetail: GhPrDetail | null
   prDetailLoading: boolean
+  prDetailError: string | null
   reviews: PrReview[]
   activeReview: PrReview | null
   activeFindings: ReviewFinding[]
@@ -132,6 +133,7 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
   selectedPr: null,
   prDetail: null,
   prDetailLoading: false,
+  prDetailError: null,
   reviews: [],
   activeReview: null,
   activeFindings: [],
@@ -177,6 +179,7 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
       selectedRepo: repo,
       selectedPr: null,
       prDetail: null,
+      prDetailError: null,
       activeReview: null,
       activeFindings: [],
       reviewStreamingText: '',
@@ -229,6 +232,7 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
     set({
       selectedPr: pr,
       prDetail: null,
+      prDetailError: null,
       activeReview: null,
       activeFindings: [],
       reviewStreamingText: '',
@@ -244,11 +248,12 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
       const detail = await window.api.getGhPrDetail(pr.repo.fullName, pr.number)
       if (get()._selectPrSeq !== seq) return
       detail.repo = pr.repo
-      set({ prDetail: detail, prDetailLoading: false })
+      set({ prDetail: detail, prDetailLoading: false, prDetailError: null })
     } catch (err) {
       logger.error('selectPr failed:', err)
       if (get()._selectPrSeq === seq) {
-        set({ prDetailLoading: false })
+        const msg = err instanceof Error ? err.message : String(err)
+        set({ prDetailLoading: false, prDetailError: msg })
       }
     }
     if (get()._selectPrSeq === seq) {

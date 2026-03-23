@@ -178,40 +178,84 @@ export function parseFilesFromDiff(
   return files
 }
 
-export async function getPrDetail(repoFullName: string, prNumber: number): Promise<GhPrDetail> {
-  const [json, diff] = await Promise.all([
-    execGh([
-      'pr',
-      'view',
-      String(prNumber),
-      '--repo',
-      repoFullName,
-      '--json',
-      'number,title,body,author,state,createdAt,updatedAt,headRefName,baseRefName,additions,deletions,reviewDecision,isDraft,url',
-    ]),
-    execGh(['pr', 'diff', String(prNumber), '--repo', repoFullName]),
-  ])
+/**
+ * Assemble a unified diff string from per-file REST API patches.
+ * Each entry from the /pulls/:number/files endpoint has a `patch` field
+ * containing the diff hunks for that file. We prefix each with a
+ * `diff --git` header so downstream consumers (splitDiffByFile, chunkDiff)
+ * can parse it identically to the output of `gh pr diff`.
+ *
+ * Files without a `patch` (e.g. binary files, renames with no content change)
+ * are skipped since there's no textual diff to show.
+ */
+function assembleDiffFromPatches(filesRaw: Array<Record<string, unknown>>): string {
+  const parts: string[] = []
+  for (const f of filesRaw) {
+    const patch = f.patch as string | undefined
+    if (!patch) continue
+    const filename = (f.filename as string) ?? ''
+    const prevFilename = (f.previous_filename as string) ?? filename
+    parts.push(
+      `diff --git a/${prevFilename} b/${filename}\n--- a/${prevFilename}\n+++ b/${filename}\n${patch}`,
+    )
+  }
+  return parts.join('\n')
+}
 
+export async function getPrDetail(repoFullName: string, prNumber: number): Promise<GhPrDetail> {
+  // Fetch PR metadata (always works regardless of diff size)
+  const json = await execGh([
+    'pr',
+    'view',
+    String(prNumber),
+    '--repo',
+    repoFullName,
+    '--json',
+    'number,title,body,author,state,createdAt,updatedAt,headRefName,baseRefName,additions,deletions,reviewDecision,isDraft,url',
+  ])
   const pr = JSON.parse(json) as Record<string, unknown>
+
+  // Fetch full diff — may fail with HTTP 406 for PRs exceeding 20,000 lines.
+  let diff: string | null = null
+  try {
+    diff = await execGh(['pr', 'diff', String(prNumber), '--repo', repoFullName])
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    if (msg.includes('too_large') || msg.includes('406')) {
+      // Expected for very large PRs — we'll reconstruct from per-file patches below
+    } else {
+      throw err
+    }
+  }
 
   // Use paginated REST API for the complete file list — gh pr view --json files
   // uses GraphQL which silently caps at ~100 files without auto-pagination.
+  // We also keep the raw entries so we can reconstruct the diff from patches
+  // when `gh pr diff` failed due to size limits.
   let files: Array<{ path: string; additions: number; deletions: number }>
+  let filesRaw: Array<Record<string, unknown>> | null = null
   try {
     const filesJson = await execGh([
       'api',
       `repos/${repoFullName}/pulls/${prNumber}/files`,
       '--paginate',
     ])
-    const filesRaw = JSON.parse(filesJson) as Array<Record<string, unknown>>
+    filesRaw = JSON.parse(filesJson) as Array<Record<string, unknown>>
     files = filesRaw.map((f) => ({
       path: (f.filename as string) ?? '',
       additions: (f.additions as number) ?? 0,
       deletions: (f.deletions as number) ?? 0,
     }))
   } catch {
-    // Fallback: derive file list from the diff itself
-    files = parseFilesFromDiff(diff)
+    // Fallback: derive file list from the diff itself (only works if diff succeeded)
+    files = diff ? parseFilesFromDiff(diff) : []
+  }
+
+  // If the full diff was too large, reconstruct it from per-file patches.
+  // The REST /files endpoint returns individual patches that aren't subject to
+  // the same 20k-line limit (each file's patch is returned independently).
+  if (diff === null && filesRaw) {
+    diff = assembleDiffFromPatches(filesRaw)
   }
 
   return {
@@ -230,7 +274,7 @@ export async function getPrDetail(repoFullName: string, prNumber: number): Promi
     isDraft: pr.isDraft as boolean,
     url: pr.url as string,
     files,
-    diff,
+    diff: diff ?? '',
     repo: { owner: '', repo: '', fullName: repoFullName, projectPath: '' },
   }
 }
