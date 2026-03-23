@@ -126,6 +126,28 @@ const SKIP_PATTERNS = [
   /(^|\/)out\//,
   /(^|\/)target\//,
   /(^|\/)node_modules\//,
+  // ── Documentation / prose ──
+  /\.md$/,
+  /\.mdx$/,
+  /\.txt$/,
+  /\.rst$/,
+  /\.adoc$/,
+  /(^|\/)LICENSE(\..*)?$/,
+  /(^|\/)LICENCE(\..*)?$/,
+  /(^|\/)COPYING(\..*)?$/,
+  /(^|\/)CHANGELOG(\..*)?$/,
+  /(^|\/)CHANGES(\..*)?$/,
+  // ── Database snapshots ──
+  /\.sqlite3?$/,
+  /\.db$/,
+  /\.db-(journal|wal|shm)$/,
+  /\.lmdb$/,
+  /\.mdb$/,
+  // ── Data / log files ──
+  /\.csv$/,
+  /\.tsv$/,
+  /\.log$/,
+  /\.ndjson$/,
   // ── Binary / asset files ──
   /\.woff2?$/,
   /\.ttf$/,
@@ -140,6 +162,11 @@ const SKIP_PATTERNS = [
   /\.zip$/,
   /\.tar/,
   /\.wasm$/,
+  /\.mp[34]$/,
+  /\.webm$/,
+  /\.ogg$/,
+  /\.mov$/,
+  /\.avi$/,
 ]
 
 const TEST_PATTERNS = [/\.test\./, /\.spec\./, /(^|\/)__tests__\//]

@@ -81,10 +81,39 @@ test('classifyFile identifies generated/lock files as skip', () => {
   expect(classifyFile('src/generated/schema.ts')).toBe('skip')
   expect(classifyFile('build/output.js')).toBe('skip')
   expect(classifyFile('.next/cache/data.json')).toBe('skip')
+  // Documentation / prose
+  expect(classifyFile('README.md')).toBe('skip')
+  expect(classifyFile('docs/guide.md')).toBe('skip')
+  expect(classifyFile('docs/setup.mdx')).toBe('skip')
+  expect(classifyFile('CHANGELOG.md')).toBe('skip')
+  expect(classifyFile('CHANGES')).toBe('skip')
+  expect(classifyFile('LICENSE')).toBe('skip')
+  expect(classifyFile('LICENSE.md')).toBe('skip')
+  expect(classifyFile('LICENCE')).toBe('skip')
+  expect(classifyFile('COPYING')).toBe('skip')
+  expect(classifyFile('notes.txt')).toBe('skip')
+  expect(classifyFile('docs/api.rst')).toBe('skip')
+  expect(classifyFile('docs/guide.adoc')).toBe('skip')
+  // Database snapshots
+  expect(classifyFile('data/app.sqlite')).toBe('skip')
+  expect(classifyFile('data/app.sqlite3')).toBe('skip')
+  expect(classifyFile('local.db')).toBe('skip')
+  expect(classifyFile('app.db-wal')).toBe('skip')
+  expect(classifyFile('app.db-journal')).toBe('skip')
+  expect(classifyFile('app.db-shm')).toBe('skip')
+  // Data / log files
+  expect(classifyFile('data/export.csv')).toBe('skip')
+  expect(classifyFile('data/export.tsv')).toBe('skip')
+  expect(classifyFile('logs/server.log')).toBe('skip')
+  expect(classifyFile('data/events.ndjson')).toBe('skip')
   // Binary / assets
   expect(classifyFile('assets/logo.png')).toBe('skip')
   expect(classifyFile('fonts/inter.woff2')).toBe('skip')
   expect(classifyFile('icon.svg')).toBe('skip')
+  // Media files
+  expect(classifyFile('video/demo.mp4')).toBe('skip')
+  expect(classifyFile('audio/clip.mp3')).toBe('skip')
+  expect(classifyFile('video/intro.webm')).toBe('skip')
 })
 
 test('chunkDiff returns single chunk when diff fits', () => {
