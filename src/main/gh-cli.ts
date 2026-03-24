@@ -5,13 +5,13 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
 import type { GhCliStatus, GhPrDetail, GhPullRequest, GhRepo, ReviewFinding } from '../shared/types'
-import { getDb } from './db'
 
 const execFileAsync = promisify(execFile)
 
 let ghBinaryPath: string | null = null
 
 function getGhPath(): string {
+  const { getDb } = require('./db') as typeof import('./db')
   const db = getDb()
   const row = db.prepare("SELECT value FROM settings WHERE key = 'ghBinaryPath'").get() as
     | { value: string }
@@ -79,7 +79,8 @@ export async function setGhPath(path: string): Promise<void> {
     throw new Error(`Path does not appear to be a valid gh binary: ${path}`)
   }
 
-  const db = getDb()
+  const { getDb: getDatabase } = require('./db') as typeof import('./db')
+  const db = getDatabase()
   db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('ghBinaryPath', ?)").run(path)
   ghBinaryPath = path
 }
