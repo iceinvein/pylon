@@ -10,6 +10,7 @@
  *   Live discovery → background refresh via provider.discoverModels().
  */
 
+import { getDb } from '../db'
 import { log } from '../../shared/logger'
 import type { AgentProvider, ProviderId, ProviderModel } from './types'
 
@@ -82,7 +83,6 @@ export function hasProvider(id: ProviderId): boolean {
 /** Load cached models from SQLite. Call once at startup. */
 export function loadCachedModels(): void {
   try {
-    const { getDb } = require('../db')
     const db = getDb()
     const row = db
       .prepare('SELECT value FROM settings WHERE key = ?')
@@ -104,7 +104,6 @@ export function loadCachedModels(): void {
 /** Persist discovered models to SQLite */
 function saveCachedModels(models: ProviderModel[]): void {
   try {
-    const { getDb } = require('../db')
     const db = getDb()
     const now = Date.now()
     db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run(
