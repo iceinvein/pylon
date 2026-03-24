@@ -1,5 +1,37 @@
 import { describe, expect, test } from 'bun:test'
-import { buildPairedLines, computeDiffHunks, parseUnifiedDiff } from './diff-utils'
+import {
+  buildPairedLines,
+  computeDiffHunks,
+  filePathMatches,
+  parseUnifiedDiff,
+  parseUnifiedDiffToHunks,
+} from './diff-utils'
+
+describe('filePathMatches', () => {
+  test('exact match returns true', () => {
+    expect(filePathMatches('src/foo.ts', 'src/foo.ts')).toBe(true)
+  })
+
+  test('shorter suffix aligned on / boundary returns true', () => {
+    expect(filePathMatches('packages/app/src/foo.ts', 'src/foo.ts')).toBe(true)
+  })
+
+  test('reversed argument order also works', () => {
+    expect(filePathMatches('src/foo.ts', 'packages/app/src/foo.ts')).toBe(true)
+  })
+
+  test('non-boundary suffix returns false (admin_config.rs vs config.rs)', () => {
+    expect(filePathMatches('admin_config.rs', 'config.rs')).toBe(false)
+  })
+
+  test('completely different paths return false', () => {
+    expect(filePathMatches('src/a.ts', 'src/b.ts')).toBe(false)
+  })
+
+  test('same-length different paths return false', () => {
+    expect(filePathMatches('abc', 'xyz')).toBe(false)
+  })
+})
 
 describe('computeDiffHunks', () => {
   test('returns empty array for identical strings', () => {
@@ -184,6 +216,116 @@ some random preamble
     const result = parseUnifiedDiff(diff)
     expect(result.oldStr).toBe('old')
     expect(result.newStr).toBe('new')
+  })
+})
+
+describe('computeDiffHunks with extraNewLineNos', () => {
+  test('includes extra lines referenced by findings in visible hunks', () => {
+    // 20 lines, change line 5, but also request line 15 via extraNewLineNos
+    const lines = Array.from({ length: 20 }, (_, i) => `line${i + 1}`)
+    const old = lines.join('\n')
+    const modified = [...lines]
+    modified[4] = 'CHANGED' // line 5
+    const new_ = modified.join('\n')
+
+    const hunks = computeDiffHunks(old, new_, new Set([15]))
+    // Should have 2 hunks: one around line 5, one around line 15
+    expect(hunks.length).toBeGreaterThanOrEqual(2)
+    // The second hunk should include context around line 15
+    const allNewLineNos = hunks.flatMap((h) => h.lines.map((l) => l.newLineNo).filter(Boolean))
+    expect(allNewLineNos).toContain(15)
+  })
+})
+
+describe('parseUnifiedDiffToHunks', () => {
+  test('parses a simple unified diff into hunks', () => {
+    const diff = `--- a/file.ts
++++ b/file.ts
+@@ -1,3 +1,3 @@
+ line1
+-old line
++new line
+ line3`
+
+    const hunks = parseUnifiedDiffToHunks(diff)
+    expect(hunks).toHaveLength(1)
+    expect(hunks[0].lines).toHaveLength(4)
+
+    const removed = hunks[0].lines.find((l) => l.type === 'removed')
+    const added = hunks[0].lines.find((l) => l.type === 'added')
+    expect(removed?.content).toBe('old line')
+    expect(removed?.oldLineNo).toBe(2)
+    expect(added?.content).toBe('new line')
+    expect(added?.newLineNo).toBe(2)
+  })
+
+  test('preserves original line numbers from @@ headers', () => {
+    const diff = `--- a/file.ts
++++ b/file.ts
+@@ -10,3 +10,3 @@
+ before
+-old
++new
+ after`
+
+    const hunks = parseUnifiedDiffToHunks(diff)
+    expect(hunks).toHaveLength(1)
+    const context1 = hunks[0].lines[0]
+    expect(context1.oldLineNo).toBe(10)
+    expect(context1.newLineNo).toBe(10)
+  })
+
+  test('handles multiple hunks', () => {
+    const diff = `--- a/file.ts
++++ b/file.ts
+@@ -1,3 +1,3 @@
+ first
+-old1
++new1
+ middle
+@@ -20,3 +20,3 @@
+ before
+-old2
++new2
+ after`
+
+    const hunks = parseUnifiedDiffToHunks(diff)
+    expect(hunks).toHaveLength(2)
+    expect(hunks[0].lines.find((l) => l.type === 'added')?.content).toBe('new1')
+    expect(hunks[1].lines.find((l) => l.type === 'added')?.content).toBe('new2')
+    // Second hunk should start at line 20
+    expect(hunks[1].lines[0].oldLineNo).toBe(20)
+  })
+
+  test('returns empty array for empty input', () => {
+    expect(parseUnifiedDiffToHunks('')).toEqual([])
+  })
+
+  test('ignores "No newline at end of file" marker', () => {
+    const diff = `--- a/file.ts
++++ b/file.ts
+@@ -1,2 +1,2 @@
+-old
++new
+\\ No newline at end of file`
+
+    const hunks = parseUnifiedDiffToHunks(diff)
+    expect(hunks).toHaveLength(1)
+    expect(hunks[0].lines).toHaveLength(2)
+  })
+
+  test('ignores lines before first hunk header', () => {
+    const diff = `diff --git a/file.ts b/file.ts
+index abc123..def456 100644
+--- a/file.ts
++++ b/file.ts
+@@ -1,2 +1,2 @@
+-old
++new`
+
+    const hunks = parseUnifiedDiffToHunks(diff)
+    expect(hunks).toHaveLength(1)
+    expect(hunks[0].lines).toHaveLength(2)
   })
 })
 

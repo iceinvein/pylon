@@ -62,8 +62,48 @@ describe('pr-raise-store', () => {
     expect(usePrRaiseStore.getState().overlay?.loading).toBe(false)
   })
 
+  test('setCreating updates overlay creating flag', () => {
+    usePrRaiseStore.getState().openOverlay('session-123')
+    expect(usePrRaiseStore.getState().overlay?.creating).toBe(false)
+    usePrRaiseStore.getState().setCreating(true)
+    expect(usePrRaiseStore.getState().overlay?.creating).toBe(true)
+    usePrRaiseStore.getState().setCreating(false)
+    expect(usePrRaiseStore.getState().overlay?.creating).toBe(false)
+  })
+
+  test('setCreating is a no-op when overlay is null', () => {
+    usePrRaiseStore.getState().setCreating(true)
+    expect(usePrRaiseStore.getState().overlay).toBeNull()
+  })
+
+  test('setError clears both loading and creating', () => {
+    usePrRaiseStore.getState().openOverlay('session-123')
+    usePrRaiseStore.getState().setCreating(true)
+    usePrRaiseStore.getState().setError('oops')
+    const overlay = usePrRaiseStore.getState().overlay
+    expect(overlay?.error).toBe('oops')
+    expect(overlay?.loading).toBe(false)
+    expect(overlay?.creating).toBe(false)
+  })
+
+  test('setResult clears creating flag', () => {
+    usePrRaiseStore.getState().openOverlay('session-123')
+    usePrRaiseStore.getState().setCreating(true)
+    usePrRaiseStore.getState().setResult({ success: false, error: 'failed' })
+    expect(usePrRaiseStore.getState().overlay?.creating).toBe(false)
+  })
+
   test('setters are no-ops when overlay is null', () => {
     usePrRaiseStore.getState().setInfo({} as unknown as import('../../../shared/types').PrRaiseInfo)
+    expect(usePrRaiseStore.getState().overlay).toBeNull()
+
+    usePrRaiseStore.getState().setDescription({ title: 'x', body: 'y' })
+    expect(usePrRaiseStore.getState().overlay).toBeNull()
+
+    usePrRaiseStore.getState().setResult({ success: true, prUrl: 'u', prNumber: 1 })
+    expect(usePrRaiseStore.getState().overlay).toBeNull()
+
+    usePrRaiseStore.getState().setError('err')
     expect(usePrRaiseStore.getState().overlay).toBeNull()
   })
 })
