@@ -1,26 +1,8 @@
-import { describe, expect, mock, test } from 'bun:test'
-
-// Mock electron and db to avoid Electron runtime dependency in tests
-mock.module('electron', () => ({
-  app: { getPath: () => '/tmp' },
-}))
-
-mock.module('../db', () => ({
-  getDb: () => ({
-    prepare: () => ({ get: () => undefined }),
-  }),
-}))
+import { describe, expect, test } from 'bun:test'
+import { parseFilesFromDiff } from '../gh-cli-parse'
 
 describe('parseFilesFromDiff', () => {
-  let parseFilesFromDiff: typeof import('../gh-cli').parseFilesFromDiff
-
-  test('should be importable', async () => {
-    const mod = await import('../gh-cli')
-    parseFilesFromDiff = mod.parseFilesFromDiff
-    expect(typeof parseFilesFromDiff).toBe('function')
-  })
-
-  test('parses a single file diff', async () => {
+  test('parses a single file diff', () => {
     const diff = `diff --git a/src/index.ts b/src/index.ts
 --- a/src/index.ts
 +++ b/src/index.ts
@@ -41,7 +23,7 @@ describe('parseFilesFromDiff', () => {
     expect(files[0].deletions).toBe(1)
   })
 
-  test('parses multiple file diffs', async () => {
+  test('parses multiple file diffs', () => {
     const diff = `diff --git a/src/a.ts b/src/a.ts
 --- a/src/a.ts
 +++ b/src/a.ts
@@ -68,7 +50,7 @@ diff --git a/README.md b/README.md
     expect(files[2]).toEqual({ path: 'README.md', additions: 1, deletions: 1 })
   })
 
-  test('handles renamed files', async () => {
+  test('handles renamed files', () => {
     const diff = `diff --git a/old/path.ts b/new/path.ts
 similarity index 95%
 rename from old/path.ts
@@ -82,12 +64,11 @@ rename to new/path.ts
 `
     const files = parseFilesFromDiff(diff)
     expect(files).toHaveLength(1)
-    // Should use the "b" path (destination)
     expect(files[0].path).toBe('new/path.ts')
     expect(files[0].additions).toBe(1)
   })
 
-  test('handles binary files with no hunk content', async () => {
+  test('handles binary files with no hunk content', () => {
     const diff = `diff --git a/image.png b/image.png
 Binary files /dev/null and b/image.png differ
 `
@@ -98,12 +79,12 @@ Binary files /dev/null and b/image.png differ
     expect(files[0].deletions).toBe(0)
   })
 
-  test('handles empty diff string', async () => {
+  test('handles empty diff string', () => {
     const files = parseFilesFromDiff('')
     expect(files).toHaveLength(0)
   })
 
-  test('handles new file creation', async () => {
+  test('handles new file creation', () => {
     const diff = `diff --git a/new-file.ts b/new-file.ts
 new file mode 100644
 --- /dev/null
@@ -120,8 +101,8 @@ new file mode 100644
     expect(files[0].deletions).toBe(0)
   })
 
-  test('handles file deletion', async () => {
-    const diff = `diff --git a/removed.ts b/removed.ts
+  test('handles file deletion', () => {
+    const files = parseFilesFromDiff(`diff --git a/removed.ts b/removed.ts
 deleted file mode 100644
 --- a/removed.ts
 +++ /dev/null
@@ -130,8 +111,7 @@ deleted file mode 100644
 -export const b = 2
 -export const c = 3
 -export const d = 4
-`
-    const files = parseFilesFromDiff(diff)
+`)
     expect(files).toHaveLength(1)
     expect(files[0].path).toBe('removed.ts')
     expect(files[0].additions).toBe(0)
