@@ -1,5 +1,19 @@
 import { diffLines } from 'diff'
 
+/**
+ * Match a finding's file path against a tree/diff file path.
+ * Handles prefix mismatches (e.g. finding has "src/foo.ts" but tree has "packages/app/src/foo.ts")
+ * by requiring the shorter string to align on a `/` boundary to avoid false positives
+ * like "admin_config.rs" matching "config.rs".
+ */
+export function filePathMatches(a: string, b: string): boolean {
+  if (a === b) return true
+  const longer = a.length > b.length ? a : b
+  const shorter = a.length > b.length ? b : a
+  if (longer.length === shorter.length) return false
+  return longer.endsWith(shorter) && longer[longer.length - shorter.length - 1] === '/'
+}
+
 export type DiffLine = {
   type: 'context' | 'added' | 'removed'
   content: string

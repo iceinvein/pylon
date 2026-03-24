@@ -4,25 +4,29 @@ import { usePrReviewStore } from '../../store/pr-review-store'
 
 const STATUS_CONFIG: Record<
   string,
-  { icon: typeof Clock; color: string; label: (count: number) => string }
+  { icon: typeof Clock; iconClass: string; color: string; label: (count: number) => string }
 > = {
   done: {
     icon: CheckCircle2,
+    iconClass: '',
     color: 'text-emerald-400',
     label: (n) => `${n} finding${n !== 1 ? 's' : ''}`,
   },
   running: {
     icon: Loader2,
-    color: 'text-[var(--color-base-text-secondary)] animate-spin',
+    iconClass: 'animate-spin',
+    color: 'text-[var(--color-base-text-secondary)]',
     label: () => 'In progress',
   },
   error: {
     icon: XCircle,
+    iconClass: '',
     color: 'text-[var(--color-error)]',
     label: () => 'Failed',
   },
   pending: {
     icon: Clock,
+    iconClass: '',
     color: 'text-[var(--color-base-text-muted)]',
     label: () => 'Pending',
   },
@@ -75,7 +79,7 @@ export function ReviewHistory() {
                 onClick={() => loadReview(r.id)}
                 className="flex min-w-0 flex-1 items-center gap-2.5 px-2.5 py-2"
               >
-                <StatusIcon size={12} className={`shrink-0 ${config.color}`} />
+                <StatusIcon size={12} className={`shrink-0 ${config.color} ${config.iconClass}`} />
                 <span className="text-[11px] text-base-text-secondary">{timeAgo(r.createdAt)}</span>
                 <span className="truncate text-[11px] text-base-text-faint">
                   {r.focus.join(', ')}

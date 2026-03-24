@@ -75,12 +75,18 @@ test('classifyFile identifies generated/lock files as skip', () => {
   expect(classifyFile('src/db/schema.snapshot.json')).toBe('skip')
   expect(classifyFile('prisma/migrations/20240101_init/migration.sql')).toBe('skip')
   expect(classifyFile('migrations/0001_create_tables.sql')).toBe('skip')
+  // AI agent / tool config
+  expect(classifyFile('.claude/skills/frontend-design')).toBe('skip')
+  expect(classifyFile('.agents/skills/adapt/SKILL.md')).toBe('skip')
+  expect(classifyFile('.cursor/settings.json')).toBe('skip')
+  expect(classifyFile('.copilot/config.yml')).toBe('skip')
   // Generated / build
   expect(classifyFile('dist/bundle.min.js')).toBe('skip')
   expect(classifyFile('coverage/lcov.info')).toBe('skip')
   expect(classifyFile('src/generated/schema.ts')).toBe('skip')
   expect(classifyFile('build/output.js')).toBe('skip')
   expect(classifyFile('.next/cache/data.json')).toBe('skip')
+  expect(classifyFile('packages/desktop/src/routeTree.gen.ts')).toBe('skip')
   // Documentation / prose
   expect(classifyFile('README.md')).toBe('skip')
   expect(classifyFile('docs/guide.md')).toBe('skip')

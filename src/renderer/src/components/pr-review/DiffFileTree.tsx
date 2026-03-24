@@ -1,6 +1,7 @@
 import { ChevronDown, ChevronRight, Eye, FileText, FolderOpen } from 'lucide-react'
 import { useState } from 'react'
 import type { ReviewFinding } from '../../../../shared/types'
+import { filePathMatches } from '../../lib/diff-utils'
 
 type FileEntry = {
   path: string
@@ -63,9 +64,7 @@ function findingCountsBySeverity(
   findings: ReviewFinding[],
   filePath: string,
 ): { severity: string; count: number }[] {
-  const fileFindings = findings.filter(
-    (f) => f.file === filePath || filePath.endsWith(f.file) || f.file.endsWith(filePath),
-  )
+  const fileFindings = findings.filter((f) => f.file && filePathMatches(f.file, filePath))
   if (fileFindings.length === 0) return []
   const counts = new Map<string, number>()
   for (const f of fileFindings) {
@@ -75,6 +74,23 @@ function findingCountsBySeverity(
     severity: s,
     count: counts.get(s) ?? 0,
   }))
+}
+
+/** Collect all file paths in a directory subtree */
+function collectPaths(node: DirNode): string[] {
+  const paths: string[] = node.files.map((f) => f.path)
+  for (const dir of node.dirs.values()) {
+    paths.push(...collectPaths(dir))
+  }
+  return paths
+}
+
+/** Count total findings that match any file in a directory subtree */
+function countDirFindings(findings: ReviewFinding[], node: DirNode): number {
+  const paths = collectPaths(node)
+  return findings.filter(
+    (f) => f.file && paths.some((p) => filePathMatches(f.file, p)),
+  ).length
 }
 
 const SEVERITY_COLORS: Record<string, string> = {
@@ -207,6 +223,7 @@ function DirEntry({
 }) {
   const [expanded, setExpanded] = useState(true)
   const Chevron = expanded ? ChevronDown : ChevronRight
+  const dirCount = countDirFindings(findings, dir)
 
   return (
     <div>
@@ -218,7 +235,12 @@ function DirEntry({
       >
         <Chevron size={10} className="shrink-0" />
         <FolderOpen size={11} className="shrink-0 text-base-text-faint" />
-        <span className="truncate font-mono">{dir.name}</span>
+        <span className="min-w-0 flex-1 truncate font-mono">{dir.name}</span>
+        {dirCount > 0 && (
+          <span className="shrink-0 rounded-full bg-base-text-faint/60 px-1.5 py-0.5 font-medium text-[9px] text-white tabular-nums">
+            {dirCount}
+          </span>
+        )}
       </button>
       {expanded && (
         <DirContent

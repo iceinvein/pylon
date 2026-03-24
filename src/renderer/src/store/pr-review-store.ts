@@ -12,6 +12,25 @@ import type {
 
 const logger = log.child('pr-review-store')
 
+const SEVERITY_ALIASES: Record<string, ReviewFinding['severity']> = {
+  critical: 'critical',
+  high: 'critical',
+  error: 'critical',
+  warning: 'warning',
+  medium: 'warning',
+  warn: 'warning',
+  suggestion: 'suggestion',
+  low: 'suggestion',
+  info: 'nitpick',
+  nitpick: 'nitpick',
+  note: 'nitpick',
+}
+
+function normalizeSeverity(raw: unknown): ReviewFinding['severity'] {
+  const str = String(raw || '').toLowerCase().trim()
+  return SEVERITY_ALIASES[str] ?? 'suggestion'
+}
+
 /** Parse findings from raw streaming text (client-side fallback when main process fails) */
 function parseFindingsFromText(text: string): ReviewFinding[] {
   // Find the review-findings fence
@@ -46,7 +65,7 @@ function parseFindingsFromText(text: string): ReviewFinding[] {
       id: crypto.randomUUID(),
       file: String(f.file || ''),
       line: f.line != null ? Number(f.line) : null,
-      severity: (f.severity as ReviewFinding['severity']) || 'suggestion',
+      severity: normalizeSeverity(f.severity),
       title: String(f.title || ''),
       description: String(f.description || ''),
       domain: (f.domain as ReviewFocus) ?? null,

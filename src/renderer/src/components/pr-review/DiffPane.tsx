@@ -1,7 +1,7 @@
 import { CheckCircle2, ChevronDown, ChevronUp, Columns2, Eye, Rows3 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReviewFinding } from '../../../../shared/types'
-import { parseUnifiedDiffToHunks } from '../../lib/diff-utils'
+import { filePathMatches, parseUnifiedDiffToHunks } from '../../lib/diff-utils'
 import { DiffView } from '../DiffView'
 import { DiffFindingAnnotation } from './DiffFindingAnnotation'
 import { SplitDiffView } from './SplitDiffView'
@@ -51,7 +51,7 @@ export function DiffPane({
     const exact = fileDiffs.get(selectedFile)
     if (exact) return exact
     for (const [key, diff] of fileDiffs) {
-      if (key.endsWith(selectedFile) || selectedFile.endsWith(key)) return diff
+      if (filePathMatches(key, selectedFile)) return diff
     }
     return undefined
   }, [selectedFile, fileDiffs])
@@ -59,12 +59,7 @@ export function DiffPane({
   const fileFindings = useMemo(
     () =>
       selectedFile
-        ? findings.filter(
-            (f) =>
-              f.file === selectedFile ||
-              selectedFile.endsWith(f.file) ||
-              f.file.endsWith(selectedFile),
-          )
+        ? findings.filter((f) => f.file && filePathMatches(f.file, selectedFile))
         : [],
     [selectedFile, findings],
   )

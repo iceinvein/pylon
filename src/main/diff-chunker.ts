@@ -12,13 +12,16 @@ export type FileTier = 'critical' | 'important' | 'low' | 'skip'
  * - CLAUDE.md / project instructions: ~2-5k tokens
  * - Our review prompt template (specialist instructions + PR metadata + output format): ~8-12k tokens
  *   (specialist prompts are 60-80 lines each, plus PR info, file list, and output format)
- * - Response budget (agent's output): ~8-10k tokens
- * Total conservative estimate: ~80k tokens of non-diff overhead
+ * - Code-intelligence tool calls + responses: ~15-30k tokens
+ *   (agents use search_code, get_definition, find_references etc. before reviewing;
+ *    each call+response is ~2-10k tokens, agents typically make 5-10 calls)
+ * - Response budget (agent's findings JSON + analysis): ~10-15k tokens
+ * Total conservative estimate: ~100k tokens of non-diff overhead
  *
  * Being aggressive here is safer — a too-small budget just means more chunks,
- * while a too-large budget causes prompt-too-long crashes.
+ * while a too-large budget causes truncated output or prompt-too-long crashes.
  */
-export const PROMPT_OVERHEAD_TOKENS = 80_000
+export const PROMPT_OVERHEAD_TOKENS = 100_000
 
 /** @deprecated Use KNOWN_CONTEXT_WINDOWS from shared/model-context instead */
 export const MODEL_TOKEN_LIMITS: Record<string, number> = {
@@ -28,10 +31,11 @@ export const MODEL_TOKEN_LIMITS: Record<string, number> = {
 
 /**
  * In multi-chunk reviews, each subsequent chunk adds to the conversation history:
- * the prior chunk's prompt + response accumulate (~15-25k tokens per chunk).
- * This constant estimates how much budget is lost per additional chunk.
+ * the prior chunk's prompt + response accumulate (~30-50k tokens per chunk when
+ * agents use code-intelligence tools). This constant estimates how much budget
+ * is lost per additional chunk.
  */
-export const PER_CHUNK_CONVERSATION_OVERHEAD = 20_000
+export const PER_CHUNK_CONVERSATION_OVERHEAD = 40_000
 
 type FileSegment = { path: string; diff: string }
 
@@ -115,9 +119,15 @@ const SKIP_PATTERNS = [
   // ── Test snapshots ──
   /\.snap$/,
   /\.snapshot$/,
+  // ── AI agent / tool config ──
+  /(^|\/)\.claude\//,
+  /(^|\/)\.agents\//,
+  /(^|\/)\.cursor\//,
+  /(^|\/)\.copilot\//,
   // ── Generated / build output ──
   /(^|\/)generated\//,
   /(^|\/)__generated__\//,
+  /routeTree\.gen\./,  // TanStack Router generated route tree
   /(^|\/)\.next\//,
   /(^|\/)\.nuxt\//,
   /(^|\/)coverage\//,

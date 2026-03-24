@@ -463,12 +463,14 @@ class PrReviewManager {
     )
     const { chunks, skippedFiles } = chunkDiff(detail.diff, { tokenBudget })
 
-    if (skippedFiles.length > 0) {
-      logger.info(`Skipped ${skippedFiles.length} files:`, skippedFiles)
-    }
     logger.info(
-      `Chunked into ${chunks.length} chunks: ${chunks.map((c, i) => `chunk ${i + 1}: ${c.files.length} files, ${c.diff.length} chars (~${Math.ceil(c.diff.length / 3.3)} tokens)`).join('; ')}`,
+      `Skipped ${skippedFiles.length} files: ${skippedFiles.length > 0 ? skippedFiles.join(', ') : '(none)'}`,
     )
+    for (const chunk of chunks) {
+      logger.info(
+        `Chunk ${chunk.index + 1}/${chunk.total}: ${chunk.files.length} files, ${chunk.diff.length} chars (~${Math.ceil(chunk.diff.length / 3.3)} tokens) — ${chunk.files.join(', ')}`,
+      )
+    }
 
     const active = this.activeReviews.get(reviewId)
     if (!active) return
@@ -899,7 +901,10 @@ Output findings in the same \`review-findings\` format.`
     const grouped = new Map<string, ReviewFinding>()
 
     for (const f of findings) {
-      const key = `${f.file}:${f.line ?? 'null'}`
+      // Include domain so different agents' findings on the same line are preserved.
+      // Only collapse findings from the same agent on the same file+line (true duplicates
+      // from multi-chunk reviews where the agent re-flags something).
+      const key = `${f.domain ?? 'unknown'}:${f.file}:${f.line ?? 'null'}`
       const existing = grouped.get(key)
       if (!existing) {
         grouped.set(key, f)
@@ -909,12 +914,12 @@ Output findings in the same \`review-findings\` format.`
         if (newRank < existingRank) {
           grouped.set(key, {
             ...f,
-            description: `${f.description}\n\n_Also flagged by another agent:_ ${existing.title}`,
+            description: `${f.description}\n\n_Also noted:_ ${existing.title}`,
           })
         } else {
           grouped.set(key, {
             ...existing,
-            description: `${existing.description}\n\n_Also flagged by another agent:_ ${f.title}`,
+            description: `${existing.description}\n\n_Also noted:_ ${f.title}`,
           })
         }
       }
@@ -958,23 +963,192 @@ Output findings in the same \`review-findings\` format.`
   }
 
   private parseJsonFindings(jsonStr: string): ReviewFinding[] {
+    // 1. Try direct parse first (happy path)
+    const direct = this.tryParseArray(jsonStr)
+    if (direct) return direct
+
+    // 2. Try repairing truncated JSON (e.g. LLM hit max_tokens mid-string)
+    const repaired = this.tryRepairJson(jsonStr)
+    if (repaired) {
+      const parsed = this.tryParseArray(repaired)
+      if (parsed) {
+        logger.info(`Recovered ${parsed.length} findings from repaired JSON`)
+        return parsed
+      }
+    }
+
+    // 3. Last resort: extract individual {...} objects with brace matching
+    const extracted = this.extractIndividualFindings(jsonStr)
+    if (extracted.length > 0) {
+      logger.info(
+        `Recovered ${extracted.length} findings via individual object extraction (full parse failed)`,
+      )
+      return extracted
+    }
+
+    logger.error('Failed to parse review findings JSON after all recovery attempts')
+    logger.error('JSON string (first 500 chars):', jsonStr.slice(0, 500))
+    return []
+  }
+
+  private static readonly SEVERITY_ALIASES: Record<string, ReviewFinding['severity']> = {
+    critical: 'critical',
+    high: 'critical',
+    error: 'critical',
+    warning: 'warning',
+    medium: 'warning',
+    warn: 'warning',
+    suggestion: 'suggestion',
+    low: 'suggestion',
+    info: 'nitpick',
+    nitpick: 'nitpick',
+    note: 'nitpick',
+  }
+
+  private static normalizeSeverity(raw: unknown): ReviewFinding['severity'] {
+    const str = String(raw || '').toLowerCase().trim()
+    return PrReviewManager.SEVERITY_ALIASES[str] ?? 'suggestion'
+  }
+
+  private tryParseArray(jsonStr: string): ReviewFinding[] | null {
     try {
       const raw = JSON.parse(jsonStr) as Array<Record<string, unknown>>
-      if (!Array.isArray(raw)) return []
+      if (!Array.isArray(raw)) return null
       return raw.map((f) => ({
         id: randomUUID(),
         file: String(f.file || ''),
         line: f.line != null ? Number(f.line) : null,
-        severity: (f.severity as ReviewFinding['severity']) || 'suggestion',
+        severity: PrReviewManager.normalizeSeverity(f.severity),
         title: String(f.title || ''),
         description: String(f.description || ''),
         domain: null,
         posted: false,
       }))
-    } catch (err) {
-      logger.error('Failed to parse review findings JSON:', err)
-      return []
+    } catch {
+      return null
     }
+  }
+
+  /**
+   * Attempt to repair truncated JSON by closing unclosed strings, objects, and arrays.
+   * Handles the common case where the LLM hits max_tokens mid-response.
+   */
+  private tryRepairJson(jsonStr: string): string | null {
+    let s = jsonStr.trimEnd()
+
+    // Remove trailing comma if present (common before truncation)
+    s = s.replace(/,\s*$/, '')
+
+    // Track what needs closing by scanning character by character
+    let inString = false
+    let escape = false
+    const stack: string[] = []
+
+    for (const ch of s) {
+      if (escape) {
+        escape = false
+        continue
+      }
+      if (ch === '\\' && inString) {
+        escape = true
+        continue
+      }
+      if (ch === '"') {
+        inString = !inString
+        continue
+      }
+      if (inString) continue
+
+      if (ch === '[' || ch === '{') stack.push(ch)
+      else if (ch === ']' || ch === '}') stack.pop()
+    }
+
+    // If we're still inside a string, close it
+    if (inString) s += '"'
+
+    // Remove any dangling key-value or trailing comma after string closure
+    s = s.replace(/,\s*$/, '')
+
+    // Close any unclosed containers in reverse order
+    while (stack.length > 0) {
+      const opener = stack.pop()!
+      // Remove trailing comma before closing
+      s = s.replace(/,\s*$/, '')
+      s += opener === '[' ? ']' : '}'
+    }
+
+    return s !== jsonStr ? s : null
+  }
+
+  /**
+   * Extract individual finding objects by brace-matching each top-level `{...}`.
+   * Survives one corrupted object while recovering all the valid ones.
+   */
+  private extractIndividualFindings(jsonStr: string): ReviewFinding[] {
+    const findings: ReviewFinding[] = []
+    let i = 0
+
+    while (i < jsonStr.length) {
+      // Find next opening brace
+      const start = jsonStr.indexOf('{', i)
+      if (start === -1) break
+
+      // Brace-match to find the end, respecting strings
+      let depth = 0
+      let inStr = false
+      let esc = false
+      let end = -1
+
+      for (let j = start; j < jsonStr.length; j++) {
+        const ch = jsonStr[j]
+        if (esc) {
+          esc = false
+          continue
+        }
+        if (ch === '\\' && inStr) {
+          esc = true
+          continue
+        }
+        if (ch === '"') {
+          inStr = !inStr
+          continue
+        }
+        if (inStr) continue
+        if (ch === '{') depth++
+        else if (ch === '}') {
+          depth--
+          if (depth === 0) {
+            end = j
+            break
+          }
+        }
+      }
+
+      if (end === -1) break // unclosed object, done
+
+      const objStr = jsonStr.slice(start, end + 1)
+      i = end + 1
+
+      try {
+        const f = JSON.parse(objStr) as Record<string, unknown>
+        if (f.file || f.title || f.description) {
+          findings.push({
+            id: randomUUID(),
+            file: String(f.file || ''),
+            line: f.line != null ? Number(f.line) : null,
+            severity: PrReviewManager.normalizeSeverity(f.severity),
+            title: String(f.title || ''),
+            description: String(f.description || ''),
+            domain: null,
+            posted: false,
+          })
+        }
+      } catch {
+        // Skip this object, try the next one
+      }
+    }
+
+    return findings
   }
 
   private getAgentPrompt(focus: ReviewFocus): string {
@@ -1076,7 +1250,7 @@ Output findings in the same \`review-findings\` format.`
       id: f.id as string,
       file: f.file as string,
       line: f.line as number | null,
-      severity: f.severity as ReviewFinding['severity'],
+      severity: PrReviewManager.normalizeSeverity(f.severity),
       title: f.title as string,
       description: f.description as string,
       domain: (f.domain as ReviewFocus) ?? null,
