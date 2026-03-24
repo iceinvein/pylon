@@ -1,8 +1,8 @@
-import { beforeEach, describe, expect, test } from 'bun:test'
-import type { CommandContext } from './command-registry'
-import { COMMANDS, findCommand, getCommands } from './command-registry'
+import { describe, expect, test } from 'bun:test'
 import { useSessionStore } from '../store/session-store'
 import { useUiStore } from '../store/ui-store'
+import type { CommandContext } from './command-registry'
+import { COMMANDS, findCommand, getCommands } from './command-registry'
 
 const fullContext: CommandContext = {
   sessionId: 'test-session-123',
@@ -60,63 +60,80 @@ describe('command-registry', () => {
   })
 
   describe('execute', () => {
-    test('status command appends system message with model, cwd, and permissionMode', () => {
-      const sid = fullContext.sessionId!
+    const sid = 'test-session-123'
+
+    function seedSession() {
       const sessions = new Map()
-      sessions.set(sid, { id: sid, cwd: '/test', model: 'opus', status: 'idle', title: '', cost: { inputTokens: 0, outputTokens: 0, totalUsd: 0, contextWindow: 0, contextInputTokens: 0 }, createdAt: 0, updatedAt: 0 })
+      sessions.set(sid, {
+        id: sid,
+        cwd: '/test',
+        model: 'opus',
+        status: 'idle',
+        title: '',
+        cost: {
+          inputTokens: 0,
+          outputTokens: 0,
+          totalUsd: 0,
+          contextWindow: 0,
+          contextInputTokens: 0,
+        },
+        createdAt: 0,
+        updatedAt: 0,
+      })
       const messages = new Map()
       messages.set(sid, [])
       useSessionStore.setState({ sessions, messages })
+    }
 
+    function getSystemMsg(): { type: string; content: string } | undefined {
+      const msgs = useSessionStore.getState().messages.get(sid) as
+        | Array<{ type: string; content: string }>
+        | undefined
+      return msgs?.find((m) => m.type === 'system')
+    }
+
+    test('status command appends system message with model, cwd, and permissionMode', () => {
+      seedSession()
       const cmd = findCommand('status')
       expect(cmd).toBeDefined()
-      cmd!.execute(fullContext)
+      cmd?.execute(fullContext)
 
-      const msgs = useSessionStore.getState().messages.get(sid) as Array<{ type: string; content: string }>
-      const systemMsg = msgs?.find((m) => m.type === 'system')
+      const systemMsg = getSystemMsg()
       expect(systemMsg).toBeDefined()
-      expect(systemMsg!.content).toContain('claude-opus-4-6')
-      expect(systemMsg!.content).toContain('/Users/test/project')
-      expect(systemMsg!.content).toContain('default')
+      expect(systemMsg?.content).toContain('claude-opus-4-6')
+      expect(systemMsg?.content).toContain('/Users/test/project')
+      expect(systemMsg?.content).toContain('default')
     })
 
     test('help command appends system message listing available commands', () => {
-      const sid = fullContext.sessionId!
-      const sessions = new Map()
-      sessions.set(sid, { id: sid, cwd: '/test', model: 'opus', status: 'idle', title: '', cost: { inputTokens: 0, outputTokens: 0, totalUsd: 0, contextWindow: 0, contextInputTokens: 0 }, createdAt: 0, updatedAt: 0 })
-      const messages = new Map()
-      messages.set(sid, [])
-      useSessionStore.setState({ sessions, messages })
-
+      seedSession()
       const cmd = findCommand('help')
       expect(cmd).toBeDefined()
-      cmd!.execute(fullContext)
+      cmd?.execute(fullContext)
 
-      const msgs = useSessionStore.getState().messages.get(sid) as Array<{ type: string; content: string }>
-      const systemMsg = msgs?.find((m) => m.type === 'system')
+      const systemMsg = getSystemMsg()
       expect(systemMsg).toBeDefined()
-      expect(systemMsg!.content).toContain('Available commands')
-      expect(systemMsg!.content).toContain('/clear')
-      expect(systemMsg!.content).toContain('/commit')
+      expect(systemMsg?.content).toContain('Available commands')
+      expect(systemMsg?.content).toContain('/clear')
+      expect(systemMsg?.content).toContain('/commit')
     })
 
     test('config command opens settings overlay', () => {
       useUiStore.setState({ settingsOpen: false })
       const cmd = findCommand('config')
       expect(cmd).toBeDefined()
-      cmd!.execute(noSessionContext)
+      cmd?.execute(noSessionContext)
       expect(useUiStore.getState().settingsOpen).toBe(true)
     })
 
     test('status command is a no-op when sessionId is null', () => {
       const cmd = findCommand('status')
-      // Should not throw
-      cmd!.execute(noSessionContext)
+      cmd?.execute(noSessionContext)
     })
 
     test('help command is a no-op when sessionId is null', () => {
       const cmd = findCommand('help')
-      cmd!.execute(noSessionContext)
+      cmd?.execute(noSessionContext)
     })
   })
 

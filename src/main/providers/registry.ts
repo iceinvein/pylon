@@ -10,8 +10,8 @@
  *   Live discovery → background refresh via provider.discoverModels().
  */
 
-import { getDb } from '../db'
 import { log } from '../../shared/logger'
+import { getDb } from '../db'
 import type { AgentProvider, ProviderId, ProviderModel } from './types'
 
 const logger = log.child('provider-registry')

@@ -58,9 +58,7 @@ export function DiffPane({
 
   const fileFindings = useMemo(
     () =>
-      selectedFile
-        ? findings.filter((f) => f.file && filePathMatches(f.file, selectedFile))
-        : [],
+      selectedFile ? findings.filter((f) => f.file && filePathMatches(f.file, selectedFile)) : [],
     [selectedFile, findings],
   )
 

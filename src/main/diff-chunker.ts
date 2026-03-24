@@ -127,7 +127,7 @@ const SKIP_PATTERNS = [
   // ── Generated / build output ──
   /(^|\/)generated\//,
   /(^|\/)__generated__\//,
-  /routeTree\.gen\./,  // TanStack Router generated route tree
+  /routeTree\.gen\./, // TanStack Router generated route tree
   /(^|\/)\.next\//,
   /(^|\/)\.nuxt\//,
   /(^|\/)coverage\//,

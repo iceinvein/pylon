@@ -27,7 +27,9 @@ const SEVERITY_ALIASES: Record<string, ReviewFinding['severity']> = {
 }
 
 function normalizeSeverity(raw: unknown): ReviewFinding['severity'] {
-  const str = String(raw || '').toLowerCase().trim()
+  const str = String(raw || '')
+    .toLowerCase()
+    .trim()
   return SEVERITY_ALIASES[str] ?? 'suggestion'
 }
 

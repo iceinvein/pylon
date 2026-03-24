@@ -88,9 +88,7 @@ function collectPaths(node: DirNode): string[] {
 /** Count total findings that match any file in a directory subtree */
 function countDirFindings(findings: ReviewFinding[], node: DirNode): number {
   const paths = collectPaths(node)
-  return findings.filter(
-    (f) => f.file && paths.some((p) => filePathMatches(f.file, p)),
-  ).length
+  return findings.filter((f) => f.file && paths.some((p) => filePathMatches(f.file, p))).length
 }
 
 const SEVERITY_COLORS: Record<string, string> = {

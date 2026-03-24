@@ -31,7 +31,7 @@ const DEFAULT_AGENT_PROMPTS: Record<string, string> = {
     '- SQL injection: string concatenation in queries, missing parameterized statements',
     '- Command injection: user input flowing into shell commands, execFile(), spawn()',
     '- Template injection: unsanitized data in template engines',
-    '- XSS: unescaped output in HTML/JSX, unsafe innerHTML usage, React dangerouslySetInnerHTML',
+    '- XSS: unescapedd output in HTML/JSX, unsafe innerHTML usage, React dangerouslySetInnerHTML',
     '- Path traversal: user-controlled file paths without canonicalization or allowlist',
     '- SSRF: user-controlled URLs passed to fetch/http requests without validation',
     '- Deserialization: untrusted data passed to JSON.parse in security-sensitive contexts',
@@ -1006,7 +1006,9 @@ Output findings in the same \`review-findings\` format.`
   }
 
   private static normalizeSeverity(raw: unknown): ReviewFinding['severity'] {
-    const str = String(raw || '').toLowerCase().trim()
+    const str = String(raw || '')
+      .toLowerCase()
+      .trim()
     return PrReviewManager.SEVERITY_ALIASES[str] ?? 'suggestion'
   }
 
@@ -1041,16 +1043,16 @@ Output findings in the same \`review-findings\` format.`
 
     // Track what needs closing by scanning character by character
     let inString = false
-    let escape = false
+    let escaped = false
     const stack: string[] = []
 
     for (const ch of s) {
-      if (escape) {
-        escape = false
+      if (escaped) {
+        escaped = false
         continue
       }
       if (ch === '\\' && inString) {
-        escape = true
+        escaped = true
         continue
       }
       if (ch === '"') {
@@ -1071,7 +1073,7 @@ Output findings in the same \`review-findings\` format.`
 
     // Close any unclosed containers in reverse order
     while (stack.length > 0) {
-      const opener = stack.pop()!
+      const opener = stack.pop() as string
       // Remove trailing comma before closing
       s = s.replace(/,\s*$/, '')
       s += opener === '[' ? ']' : '}'
