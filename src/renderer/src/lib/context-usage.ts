@@ -5,6 +5,24 @@ export function getContextUsagePercent(inputTokens: number, contextWindow: numbe
   return Math.min(100, Math.max(0, Math.round((inputTokens / contextWindow) * 100)))
 }
 
+/**
+ * Returns the percentage of the *effective* input budget used.
+ *
+ * The effective input budget is `contextWindow - maxOutputTokens` — the maximum
+ * tokens the model can actually read, since the rest is reserved for its reply.
+ * Falls back to the full context window when maxOutputTokens is unknown (0).
+ */
+export function getEffectiveInputPercent(
+  inputTokens: number,
+  contextWindow: number,
+  maxOutputTokens: number,
+): number {
+  if (contextWindow <= 0) return 0
+  const effectiveBudget = maxOutputTokens > 0 ? contextWindow - maxOutputTokens : contextWindow
+  if (effectiveBudget <= 0) return 100
+  return Math.min(100, Math.max(0, Math.round((inputTokens / effectiveBudget) * 100)))
+}
+
 type ContextColor = { bar: string; text: string }
 
 export function getContextUsageColor(percent: number): ContextColor {

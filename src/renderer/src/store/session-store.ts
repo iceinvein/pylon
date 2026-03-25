@@ -22,6 +22,7 @@ type SessionState = {
     totalUsd: number
     contextWindow: number
     contextInputTokens: number
+    maxOutputTokens: number
   }
   createdAt: number
   updatedAt: number

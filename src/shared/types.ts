@@ -16,6 +16,9 @@ export type SessionCost = {
   inputTokens: number
   outputTokens: number
   totalUsd: number
+  contextWindow: number
+  contextInputTokens: number
+  maxOutputTokens: number
 }
 
 export type Tab = {

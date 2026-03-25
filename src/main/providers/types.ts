@@ -181,6 +181,8 @@ export type TurnCompleteEvent = {
   outputTokens: number
   /** Per-model context window sizes reported by the SDK */
   modelContextWindows?: Record<string, number>
+  /** Per-model max output token limits reported by the SDK */
+  modelMaxOutputTokens?: Record<string, number>
 }
 
 /** Provider status change (e.g. 'compacting', 'reasoning') */

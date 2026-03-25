@@ -76,6 +76,7 @@ describe('command-registry', () => {
           totalUsd: 0,
           contextWindow: 0,
           contextInputTokens: 0,
+          maxOutputTokens: 0,
         },
         createdAt: 0,
         updatedAt: 0,

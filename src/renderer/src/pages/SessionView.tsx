@@ -136,6 +136,7 @@ export function SessionView({ tab, isActive }: SessionViewProps) {
         totalUsd: 0,
         contextWindow: 0,
         contextInputTokens: 0,
+        maxOutputTokens: 0,
       },
       createdAt: Date.now(),
       updatedAt: Date.now(),

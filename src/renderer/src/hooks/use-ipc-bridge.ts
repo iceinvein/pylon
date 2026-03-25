@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { resolveContextWindow } from '../../../shared/model-context'
+import { resolveContextWindow, resolveMaxOutputTokens } from '../../../shared/model-context'
 import type {
   PermissionRequest,
   QuestionRequest,
@@ -60,7 +60,10 @@ type ResultMessage = {
     input_tokens?: number
     output_tokens?: number
   }
-  modelUsage?: Record<string, { inputTokens?: number; contextWindow?: number }>
+  modelUsage?: Record<
+    string,
+    { inputTokens?: number; contextWindow?: number; maxOutputTokens?: number }
+  >
   duration_ms?: number
   num_turns?: number
 }
@@ -145,17 +148,21 @@ export function useIpcBridge(): void {
         store().clearStreamingText(sessionId)
         store().clearStreamingText(`${sessionId}:thinking`)
 
-        // Extract contextWindow from modelUsage (keyed by model name).
-        // Use resolveContextWindow() to take max(SDK-reported, known floor) —
+        // Extract contextWindow and maxOutputTokens from modelUsage (keyed by model name).
+        // Use resolveContextWindow/resolveMaxOutputTokens to take max(SDK-reported, known floor) —
         // the SDK may under-report (e.g. 200K for Opus when it actually supports 1M).
         // contextInputTokens is set live by message_start stream events — preserve it here.
         const modelUsageKeys = Object.keys(resultMsg.modelUsage ?? {})
         const modelUsageEntries = Object.values(resultMsg.modelUsage ?? {})
         const sdkContextWindow = modelUsageEntries[0]?.contextWindow ?? 0
+        const sdkMaxOutput = modelUsageEntries[0]?.maxOutputTokens ?? 0
         const modelName = modelUsageKeys[0] ?? ''
         const contextWindow = modelName
           ? resolveContextWindow(modelName, sdkContextWindow)
           : sdkContextWindow
+        const maxOutputTokens = modelName
+          ? resolveMaxOutputTokens(modelName, sdkMaxOutput)
+          : sdkMaxOutput
         const existingSession = store().sessions.get(sessionId)
 
         const updates: Record<string, unknown> = {
@@ -166,6 +173,7 @@ export function useIpcBridge(): void {
             contextWindow,
             // Preserve the live contextInputTokens from message_start events
             contextInputTokens: existingSession?.cost.contextInputTokens ?? 0,
+            maxOutputTokens,
           },
         }
         if (resultMsg.model) {

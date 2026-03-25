@@ -18,7 +18,7 @@ import {
   type Options as SdkOptions,
 } from '@anthropic-ai/claude-agent-sdk'
 import { app } from 'electron'
-import { resolveContextWindow } from '../../shared/model-context'
+import { resolveContextWindow, resolveMaxOutputTokens } from '../../shared/model-context'
 import type { Attachment } from '../../shared/types'
 // import { log } from '../../shared/logger'
 import type {
@@ -315,12 +315,16 @@ class ClaudeSession implements AgentSession {
   }
 
   private *mapResultMessage(result: SDKResultMessage, raw: unknown): Generator<NormalizedEvent> {
-    // Extract per-model context windows
+    // Extract per-model context windows and max output tokens
     const modelContextWindows: Record<string, number> = {}
+    const modelMaxOutputTokens: Record<string, number> = {}
     if (result.modelUsage) {
       for (const [model, usage] of Object.entries(result.modelUsage)) {
         if (usage.contextWindow > 0) {
           modelContextWindows[model] = resolveContextWindow(model, usage.contextWindow)
+        }
+        if (usage.maxOutputTokens > 0) {
+          modelMaxOutputTokens[model] = resolveMaxOutputTokens(model, usage.maxOutputTokens)
         }
       }
     }
@@ -332,6 +336,8 @@ class ClaudeSession implements AgentSession {
       outputTokens: result.usage?.output_tokens ?? 0,
       modelContextWindows:
         Object.keys(modelContextWindows).length > 0 ? modelContextWindows : undefined,
+      modelMaxOutputTokens:
+        Object.keys(modelMaxOutputTokens).length > 0 ? modelMaxOutputTokens : undefined,
     }
 
     // Also emit as a complete message so the renderer has the raw result

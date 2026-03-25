@@ -1,5 +1,10 @@
 import { describe, expect, test } from 'bun:test'
-import { formatContextUsage, getContextUsageColor, getContextUsagePercent } from './context-usage'
+import {
+  formatContextUsage,
+  getContextUsageColor,
+  getContextUsagePercent,
+  getEffectiveInputPercent,
+} from './context-usage'
 
 describe('getContextUsagePercent', () => {
   test('returns 0 when contextWindow is 0', () => {
@@ -43,6 +48,36 @@ describe('getContextUsageColor', () => {
   test('returns red for 95%+', () => {
     expect(getContextUsageColor(95).bar).toBe('bg-red-600')
     expect(getContextUsageColor(100).text).toBe('text-red-400')
+  })
+})
+
+describe('getEffectiveInputPercent', () => {
+  test('returns 0 when contextWindow is 0', () => {
+    expect(getEffectiveInputPercent(50_000, 0, 64_000)).toBe(0)
+  })
+
+  test('falls back to full context window when maxOutputTokens is 0', () => {
+    expect(getEffectiveInputPercent(100_000, 200_000, 0)).toBe(50)
+  })
+
+  test('computes against effective budget (contextWindow - maxOutputTokens)', () => {
+    // 200K window - 64K output = 136K effective budget
+    // 100K / 136K ≈ 74%
+    expect(getEffectiveInputPercent(100_000, 200_000, 64_000)).toBe(74)
+  })
+
+  test('caps at 100 when input exceeds effective budget', () => {
+    expect(getEffectiveInputPercent(150_000, 200_000, 64_000)).toBe(100)
+  })
+
+  test('returns 100 when maxOutputTokens >= contextWindow', () => {
+    expect(getEffectiveInputPercent(1, 200_000, 200_000)).toBe(100)
+  })
+
+  test('handles Opus 1M window with 128K output', () => {
+    // 1M - 128K = 872K effective budget
+    // 500K / 872K ≈ 57%
+    expect(getEffectiveInputPercent(500_000, 1_000_000, 128_000)).toBe(57)
   })
 })
 

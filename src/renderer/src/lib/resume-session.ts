@@ -20,6 +20,7 @@ export type StoredSession = {
   output_tokens: number
   context_window: number
   context_input_tokens: number
+  max_output_tokens: number
   created_at: number
   updated_at: number
   worktree_path?: string | null
@@ -60,6 +61,7 @@ export async function resumeStoredSession(session: StoredSession): Promise<Resum
       totalUsd: session.total_cost_usd ?? 0,
       contextWindow: session.context_window ?? 0,
       contextInputTokens: session.context_input_tokens ?? 0,
+      maxOutputTokens: session.max_output_tokens ?? 0,
     },
     createdAt: session.created_at,
     updatedAt: session.updated_at,

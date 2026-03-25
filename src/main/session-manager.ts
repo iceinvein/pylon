@@ -103,27 +103,35 @@ export class SessionManager {
   /** Cached context window sizes per model, learned from SDK result messages.
    *  Pre-loaded from SQLite on construction, written-through on SDK updates. */
   private modelContextWindows = new Map<string, number>()
+  /** Cached max output token limits per model, same lifecycle as context windows. */
+  private modelMaxOutputTokens = new Map<string, number>()
 
   constructor() {
-    this.loadPersistedContextWindows()
+    this.loadPersistedModelLimits()
   }
 
-  /** Load previously-persisted context window sizes from the settings table. */
-  private loadPersistedContextWindows(): void {
+  /** Load previously-persisted context window and max output token sizes from the settings table. */
+  private loadPersistedModelLimits(): void {
     try {
       const db = getDb()
       const rows = db
-        .prepare("SELECT key, value FROM settings WHERE key LIKE 'context_window:%'")
+        .prepare(
+          "SELECT key, value FROM settings WHERE key LIKE 'context_window:%' OR key LIKE 'max_output_tokens:%'",
+        )
         .all() as { key: string; value: string }[]
       for (const row of rows) {
-        const model = row.key.slice('context_window:'.length)
-        const size = Number(row.value)
-        if (model && size > 0) {
-          this.modelContextWindows.set(model, size)
+        if (row.key.startsWith('context_window:')) {
+          const model = row.key.slice('context_window:'.length)
+          const size = Number(row.value)
+          if (model && size > 0) this.modelContextWindows.set(model, size)
+        } else if (row.key.startsWith('max_output_tokens:')) {
+          const model = row.key.slice('max_output_tokens:'.length)
+          const size = Number(row.value)
+          if (model && size > 0) this.modelMaxOutputTokens.set(model, size)
         }
       }
       if (rows.length > 0) {
-        logger.info(`Loaded ${rows.length} persisted context window size(s)`)
+        logger.info(`Loaded ${rows.length} persisted model limit(s)`)
       }
     } catch {
       // DB may not be ready yet during early init — that's fine,
@@ -137,6 +145,19 @@ export class SessionManager {
       const db = getDb()
       db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run(
         `context_window:${model}`,
+        String(size),
+      )
+    } catch {
+      // Non-critical — in-memory cache is still valid
+    }
+  }
+
+  /** Persist a max output tokens value to the settings table. */
+  private persistMaxOutputTokens(model: string, size: number): void {
+    try {
+      const db = getDb()
+      db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run(
+        `max_output_tokens:${model}`,
         String(size),
       )
     } catch {
@@ -374,19 +395,32 @@ export class SessionManager {
           }
         }
 
+        // Cache max output token limits
+        if (event.modelMaxOutputTokens) {
+          for (const [model, size] of Object.entries(event.modelMaxOutputTokens)) {
+            const prev = this.modelMaxOutputTokens.get(model)
+            this.modelMaxOutputTokens.set(model, size)
+            if (prev !== size) {
+              this.persistMaxOutputTokens(model, size)
+            }
+          }
+        }
+
         // Persist cost and usage
         if (event.costUsd !== undefined || event.inputTokens > 0 || event.outputTokens > 0) {
           const resolvedContextWindow = this.modelContextWindows.get(session.model) ?? 0
+          const resolvedMaxOutput = this.modelMaxOutputTokens.get(session.model) ?? 0
 
           const db = getDb()
           db.prepare(
-            'UPDATE sessions SET total_cost_usd = total_cost_usd + ?, input_tokens = input_tokens + ?, output_tokens = output_tokens + ?, context_window = ?, context_input_tokens = ?, updated_at = ? WHERE id = ?',
+            'UPDATE sessions SET total_cost_usd = total_cost_usd + ?, input_tokens = input_tokens + ?, output_tokens = output_tokens + ?, context_window = ?, context_input_tokens = ?, max_output_tokens = ?, updated_at = ? WHERE id = ?',
           ).run(
             event.costUsd || 0,
             event.inputTokens || 0,
             event.outputTokens || 0,
             resolvedContextWindow,
             session.lastContextInputTokens,
+            resolvedMaxOutput,
             Date.now(),
             sessionId,
           )
@@ -553,6 +587,11 @@ export class SessionManager {
   /** Returns the SDK-reported context window for a model, or undefined if not yet seen. */
   getModelContextWindow(model: string): number | undefined {
     return this.modelContextWindows.get(model)
+  }
+
+  /** Returns the SDK-reported max output tokens for a model, or undefined if not yet seen. */
+  getModelMaxOutputTokens(model: string): number | undefined {
+    return this.modelMaxOutputTokens.get(model)
   }
 
   getSessionInfo(sessionId: string): { model: string; permissionMode: PermissionMode } | null {

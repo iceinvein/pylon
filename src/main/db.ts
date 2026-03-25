@@ -1,10 +1,12 @@
 import { join } from 'node:path'
 import Database from 'better-sqlite3'
-import { app } from 'electron'
 
 let db: Database.Database
 
 export function initDatabase(): Database.Database {
+  // Lazy-load electron so this module can be imported in CI tests
+  // without triggering a missing 'electron' native module error.
+  const { app } = require('electron') as typeof import('electron')
   const dbPath = join(app.getPath('userData'), 'pylon.db')
   db = new Database(dbPath)
   db.pragma('journal_mode = WAL')
@@ -74,6 +76,9 @@ export function initDatabase(): Database.Database {
   }
   if (!cols.some((c) => c.name === 'provider')) {
     db.exec("ALTER TABLE sessions ADD COLUMN provider TEXT NOT NULL DEFAULT 'claude'")
+  }
+  if (!cols.some((c) => c.name === 'max_output_tokens')) {
+    db.exec('ALTER TABLE sessions ADD COLUMN max_output_tokens INTEGER NOT NULL DEFAULT 0')
   }
 
   // PR Review tables
