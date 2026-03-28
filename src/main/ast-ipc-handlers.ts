@@ -1,10 +1,22 @@
-import { BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow, ipcMain } from 'electron'
+import * as path from 'node:path'
 import { IPC } from '../shared/ipc-channels'
 import { log } from '../shared/logger'
 
 const logger = log.child('ast-ipc')
 
 export function registerAstIpcHandlers(): void {
+  // Set the resource directory for bundled tree-sitter grammars.
+  // In dev: <project-root>/resources/grammars/
+  // In packaged: <resourcesPath>/resources/grammars/ (asarUnpack ensures access)
+  const grammarsDir = app.isPackaged
+    ? path.join(process.resourcesPath, 'resources', 'grammars')
+    : path.join(app.getAppPath(), 'resources', 'grammars')
+
+  import('./ast-parsers/grammar-manager').then(({ setResourceDir }) => {
+    setResourceDir(grammarsDir)
+    logger.info(`grammar resource dir set to: ${grammarsDir}`)
+  })
   ipcMain.handle(IPC.AST_ANALYZE_SCOPE, async (_e, args: { scope: string }) => {
     const { analyzeScope } = await import('./ast-analyzer')
     const win = BrowserWindow.getFocusedWindow()
