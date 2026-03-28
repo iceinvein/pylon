@@ -1,4 +1,4 @@
-import { FolderOpen, Loader2 } from 'lucide-react'
+import { Clock, FolderOpen, Loader2 } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { AstSplitPanel } from '../components/ast/AstSplitPanel'
 import { AstToolbar } from '../components/ast/AstToolbar'
@@ -7,6 +7,23 @@ import { FileAstView } from '../components/ast/FileAstView'
 import { RepoMapView } from '../components/ast/RepoMapView'
 import { useAstBridge } from '../hooks/use-ast-bridge'
 import { useAstStore } from '../store/ast-store'
+
+function formatTimeAgo(timestamp: number): string {
+  const seconds = Math.floor((Date.now() - timestamp) / 1000)
+  if (seconds < 60) return 'just now'
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  if (days < 30) return `${days}d ago`
+  const months = Math.floor(days / 30)
+  return `${months}mo ago`
+}
+
+function getProjectName(projectPath: string): string {
+  return projectPath.split('/').pop() ?? projectPath
+}
 
 export function AstView() {
   useAstBridge()
@@ -135,12 +152,18 @@ function ProjectSelector({
   onSelectProject: (path: string) => void
 }) {
   const [projects, setProjects] = useState<Array<{ path: string; lastUsed: number }>>([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     window.api
       .listProjects()
-      .then(setProjects)
+      .then((list) => {
+        // Sort by most recently used
+        const sorted = [...list].sort((a, b) => b.lastUsed - a.lastUsed)
+        setProjects(sorted)
+      })
       .catch(() => {})
+      .finally(() => setLoading(false))
   }, [])
 
   return (
@@ -153,35 +176,53 @@ function ProjectSelector({
       </div>
 
       <div className="flex w-full max-w-md flex-col gap-3">
-        <button
-          type="button"
-          onClick={onBrowse}
-          className="flex items-center justify-center gap-2 rounded-lg border border-base-border bg-base-bg px-4 py-3 text-base-text transition-colors hover:bg-base-bg-subtle"
-        >
-          <FolderOpen size={16} />
-          <span className="text-sm">Browse for a folder...</span>
-        </button>
-
-        {projects.length > 0 && (
+        {loading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 size={20} className="animate-spin text-base-text-muted" />
+          </div>
+        ) : (
           <>
-            <div className="relative flex items-center">
-              <div className="flex-1 border-base-border border-t" />
-              <span className="mx-3 text-base-text-muted text-xs">Recent projects</span>
-              <div className="flex-1 border-base-border border-t" />
-            </div>
-            <ul className="flex flex-col gap-1">
-              {projects.map((p) => (
-                <li key={p.path}>
-                  <button
-                    type="button"
-                    onClick={() => onSelectProject(p.path)}
-                    className="w-full truncate rounded-lg border border-base-border bg-base-bg px-4 py-2.5 text-left text-base-text-muted text-sm transition-colors hover:bg-base-bg-subtle hover:text-base-text"
-                  >
-                    {p.path}
-                  </button>
-                </li>
-              ))}
-            </ul>
+            {projects.length > 0 && (
+              <>
+                <span className="text-base-text-muted text-xs">Known projects</span>
+                <ul className="flex max-h-72 flex-col gap-1 overflow-y-auto">
+                  {projects.map((p) => (
+                    <li key={p.path}>
+                      <button
+                        type="button"
+                        onClick={() => onSelectProject(p.path)}
+                        className="flex w-full items-center gap-3 rounded-lg border border-base-border bg-base-bg px-4 py-2.5 text-left transition-colors hover:bg-base-bg-subtle"
+                      >
+                        <FolderOpen size={16} className="shrink-0 text-accent-text" />
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate font-medium text-base-text text-sm">
+                            {getProjectName(p.path)}
+                          </div>
+                          <div className="truncate text-base-text-muted text-xs">{p.path}</div>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-1 text-base-text-muted text-xs">
+                          <Clock size={10} />
+                          {formatTimeAgo(p.lastUsed)}
+                        </div>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                <div className="relative flex items-center">
+                  <div className="flex-1 border-base-border border-t" />
+                  <span className="mx-3 text-base-text-muted text-xs">or</span>
+                  <div className="flex-1 border-base-border border-t" />
+                </div>
+              </>
+            )}
+            <button
+              type="button"
+              onClick={onBrowse}
+              className="flex items-center justify-center gap-2 rounded-lg border border-base-border bg-base-bg px-4 py-3 text-base-text transition-colors hover:bg-base-bg-subtle"
+            >
+              <FolderOpen size={16} />
+              <span className="text-sm">Browse for a folder...</span>
+            </button>
           </>
         )}
       </div>
