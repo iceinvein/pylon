@@ -1,3 +1,4 @@
+import { ChevronDown, ChevronRight, Package } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   type BundledLanguage,
@@ -6,6 +7,7 @@ import {
   type Highlighter,
 } from 'shiki'
 import type { AstNode } from '../../../../shared/types'
+import { useAstStore } from '../../store/ast-store'
 
 type CodePanelProps = {
   selectedFile: string | null
@@ -108,13 +110,29 @@ export function CodePanel({ selectedFile, fileAst, selectedNodeId }: CodePanelPr
   const [rawCode, setRawCode] = useState('')
   const [tokenizedLines, setTokenizedLines] = useState<TokenSpan[][]>([])
   const [loading, setLoading] = useState(false)
+  const [depsExpanded, setDepsExpanded] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
+
+  const repoGraph = useAstStore((s) => s.repoGraph)
 
   const selectedNode = fileAst && selectedNodeId ? findNodeById(fileAst, selectedNodeId) : null
   const startLine = selectedNode?.startLine ?? -1
   const endLine = selectedNode?.endLine ?? -1
 
   const lang = useMemo(() => (selectedFile ? extToLang(selectedFile) : 'text'), [selectedFile])
+
+  // Compute external dependencies: imports whose target wasn't resolved to a file in the graph
+  const externalDeps = useMemo(() => {
+    if (!selectedFile || !repoGraph) return []
+    const fileNode = repoGraph.files.find((f) => f.filePath === selectedFile)
+    if (!fileNode) return []
+    const resolvedTargets = new Set(
+      repoGraph.edges.filter((e) => e.source === selectedFile).map((e) => e.target),
+    )
+    return fileNode.imports
+      .filter((imp) => !resolvedTargets.has(imp.target))
+      .map((imp) => ({ name: imp.target, specifiers: imp.specifiers }))
+  }, [selectedFile, repoGraph])
 
   // Load file content when selectedFile changes
   useEffect(() => {
@@ -233,6 +251,36 @@ export function CodePanel({ selectedFile, fileAst, selectedNodeId }: CodePanelPr
           </span>
         )}
       </div>
+
+      {/* External Dependencies */}
+      {externalDeps.length > 0 && (
+        <div className="border-base-border-subtle border-b">
+          <button
+            type="button"
+            onClick={() => setDepsExpanded((prev) => !prev)}
+            className="flex w-full items-center gap-1.5 px-3 py-1.5 text-left"
+          >
+            {depsExpanded ? (
+              <ChevronDown size={12} className="text-base-text-muted" />
+            ) : (
+              <ChevronRight size={12} className="text-base-text-muted" />
+            )}
+            <span className="text-[11px] text-base-text-muted">
+              External Dependencies ({externalDeps.length})
+            </span>
+          </button>
+          {depsExpanded && (
+            <div className="flex flex-wrap gap-x-3 gap-y-1 px-3 pb-2">
+              {externalDeps.map((dep) => (
+                <div key={dep.name} className="flex items-center gap-1">
+                  <Package size={10} className="shrink-0 text-base-text-muted/50" />
+                  <span className="text-[11px] text-base-text-muted">{dep.name}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Code body */}
       <div ref={containerRef} className="flex-1 overflow-auto bg-[#121212]">
