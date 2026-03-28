@@ -4,8 +4,11 @@ import { app, BrowserWindow, ipcMain, shell } from 'electron'
 import { IPC } from '../shared/ipc-channels'
 import { initLogger, log, writeRendererLog } from '../shared/logger'
 import { initDatabase } from './db'
+import { registerAstIpcHandlers } from './ast-ipc-handlers'
 import { registerGitIpcHandlers, setGitWindow } from './git-ipc-handlers'
 import { registerIpcHandlers } from './ipc-handlers'
+import { registerPrReviewIpcHandlers } from './pr-review-ipc-handlers'
+import { registerTestIpcHandlers } from './test-ipc-handlers'
 import { prPollingService } from './pr-polling-service'
 import { prReviewManager } from './pr-review-manager'
 import { ClaudeProvider, CodexProvider, initModelDiscovery, registerProvider } from './providers'
@@ -83,6 +86,9 @@ app.whenReady().then(() => {
   initModelDiscovery()
   registerIpcHandlers()
   registerGitIpcHandlers()
+  registerPrReviewIpcHandlers()
+  registerTestIpcHandlers()
+  registerAstIpcHandlers()
 
   // Auto-cleanup stale worktrees (>7 days old)
   import('./worktree-cleanup')
