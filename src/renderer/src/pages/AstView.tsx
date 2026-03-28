@@ -1,5 +1,10 @@
 import { FolderOpen, Loader2 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { AstSplitPanel } from '../components/ast/AstSplitPanel'
+import { AstToolbar } from '../components/ast/AstToolbar'
+import { CodePanel } from '../components/ast/CodePanel'
+import { FileAstView } from '../components/ast/FileAstView'
+import { RepoMapView } from '../components/ast/RepoMapView'
 import { useAstBridge } from '../hooks/use-ast-bridge'
 import { useAstStore } from '../store/ast-store'
 
@@ -8,71 +13,116 @@ export function AstView() {
 
   const scope = useAstStore((s) => s.scope)
   const repoGraph = useAstStore((s) => s.repoGraph)
+  const archAnalysis = useAstStore((s) => s.archAnalysis)
+  const fileAst = useAstStore((s) => s.fileAst)
+  const selectedFile = useAstStore((s) => s.selectedFile)
+  const selectedNode = useAstStore((s) => s.selectedNode)
   const analysisStatus = useAstStore((s) => s.analysisStatus)
   const analysisProgress = useAstStore((s) => s.analysisProgress)
   const setScope = useAstStore((s) => s.setScope)
+  const setFileAst = useAstStore((s) => s.setFileAst)
 
-  async function handleBrowse() {
+  // When selectedFile changes, request file AST
+  useEffect(() => {
+    if (!selectedFile) {
+      setFileAst(null)
+      return
+    }
+
+    let cancelled = false
+    window.api
+      .getFileAst(selectedFile)
+      .then((nodes) => {
+        if (!cancelled) setFileAst(nodes)
+      })
+      .catch(() => {
+        if (!cancelled) setFileAst(null)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [selectedFile, setFileAst])
+
+  const handleBrowse = useCallback(async () => {
     const path = await window.api.openFolder()
     if (path) {
       setScope(path)
       await window.api.analyzeScope(path)
     }
-  }
+  }, [setScope])
 
-  async function handleSelectProject(path: string) {
-    setScope(path)
-    await window.api.analyzeScope(path)
-  }
+  const handleSelectProject = useCallback(
+    async (path: string) => {
+      setScope(path)
+      await window.api.analyzeScope(path)
+    },
+    [setScope],
+  )
+
+  const handleReanalyze = useCallback(async () => {
+    if (scope) {
+      await window.api.analyzeScope(scope)
+    }
+  }, [scope])
 
   if (!scope) {
     return <ProjectSelector onBrowse={handleBrowse} onSelectProject={handleSelectProject} />
   }
 
+  const isLoading = analysisStatus === 'parsing' || analysisStatus === 'analyzing'
+
+  // Derive filename from selectedFile
+  const fileName = selectedFile ? (selectedFile.split('/').pop() ?? selectedFile) : ''
+
   return (
-    <div className="flex h-full flex-col gap-4 p-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="font-semibold text-base-text text-lg">Codebase Explorer</h2>
-          <p className="mt-0.5 text-base-text-muted text-sm">{scope}</p>
-        </div>
-        <button
-          type="button"
-          onClick={handleBrowse}
-          className="flex items-center gap-1.5 rounded-lg border border-base-border px-3 py-1.5 text-base-text-muted text-sm transition-colors hover:text-base-text"
-        >
-          <FolderOpen size={14} />
-          Change folder
-        </button>
-      </div>
+    <div className="flex h-full flex-col">
+      <AstToolbar
+        scope={scope}
+        repoGraph={repoGraph}
+        analysisStatus={analysisStatus}
+        onReanalyze={handleReanalyze}
+      />
 
-      <AnalysisStatusBar status={analysisStatus} progress={analysisProgress} />
-
-      {repoGraph && analysisStatus === 'ready' && (
-        <div className="rounded-lg border border-base-border bg-base-bg-subtle p-4">
-          <p className="text-base-text-muted text-sm">
-            <span className="font-medium text-base-text">{repoGraph.files.length}</span> files
-            parsed &nbsp;&middot;&nbsp;
-            <span className="font-medium text-base-text">{repoGraph.edges.length}</span> import
-            edges
-          </p>
+      {isLoading && (
+        <div className="flex items-center gap-2 border-base-border border-b px-4 py-2">
+          <Loader2 size={14} className="animate-spin text-accent-text" />
+          <span className="text-base-text-muted text-sm">{analysisProgress || 'Analyzing...'}</span>
         </div>
       )}
-    </div>
-  )
-}
 
-function AnalysisStatusBar({ status, progress }: { status: string; progress: string }) {
-  if (status === 'idle') return null
+      {repoGraph && analysisStatus === 'ready' && (
+        <div className="min-h-0 flex-1">
+          <AstSplitPanel
+            left={
+              selectedFile && fileAst ? (
+                <FileAstView fileAst={fileAst} fileName={fileName} />
+              ) : (
+                <RepoMapView repoGraph={repoGraph} archAnalysis={archAnalysis} />
+              )
+            }
+            right={
+              <CodePanel
+                selectedFile={selectedFile}
+                fileAst={fileAst}
+                selectedNodeId={selectedNode}
+              />
+            }
+          />
+        </div>
+      )}
 
-  const isLoading = status === 'parsing' || status === 'analyzing'
+      {analysisStatus === 'error' && (
+        <div className="flex flex-1 items-center justify-center">
+          <p className="text-error text-sm">Analysis failed. Try re-analyzing.</p>
+        </div>
+      )}
 
-  return (
-    <div className="flex items-center gap-2 rounded-lg border border-base-border bg-base-bg-subtle px-4 py-3">
-      {isLoading && <Loader2 size={14} className="animate-spin text-accent-text" />}
-      <span className="text-base-text-muted text-sm">
-        {progress || (status === 'ready' ? 'Analysis complete' : status)}
-      </span>
+      {analysisStatus === 'idle' && (
+        <div className="flex flex-1 items-center justify-center">
+          <p className="text-base-text-muted text-sm">Select a folder to begin analysis.</p>
+        </div>
+      )}
     </div>
   )
 }

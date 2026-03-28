@@ -4,6 +4,12 @@ import { computeRepoLayout, computeTreeLayout } from './ast-layout'
 
 // ── Helpers ──
 
+function getNode<T extends { id: string }>(nodes: T[], id: string): T {
+  const node = nodes.find((n) => n.id === id)
+  if (!node) throw new Error(`Node ${id} not found`)
+  return node
+}
+
 function makeFileNode(filePath: string) {
   return {
     filePath,
@@ -210,8 +216,8 @@ describe('computeTreeLayout', () => {
 
     const layout = computeTreeLayout([root])
 
-    const rootNode = layout.nodes.find((n) => n.id === 'r1')!
-    const childNode = layout.nodes.find((n) => n.id === 'c1')!
+    const rootNode = getNode(layout.nodes, 'r1')
+    const childNode = getNode(layout.nodes, 'c1')
 
     expect(childNode.y).toBeGreaterThan(rootNode.y)
   })
@@ -223,9 +229,9 @@ describe('computeTreeLayout', () => {
 
     const layout = computeTreeLayout([root])
 
-    const rootNode = layout.nodes.find((n) => n.id === 'r1')!
-    const c1Node = layout.nodes.find((n) => n.id === 'c1')!
-    const c2Node = layout.nodes.find((n) => n.id === 'c2')!
+    const rootNode = getNode(layout.nodes, 'r1')
+    const c1Node = getNode(layout.nodes, 'c1')
+    const c2Node = getNode(layout.nodes, 'c2')
 
     const childrenCenter = (c1Node.x + c2Node.x + c2Node.width) / 2
     const rootCenter = rootNode.x + rootNode.width / 2
@@ -240,8 +246,8 @@ describe('computeTreeLayout', () => {
     const layout = computeTreeLayout([root1, root2])
 
     expect(layout.nodes).toHaveLength(2)
-    const n1 = layout.nodes.find((n) => n.id === 'r1')!
-    const n2 = layout.nodes.find((n) => n.id === 'r2')!
+    const n1 = getNode(layout.nodes, 'r1')
+    const n2 = getNode(layout.nodes, 'r2')
 
     expect(n2.x).toBeGreaterThan(n1.x)
   })
@@ -256,9 +262,9 @@ describe('computeTreeLayout', () => {
     expect(layout.nodes).toHaveLength(3)
     expect(layout.edges).toHaveLength(2)
 
-    const rootY = layout.nodes.find((n) => n.id === 'r1')!.y
-    const childY = layout.nodes.find((n) => n.id === 'c1')!.y
-    const gcY = layout.nodes.find((n) => n.id === 'gc')!.y
+    const rootY = getNode(layout.nodes, 'r1').y
+    const childY = getNode(layout.nodes, 'c1').y
+    const gcY = getNode(layout.nodes, 'gc').y
 
     expect(childY).toBeGreaterThan(rootY)
     expect(gcY).toBeGreaterThan(childY)

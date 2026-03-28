@@ -6,13 +6,7 @@
  * - `computeTreeLayout`  — positions an AST node tree top-down for file-level view.
  */
 
-import {
-  forceCenter,
-  forceCollide,
-  forceLink,
-  forceManyBody,
-  forceSimulation,
-} from 'd3-force'
+import { forceCenter, forceCollide, forceLink, forceManyBody, forceSimulation } from 'd3-force'
 import type { ArchAnalysis, AstNode, RepoGraph } from '../../../shared/types'
 
 // ── Layout types ──
@@ -105,10 +99,7 @@ function fileBaseName(filePath: string): string {
   return parts[parts.length - 1] ?? filePath
 }
 
-export function computeRepoLayout(
-  graph: RepoGraph,
-  analysis: ArchAnalysis | null,
-): RepoLayout {
+export function computeRepoLayout(graph: RepoGraph, analysis: ArchAnalysis | null): RepoLayout {
   if (graph.files.length === 0) {
     return { nodes: [], edges: [], clusters: [] }
   }
@@ -211,8 +202,7 @@ export function computeRepoLayout(
       const clusterNodes = layoutNodes.filter((n) => n.clusterId === cluster.id)
       if (clusterNodes.length === 0) continue
 
-      const layerColor =
-        analysis.layers.find((l) => l.id === cluster.layerId)?.color ?? '#484f58'
+      const layerColor = analysis.layers.find((l) => l.id === cluster.layerId)?.color ?? '#484f58'
 
       let minX = Number.POSITIVE_INFINITY
       let minY = Number.POSITIVE_INFINITY
@@ -276,11 +266,7 @@ function measureSubtree(node: InternalTreeNode): number {
   return node.subtreeWidth
 }
 
-function assignPositions(
-  node: InternalTreeNode,
-  startX: number,
-  level: number,
-): void {
+function assignPositions(node: InternalTreeNode, startX: number, level: number): void {
   node.y = level * TREE_V_SPACING
 
   if (node.children.length === 0) {
