@@ -8,7 +8,10 @@ export function useAstBridge() {
       const d = data as { status: string; message?: string }
       useAstStore
         .getState()
-        .setAnalysisStatus(d.status as 'idle' | 'parsing' | 'analyzing' | 'ready' | 'error', d.message)
+        .setAnalysisStatus(
+          d.status as 'idle' | 'parsing' | 'analyzing' | 'ready' | 'error',
+          d.message,
+        )
     })
     return unsub
   }, [])

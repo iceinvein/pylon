@@ -1,5 +1,11 @@
 import { create } from 'zustand'
-import type { ArchAnalysis, AstChatMessage, AstNode, AstOverlay, RepoGraph } from '../../../shared/types'
+import type {
+  ArchAnalysis,
+  AstChatMessage,
+  AstNode,
+  AstOverlay,
+  RepoGraph,
+} from '../../../shared/types'
 
 type AnalysisStatus = 'idle' | 'parsing' | 'analyzing' | 'ready' | 'error'
 
@@ -84,8 +90,7 @@ export const useAstStore = create<AstStore>((set) => ({
       return { activeOverlays: next }
     }),
 
-  addChatMessage: (message) =>
-    set((s) => ({ chatMessages: [...s.chatMessages, message] })),
+  addChatMessage: (message) => set((s) => ({ chatMessages: [...s.chatMessages, message] })),
 
   setAnalysisStatus: (analysisStatus, progress) =>
     set((s) => ({

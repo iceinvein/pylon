@@ -640,7 +640,10 @@ export function registerIpcHandlers(): void {
     const { analyzeScope } = await import('./ast-analyzer')
     const win = BrowserWindow.getFocusedWindow()
     if (!win) return
-    win.webContents.send(IPC.AST_ANALYSIS_PROGRESS, { status: 'parsing', message: 'Parsing files...' })
+    win.webContents.send(IPC.AST_ANALYSIS_PROGRESS, {
+      status: 'parsing',
+      message: 'Parsing files...',
+    })
     const graph = analyzeScope(args.scope)
     win.webContents.send(IPC.AST_REPO_GRAPH, graph)
     win.webContents.send(IPC.AST_ANALYSIS_PROGRESS, {
@@ -648,7 +651,10 @@ export function registerIpcHandlers(): void {
       message: `Parsed ${graph.files.length} files. Analyzing with Claude...`,
     })
     // Stage 2 Claude analysis placeholder — will be implemented in Task 8
-    win.webContents.send(IPC.AST_ANALYSIS_PROGRESS, { status: 'ready', message: 'Analysis complete' })
+    win.webContents.send(IPC.AST_ANALYSIS_PROGRESS, {
+      status: 'ready',
+      message: 'Analysis complete',
+    })
   })
 
   ipcMain.handle(IPC.AST_FILE_AST, async (_e, args: { filePath: string }) => {

@@ -1,4 +1,4 @@
-import { Clock, FlaskConical, GitPullRequestDraft, Home, Settings } from 'lucide-react'
+import { Clock, FlaskConical, GitPullRequestDraft, Home, Network, Settings } from 'lucide-react'
 import { motion } from 'motion/react'
 import { usePrReviewStore } from '../../store/pr-review-store'
 import { useUiStore } from '../../store/ui-store'
@@ -36,6 +36,12 @@ export function NavRail() {
         onClick={() => setSidebarView(sidebarView === 'testing' ? 'home' : 'testing')}
         title="AI Testing"
         icon={FlaskConical}
+      />
+      <NavButton
+        active={sidebarView === 'ast'}
+        onClick={() => setSidebarView(sidebarView === 'ast' ? 'home' : 'ast')}
+        title="Explore Codebase"
+        icon={Network}
       />
 
       <div className="mt-auto flex flex-col items-center gap-1">

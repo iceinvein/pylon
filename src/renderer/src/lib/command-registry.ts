@@ -7,6 +7,7 @@ import {
   GitCommit,
   HelpCircle,
   Info,
+  Network,
   Settings,
 } from 'lucide-react'
 import { useSessionStore } from '../store/session-store'
@@ -156,6 +157,18 @@ export const COMMANDS: SlashCommand[] = [
     execute: async () => {
       const path = await window.api.openFolder()
       if (path) useTabStore.getState().addTab(path)
+    },
+  },
+  {
+    id: 'explore-codebase',
+    label: 'Explore Codebase',
+    description: 'Visualize code structure and architecture',
+    icon: Network,
+    section: 'global',
+    requiresSession: false,
+    keywords: ['ast', 'architecture', 'visualization', 'graph', 'dependencies'],
+    execute: () => {
+      useUiStore.getState().setSidebarView('ast')
     },
   },
 ]
