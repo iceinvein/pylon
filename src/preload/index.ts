@@ -234,6 +234,39 @@ const api = {
   // Logging
   sendLog: (level: string, source: string, message: string) =>
     ipcRenderer.send(IPC.LOG_FROM_RENDERER, { level, source, message }),
+
+  // AST Visualizer
+  analyzeScope: (scope: string) => ipcRenderer.invoke(IPC.AST_ANALYZE_SCOPE, { scope }),
+  getFileAst: (filePath: string) => ipcRenderer.invoke(IPC.AST_FILE_AST, { filePath }),
+  explainAstNode: (nodeId: string, filePath: string, context: string) =>
+    ipcRenderer.invoke(IPC.AST_EXPLAIN, { nodeId, filePath, context }),
+  sendAstChat: (message: string, scope: string) =>
+    ipcRenderer.invoke(IPC.AST_CHAT, { message, scope }),
+  onAstAnalysisProgress: (callback: (data: unknown) => void) => {
+    const handler = (_event: unknown, data: unknown) => callback(data)
+    ipcRenderer.on(IPC.AST_ANALYSIS_PROGRESS, handler)
+    return () => ipcRenderer.removeListener(IPC.AST_ANALYSIS_PROGRESS, handler)
+  },
+  onAstRepoGraph: (callback: (data: unknown) => void) => {
+    const handler = (_event: unknown, data: unknown) => callback(data)
+    ipcRenderer.on(IPC.AST_REPO_GRAPH, handler)
+    return () => ipcRenderer.removeListener(IPC.AST_REPO_GRAPH, handler)
+  },
+  onAstArchAnalysis: (callback: (data: unknown) => void) => {
+    const handler = (_event: unknown, data: unknown) => callback(data)
+    ipcRenderer.on(IPC.AST_ARCH_ANALYSIS, handler)
+    return () => ipcRenderer.removeListener(IPC.AST_ARCH_ANALYSIS, handler)
+  },
+  onAstExplainResult: (callback: (data: unknown) => void) => {
+    const handler = (_event: unknown, data: unknown) => callback(data)
+    ipcRenderer.on(IPC.AST_EXPLAIN_RESULT, handler)
+    return () => ipcRenderer.removeListener(IPC.AST_EXPLAIN_RESULT, handler)
+  },
+  onAstChatResult: (callback: (data: unknown) => void) => {
+    const handler = (_event: unknown, data: unknown) => callback(data)
+    ipcRenderer.on(IPC.AST_CHAT_RESULT, handler)
+    return () => ipcRenderer.removeListener(IPC.AST_CHAT_RESULT, handler)
+  },
 }
 
 contextBridge.exposeInMainWorld('api', api)

@@ -6,10 +6,9 @@ export function useAstBridge() {
   useEffect(() => {
     const unsub = window.api.onAstAnalysisProgress((data) => {
       const d = data as { status: string; message?: string }
-      useAstStore.getState().setAnalysisStatus(
-        d.status as Parameters<typeof useAstStore.getState.prototype.setAnalysisStatus>[0],
-        d.message,
-      )
+      useAstStore
+        .getState()
+        .setAnalysisStatus(d.status as 'idle' | 'parsing' | 'analyzing' | 'ready' | 'error', d.message)
     })
     return unsub
   }, [])

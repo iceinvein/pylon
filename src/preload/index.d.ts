@@ -199,6 +199,16 @@ type Api = {
   onGitGraphUpdated: (callback: (data: unknown) => void) => () => void
   onGitOpsConflictDetected: (callback: (data: unknown) => void) => () => void
   sendLog: (level: string, source: string, message: string) => void
+  // AST Visualizer
+  analyzeScope: (scope: string) => Promise<void>
+  getFileAst: (filePath: string) => Promise<import('../shared/types').AstNode[]>
+  explainAstNode: (nodeId: string, filePath: string, context: string) => Promise<{ text: string; done: boolean }>
+  sendAstChat: (message: string, scope: string) => Promise<{ text: string; done: boolean }>
+  onAstAnalysisProgress: (callback: (data: unknown) => void) => () => void
+  onAstRepoGraph: (callback: (data: unknown) => void) => () => void
+  onAstArchAnalysis: (callback: (data: unknown) => void) => () => void
+  onAstExplainResult: (callback: (data: unknown) => void) => () => void
+  onAstChatResult: (callback: (data: unknown) => void) => () => void
 }
 
 declare global {

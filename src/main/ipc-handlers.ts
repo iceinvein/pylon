@@ -634,6 +634,38 @@ export function registerIpcHandlers(): void {
     return true
   })
 
+  // ── AST Visualizer ──
+
+  ipcMain.handle(IPC.AST_ANALYZE_SCOPE, async (_e, args: { scope: string }) => {
+    const { analyzeScope } = await import('./ast-analyzer')
+    const win = BrowserWindow.getFocusedWindow()
+    if (!win) return
+    win.webContents.send(IPC.AST_ANALYSIS_PROGRESS, { status: 'parsing', message: 'Parsing files...' })
+    const graph = analyzeScope(args.scope)
+    win.webContents.send(IPC.AST_REPO_GRAPH, graph)
+    win.webContents.send(IPC.AST_ANALYSIS_PROGRESS, {
+      status: 'analyzing',
+      message: `Parsed ${graph.files.length} files. Analyzing with Claude...`,
+    })
+    // Stage 2 Claude analysis placeholder — will be implemented in Task 8
+    win.webContents.send(IPC.AST_ANALYSIS_PROGRESS, { status: 'ready', message: 'Analysis complete' })
+  })
+
+  ipcMain.handle(IPC.AST_FILE_AST, async (_e, args: { filePath: string }) => {
+    const { parseFileAst } = await import('./ast-analyzer')
+    return parseFileAst(args.filePath)
+  })
+
+  ipcMain.handle(IPC.AST_EXPLAIN, async (_e, _args) => {
+    // Placeholder — Claude integration in Task 8
+    return { text: 'Explain feature coming soon', done: true }
+  })
+
+  ipcMain.handle(IPC.AST_CHAT, async (_e, _args) => {
+    // Placeholder — Claude integration in Task 8
+    return { text: 'Chat feature coming soon', done: true }
+  })
+
   ipcMain.handle(IPC.USAGE_STATS, async (_e, args: { period: string }) => {
     const db = getDb()
     const now = Date.now()
