@@ -1,10 +1,19 @@
 import { ArrowLeft } from 'lucide-react'
-import { useMemo } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import type { AstNode } from '../../../../shared/types'
 import { computeTreeLayout } from '../../lib/ast-layout'
 import { useAstStore } from '../../store/ast-store'
+import { AstContextMenu } from './AstContextMenu'
 import { NODE_COLORS, NODE_LABELS } from './ast-constants'
 import { GraphCanvas } from './GraphCanvas'
+
+type ContextMenuState = {
+  x: number
+  y: number
+  nodeId: string
+  nodeName: string
+  filePath: string
+} | null
 
 type FileAstViewProps = {
   fileAst: AstNode[]
@@ -13,12 +22,29 @@ type FileAstViewProps = {
 
 export function FileAstView({ fileAst, fileName }: FileAstViewProps) {
   const selectedNode = useAstStore((s) => s.selectedNode)
+  const selectedFile = useAstStore((s) => s.selectedFile)
   const selectFile = useAstStore((s) => s.selectFile)
   const selectNode = useAstStore((s) => s.selectNode)
   const hoveredNode = useAstStore((s) => s.hoveredNode)
   const setHoveredNode = useAstStore((s) => s.setHoveredNode)
 
+  const [contextMenu, setContextMenu] = useState<ContextMenuState>(null)
+
   const layout = useMemo(() => computeTreeLayout(fileAst), [fileAst])
+
+  const handleContextMenu = useCallback(
+    (e: React.MouseEvent, nodeId: string, nodeName: string, filePath: string) => {
+      e.preventDefault()
+      e.stopPropagation()
+      setContextMenu({ x: e.clientX, y: e.clientY, nodeId, nodeName, filePath })
+    },
+    [],
+  )
+
+  const handleExplain = useCallback((nodeId: string, nodeName: string, filePath: string) => {
+    useAstStore.getState().setExplain(null, true)
+    window.api.explainAstNode(nodeId, filePath, nodeName)
+  }, [])
 
   return (
     <div className="flex h-full flex-col">
@@ -37,7 +63,7 @@ export function FileAstView({ fileAst, fileName }: FileAstViewProps) {
 
       <div className="min-h-0 flex-1">
         <GraphCanvas>
-          {/* Parent → child edges */}
+          {/* Parent -> child edges */}
           {layout.edges.map((edge) => {
             const source = layout.nodes.find((n) => n.id === edge.source)
             const target = layout.nodes.find((n) => n.id === edge.target)
@@ -67,6 +93,7 @@ export function FileAstView({ fileAst, fileName }: FileAstViewProps) {
               <g
                 key={node.id}
                 onClick={() => selectNode(node.id)}
+                onContextMenu={(e) => handleContextMenu(e, node.id, node.name, selectedFile ?? '')}
                 onMouseEnter={() => setHoveredNode(node.id)}
                 onMouseLeave={() => setHoveredNode(null)}
                 style={{ cursor: 'pointer' }}
@@ -105,6 +132,18 @@ export function FileAstView({ fileAst, fileName }: FileAstViewProps) {
           })}
         </GraphCanvas>
       </div>
+
+      {contextMenu && (
+        <AstContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          nodeId={contextMenu.nodeId}
+          nodeName={contextMenu.nodeName}
+          filePath={contextMenu.filePath}
+          onClose={() => setContextMenu(null)}
+          onExplain={handleExplain}
+        />
+      )}
     </div>
   )
 }
