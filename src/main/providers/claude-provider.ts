@@ -18,9 +18,9 @@ import {
   type Options as SdkOptions,
 } from '@anthropic-ai/claude-agent-sdk'
 import { app } from 'electron'
+import { log } from '../../shared/logger'
 import { resolveContextWindow, resolveMaxOutputTokens } from '../../shared/model-context'
 import type { Attachment } from '../../shared/types'
-// import { log } from '../../shared/logger'
 import type {
   AgentProvider,
   AgentSession,
@@ -30,7 +30,7 @@ import type {
   ProviderSessionConfig,
 } from './types'
 
-// const logger = log.child('claude-provider')
+const logger = log.child('claude-provider')
 
 // ── Model Catalog ────────────────────────────────
 
@@ -93,21 +93,65 @@ export class ClaudeProvider implements AgentProvider {
       })
       const modelInfos = await q.supportedModels()
       ac.abort()
-      return modelInfos.map((m) => mapModelInfo(m))
-    } catch {
-      // Discovery failed (no auth, CLI not found, etc.) — return static catalog
+
+      logger.info(`SDK returned ${modelInfos.length} models:`)
+      for (const m of modelInfos) {
+        logger.info(
+          `  → value="${m.value}" displayName="${m.displayName}" effort=${JSON.stringify(m.supportedEffortLevels)}`,
+        )
+      }
+
+      const mapped = modelInfos.map((m) => mapModelInfo(m))
+      logger.info(`Mapped to ${mapped.length} ProviderModels:`)
+      for (const m of mapped) {
+        logger.info(`  → id="${m.id}" label="${m.label}" ctx=${m.contextWindow}`)
+      }
+
+      return mapped
+    } catch (err) {
+      logger.error('Discovery failed, using static catalog:', err)
       return CLAUDE_MODELS
     }
   }
 }
 
+/**
+ * SDK shorthand → canonical model ID.
+ *
+ * The Claude Agent SDK's supportedModels() returns short aliases like
+ * "default", "sonnet", "haiku" — but the rest of Pylon (effort logic,
+ * settings, fallback models) uses full canonical IDs. This map bridges
+ * the gap so discovery doesn't break the dropdown or selection logic.
+ */
+const SDK_ID_MAP: Record<string, string> = {
+  default: 'claude-opus-4-6',
+  opus: 'claude-opus-4-6',
+  sonnet: 'claude-sonnet-4-6',
+  haiku: 'claude-haiku-4-5',
+}
+
+/** Resolve an SDK model value to our canonical ID */
+function resolveModelId(sdkValue: string): string {
+  // 1. Direct alias match
+  if (SDK_ID_MAP[sdkValue]) return SDK_ID_MAP[sdkValue]
+  // 2. Already a canonical ID in our static catalog
+  if (CLAUDE_MODELS.some((m) => m.id === sdkValue)) return sdkValue
+  // 3. Unknown model — pass through as-is
+  return sdkValue
+}
+
 /** Map SDK's ModelInfo to our ProviderModel shape */
 function mapModelInfo(info: ModelInfo): ProviderModel {
-  // Check if this model exists in our static catalog for defaults
-  const staticMatch = CLAUDE_MODELS.find((m) => m.id === info.value)
+  const canonicalId = resolveModelId(info.value)
+  const staticMatch = CLAUDE_MODELS.find((m) => m.id === canonicalId)
+
+  if (info.value !== canonicalId) {
+    logger.info(`  Resolved SDK alias "${info.value}" → "${canonicalId}"`)
+  }
+
   return {
-    id: info.value,
-    label: info.displayName || staticMatch?.label || info.value,
+    id: canonicalId,
+    label: staticMatch?.label || info.displayName || canonicalId,
     provider: 'claude',
     contextWindow: staticMatch?.contextWindow ?? 200_000,
     supportsEffort: info.supportedEffortLevels ??

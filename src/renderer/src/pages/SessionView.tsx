@@ -224,10 +224,11 @@ export function SessionView({ tab, isActive }: SessionViewProps) {
         }
       }
       if (sessionId) {
+        updateSession(sessionId, { model })
         await window.api.setModel(sessionId, model)
       }
     },
-    [sessionId, effort],
+    [sessionId, effort, updateSession],
   )
 
   const handleEffortChange = useCallback(
