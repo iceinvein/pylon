@@ -1,20 +1,5 @@
+import type { SdkMessage } from '../../../shared/types'
 import type { ActivityType, FlowElement, FlowGraph, FlowNode } from './flow-types'
-
-type SdkMessage = {
-  type: string
-  content?: unknown
-  subtype?: string
-  parent_tool_use_id?: string | null
-  is_error?: boolean
-  total_cost_usd?: number
-  duration_ms?: number
-  error?: string
-  message?: {
-    content?: ContentBlock[]
-    [key: string]: unknown
-  }
-  [key: string]: unknown
-}
 
 type ContentBlock = {
   type: string

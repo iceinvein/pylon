@@ -3,6 +3,7 @@ import { resolveContextWindow, resolveMaxOutputTokens } from '../../../shared/mo
 import type {
   PermissionRequest,
   QuestionRequest,
+  SdkMessage,
   SessionInitInfo,
   SessionStatus,
 } from '../../../shared/types'
@@ -25,11 +26,6 @@ type SessionStatusEvent = {
 
 type SessionPermissionEvent = PermissionRequest
 
-type SdkMessage = {
-  type: string
-  parent_tool_use_id?: string | null
-  [key: string]: unknown
-}
 
 type StreamEventMessage = {
   type: 'stream_event'
@@ -134,7 +130,7 @@ export function useIpcBridge(): void {
             })
             s.clearSubagentStream(parentToolUseId)
           }
-          s.appendSubagentMessage(parentToolUseId, message)
+          s.appendSubagentMessage(parentToolUseId, msg)
           return
         }
         flushPendingDeltas()
@@ -203,7 +199,7 @@ export function useIpcBridge(): void {
         store().setInitInfo(sessionId, initInfo)
       }
 
-      store().appendMessage(sessionId, message)
+      store().appendMessage(sessionId, msg)
 
       // Extract task state from assistant messages containing TodoWrite tool calls
       if (msg.type === 'assistant') {

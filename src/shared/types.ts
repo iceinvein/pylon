@@ -30,6 +30,32 @@ export type Tab = {
   hydrated?: boolean
 }
 
+/**
+ * Shape of a raw SDK message as received from the Claude/Codex provider
+ * and stored in the renderer's Zustand message store.
+ *
+ * Uses an index signature because SDK messages carry many provider-specific
+ * fields that vary by message type. The typed fields here are the ones the
+ * renderer actively reads.
+ */
+export type SdkMessage = {
+  type: string
+  role?: string
+  subtype?: string
+  content?: unknown
+  parent_tool_use_id?: string | null
+  session_id?: string
+  is_error?: boolean
+  error?: string
+  total_cost_usd?: number
+  duration_ms?: number
+  message?: {
+    content?: Array<{ type: string; [key: string]: unknown }>
+    [key: string]: unknown
+  }
+  [key: string]: unknown
+}
+
 export type SerializedMessage = {
   id: string
   sessionId: string

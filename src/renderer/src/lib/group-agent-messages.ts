@@ -3,18 +3,7 @@
  * Groups SDK messages into main thread vs subagent messages.
  */
 
-type SdkMessage = {
-  type: string
-  content?: unknown
-  subtype?: string
-  session_id?: string
-  parent_tool_use_id?: string | null
-  message?: {
-    content?: ContentBlock[]
-    [key: string]: unknown
-  }
-  [key: string]: unknown
-}
+import type { SdkMessage } from '../../../shared/types'
 
 type ContentBlock = {
   type: string

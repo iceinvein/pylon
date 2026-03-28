@@ -6,6 +6,7 @@ import type {
   PlanComment,
   PlanReviewStatus,
   QuestionRequest,
+  SdkMessage,
   SessionInitInfo,
   SessionStatus,
 } from '../../../shared/types'
@@ -43,14 +44,14 @@ type CachedDiff = {
 
 type SessionStore = {
   sessions: Map<string, SessionState>
-  messages: Map<string, unknown[]>
+  messages: Map<string, SdkMessage[]>
   pendingPermissions: PermissionRequest[]
   pendingQuestions: QuestionRequest[]
   streamingText: Map<string, string>
   /** Accumulated streaming text per subagent, keyed by parent_tool_use_id */
   subagentStreaming: Map<string, string>
   /** Complete subagent messages, keyed by parent_tool_use_id */
-  subagentMessages: Map<string, unknown[]>
+  subagentMessages: Map<string, SdkMessage[]>
   tasks: Map<string, TaskItem[]>
   /** SDK-reported status per session (e.g. 'compacting') */
   sdkStatus: Map<string, string | null>
@@ -65,8 +66,8 @@ type SessionStore = {
 
   setSession: (session: SessionState) => void
   updateSession: (sessionId: string, updates: Partial<SessionState>) => void
-  appendMessage: (sessionId: string, message: unknown) => void
-  setMessages: (sessionId: string, messages: unknown[]) => void
+  appendMessage: (sessionId: string, message: SdkMessage) => void
+  setMessages: (sessionId: string, messages: SdkMessage[]) => void
   addPermission: (permission: PermissionRequest) => void
   removePermission: (requestId: string) => void
   addQuestion: (question: QuestionRequest) => void
@@ -75,7 +76,7 @@ type SessionStore = {
   clearStreamingText: (sessionId: string) => void
   appendSubagentStreamText: (agentToolUseId: string, text: string) => void
   clearSubagentStream: (agentToolUseId: string) => void
-  appendSubagentMessage: (agentToolUseId: string, message: unknown) => void
+  appendSubagentMessage: (agentToolUseId: string, message: SdkMessage) => void
   upsertTask: (sessionId: string, task: TaskItem) => void
   clearTasks: (sessionId: string) => void
   setSdkStatus: (sessionId: string, status: string | null) => void
