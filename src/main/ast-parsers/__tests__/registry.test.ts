@@ -1,5 +1,4 @@
 import { describe, expect, test } from 'bun:test'
-import type { LanguageParser } from '../types'
 import {
   getLanguageEntry,
   getLanguageName,
@@ -10,6 +9,7 @@ import {
   registerParser,
   registerResolver,
 } from '../registry'
+import type { LanguageParser } from '../types'
 
 // ── Helpers ──
 
