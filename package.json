@@ -39,7 +39,8 @@
     "remark-gfm": "^4.0.1",
     "shiki": "^4.0.2",
     "tailwindcss": "^4.2.2",
-    "web-tree-sitter": "^0.26.7",
+    "tree-sitter-wasms": "^0.1.13",
+    "web-tree-sitter": "0.24.7",
     "wouter": "^3.9.0",
     "zustand": "^5.0.12"
   },

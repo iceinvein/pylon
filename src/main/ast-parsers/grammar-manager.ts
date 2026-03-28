@@ -10,19 +10,6 @@ import { log } from '../../shared/logger'
 
 const glog = log.child('grammar-manager')
 
-// Use `any` for web-tree-sitter types since the declared types don't always
-// match the runtime API shape in Node/Electron environments.
-// biome-ignore lint/suspicious/noExplicitAny: web-tree-sitter dynamic import
-let TreeSitterModule: any = null
-
-// biome-ignore lint/suspicious/noExplicitAny: web-tree-sitter dynamic import
-async function getTreeSitterModule(): Promise<any> {
-  if (!TreeSitterModule) {
-    TreeSitterModule = await import('web-tree-sitter')
-  }
-  return TreeSitterModule
-}
-
 // ── CDN base URL ──
 
 const CDN_BASE = 'https://cdn.jsdelivr.net/npm/tree-sitter-wasms@latest/out'
@@ -34,6 +21,15 @@ let resourceDir: string | null = null
 // biome-ignore lint/suspicious/noExplicitAny: web-tree-sitter Parser instance
 let parserInstance: any = null
 let treeSitterInitialized = false
+
+/**
+ * Resolved Parser class (the constructor). Available only after initTreeSitter().
+ * In web-tree-sitter 0.24, the module default IS the Parser class.
+ * In 0.26+, it's a named export `Parser`.
+ * Parser.Language becomes available only after Parser.init() is called.
+ */
+// biome-ignore lint/suspicious/noExplicitAny: web-tree-sitter Parser class
+let ParserClass: any = null
 
 /** In-memory cache of loaded Language objects keyed by language name. */
 // biome-ignore lint/suspicious/noExplicitAny: web-tree-sitter Language objects
@@ -51,7 +47,7 @@ export function getCacheDir(): string {
 
 // ── Resource directory (bundled grammars) ──
 
-export function setResourceDir(dir: string): void {
+export function setResourceDir(dir: string | null): void {
   resourceDir = dir
 }
 
@@ -80,11 +76,13 @@ export function isGrammarCached(lang: string): boolean {
 export async function initTreeSitter(): Promise<void> {
   if (treeSitterInitialized) return
 
-  const mod = await getTreeSitterModule()
-  // web-tree-sitter exports Parser as both default and named — pick whichever exists
-  const Parser = mod.default ?? mod.Parser ?? mod
-  await Parser.init()
-  parserInstance = new Parser()
+  // Cast to any — web-tree-sitter's type declarations vary between versions.
+  // In 0.24 the module IS the Parser class; in 0.26+ it's a named export.
+  // biome-ignore lint/suspicious/noExplicitAny: web-tree-sitter version-agnostic import
+  const mod: any = await import('web-tree-sitter')
+  ParserClass = mod.Parser ?? mod.default?.Parser ?? mod.default ?? mod
+  await ParserClass.init()
+  parserInstance = new ParserClass()
   treeSitterInitialized = true
   glog.info('tree-sitter WASM runtime initialized')
 }
@@ -175,8 +173,15 @@ export async function loadGrammar(
   onProgress?: ProgressCallback,
   // biome-ignore lint/suspicious/noExplicitAny: web-tree-sitter Language object
 ): Promise<any | null> {
-  const mod = await getTreeSitterModule()
-  const Parser = mod.default ?? mod.Parser ?? mod
+  // Ensure tree-sitter is initialized (Parser.Language is only available after init)
+  await initTreeSitter()
+
+  // After init, ParserClass.Language is available
+  const Language = ParserClass?.Language
+  if (!Language?.load) {
+    glog.error('could not resolve Language.load from web-tree-sitter module')
+    return null
+  }
   const fileName = wasmFileName(lang)
 
   // 1. Try bundled grammars
@@ -185,7 +190,7 @@ export async function loadGrammar(
     if (fs.existsSync(bundledPath)) {
       glog.info(`loading bundled grammar: ${bundledPath}`)
       try {
-        const language = await Parser.Language.load(bundledPath)
+        const language = await Language.load(bundledPath)
         return language
       } catch (err) {
         glog.warn(`failed to load bundled grammar for ${lang}:`, err)
@@ -198,7 +203,7 @@ export async function loadGrammar(
   if (fs.existsSync(cachedPath)) {
     glog.info(`loading cached grammar: ${cachedPath}`)
     try {
-      const language = await Parser.Language.load(cachedPath)
+      const language = await Language.load(cachedPath)
       return language
     } catch (err) {
       glog.warn(`failed to load cached grammar for ${lang}, will re-download:`, err)
@@ -214,7 +219,7 @@ export async function loadGrammar(
   glog.info(`downloading grammar from CDN: ${url}`)
   try {
     await downloadFile(url, cachedPath, onProgress)
-    const language = await Parser.Language.load(cachedPath)
+    const language = await Language.load(cachedPath)
     glog.info(`grammar loaded for ${lang}`)
     return language
   } catch (err) {

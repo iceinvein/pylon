@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
-import { getCacheDir, isGrammarCached, setCacheDir } from '../grammar-manager'
+import { getCacheDir, isGrammarCached, setCacheDir, setResourceDir } from '../grammar-manager'
 
 // ── Helpers ──
 
@@ -13,6 +13,8 @@ beforeEach(() => {
   originalCacheDir = getCacheDir()
   tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pylon-grammar-test-'))
   setCacheDir(tmpDir)
+  // Clear any resource dir set by other test suites to isolate these tests
+  setResourceDir(null)
 })
 
 afterEach(() => {
