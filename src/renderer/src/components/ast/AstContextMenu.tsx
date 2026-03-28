@@ -61,7 +61,7 @@ export function AstContextMenu({
           <button
             type="button"
             onClick={handleExplain}
-            className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-base-text transition-colors hover:bg-base-bg-subtle"
+            className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-base-text text-sm transition-colors hover:bg-base-bg-subtle"
           >
             <Sparkles size={14} className="text-amber-400" />
             Explain with Claude

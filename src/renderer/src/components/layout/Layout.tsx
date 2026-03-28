@@ -155,7 +155,9 @@ export function Layout({ children }: LayoutProps) {
         )}
       </AnimatePresence>
       <div className="flex min-w-0 flex-1 flex-col pt-12">
-        {sidebarView !== 'pr-review' && sidebarView !== 'testing' && <TabBar />}
+        {sidebarView !== 'pr-review' && sidebarView !== 'testing' && sidebarView !== 'ast' && (
+          <TabBar />
+        )}
         <main className="min-h-0 flex-1 overflow-hidden">{children}</main>
         {sidebarView !== 'pr-review' && sidebarView !== 'testing' && (
           <StatusBar cwd={activeCwd} branchStatus={branchStatus} />
