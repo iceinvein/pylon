@@ -816,7 +816,11 @@ export class SessionManager {
   }
 
   private send(channel: string, data: unknown): void {
-    if (this.window && !this.window.isDestroyed()) {
+    if (!this.window) {
+      logger.warn(`IPC send before setWindow — dropping ${channel}`)
+      return
+    }
+    if (!this.window.isDestroyed()) {
       this.window.webContents.send(channel, data)
     }
   }
