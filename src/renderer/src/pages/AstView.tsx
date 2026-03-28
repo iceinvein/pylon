@@ -1,5 +1,6 @@
 import { Clock, FolderOpen, Loader2 } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
+import { AstChatPanel } from '../components/ast/AstChatPanel'
 import { AstSplitPanel } from '../components/ast/AstSplitPanel'
 import { AstToolbar } from '../components/ast/AstToolbar'
 import { CodePanel } from '../components/ast/CodePanel'
@@ -109,24 +110,27 @@ export function AstView() {
       )}
 
       {repoGraph && analysisStatus === 'ready' && (
-        <div className="min-h-0 flex-1">
-          <AstSplitPanel
-            left={
-              selectedFile && fileAst ? (
-                <FileAstView fileAst={fileAst} fileName={fileName} />
-              ) : (
-                <RepoMapView repoGraph={repoGraph} archAnalysis={archAnalysis} />
-              )
-            }
-            right={
-              <CodePanel
-                selectedFile={selectedFile}
-                fileAst={fileAst}
-                selectedNodeId={selectedNode}
-              />
-            }
-          />
-        </div>
+        <>
+          <div className="min-h-0 flex-1">
+            <AstSplitPanel
+              left={
+                selectedFile && fileAst ? (
+                  <FileAstView fileAst={fileAst} fileName={fileName} />
+                ) : (
+                  <RepoMapView repoGraph={repoGraph} archAnalysis={archAnalysis} />
+                )
+              }
+              right={
+                <CodePanel
+                  selectedFile={selectedFile}
+                  fileAst={fileAst}
+                  selectedNodeId={selectedNode}
+                />
+              }
+            />
+          </div>
+          <AstChatPanel />
+        </>
       )}
 
       {analysisStatus === 'error' && (
