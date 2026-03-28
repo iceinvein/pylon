@@ -1,17 +1,17 @@
-import { test, expect } from 'bun:test'
+import { expect, test } from 'bun:test'
 import type {
+  ArchAnalysis,
+  ArchLayer,
+  AstChatMessage,
   AstNode,
   AstNodeType,
-  FileNode,
-  ImportEdge,
-  RepoGraph,
-  ArchLayer,
-  ModuleCluster,
+  AstOverlay,
   CallEdge,
   DataFlow,
-  ArchAnalysis,
-  AstOverlay,
-  AstChatMessage,
+  FileNode,
+  ImportEdge,
+  ModuleCluster,
+  RepoGraph,
 } from '../../../shared/types'
 
 // ── AstNodeType ──
