@@ -62,16 +62,9 @@ describe('getParseableExtensions', () => {
     expect(exts.has('.jsx')).toBe(true)
   })
 
-  test('does not include tree-sitter-only extensions when tree-sitter is not registered', () => {
+  test('includes all known language extensions unconditionally', () => {
     const exts = getParseableExtensions()
-    expect(exts.has('.rs')).toBe(false)
-    expect(exts.has('.py')).toBe(false)
-    expect(exts.has('.go')).toBe(false)
-  })
-
-  test('includes tree-sitter extensions after registering tree-sitter parser', () => {
-    registerParser('tree-sitter', dummyParser)
-    const exts = getParseableExtensions()
+    // All language extensions are returned regardless of parser registration
     expect(exts.has('.rs')).toBe(true)
     expect(exts.has('.py')).toBe(true)
     expect(exts.has('.go')).toBe(true)

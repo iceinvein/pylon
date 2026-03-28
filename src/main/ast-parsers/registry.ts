@@ -143,11 +143,8 @@ export function getLanguageName(ext: string): string | null {
 export function getParseableExtensions(): Set<string> {
   const exts = new Set<string>()
   for (const lang of LANGUAGES) {
-    // Only include extensions whose parser type is registered
-    if (parserRegistry.has(lang.parserType)) {
-      for (const ext of lang.extensions) {
-        exts.add(ext)
-      }
+    for (const ext of lang.extensions) {
+      exts.add(ext)
     }
   }
   return exts

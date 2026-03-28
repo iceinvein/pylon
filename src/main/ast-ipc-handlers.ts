@@ -13,7 +13,7 @@ export function registerAstIpcHandlers(): void {
       status: 'parsing',
       message: 'Parsing files...',
     })
-    const graph = analyzeScope(args.scope)
+    const graph = await analyzeScope(args.scope)
     win.webContents.send(IPC.AST_REPO_GRAPH, graph)
     win.webContents.send(IPC.AST_ANALYSIS_PROGRESS, {
       status: 'analyzing',
@@ -89,7 +89,7 @@ export function registerAstIpcHandlers(): void {
     const { analyzeScope } = await import('./ast-analyzer')
     let graphSummary = `Scope: ${args.scope}`
     try {
-      const graph = analyzeScope(args.scope)
+      const graph = await analyzeScope(args.scope)
       const lines: string[] = [`Files: ${graph.files.length}`, `Edges: ${graph.edges.length}`, '']
       for (const file of graph.files.slice(0, 50)) {
         const decls = file.declarations.map((d) => `${d.type}:${d.name}`).join(', ')

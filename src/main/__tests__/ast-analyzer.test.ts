@@ -278,7 +278,7 @@ export default Greeting
 // ── buildImportGraph ──
 
 describe('buildImportGraph', () => {
-  test('resolves relative imports to absolute paths', () => {
+  test('resolves relative imports to absolute paths', async () => {
     const subDir = path.join(tmpDir, 'graph-test')
     fs.mkdirSync(subDir, { recursive: true })
 
@@ -294,7 +294,7 @@ console.log(helper())
 `,
     )
 
-    const graph = buildImportGraph(subDir)
+    const graph = await buildImportGraph(subDir)
     expect(graph.files.length).toBeGreaterThanOrEqual(2)
 
     const mainFile = graph.files.find((f) => f.filePath.endsWith('main.ts'))
@@ -312,7 +312,7 @@ console.log(helper())
     expect(edge?.specifiers).toContain('helper')
   })
 
-  test('ignores node_modules imports in edges', () => {
+  test('ignores node_modules imports in edges', async () => {
     const subDir = path.join(tmpDir, 'nm-test')
     fs.mkdirSync(subDir, { recursive: true })
 
@@ -329,7 +329,7 @@ const x = 1
 `,
     )
 
-    const graph = buildImportGraph(subDir)
+    const graph = await buildImportGraph(subDir)
 
     // Edge for react should NOT exist (not a relative import resolving to a file)
     const reactEdge = graph.edges.find((e) => e.target === 'react')
@@ -340,7 +340,7 @@ const x = 1
     expect(helperEdge).toBeDefined()
   })
 
-  test('ignores excluded directories', () => {
+  test('ignores excluded directories', async () => {
     const subDir = path.join(tmpDir, 'exclude-test')
     fs.mkdirSync(path.join(subDir, 'node_modules', 'pkg'), { recursive: true })
     fs.mkdirSync(path.join(subDir, 'dist'), { recursive: true })
@@ -350,7 +350,7 @@ const x = 1
     writeFixture('exclude-test/node_modules/pkg/index.ts', `const y = 2\n`)
     writeFixture('exclude-test/dist/bundle.js', `const z = 3\n`)
 
-    const graph = buildImportGraph(subDir)
+    const graph = await buildImportGraph(subDir)
     const filePaths = graph.files.map((f) => f.filePath)
 
     expect(filePaths.some((p) => p.includes('node_modules'))).toBe(false)
@@ -358,14 +358,14 @@ const x = 1
     expect(filePaths.some((p) => p.endsWith('index.ts'))).toBe(true)
   })
 
-  test('resolves imports with index files', () => {
+  test('resolves imports with index files', async () => {
     const subDir = path.join(tmpDir, 'index-test')
     fs.mkdirSync(path.join(subDir, 'lib'), { recursive: true })
 
     writeFixture('index-test/lib/index.ts', `export const value = 42\n`)
     writeFixture('index-test/main.ts', `import { value } from './lib'\nconst x = value\n`)
 
-    const graph = buildImportGraph(subDir)
+    const graph = await buildImportGraph(subDir)
     const edge = graph.edges.find(
       (e) => e.source.endsWith('main.ts') && e.target.endsWith('lib/index.ts'),
     )
@@ -376,14 +376,14 @@ const x = 1
 // ── analyzeScope ──
 
 describe('analyzeScope', () => {
-  test('returns a complete RepoGraph', () => {
+  test('returns a complete RepoGraph', async () => {
     const subDir = path.join(tmpDir, 'scope-test')
     fs.mkdirSync(subDir, { recursive: true })
 
     writeFixture('scope-test/a.ts', `export function alpha() { return 1 }\n`)
     writeFixture('scope-test/b.ts', `import { alpha } from './a'\nconst x = alpha()\n`)
 
-    const graph = analyzeScope(subDir)
+    const graph = await analyzeScope(subDir)
     expect(graph.files).toBeDefined()
     expect(graph.edges).toBeDefined()
     expect(graph.files.length).toBe(2)
@@ -420,5 +420,28 @@ describe('parseFileCached', () => {
     // Should return equivalent results
     expect(result1.declarations.length).toBe(result2.declarations.length)
     expect(result1.declarations[0]?.name).toBe(result2.declarations[0]?.name)
+  })
+})
+
+// ── Multi-language analyzeScope ──
+
+describe('multi-language analyzeScope', () => {
+  test('collects Python files alongside TS files', async () => {
+    const subDir = path.join(tmpDir, 'multi-lang-test')
+    fs.mkdirSync(subDir, { recursive: true })
+
+    writeFixture('multi-lang-test/index.ts', `export const greeting = "hello"\n`)
+    writeFixture('multi-lang-test/main.py', `import os\n\ndef run():\n    print("hello")\n`)
+
+    const graph = await analyzeScope(subDir)
+    expect(graph.files).toBeDefined()
+
+    const tsFile = graph.files.find((f) => f.filePath.endsWith('index.ts'))
+    expect(tsFile).toBeDefined()
+    expect(tsFile?.language).toBe('typescript')
+
+    const pyFile = graph.files.find((f) => f.filePath.endsWith('main.py'))
+    expect(pyFile).toBeDefined()
+    expect(pyFile?.language).toBe('python')
   })
 })
