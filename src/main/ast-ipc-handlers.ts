@@ -1,5 +1,5 @@
-import { app, BrowserWindow, ipcMain } from 'electron'
 import * as path from 'node:path'
+import { app, BrowserWindow, ipcMain } from 'electron'
 import { IPC } from '../shared/ipc-channels'
 import { log } from '../shared/logger'
 
