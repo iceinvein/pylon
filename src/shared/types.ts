@@ -518,3 +518,97 @@ export type GoalSuggestionUpdate = {
   status: 'loading' | 'done' | 'error'
   error?: string
 }
+
+// ── AST Visualizer Types ──
+
+export type AstNodeType =
+  | 'function'
+  | 'class'
+  | 'type'
+  | 'variable'
+  | 'import'
+  | 'export'
+  | 'block'
+  | 'statement'
+  | 'expression'
+  | 'parameter'
+  | 'other'
+
+export type AstNode = {
+  id: string
+  type: AstNodeType
+  name: string
+  startLine: number
+  endLine: number
+  children: AstNode[]
+  filePath: string
+}
+
+export type FileNode = {
+  filePath: string
+  language: string
+  declarations: AstNode[]
+  imports: ImportEdge[]
+  size: number
+  lastModified: number
+}
+
+export type ImportEdge = {
+  source: string
+  target: string
+  specifiers: string[]
+}
+
+export type RepoGraph = {
+  files: FileNode[]
+  edges: ImportEdge[]
+}
+
+export type ArchLayer = {
+  id: string
+  name: string
+  color: string
+  pattern: string
+}
+
+export type ModuleCluster = {
+  id: string
+  name: string
+  description: string
+  files: string[]
+  layerId: string
+}
+
+export type CallEdge = {
+  caller: { filePath: string; symbolName: string }
+  callee: { filePath: string; symbolName: string }
+}
+
+export type DataFlowStep = {
+  filePath: string
+  symbolName: string
+  direction: 'in' | 'out' | 'transform'
+}
+
+export type DataFlow = {
+  id: string
+  name: string
+  description: string
+  steps: DataFlowStep[]
+}
+
+export type ArchAnalysis = {
+  layers: ArchLayer[]
+  clusters: ModuleCluster[]
+  annotations: Record<string, string>
+  callEdges: CallEdge[]
+  dataFlows: DataFlow[]
+}
+
+export type AstOverlay = 'deps' | 'calls' | 'dataflow'
+
+export type AstChatMessage = {
+  role: 'user' | 'assistant'
+  content: string
+  highlights?: Array<{ filePath: string; symbolName: string }>
+}
