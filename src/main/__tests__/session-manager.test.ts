@@ -146,16 +146,25 @@ function initTestDb() {
   `)
 }
 
-describe('SessionManager', () => {
-  // biome-ignore lint/suspicious/noExplicitAny: test helper — type not available at compile time
-  let SessionManager: any
+// Helper: get a fresh SessionManager instance.
+// Uses dynamic import and falls back through export styles to handle
+// Bun mock.module quirks across versions (class export may be missing).
+async function createSM() {
+  const mod = await import('../session-manager')
+  const Ctor =
+    mod.SessionManager ??
+    (mod.sessionManager && Object.getPrototypeOf(mod.sessionManager).constructor)
+  if (!Ctor || Ctor === Object) {
+    throw new Error(
+      `SessionManager class not available. Module exports: ${Object.keys(mod).join(', ')}`,
+    )
+  }
+  return new Ctor()
+}
 
+describe('SessionManager', () => {
   beforeEach(() => {
     initTestDb()
-    // Use require() instead of dynamic import() — Bun 1.3.11 on Linux
-    // drops class exports from dynamically imported modules when
-    // mock.module is active. require() resolves correctly.
-    SessionManager = require('../session-manager').SessionManager
   })
 
   afterEach(() => {
@@ -164,7 +173,7 @@ describe('SessionManager', () => {
 
   describe('createSession', () => {
     test('creates a session and persists to DB', async () => {
-      const sm = new SessionManager()
+      const sm = await createSM()
       const id = await sm.createSession('/tmp/project')
 
       expect(id).toBeTruthy()
@@ -182,7 +191,7 @@ describe('SessionManager', () => {
     })
 
     test('uses specified model', async () => {
-      const sm = new SessionManager()
+      const sm = await createSM()
       const id = await sm.createSession('/tmp/project', 'claude-sonnet-4-6')
 
       const row = rawDb.query('SELECT model FROM sessions WHERE id = ?').get(id) as {
@@ -192,7 +201,7 @@ describe('SessionManager', () => {
     })
 
     test('uses custom source', async () => {
-      const sm = new SessionManager()
+      const sm = await createSM()
       const id = await sm.createSession('/tmp/project', undefined, false, 'internal')
 
       const row = rawDb.query('SELECT source FROM sessions WHERE id = ?').get(id) as {
@@ -202,7 +211,7 @@ describe('SessionManager', () => {
     })
 
     test('generates unique IDs', async () => {
-      const sm = new SessionManager()
+      const sm = await createSM()
       const id1 = await sm.createSession('/tmp/a')
       const id2 = await sm.createSession('/tmp/b')
       expect(id1).not.toBe(id2)
@@ -211,22 +220,22 @@ describe('SessionManager', () => {
 
   describe('getSessionInfo', () => {
     test('returns model and permission mode for active session', async () => {
-      const sm = new SessionManager()
+      const sm = await createSM()
       const id = await sm.createSession('/tmp/project', 'claude-sonnet-4-6')
 
       const info = sm.getSessionInfo(id)
       expect(info).toEqual({ model: 'claude-sonnet-4-6', permissionMode: 'default' })
     })
 
-    test('returns null for unknown session', () => {
-      const sm = new SessionManager()
+    test('returns null for unknown session', async () => {
+      const sm = await createSM()
       expect(sm.getSessionInfo('nonexistent')).toBeNull()
     })
   })
 
   describe('setPermissionMode', () => {
     test('updates permission mode in memory and DB', async () => {
-      const sm = new SessionManager()
+      const sm = await createSM()
       const id = await sm.createSession('/tmp/project')
 
       sm.setPermissionMode(id, 'auto-approve')
@@ -240,15 +249,15 @@ describe('SessionManager', () => {
       expect(row.permission_mode).toBe('auto-approve')
     })
 
-    test('no-ops for unknown session', () => {
-      const sm = new SessionManager()
+    test('no-ops for unknown session', async () => {
+      const sm = await createSM()
       sm.setPermissionMode('nonexistent', 'auto-approve')
     })
   })
 
   describe('setModel', () => {
     test('updates model in memory and DB', async () => {
-      const sm = new SessionManager()
+      const sm = await createSM()
       const id = await sm.createSession('/tmp/project')
 
       sm.setModel(id, 'claude-haiku-4-5')
@@ -265,25 +274,23 @@ describe('SessionManager', () => {
 
   describe('onMessage', () => {
     test('subscribe and unsubscribe', async () => {
-      const sm = new SessionManager()
+      const sm = await createSM()
       const id = await sm.createSession('/tmp/project')
 
       const received: unknown[] = []
-      const unsub = sm.onMessage(id, (msg) => received.push(msg))
+      const unsub = sm.onMessage(id, (msg: unknown) => received.push(msg))
       expect(typeof unsub).toBe('function')
 
       unsub()
-      // After unsubscribe, listener map should be cleaned up
     })
 
     test('multiple listeners on same session', async () => {
-      const sm = new SessionManager()
+      const sm = await createSM()
       const id = await sm.createSession('/tmp/project')
 
       const unsub1 = sm.onMessage(id, () => {})
       const unsub2 = sm.onMessage(id, () => {})
 
-      // Both registered without error
       unsub1()
       unsub2()
     })
@@ -291,7 +298,7 @@ describe('SessionManager', () => {
 
   describe('resolvePermission', () => {
     test('resolves pending permission for the correct request', async () => {
-      const sm = new SessionManager()
+      const sm = await createSM()
       const id = await sm.createSession('/tmp/project')
 
       let resolved = false
@@ -312,7 +319,7 @@ describe('SessionManager', () => {
     })
 
     test('no-ops for unknown request ID', async () => {
-      const sm = new SessionManager()
+      const sm = await createSM()
       await sm.createSession('/tmp/project')
       sm.resolvePermission({ requestId: 'nonexistent', behavior: 'deny' })
     })
@@ -320,7 +327,7 @@ describe('SessionManager', () => {
 
   describe('resolveQuestion', () => {
     test('resolves pending question', async () => {
-      const sm = new SessionManager()
+      const sm = await createSM()
       const id = await sm.createSession('/tmp/project')
 
       let resolvedAnswers: Record<string, string> = {}
@@ -330,7 +337,7 @@ describe('SessionManager', () => {
         pendingQuestions: Map<string, { resolve: (r: Record<string, string>) => void }>
       }
       session.pendingQuestions.set('q-1', {
-        resolve: (answers) => {
+        resolve: (answers: Record<string, string>) => {
           resolvedAnswers = answers
         },
       })
@@ -343,10 +350,10 @@ describe('SessionManager', () => {
 
   describe('resumeSession', () => {
     test('resumes a session from DB', async () => {
-      const sm = new SessionManager()
+      const sm = await createSM()
       const id = await sm.createSession('/tmp/project')
 
-      const sm2 = new SessionManager()
+      const sm2 = await createSM()
       expect(sm2.getSessionInfo(id)).toBeNull()
 
       const resumed = sm2.resumeSession(id)
@@ -354,13 +361,13 @@ describe('SessionManager', () => {
       expect(sm2.getSessionInfo(id)).toBeTruthy()
     })
 
-    test('returns false for nonexistent session', () => {
-      const sm = new SessionManager()
+    test('returns false for nonexistent session', async () => {
+      const sm = await createSM()
       expect(sm.resumeSession('nonexistent')).toBe(false)
     })
 
     test('returns true if session already in memory', async () => {
-      const sm = new SessionManager()
+      const sm = await createSM()
       const id = await sm.createSession('/tmp/project')
       expect(sm.resumeSession(id)).toBe(true)
     })
@@ -368,7 +375,7 @@ describe('SessionManager', () => {
 
   describe('stopSession', () => {
     test('sets status to done', async () => {
-      const sm = new SessionManager()
+      const sm = await createSM()
       const id = await sm.createSession('/tmp/project')
 
       await sm.stopSession(id)
@@ -380,14 +387,14 @@ describe('SessionManager', () => {
     })
 
     test('no-ops for unknown session', async () => {
-      const sm = new SessionManager()
+      const sm = await createSM()
       await sm.stopSession('nonexistent')
     })
   })
 
   describe('deleteSession', () => {
     test('removes session from DB', async () => {
-      const sm = new SessionManager()
+      const sm = await createSM()
       const id = await sm.createSession('/tmp/project')
 
       await sm.deleteSession(id)
@@ -399,7 +406,7 @@ describe('SessionManager', () => {
 
   describe('getStoredSessions / getSessionMessages', () => {
     test('returns stored user sessions', async () => {
-      const sm = new SessionManager()
+      const sm = await createSM()
       await sm.createSession('/tmp/a')
       await sm.createSession('/tmp/b')
 
@@ -408,7 +415,7 @@ describe('SessionManager', () => {
     })
 
     test('returns empty messages for new session', async () => {
-      const sm = new SessionManager()
+      const sm = await createSM()
       const id = await sm.createSession('/tmp/project')
 
       const messages = sm.getSessionMessages(id)
@@ -418,51 +425,54 @@ describe('SessionManager', () => {
 
   describe('getProjectFolders', () => {
     test('returns unique project folders', async () => {
-      const sm = new SessionManager()
+      const sm = await createSM()
       await sm.createSession('/tmp/project-a')
       await sm.createSession('/tmp/project-b')
       await sm.createSession('/tmp/project-a')
 
       const folders = sm.getProjectFolders()
       expect(folders).toHaveLength(2)
-      expect(folders.map((f) => f.path).sort()).toEqual(['/tmp/project-a', '/tmp/project-b'])
+      expect(folders.map((f: { path: string }) => f.path).sort()).toEqual([
+        '/tmp/project-a',
+        '/tmp/project-b',
+      ])
     })
   })
 
   describe('model context window caching', () => {
-    test('persists and loads context windows from settings', () => {
+    test('persists and loads context windows from settings', async () => {
       rawDb.exec(
         "INSERT INTO settings (key, value) VALUES ('context_window:claude-sonnet-4-6', '200000')",
       )
 
-      const sm = new SessionManager()
+      const sm = await createSM()
       expect(sm.getModelContextWindow('claude-sonnet-4-6')).toBe(200000)
     })
 
-    test('returns undefined for unknown model', () => {
-      const sm = new SessionManager()
+    test('returns undefined for unknown model', async () => {
+      const sm = await createSM()
       expect(sm.getModelContextWindow('unknown-model')).toBeUndefined()
     })
 
-    test('persists and loads max output tokens', () => {
+    test('persists and loads max output tokens', async () => {
       rawDb.exec(
         "INSERT INTO settings (key, value) VALUES ('max_output_tokens:claude-sonnet-4-6', '8192')",
       )
 
-      const sm = new SessionManager()
+      const sm = await createSM()
       expect(sm.getModelMaxOutputTokens('claude-sonnet-4-6')).toBe(8192)
     })
   })
 
   describe('delegation to extracted services', () => {
     test('checkRepoStatus delegates to gitWorktreeService', async () => {
-      const sm = new SessionManager()
+      const sm = await createSM()
       const result = await sm.checkRepoStatus('/tmp/repo')
       expect(result).toEqual({ isGitRepo: true, isDirty: false })
     })
 
     test('getWorktreeInfo delegates to gitWorktreeService', async () => {
-      const sm = new SessionManager()
+      const sm = await createSM()
       const id = await sm.createSession('/tmp/project')
       const info = sm.getWorktreeInfo(id)
       expect(info).toHaveProperty('worktreePath')
