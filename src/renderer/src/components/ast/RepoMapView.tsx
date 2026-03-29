@@ -1,9 +1,10 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ArchAnalysis, RepoGraph } from '../../../../shared/types'
 import { computeRepoLayout, type LayoutEdge, type LayoutNode } from '../../lib/ast-layout'
 import { useAstStore } from '../../store/ast-store'
 import { AstContextMenu } from './AstContextMenu'
 import { GraphCanvas } from './GraphCanvas'
+import { Minimap } from './Minimap'
 
 type ContextMenuState = {
   x: number
@@ -56,6 +57,21 @@ export function RepoMapView({ repoGraph, archAnalysis }: RepoMapViewProps) {
   const zoom = useAstStore((s) => s.zoom)
 
   const [contextMenu, setContextMenu] = useState<ContextMenuState>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 })
+
+  // Track container dimensions for minimap viewport calculation
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setCanvasSize({ width: entry.contentRect.width, height: entry.contentRect.height })
+      }
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
 
   const layout = useMemo(
     () => computeRepoLayout(repoGraph, archAnalysis, expandedClusters),
@@ -287,8 +303,8 @@ export function RepoMapView({ repoGraph, archAnalysis }: RepoMapViewProps) {
   return (
     <>
       {/* biome-ignore lint/a11y/useKeyWithClickEvents: canvas click to clear focus */}
-      <div onClick={handleCanvasClick} className="h-full w-full">
-        <GraphCanvas>
+      <div ref={containerRef} onClick={handleCanvasClick} className="relative h-full w-full">
+        <GraphCanvas layoutNodes={layout.nodes}>
           {/* Cluster background rects for expanded clusters */}
           {layout.clusters.map((cluster) => (
             <g key={cluster.id}>
@@ -344,6 +360,11 @@ export function RepoMapView({ repoGraph, archAnalysis }: RepoMapViewProps) {
           {/* File / cluster nodes */}
           {layout.nodes.map(renderNode)}
         </GraphCanvas>
+        <Minimap
+          nodes={layout.nodes}
+          canvasWidth={canvasSize.width}
+          canvasHeight={canvasSize.height}
+        />
       </div>
 
       {contextMenu && (

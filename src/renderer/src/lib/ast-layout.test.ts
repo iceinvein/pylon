@@ -41,16 +41,30 @@ describe('computeRepoLayout', () => {
     expect(layout.clusters).toHaveLength(0)
   })
 
-  test('positions nodes for a simple graph without analysis', () => {
+  test('positions nodes for a simple graph without analysis (collapsed)', () => {
     const graph: RepoGraph = {
       files: [makeFileNode('/src/a.ts'), makeFileNode('/src/b.ts'), makeFileNode('/src/c.ts')],
       edges: [{ source: '/src/a.ts', target: '/src/b.ts', specifiers: ['foo'] }],
     }
+    // Default: dirs collapsed — all files in /src become one summary node
     const layout = computeRepoLayout(graph, null)
+    expect(layout.nodes).toHaveLength(1)
+    expect(layout.nodes[0].isCluster).toBe(true)
+    expect(layout.nodes[0].fileCount).toBe(3)
+    // Edges within same collapsed dir are dropped (self-loop)
+    expect(layout.edges).toHaveLength(0)
+  })
+
+  test('positions nodes for a simple graph with expanded clusters', () => {
+    const graph: RepoGraph = {
+      files: [makeFileNode('/src/a.ts'), makeFileNode('/src/b.ts'), makeFileNode('/src/c.ts')],
+      edges: [{ source: '/src/a.ts', target: '/src/b.ts', specifiers: ['foo'] }],
+    }
+    const expanded = new Set(['/src'])
+    const layout = computeRepoLayout(graph, null, expanded)
 
     expect(layout.nodes).toHaveLength(3)
     expect(layout.edges).toHaveLength(1)
-    expect(layout.clusters).toHaveLength(0)
 
     // All nodes should have finite coordinates
     for (const node of layout.nodes) {
@@ -71,9 +85,22 @@ describe('computeRepoLayout', () => {
       files: [makeFileNode('/src/utils/helpers.ts')],
       edges: [],
     }
-    const layout = computeRepoLayout(graph, null)
+    // Expand the directory to see individual file nodes
+    const expanded = new Set(['/src/utils'])
+    const layout = computeRepoLayout(graph, null, expanded)
     expect(layout.nodes[0].name).toBe('helpers.ts')
     expect(layout.nodes[0].filePath).toBe('/src/utils/helpers.ts')
+  })
+
+  test('collapsed directory shows summary name with file count', () => {
+    const graph: RepoGraph = {
+      files: [makeFileNode('/src/utils/helpers.ts'), makeFileNode('/src/utils/format.ts')],
+      edges: [],
+    }
+    const layout = computeRepoLayout(graph, null)
+    expect(layout.nodes).toHaveLength(1)
+    expect(layout.nodes[0].name).toBe('utils (2)')
+    expect(layout.nodes[0].isCluster).toBe(true)
   })
 
   test('filters out edges referencing non-existent nodes', () => {
@@ -105,25 +132,28 @@ describe('computeRepoLayout', () => {
       callEdges: [],
       dataFlows: [],
     }
-    const layout = computeRepoLayout(graph, analysis)
+    // Expand the directory so individual nodes are visible
+    const expanded = new Set(['/src'])
+    const layout = computeRepoLayout(graph, analysis, expanded)
 
-    // Nodes should have cluster and color
+    // Nodes should have arch-analysis cluster and color
     for (const node of layout.nodes) {
       expect(node.clusterId).toBe('cluster-1')
       expect(node.layerColor).toBe('#4af')
     }
 
-    // Should produce a cluster bounding box
-    expect(layout.clusters).toHaveLength(1)
-    expect(layout.clusters[0].name).toBe('Components')
-    expect(layout.clusters[0].color).toBe('#4af')
-    expect(layout.clusters[0].width).toBeGreaterThan(0)
-    expect(layout.clusters[0].height).toBeGreaterThan(0)
+    // Should produce arch-analysis cluster bounding box + dir cluster
+    const archCluster = layout.clusters.find((c) => c.name === 'Components')
+    expect(archCluster).toBeDefined()
+    expect(archCluster!.color).toBe('#4af')
+    expect(archCluster!.width).toBeGreaterThan(0)
+    expect(archCluster!.height).toBeGreaterThan(0)
   })
 
   test('cluster bounding box encloses all cluster nodes', () => {
+    // Use files in different directories to get multiple expanded nodes
     const graph: RepoGraph = {
-      files: [makeFileNode('/a.ts'), makeFileNode('/b.ts'), makeFileNode('/c.ts')],
+      files: [makeFileNode('/src/a.ts'), makeFileNode('/src/b.ts'), makeFileNode('/src/c.ts')],
       edges: [],
     }
     const analysis: ArchAnalysis = {
@@ -133,7 +163,7 @@ describe('computeRepoLayout', () => {
           id: 'c1',
           name: 'All',
           description: '',
-          files: ['/a.ts', '/b.ts', '/c.ts'],
+          files: ['/src/a.ts', '/src/b.ts', '/src/c.ts'],
           layerId: 'l1',
         },
       ],
@@ -141,29 +171,35 @@ describe('computeRepoLayout', () => {
       callEdges: [],
       dataFlows: [],
     }
-    const layout = computeRepoLayout(graph, analysis)
-    const cluster = layout.clusters[0]
+    // Expand the directory so individual nodes appear
+    const expanded = new Set(['/src'])
+    const layout = computeRepoLayout(graph, analysis, expanded)
+    const cluster = layout.clusters.find((c) => c.name === 'All')
+    expect(cluster).toBeDefined()
 
     for (const node of layout.nodes) {
-      // Node center should be within cluster bounds (with padding)
-      expect(node.x).toBeGreaterThanOrEqual(cluster.x)
-      expect(node.y).toBeGreaterThanOrEqual(cluster.y)
-      expect(node.x + node.width).toBeLessThanOrEqual(cluster.x + cluster.width)
-      expect(node.y + node.height).toBeLessThanOrEqual(cluster.y + cluster.height)
+      // Node should be within cluster bounds (with padding)
+      expect(node.x).toBeGreaterThanOrEqual(cluster!.x)
+      expect(node.y).toBeGreaterThanOrEqual(cluster!.y)
+      expect(node.x + node.width).toBeLessThanOrEqual(cluster!.x + cluster!.width)
+      expect(node.y + node.height).toBeLessThanOrEqual(cluster!.y + cluster!.height)
     }
   })
 
   test('nodes are not all at the same position', () => {
+    // Use files in different directories to get multiple nodes
     const graph: RepoGraph = {
       files: [
-        makeFileNode('/a.ts'),
-        makeFileNode('/b.ts'),
-        makeFileNode('/c.ts'),
-        makeFileNode('/d.ts'),
+        makeFileNode('/src/a.ts'),
+        makeFileNode('/lib/b.ts'),
+        makeFileNode('/utils/c.ts'),
+        makeFileNode('/test/d.ts'),
       ],
       edges: [],
     }
+    // Default collapsed: each dir becomes one summary node (4 dirs = 4 nodes)
     const layout = computeRepoLayout(graph, null)
+    expect(layout.nodes).toHaveLength(4)
     const xs = new Set(layout.nodes.map((n) => Math.round(n.x)))
     const ys = new Set(layout.nodes.map((n) => Math.round(n.y)))
     // With 4 nodes and force simulation, they should spread out
