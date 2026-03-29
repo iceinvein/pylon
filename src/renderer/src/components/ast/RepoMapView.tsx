@@ -80,6 +80,8 @@ export function RepoMapView({ repoGraph, archAnalysis }: RepoMapViewProps) {
   )
 
   const showDeps = activeOverlays.has('deps')
+  const showCalls = activeOverlays.has('calls')
+  const showDataflow = activeOverlays.has('dataflow')
 
   // Zoom-level buckets
   const zoomLevel: 'overview' | 'standard' | 'detail' =
@@ -360,6 +362,78 @@ export function RepoMapView({ repoGraph, archAnalysis }: RepoMapViewProps) {
                 />
               )
             })}
+
+          {/* Call edges (from Claude analysis) */}
+          {showCalls &&
+            archAnalysis?.callEdges?.map((edge, i) => {
+              const sourceNode = layout.nodes.find((n) => n.filePath === edge.caller.filePath)
+              const targetNode = layout.nodes.find((n) => n.filePath === edge.callee.filePath)
+              if (!sourceNode || !targetNode) return null
+              if (sourceNode.id === targetNode.id) return null
+              const x1 = sourceNode.x + sourceNode.width / 2
+              const y1 = sourceNode.y + sourceNode.height / 2
+              const x2 = targetNode.x + targetNode.width / 2
+              const y2 = targetNode.y + targetNode.height / 2
+              return (
+                <path
+                  key={`call-${i}`}
+                  d={curvedPath(x1, y1, x2, y2)}
+                  fill="none"
+                  stroke="#d2a8ff"
+                  strokeWidth={1.5}
+                  strokeDasharray="4 2"
+                  opacity={
+                    focusedNode
+                      ? edge.caller.filePath === focusedNode || edge.callee.filePath === focusedNode
+                        ? 0.7
+                        : 0.08
+                      : 0.5
+                  }
+                />
+              )
+            })}
+
+          {/* Data flow paths (from Claude analysis) */}
+          {showDataflow &&
+            archAnalysis?.dataFlows?.map((flow) =>
+              flow.steps.map((step, i) => {
+                if (i === 0) return null
+                const prevStep = flow.steps[i - 1]
+                const sourceNode = layout.nodes.find((n) => n.filePath === prevStep.filePath)
+                const targetNode = layout.nodes.find((n) => n.filePath === step.filePath)
+                if (!sourceNode || !targetNode) return null
+                if (sourceNode.id === targetNode.id) return null
+                const x1 = sourceNode.x + sourceNode.width / 2
+                const y1 = sourceNode.y + sourceNode.height / 2
+                const x2 = targetNode.x + targetNode.width / 2
+                const y2 = targetNode.y + targetNode.height / 2
+                return (
+                  <g key={`flow-${flow.id}-${i}`}>
+                    <path
+                      d={curvedPath(x1, y1, x2, y2)}
+                      fill="none"
+                      stroke="#ffa657"
+                      strokeWidth={2}
+                      opacity={
+                        focusedNode
+                          ? prevStep.filePath === focusedNode || step.filePath === focusedNode
+                            ? 0.7
+                            : 0.08
+                          : 0.5
+                      }
+                    />
+                    {/* Arrow marker at midpoint */}
+                    <circle
+                      cx={(x1 + x2) / 2}
+                      cy={(y1 + y2) / 2}
+                      r={3}
+                      fill="#ffa657"
+                      opacity={0.6}
+                    />
+                  </g>
+                )
+              }),
+            )}
 
           {/* File / cluster nodes */}
           {layout.nodes.map(renderNode)}

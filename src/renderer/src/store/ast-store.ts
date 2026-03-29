@@ -14,8 +14,8 @@ type AstStore = {
   repoGraph: RepoGraph | null
   archAnalysis: ArchAnalysis | null
   fileAst: AstNode[] | null
-  selectedFile: string | null      // file shown in CodePanel (right pane)
-  drilledFile: string | null       // file drilled into AST tree (replaces repo map in left pane)
+  selectedFile: string | null // file shown in CodePanel (right pane)
+  drilledFile: string | null // file drilled into AST tree (replaces repo map in left pane)
   selectedNode: string | null
   hoveredNode: string | null
   activeOverlays: Set<AstOverlay>
