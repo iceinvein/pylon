@@ -5,8 +5,8 @@
 <h1 align="center">Pylon</h1>
 
 <p align="center">
-  A native desktop client for Claude, built on the <a href="https://www.npmjs.com/package/@anthropic-ai/claude-agent-sdk">Claude Agent SDK</a>.<br/>
-  Rich chat interface · tool visualization · git management · PR reviews · AI testing · multi-session tabs
+  <strong>A native desktop client for Claude that feels like an instrument, not a chat window.</strong><br/>
+  Built on the <a href="https://www.npmjs.com/package/@anthropic-ai/claude-agent-sdk">Claude Agent SDK</a>. Designed for deep work.
 </p>
 
 <p align="center">
@@ -18,241 +18,129 @@
 
 ---
 
-## Features
+<p align="center">
+  <img src="docs/screenshot-1.png" alt="Pylon — chat session with tool visualization and changes panel" width="800" />
+</p>
 
-### Chat & Conversation
+## Why Pylon
 
-- **Agentic chat** — Full Claude Agent SDK integration with tool use, extended thinking, and subagent orchestration
-- **Model selection** — Switch between Claude Opus 4.6, Sonnet 4.6, and Haiku 4.5
-- **Effort levels** — Adjust reasoning depth (low / medium / high / max) per session
-- **Real-time streaming** — Token streaming at 60 fps with delta batching via `requestAnimationFrame`
-- **Extended thinking** — Expandable/collapsible thinking blocks showing Claude's reasoning
-- **Subagent support** — Visual containers for multi-agent orchestration with threaded message history
-- **Session persistence** — All sessions and messages stored in SQLite (WAL mode), resumable across app restarts
-- **Session resume** — Resume previous sessions with full context restoration
-- **Context window indicator** — Live progress bar showing token usage vs. model context limit, with color-coded warnings
-- **Cost tracking** — Real-time token usage and USD cost per session
-- **Draft persistence** — Draft messages preserved across tab switches
+Most AI interfaces are web apps in a frame. Pylon is a desktop application — purpose-built for the way developers actually work. Multi-session tabs. Git worktrees that isolate each task. PR reviews that run in parallel. Every tool call rendered with intention, not dumped as JSON.
 
-### Tool Visualization
-
-Rich, purpose-built renderers for every tool Claude can use:
-
-| Tool | Rendering |
-|------|-----------|
-| **Bash** | Terminal-style output with ANSI color support |
-| **Read** | File contents with syntax highlighting |
-| **Edit** | Inline diff preview of changes |
-| **Write** | New file creation with content display |
-| **Glob / Grep** | File match results with paths |
-| **TodoWrite** | Task items extracted into a sidebar panel with status tracking |
-| **WebSearch** | Search results with clickable links |
-| **AskUserQuestion** | Multi-select question dialogs with option descriptions |
-| **Generic** | Fallback renderer for any other tool |
-
-### Git Management
-
-Full-featured git panel accessible from the navigation rail:
-
-- **Graph visualization** — Canvas-rendered commit graph with lane assignment, branch coloring, and interactive commit selection
-- **Branch list** — View and checkout local and remote branches
-- **Commit detail** — Inspect any commit with an AI "explain" button powered by Claude
-- **AI commit** — Stage files, get AI-generated commit messages with inline editing, and commit — all from the panel
-- **Natural language operations** — Type git operations in plain English (e.g. "rebase onto main") and Claude translates to commands with a confirmation step
-- **Conflict resolution** — AI-powered merge conflict resolver with per-file confidence badges
-
-### Git Worktree Isolation
-
-- **Automatic worktrees** — Optionally run each session in an isolated git worktree (`~/.pylon/worktrees/`)
-- **Dirty state detection** — Prompts to create a worktree when the repo has uncommitted changes
-- **Branch management** — Auto-creates branches named `claude/{title-slug}`
-- **Baseline diffing** — Captures git baseline on first Edit/Write to show only session changes
-- **Merge & cleanup** — Dialog to merge worktree changes back or discard, with conflict detection
-
-### File Change Tracking
-
-- **Changes panel** — Visual list of all modified/added/deleted/renamed files with status badges (A/M/D/R/U)
-- **Unified diffs** — View diffs for every file Claude has touched, computed against the session baseline
-- **Attachments** — Drag-and-drop or paste images and text files into the chat with inline previews
-
-### GitHub PR Reviews
-
-- **PR browsing** — List and inspect pull requests from your GitHub repos via `gh` CLI
-- **AI-powered reviews** — Multi-agent review system with specialized focus areas:
-  - **Security** — Authentication, injection, secrets, crypto flaws
-  - **Bugs** — Logic errors, null checks, state handling
-  - **Performance** — N+1 queries, unnecessary renders, memory leaks
-  - **Style** — Naming, formatting, consistency, duplication
-  - **Architecture** — Design patterns, abstractions, separation of concerns
-  - **UX** — User experience and usability concerns
-- **Smart chunking** — Large diffs automatically split into reviewable chunks for parallel agents
-- **Findings UI** — Severity-filtered results (critical / warning / suggestion / nitpick) with file and line references
-- **Split diff view** — Side-by-side diff display with inline finding annotations
-- **Post to GitHub** — Post individual findings or batch-post as a full review
-- **Review history** — Browse and revisit past reviews
-- **Custom prompts** — Edit each review agent's system prompt with reset-to-default
-
-### PR Creation
-
-- **Raise PRs from Pylon** — Create pull requests without leaving the app
-- **AI-generated descriptions** — Claude analyzes your commits and diffs to draft PR title and body
-- **Commit & file overview** — Review included commits and changed files before submitting
-- **Metadata controls** — Set base branch and squash preferences
-
-### AI Exploration Testing
-
-AI-powered E2E testing that explores your app and finds bugs:
-
-- **Project scanning** — Auto-detects framework, dev command, port, package manager, and Playwright config
-- **Dev server management** — Automatically starts and manages your dev server during test runs
-- **Goal suggestions** — Claude analyzes your project and suggests exploration goals
-- **Manual & requirements modes** — Explore freely or constrain agents to specific requirements
-- **Batch orchestration** — Run multiple exploration agents in parallel across different goals
-- **Findings dashboard** — Severity-graded results (critical / high / medium / low / info) with reproduction steps and screenshots
-- **Test generation** — Agents produce Playwright test files you can add to your suite
-- **Cost tracking** — Per-exploration token usage and cost
-
-### Plan Detection & Review
-
-- **Auto-detection** — Recognizes plan/design files (`*-plan.md`, `*-design.md`, `docs/plans/*`, `docs/specs/*`)
-- **Hierarchical parsing** — Sections parsed into H2 parent / H3 children structure
-- **Per-section comments** — Add comments to individual sections of a plan
-- **Approval flow** — Approve plans or request changes through a dedicated dialog
-
-### Tool Permissions
-
-- **Ask mode** — Interactive modal for each tool call, showing tool name and input preview
-- **Auto-approve mode** — "YOLO" mode that grants all permissions automatically
-- **Pattern suggestions** — Suggested permission patterns when granting access
-
-### UI & Navigation
-
-- **Multi-session tabs** — Open parallel sessions with `Cmd+N`, switch with `Cmd+1..9`
-- **Tab persistence** — Open tabs restored on app restart with lazy hydration
-- **Command palette** — Searchable quick-action menu (`Cmd+Shift+K`) with session commands, global commands, and recent sessions
-- **Navigation rail** — Left sidebar with Home, History, PR Review, AI Testing, and Settings views
-- **Status bar** — Bottom bar showing current branch, ahead/behind counts, and git panel toggle
-- **Agent flow visualization** — Graph view of agent/subagent execution with flow nodes
-- **Settings overlay** — Tabbed settings for general config, review agents, and integrations (`Cmd+K`)
-- **Plugin management** — View and toggle installed Claude Code plugins
-- **Dark theme** — Purpose-built dark interface
-- **Animated transitions** — Smooth motion effects via Motion (Framer Motion)
-
-### Usage Analytics
-
-- **Spending dashboard** — Daily cost trends (area chart), token usage by day, cost breakdown by model and project
-- **Top sessions** — 10 most expensive sessions at a glance
-- **Time filters** — 7-day, 30-day, 90-day, and all-time views
-
-### Keyboard Shortcuts
-
-| Shortcut | Action |
-|----------|--------|
-| `Cmd+N` | New tab |
-| `Cmd+1..9` | Switch to tab by index |
-| `Cmd+Shift+K` | Command palette |
-| `Cmd+K` | Settings |
-| `Escape` | Close modal / palette |
+It connects directly to your Claude Code authentication. No extra accounts. No browser tabs. Just open it and work.
 
 ---
 
-## Prerequisites
+## Chat
 
-- [Bun](https://bun.sh) v1.1+
-- A valid [Claude Code](https://claude.ai/code) login (the app uses your existing Claude Code authentication)
-- [GitHub CLI](https://cli.github.com/) (`gh`) — optional, required for PR review and PR creation features
+<!-- screenshot: chat view with streaming response and tool calls visible -->
+
+Full Claude Agent SDK integration with real-time token streaming, extended thinking, and multi-agent orchestration. Switch between Opus, Sonnet, and Haiku. Adjust reasoning effort per session. Resume any conversation where you left off — sessions persist in a local SQLite database.
+
+A context window indicator shows exactly where you stand. Cost tracking keeps you informed. Every session is a tab, and every tab remembers its draft.
+
+---
+
+## Tool Visualization
+
+<!-- screenshot: mix of tool renderers — Bash terminal output, Edit diff, TodoWrite panel -->
+
+Every tool Claude uses gets a purpose-built renderer. Bash output renders with ANSI colors. Edits show inline diffs. File reads display syntax-highlighted code. `TodoWrite` tasks extract into a sidebar panel you can track. Nothing is hidden behind "raw output" toggles.
+
+---
+
+## Git
+
+<!-- screenshot: git panel showing commit graph + AI commit dialog -->
+
+A full git panel lives in the navigation rail. Canvas-rendered commit graph with branch coloring and interactive selection. AI-generated commit messages from staged changes. Natural language git operations — type "rebase onto main" and Pylon translates, confirms, executes.
+
+When conflicts arise, an AI resolver walks through each file with confidence badges.
+
+**Worktree isolation** — Each session can run in its own git worktree. Pylon captures a baseline on the first edit, so diffs show only what changed in *this* session. When you're done, merge back or discard — all from a single dialog.
+
+---
+
+## PR Reviews
+
+<!-- screenshot: PR review view with split diff and finding annotations -->
+
+Select a pull request from your repo. Pylon dispatches specialized review agents in parallel — security, bugs, performance, style, architecture, UX — each with its own system prompt you can customize.
+
+Large diffs are automatically chunked for parallel processing. Findings surface with severity badges and precise file/line references. Review them in a split diff view with inline annotations, then post individual findings or a full review directly to GitHub.
+
+---
+
+## PR Creation
+
+<!-- screenshot: PR creation overlay with AI-generated description -->
+
+Raise pull requests without leaving the app. Claude analyzes your commits and diffs to draft the title and body. Review the included changes, set your base branch, and submit.
+
+---
+
+## AI Exploration Testing
+
+<!-- screenshot: test view with findings dashboard and severity breakdown -->
+
+Point Pylon at your project and it auto-detects your framework, dev command, and port. Claude suggests exploration goals, then dispatches agents to navigate your running app and find bugs.
+
+Findings come back with severity grades, reproduction steps, and screenshots. Agents generate Playwright test files you can add directly to your suite. Run multiple explorations in parallel across different goals.
+
+---
+
+## Usage Analytics
+
+<!-- screenshot: spending dashboard with area chart and model breakdown -->
+
+A spending dashboard tracks daily cost trends, token usage by model and project, and your most expensive sessions. Filter by 7, 30, or 90 days.
+
+---
 
 ## Getting Started
 
-```bash
-# Install dependencies
-bun install
+**Prerequisites**
+- [Bun](https://bun.sh) v1.1+
+- A [Claude Code](https://claude.ai/code) login
+- [GitHub CLI](https://cli.github.com/) (`gh`) — optional, for PR features
 
-# Start in development mode (with HMR)
+```bash
+bun install
 bun run dev
 ```
 
-## Scripts
+That's it. Pylon uses your existing Claude Code authentication.
 
-| Command | Description |
-|---------|-------------|
-| `bun run dev` | Start Electron dev server with HMR |
-| `bun run build` | Production build |
-| `bun run start` | Preview production build |
-| `bun run typecheck` | Typecheck main + renderer |
-| `bun run typecheck:node` | Typecheck main/preload only |
-| `bun run typecheck:web` | Typecheck renderer only |
-| `bun run lint` | Check lint + format violations |
-| `bun run lint:fix` | Auto-fix safe violations |
-| `bun run format` | Format all source files |
-| `bun test` | Run all tests |
+---
 
-## Architecture
+## Architecture & Contributing
 
-```
-src/
-├── main/                 # Electron main process
-│   ├── index.ts              # App bootstrap, window creation, DB init
-│   ├── session-manager.ts    # Session lifecycle, SDK orchestration, git worktrees
-│   ├── ipc-handlers.ts       # IPC channel registrations
-│   ├── db.ts                 # SQLite schema (WAL mode) & migrations
-│   ├── pr-review-manager.ts  # Multi-agent PR review orchestration
-│   ├── diff-chunker.ts       # Smart diff chunking for parallel review agents
-│   ├── gh-cli.ts             # GitHub CLI wrapper for PR operations
-│   ├── git-graph-service.ts  # Git log parsing and lane assignment
-│   ├── git-commit-service.ts # Staging, message generation, commit execution
-│   ├── git-ops-service.ts    # NL command execution and conflict handling
-│   ├── git-ai-bridge.ts      # Claude SDK bridge for git AI features
-│   ├── git-ipc-handlers.ts   # Git-specific IPC registrations
-│   ├── git-watcher.ts        # Filesystem watcher for git status changes
-│   ├── git-status.ts         # Branch status polling
-│   ├── test-manager.ts       # AI exploration test orchestration
-│   ├── test-tools.ts         # Playwright tool definitions for test agents
-│   ├── server-manager.ts     # Dev server lifecycle management
-│   ├── project-scanner.ts    # Framework/port/config auto-detection
-│   └── worktree-cleanup.ts   # Worktree lifecycle management
-├── preload/              # Context bridge (window.api)
-│   ├── index.ts
-│   └── index.d.ts
-├── renderer/src/         # React frontend
-│   ├── App.tsx               # Route dispatch, keyboard shortcuts, IPC bridge
-│   ├── pages/                # HomePage, SessionView, PrReviewView, TestView
-│   ├── store/                # Zustand stores (session, tab, ui, draft,
-│   │                         #   pr-review, pr-raise, git-graph, git-commit,
-│   │                         #   git-ops, test)
-│   ├── hooks/                # IPC bridge, folder picker, Shiki loader,
-│   │                         #   git bridge, test bridge, PR review bridge
-│   ├── lib/                  # Delta batcher, context usage, git graph layout,
-│   │                         #   task extraction, ANSI parser, flow graph
-│   └── components/
-│       ├── messages/         # Chat bubbles, thinking, permissions, questions
-│       ├── tools/            # Tool-specific renderers (Bash, Edit, etc.)
-│       ├── layout/           # Shell, NavRail, TabBar
-│       ├── git/              # GitPanel, GraphTab, CommitTab, OpsTab,
-│       │                     #   ConflictResolver, BranchList, CommitDetail
-│       ├── pr-review/        # PR list, detail, split diff, findings, review
-│       ├── pr-raise/         # PR creation overlay with AI descriptions
-│       ├── flow/             # Agent execution flow visualization
-│       └── review/           # Inline code review UI
-└── shared/               # Types, IPC channel constants, logger
-```
+Pylon is an [electron-vite](https://electron-vite.org/) project with three processes: main (Electron + Claude Agent SDK + SQLite), preload (typed IPC bridge), and renderer (React + Zustand + Tailwind).
 
-**Key data flow:** Renderer invokes `window.api.*()` → `ipcMain.handle()` → SessionManager calls Claude Agent SDK → messages stream back via IPC → delta batcher flushes to Zustand at 60 fps → React renders.
+For the full architecture breakdown, build scripts, and contribution guide, see [**docs/CONTRIBUTING.md**](docs/CONTRIBUTING.md).
 
-## Tech Stack
+<details>
+<summary><strong>Tech stack</strong></summary>
 
-- **Runtime:** [Electron 39](https://www.electronjs.org/) + [electron-vite](https://electron-vite.org/)
-- **Frontend:** [React 19](https://react.dev/), [Tailwind CSS 4](https://tailwindcss.com/), [Zustand](https://zustand.docs.pmnd.rs/)
-- **Routing:** [Wouter](https://github.com/molefrog/wouter)
-- **Database:** [better-sqlite3](https://github.com/WiseLibs/better-sqlite3) (WAL mode)
-- **AI:** [@anthropic-ai/claude-agent-sdk](https://www.npmjs.com/package/@anthropic-ai/claude-agent-sdk)
-- **Charts:** [Recharts](https://recharts.org/)
-- **Animations:** [Motion](https://motion.dev/) (formerly Framer Motion)
-- **Syntax Highlighting:** [Shiki](https://shiki.style/)
-- **Markdown:** [react-markdown](https://github.com/remarkjs/react-markdown) + [remark-gfm](https://github.com/remarkjs/remark-gfm)
-- **Icons:** [Lucide React](https://lucide.dev/)
-- **Linting:** [Biome](https://biomejs.dev/)
+<br/>
 
-## License
+| Layer | Technology |
+|-------|------------|
+| Runtime | [Electron 39](https://www.electronjs.org/) + [electron-vite](https://electron-vite.org/) |
+| Frontend | [React 19](https://react.dev/), [Tailwind CSS 4](https://tailwindcss.com/), [Zustand](https://zustand.docs.pmnd.rs/) |
+| Routing | [Wouter](https://github.com/molefrog/wouter) |
+| Database | [better-sqlite3](https://github.com/WiseLibs/better-sqlite3) (WAL mode) |
+| AI | [@anthropic-ai/claude-agent-sdk](https://www.npmjs.com/package/@anthropic-ai/claude-agent-sdk) |
+| Charts | [Recharts](https://recharts.org/) |
+| Animations | [Motion](https://motion.dev/) |
+| Syntax | [Shiki](https://shiki.style/) |
+| Markdown | [react-markdown](https://github.com/remarkjs/react-markdown) + [remark-gfm](https://github.com/remarkjs/remark-gfm) |
+| Icons | [Lucide React](https://lucide.dev/) |
+| Linting | [Biome](https://biomejs.dev/) |
 
-Private — not yet published.
+</details>
+
+---
+
+<p align="center">
+  <em>Private — not yet published.</em>
+</p>
