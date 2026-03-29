@@ -1,7 +1,7 @@
 import { Database } from 'bun:sqlite'
 import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
 
-// Mock electron
+// Mock electron — must provide ALL exports used transitively
 mock.module('electron', () => ({
   app: { getPath: () => '/tmp' },
   BrowserWindow: class {},
@@ -31,7 +31,9 @@ mock.module('../db', () => ({
   initDatabase: () => dbProxy,
 }))
 
-// Mock providers
+// Mock providers barrel — MUST provide ALL exports to avoid
+// Bun's process-global mock.module replacing the barrel with an
+// incomplete module (see ADR-012: Bun Test Mock Isolation Pattern).
 const mockCreateSession = mock(() => ({
   send: () => ({
     [Symbol.asyncIterator]() {
@@ -46,6 +48,7 @@ const mockCreateSession = mock(() => ({
 }))
 
 mock.module('../providers', () => ({
+  // Value exports from registry
   getProvider: () => ({
     id: 'claude',
     createSession: mockCreateSession,
@@ -54,6 +57,15 @@ mock.module('../providers', () => ({
     id: 'claude',
     createSession: mockCreateSession,
   }),
+  getAllModels: mock(() => []),
+  getProviderIds: mock(() => ['claude']),
+  hasProvider: mock(() => true),
+  initModelDiscovery: mock(() => Promise.resolve()),
+  refreshModels: mock(() => Promise.resolve()),
+  registerProvider: mock(() => {}),
+  // Class exports (stubbed)
+  ClaudeProvider: class {},
+  CodexProvider: class {},
 }))
 
 // Mock extracted services (they have their own tests)
@@ -151,7 +163,9 @@ describe('SessionManager', () => {
 
   beforeEach(async () => {
     initTestDb()
-    const mod = await import('../session-manager')
+    // Cache-busted dynamic import — forces Bun to re-evaluate the module
+    // each time, avoiding stale state from process-global mock leaks.
+    const mod = await import(`../session-manager?t=${Date.now()}`)
     SessionManager = mod.SessionManager
   })
 
