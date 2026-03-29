@@ -3,6 +3,189 @@ import Database from 'better-sqlite3'
 
 let db: Database.Database
 
+/**
+ * Ordered list of schema migrations. Each entry runs exactly once.
+ * The schema_version table tracks which migrations have been applied.
+ *
+ * Rules:
+ * - Never modify an existing migration — append a new one.
+ * - Migrations run inside a transaction.
+ * - SQL can be a single statement or multi-statement string.
+ */
+const migrations: Array<{ version: number; description: string; sql: string }> = [
+  {
+    version: 1,
+    description: 'Add permission_mode to sessions',
+    sql: "ALTER TABLE sessions ADD COLUMN permission_mode TEXT NOT NULL DEFAULT 'default'",
+  },
+  {
+    version: 2,
+    description: 'Add git_baseline_hash to sessions',
+    sql: 'ALTER TABLE sessions ADD COLUMN git_baseline_hash TEXT DEFAULT NULL',
+  },
+  {
+    version: 3,
+    description: 'Add worktree columns to sessions',
+    sql: `
+      ALTER TABLE sessions ADD COLUMN worktree_path TEXT DEFAULT NULL;
+      ALTER TABLE sessions ADD COLUMN original_cwd TEXT DEFAULT NULL;
+      ALTER TABLE sessions ADD COLUMN worktree_branch TEXT DEFAULT NULL;
+      ALTER TABLE sessions ADD COLUMN original_branch TEXT DEFAULT NULL;
+    `,
+  },
+  {
+    version: 4,
+    description: 'Add source to sessions',
+    sql: "ALTER TABLE sessions ADD COLUMN source TEXT NOT NULL DEFAULT 'user'",
+  },
+  {
+    version: 5,
+    description: 'Add context tracking columns to sessions',
+    sql: `
+      ALTER TABLE sessions ADD COLUMN context_window INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE sessions ADD COLUMN context_input_tokens INTEGER NOT NULL DEFAULT 0;
+    `,
+  },
+  {
+    version: 6,
+    description: 'Add provider to sessions',
+    sql: "ALTER TABLE sessions ADD COLUMN provider TEXT NOT NULL DEFAULT 'claude'",
+  },
+  {
+    version: 7,
+    description: 'Add max_output_tokens to sessions',
+    sql: 'ALTER TABLE sessions ADD COLUMN max_output_tokens INTEGER NOT NULL DEFAULT 0',
+  },
+  {
+    version: 8,
+    description: 'Add raw_output and cost_usd to pr_reviews',
+    sql: `
+      ALTER TABLE pr_reviews ADD COLUMN raw_output TEXT;
+      ALTER TABLE pr_reviews ADD COLUMN cost_usd REAL NOT NULL DEFAULT 0;
+    `,
+  },
+  {
+    version: 9,
+    description: 'Add domain to pr_review_findings',
+    sql: 'ALTER TABLE pr_review_findings ADD COLUMN domain TEXT',
+  },
+  {
+    version: 10,
+    description: 'Add batch_id to test_explorations',
+    sql: 'ALTER TABLE test_explorations ADD COLUMN batch_id TEXT',
+  },
+]
+
+/**
+ * Determine which migrations need to run for an existing DB.
+ * Existing databases that predate the migration system need to skip
+ * migrations for columns that already exist.
+ */
+function detectAppliedMigrations(database: Database.Database): Set<number> {
+  const applied = new Set<number>()
+
+  // Check sessions columns
+  const sessionCols = new Set(
+    (database.prepare('PRAGMA table_info(sessions)').all() as { name: string }[]).map(
+      (c) => c.name,
+    ),
+  )
+
+  if (sessionCols.has('permission_mode')) applied.add(1)
+  if (sessionCols.has('git_baseline_hash')) applied.add(2)
+  if (sessionCols.has('worktree_path')) applied.add(3)
+  if (sessionCols.has('source')) applied.add(4)
+  if (sessionCols.has('context_window')) applied.add(5)
+  if (sessionCols.has('provider')) applied.add(6)
+  if (sessionCols.has('max_output_tokens')) applied.add(7)
+
+  // Check pr_reviews columns (table may not exist yet)
+  try {
+    const prCols = new Set(
+      (database.prepare('PRAGMA table_info(pr_reviews)').all() as { name: string }[]).map(
+        (c) => c.name,
+      ),
+    )
+    if (prCols.has('raw_output') && prCols.has('cost_usd')) applied.add(8)
+  } catch {
+    /* table doesn't exist yet */
+  }
+
+  // Check pr_review_findings columns
+  try {
+    const findingCols = new Set(
+      (
+        database.prepare('PRAGMA table_info(pr_review_findings)').all() as { name: string }[]
+      ).map((c) => c.name),
+    )
+    if (findingCols.has('domain')) applied.add(9)
+  } catch {
+    /* table doesn't exist yet */
+  }
+
+  // Check test_explorations columns
+  try {
+    const explorCols = new Set(
+      (database.prepare('PRAGMA table_info(test_explorations)').all() as { name: string }[]).map(
+        (c) => c.name,
+      ),
+    )
+    if (explorCols.has('batch_id')) applied.add(10)
+  } catch {
+    /* table doesn't exist yet */
+  }
+
+  return applied
+}
+
+function runMigrations(database: Database.Database): void {
+  // Create version tracking table
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS schema_version (
+      version INTEGER PRIMARY KEY,
+      description TEXT NOT NULL,
+      applied_at INTEGER NOT NULL
+    )
+  `)
+
+  // Get already-tracked versions
+  const tracked = new Set(
+    (database.prepare('SELECT version FROM schema_version').all() as { version: number }[]).map(
+      (r) => r.version,
+    ),
+  )
+
+  // On first run of the migration system, detect which migrations were
+  // already applied by the old column-check approach
+  if (tracked.size === 0) {
+    const preExisting = detectAppliedMigrations(database)
+    if (preExisting.size > 0) {
+      const insert = database.prepare(
+        'INSERT INTO schema_version (version, description, applied_at) VALUES (?, ?, ?)',
+      )
+      for (const v of preExisting) {
+        const migration = migrations.find((m) => m.version === v)
+        if (migration) {
+          insert.run(v, migration.description, Date.now())
+          tracked.add(v)
+        }
+      }
+    }
+  }
+
+  // Run pending migrations in order
+  for (const migration of migrations) {
+    if (tracked.has(migration.version)) continue
+
+    database.exec(migration.sql)
+    database
+      .prepare(
+        'INSERT INTO schema_version (version, description, applied_at) VALUES (?, ?, ?)',
+      )
+      .run(migration.version, migration.description, Date.now())
+  }
+}
+
 export function initDatabase(): Database.Database {
   // Lazy-load electron so this module can be imported in CI tests
   // without triggering a missing 'electron' native module error.
@@ -12,6 +195,7 @@ export function initDatabase(): Database.Database {
   db.pragma('journal_mode = WAL')
   db.pragma('foreign_keys = ON')
 
+  // Create base tables
   db.exec(`
     CREATE TABLE IF NOT EXISTS sessions (
       id TEXT PRIMARY KEY,
@@ -44,42 +228,6 @@ export function initDatabase(): Database.Database {
     CREATE INDEX IF NOT EXISTS idx_sessions_updated ON sessions(updated_at DESC);
     CREATE INDEX IF NOT EXISTS idx_sessions_created ON sessions(created_at);
   `)
-
-  // Migrations
-  const cols = db.prepare('PRAGMA table_info(sessions)').all() as { name: string }[]
-  if (!cols.some((c) => c.name === 'permission_mode')) {
-    db.exec("ALTER TABLE sessions ADD COLUMN permission_mode TEXT NOT NULL DEFAULT 'default'")
-  }
-  if (!cols.some((c) => c.name === 'git_baseline_hash')) {
-    db.exec('ALTER TABLE sessions ADD COLUMN git_baseline_hash TEXT DEFAULT NULL')
-  }
-  if (!cols.some((c) => c.name === 'worktree_path')) {
-    db.exec('ALTER TABLE sessions ADD COLUMN worktree_path TEXT DEFAULT NULL')
-  }
-  if (!cols.some((c) => c.name === 'original_cwd')) {
-    db.exec('ALTER TABLE sessions ADD COLUMN original_cwd TEXT DEFAULT NULL')
-  }
-  if (!cols.some((c) => c.name === 'worktree_branch')) {
-    db.exec('ALTER TABLE sessions ADD COLUMN worktree_branch TEXT DEFAULT NULL')
-  }
-  if (!cols.some((c) => c.name === 'original_branch')) {
-    db.exec('ALTER TABLE sessions ADD COLUMN original_branch TEXT DEFAULT NULL')
-  }
-  if (!cols.some((c) => c.name === 'source')) {
-    db.exec("ALTER TABLE sessions ADD COLUMN source TEXT NOT NULL DEFAULT 'user'")
-  }
-  if (!cols.some((c) => c.name === 'context_window')) {
-    db.exec('ALTER TABLE sessions ADD COLUMN context_window INTEGER NOT NULL DEFAULT 0')
-  }
-  if (!cols.some((c) => c.name === 'context_input_tokens')) {
-    db.exec('ALTER TABLE sessions ADD COLUMN context_input_tokens INTEGER NOT NULL DEFAULT 0')
-  }
-  if (!cols.some((c) => c.name === 'provider')) {
-    db.exec("ALTER TABLE sessions ADD COLUMN provider TEXT NOT NULL DEFAULT 'claude'")
-  }
-  if (!cols.some((c) => c.name === 'max_output_tokens')) {
-    db.exec('ALTER TABLE sessions ADD COLUMN max_output_tokens INTEGER NOT NULL DEFAULT 0')
-  }
 
   // PR Review tables
   db.exec(`
@@ -114,26 +262,7 @@ export function initDatabase(): Database.Database {
     CREATE INDEX IF NOT EXISTS idx_pr_review_findings_review ON pr_review_findings(review_id);
   `)
 
-  // Migration: add raw_output column to pr_reviews
-  const prCols = db.prepare('PRAGMA table_info(pr_reviews)').all() as Array<{ name: string }>
-  if (!prCols.some((c) => c.name === 'raw_output')) {
-    db.exec('ALTER TABLE pr_reviews ADD COLUMN raw_output TEXT')
-  }
-
-  // Migration: add cost_usd column to pr_reviews
-  if (!prCols.some((c) => c.name === 'cost_usd')) {
-    db.exec('ALTER TABLE pr_reviews ADD COLUMN cost_usd REAL NOT NULL DEFAULT 0')
-  }
-
-  // Migration: add domain column to pr_review_findings
-  const findingCols = db.prepare('PRAGMA table_info(pr_review_findings)').all() as Array<{
-    name: string
-  }>
-  if (!findingCols.some((c) => c.name === 'domain')) {
-    db.exec('ALTER TABLE pr_review_findings ADD COLUMN domain TEXT')
-  }
-
-  // PR Cache table for background polling
+  // PR Cache table
   db.exec(`
     CREATE TABLE IF NOT EXISTS pr_cache (
       repo_full_name TEXT NOT NULL,
@@ -162,8 +291,8 @@ export function initDatabase(): Database.Database {
       ON pr_cache(state, last_seen_at, updated_at);
   `)
 
-  // Normalize any uppercase state values from GitHub API (OPEN→open, CLOSED→closed, MERGED→merged)
-  db.exec(`UPDATE pr_cache SET state = LOWER(state) WHERE state != LOWER(state)`)
+  // Normalize any uppercase state values from GitHub API
+  db.exec('UPDATE pr_cache SET state = LOWER(state) WHERE state != LOWER(state)')
 
   // AI Exploration Testing tables
   db.exec(`
@@ -207,11 +336,8 @@ export function initDatabase(): Database.Database {
     CREATE INDEX IF NOT EXISTS idx_test_findings_exploration ON test_findings(exploration_id);
   `)
 
-  // Migration: add batch_id column to test_explorations
-  const explorationCols = db.pragma('table_info(test_explorations)') as Array<{ name: string }>
-  if (!explorationCols.some((c) => c.name === 'batch_id')) {
-    db.exec('ALTER TABLE test_explorations ADD COLUMN batch_id TEXT')
-  }
+  // Run versioned migrations
+  runMigrations(db)
 
   return db
 }

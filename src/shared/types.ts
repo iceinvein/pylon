@@ -30,6 +30,32 @@ export type Tab = {
   hydrated?: boolean
 }
 
+/**
+ * Shape of a raw SDK message as received from the Claude/Codex provider
+ * and stored in the renderer's Zustand message store.
+ *
+ * Uses an index signature because SDK messages carry many provider-specific
+ * fields that vary by message type. The typed fields here are the ones the
+ * renderer actively reads.
+ */
+export type SdkMessage = {
+  type: string
+  role?: string
+  subtype?: string
+  content?: unknown
+  parent_tool_use_id?: string | null
+  session_id?: string
+  is_error?: boolean
+  error?: string
+  total_cost_usd?: number
+  duration_ms?: number
+  message?: {
+    content?: Array<{ type: string; [key: string]: unknown }>
+    [key: string]: unknown
+  }
+  [key: string]: unknown
+}
+
 export type SerializedMessage = {
   id: string
   sessionId: string
@@ -517,4 +543,98 @@ export type GoalSuggestionUpdate = {
   goals: Array<{ id: string; title: string; description: string; area?: string }>
   status: 'loading' | 'done' | 'error'
   error?: string
+}
+
+// ── AST Visualizer Types ──
+
+export type AstNodeType =
+  | 'function'
+  | 'class'
+  | 'type'
+  | 'variable'
+  | 'import'
+  | 'export'
+  | 'block'
+  | 'statement'
+  | 'expression'
+  | 'parameter'
+  | 'other'
+
+export type AstNode = {
+  id: string
+  type: AstNodeType
+  name: string
+  startLine: number
+  endLine: number
+  children: AstNode[]
+  filePath: string
+}
+
+export type FileNode = {
+  filePath: string
+  language: string
+  declarations: AstNode[]
+  imports: ImportEdge[]
+  size: number
+  lastModified: number
+}
+
+export type ImportEdge = {
+  source: string
+  target: string
+  specifiers: string[]
+}
+
+export type RepoGraph = {
+  files: FileNode[]
+  edges: ImportEdge[]
+}
+
+export type ArchLayer = {
+  id: string
+  name: string
+  color: string
+  pattern: string
+}
+
+export type ModuleCluster = {
+  id: string
+  name: string
+  description: string
+  files: string[]
+  layerId: string
+}
+
+export type CallEdge = {
+  caller: { filePath: string; symbolName: string }
+  callee: { filePath: string; symbolName: string }
+}
+
+export type DataFlowStep = {
+  filePath: string
+  symbolName: string
+  direction: 'in' | 'out' | 'transform'
+}
+
+export type DataFlow = {
+  id: string
+  name: string
+  description: string
+  steps: DataFlowStep[]
+}
+
+export type ArchAnalysis = {
+  layers: ArchLayer[]
+  clusters: ModuleCluster[]
+  annotations: Record<string, string>
+  callEdges: CallEdge[]
+  dataFlows: DataFlow[]
+}
+
+export type AstOverlay = 'deps' | 'calls' | 'dataflow'
+
+export type AstChatMessage = {
+  role: 'user' | 'assistant'
+  content: string
+  highlights?: Array<{ filePath: string; symbolName: string }>
 }

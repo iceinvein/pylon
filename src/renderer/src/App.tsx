@@ -7,6 +7,7 @@ import { useIpcBridge } from './hooks/use-ipc-bridge'
 import { usePrReviewBridge } from './hooks/use-pr-review-bridge'
 import { useTestBridge } from './hooks/use-test-bridge'
 import { resumeStoredSession, type StoredSession } from './lib/resume-session'
+import { AstView } from './pages/AstView'
 import { HomePage } from './pages/HomePage'
 import { PrReviewView } from './pages/PrReviewView'
 import { SessionView } from './pages/SessionView'
@@ -115,6 +116,8 @@ export default function App() {
           <PrReviewView />
         ) : sidebarView === 'testing' ? (
           <TestView />
+        ) : sidebarView === 'ast' ? (
+          <AstView />
         ) : (
           <>
             {/* Render all tabs simultaneously, hiding inactive ones via <Activity>.

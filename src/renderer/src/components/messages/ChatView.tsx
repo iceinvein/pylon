@@ -19,18 +19,7 @@ import { SystemMessage } from './SystemMessage'
 import { TextBlock } from './TextBlock'
 import { UserMessage } from './UserMessage'
 
-type SdkMessage = {
-  type: string
-  role?: string
-  content?: unknown
-  subtype?: string
-  session_id?: string
-  message?: {
-    content?: AssistantContentBlock[]
-    [key: string]: unknown
-  }
-  [key: string]: unknown
-}
+import type { SdkMessage } from '../../../../shared/types'
 
 type AssistantContentBlock = {
   type: string

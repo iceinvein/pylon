@@ -10,6 +10,7 @@ import {
   Wrench,
 } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
+import type React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { AskUserQuestionTool, getAskUserQuestionSummary } from './AskUserQuestionTool'
 import { BashTool } from './BashTool'
@@ -35,110 +36,121 @@ type ToolInfo = {
   iconColor: string
 }
 
-function getToolInfo(toolName: string, input: Record<string, unknown>): ToolInfo {
-  const name = toolName.toLowerCase()
+function shortPath(input: Record<string, unknown>): string {
+  const path = String(input.file_path ?? input.path ?? '')
+  return path.split('/').slice(-2).join('/') || path
+}
 
-  if (name.includes('bash') || name.includes('shell')) {
-    const desc = String(input.description ?? '').slice(0, 80)
-    const cmd = String(input.command ?? input.cmd ?? '').slice(0, 80)
-    return {
+type ToolRegistryEntry = {
+  match: (name: string) => boolean
+  info: (toolName: string, input: Record<string, unknown>) => ToolInfo
+  render: (props: { toolName: string; input: Record<string, unknown>; result?: string }) => React.ReactNode
+}
+
+const TOOL_REGISTRY: ToolRegistryEntry[] = [
+  {
+    match: (n) => n.includes('bash') || n.includes('shell'),
+    info: (_tn, input) => ({
       icon: Terminal,
       label: 'Run',
-      summary: desc || cmd,
+      summary: String(input.description ?? '').slice(0, 80) || String(input.command ?? input.cmd ?? '').slice(0, 80),
       iconColor: 'text-[var(--color-accent-text)]',
-    }
-  }
-
-  if (name.includes('read') || name.includes('view')) {
-    const path = String(input.file_path ?? input.path ?? '')
-    const shortPath = path.split('/').slice(-2).join('/')
-    return {
+    }),
+    render: ({ input, result }) => <BashTool input={input} result={result} />,
+  },
+  {
+    match: (n) => n.includes('read') || n.includes('view'),
+    info: (_tn, input) => ({
       icon: FileText,
       label: 'Read',
-      summary: shortPath || path,
+      summary: shortPath(input),
       iconColor: 'text-[var(--color-base-text-secondary)]',
-    }
-  }
-
-  if (name.startsWith('task')) {
-    const subject = String(input.subject ?? input.taskId ?? '')
-    return {
+    }),
+    render: ({ input }) => <ReadTool input={input} />,
+  },
+  {
+    match: (n) => n.startsWith('task'),
+    info: (toolName, input) => ({
       icon: Wrench,
-      label: toolName.replace(/^Task/, ''),
-      summary: subject,
+      label: toolName.replace(/^Task/i, ''),
+      summary: String(input.subject ?? input.taskId ?? ''),
       iconColor: 'text-[var(--color-warning)]',
-    }
-  }
-
-  if (name.includes('edit')) {
-    const path = String(input.file_path ?? input.path ?? '')
-    const shortPath = path.split('/').slice(-2).join('/')
-    return {
+    }),
+    render: ({ input, result }) => <GenericTool input={input} result={result} />,
+  },
+  {
+    match: (n) => n.includes('edit'),
+    info: (_tn, input) => ({
       icon: Pencil,
       label: 'Edit',
-      summary: shortPath || path,
+      summary: shortPath(input),
       iconColor: 'text-[var(--color-warning)]',
-    }
-  }
-
-  if (name === 'todowrite') {
-    const todos = input.todos as Array<{ content: string; status: string }> | undefined
-    if (Array.isArray(todos)) {
-      const done = todos.filter((t) => t.status === 'completed').length
-      return {
-        icon: ListChecks,
-        label: 'Tasks',
-        summary: `${done}/${todos.length} completed`,
-        iconColor: 'text-[var(--color-accent-text)]',
+    }),
+    render: ({ input }) => <EditTool input={input} />,
+  },
+  {
+    match: (n) => n === 'todowrite',
+    info: (_tn, input) => {
+      const todos = input.todos as Array<{ content: string; status: string }> | undefined
+      if (Array.isArray(todos)) {
+        const done = todos.filter((t) => t.status === 'completed').length
+        return { icon: ListChecks, label: 'Tasks', summary: `${done}/${todos.length} completed`, iconColor: 'text-[var(--color-accent-text)]' }
       }
-    }
-    return {
-      icon: ListChecks,
-      label: 'Tasks',
-      summary: '',
-      iconColor: 'text-[var(--color-accent-text)]',
-    }
-  }
-
-  if (name.includes('write') || name.includes('create')) {
-    const path = String(input.file_path ?? input.path ?? '')
-    const shortPath = path.split('/').slice(-2).join('/')
-    return {
+      return { icon: ListChecks, label: 'Tasks', summary: '', iconColor: 'text-[var(--color-accent-text)]' }
+    },
+    render: ({ input }) => <TodoWriteTool input={input} />,
+  },
+  {
+    match: (n) => n.includes('write') || n.includes('create'),
+    info: (_tn, input) => ({
       icon: FilePlus,
       label: 'Write',
-      summary: shortPath || path,
+      summary: shortPath(input),
       iconColor: 'text-[var(--color-success)]',
-    }
-  }
-
-  if (name.includes('websearch') || name.includes('web_search')) {
-    return {
+    }),
+    render: ({ input, result }) => <WriteTool input={input} result={result} />,
+  },
+  {
+    match: (n) => n.includes('websearch') || n.includes('web_search'),
+    info: (_tn, input) => ({
       icon: Search,
       label: 'Search',
       summary: String(input.query ?? input.search ?? input.q ?? ''),
       iconColor: 'text-[var(--color-info)]',
-    }
-  }
-
-  if (name.includes('glob') || name.includes('grep') || name.includes('search')) {
-    return {
+    }),
+    render: ({ input, result }) => <WebSearchTool input={input} result={result} />,
+  },
+  {
+    match: (n) => n.includes('glob') || n.includes('grep') || n.includes('search'),
+    info: (_tn, input) => ({
       icon: Search,
       label: 'Search',
       summary: String(input.pattern ?? input.glob ?? input.query ?? ''),
       iconColor: 'text-[var(--color-base-text-muted)]',
-    }
-  }
-
-  if (name === 'askuserquestion') {
-    return {
+    }),
+    render: ({ toolName, input, result }) => <GlobGrepTool input={input} toolName={toolName} result={result} />,
+  },
+  {
+    match: (n) => n === 'askuserquestion',
+    info: (_tn, input) => ({
       icon: MessageCircleQuestion,
       label: 'Question',
       summary: getAskUserQuestionSummary(input),
       iconColor: 'text-[var(--color-info)]',
-    }
-  }
+    }),
+    render: ({ input }) => <AskUserQuestionTool input={input} />,
+  },
+]
 
-  // Generic fallback
+function findToolEntry(toolName: string): ToolRegistryEntry | undefined {
+  const name = toolName.toLowerCase()
+  return TOOL_REGISTRY.find((entry) => entry.match(name))
+}
+
+function getToolInfo(toolName: string, input: Record<string, unknown>): ToolInfo {
+  const entry = findToolEntry(toolName)
+  if (entry) return entry.info(toolName, input)
+
   const keys = Object.keys(input)
   const firstVal = keys.length > 0 ? String(input[keys[0]]).slice(0, 60) : ''
   return {
@@ -158,34 +170,8 @@ function ToolRenderer({
   input: Record<string, unknown>
   result?: string
 }) {
-  const name = toolName.toLowerCase()
-  if (name.includes('bash') || name.includes('shell')) {
-    return <BashTool input={input} result={result} />
-  }
-  if (name.includes('read') || name.includes('view')) {
-    return <ReadTool input={input} />
-  }
-  if (name.startsWith('task')) {
-    return <GenericTool input={input} result={result} />
-  }
-  if (name.includes('edit')) {
-    return <EditTool input={input} />
-  }
-  if (name === 'todowrite') {
-    return <TodoWriteTool input={input} />
-  }
-  if (name.includes('write') || name.includes('create')) {
-    return <WriteTool input={input} result={result} />
-  }
-  if (name.includes('websearch') || name.includes('web_search')) {
-    return <WebSearchTool input={input} result={result} />
-  }
-  if (name.includes('glob') || name.includes('grep') || name.includes('search')) {
-    return <GlobGrepTool input={input} toolName={toolName} result={result} />
-  }
-  if (name === 'askuserquestion') {
-    return <AskUserQuestionTool input={input} />
-  }
+  const entry = findToolEntry(toolName)
+  if (entry) return <>{entry.render({ toolName, input, result })}</>
   return <GenericTool input={input} result={result} />
 }
 

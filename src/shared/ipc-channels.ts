@@ -113,4 +113,14 @@ export const IPC = {
   PROVIDER_MODELS: 'provider:models',
   // Tab Persistence
   TABS_GET: 'tabs:get',
+  // AST Visualizer
+  AST_ANALYZE_SCOPE: 'ast:analyze-scope',
+  AST_ANALYSIS_PROGRESS: 'ast:analysis-progress',
+  AST_REPO_GRAPH: 'ast:repo-graph',
+  AST_ARCH_ANALYSIS: 'ast:arch-analysis',
+  AST_FILE_AST: 'ast:file-ast',
+  AST_EXPLAIN: 'ast:explain',
+  AST_EXPLAIN_RESULT: 'ast:explain-result',
+  AST_CHAT: 'ast:chat',
+  AST_CHAT_RESULT: 'ast:chat-result',
 } as const

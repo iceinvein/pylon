@@ -3,13 +3,16 @@ import { electronApp, is, optimizer } from '@electron-toolkit/utils'
 import { app, BrowserWindow, ipcMain, shell } from 'electron'
 import { IPC } from '../shared/ipc-channels'
 import { initLogger, log, writeRendererLog } from '../shared/logger'
+import { registerAstIpcHandlers } from './ast-ipc-handlers'
 import { initDatabase } from './db'
 import { registerGitIpcHandlers, setGitWindow } from './git-ipc-handlers'
 import { registerIpcHandlers } from './ipc-handlers'
 import { prPollingService } from './pr-polling-service'
+import { registerPrReviewIpcHandlers } from './pr-review-ipc-handlers'
 import { prReviewManager } from './pr-review-manager'
 import { ClaudeProvider, CodexProvider, initModelDiscovery, registerProvider } from './providers'
 import { sessionManager } from './session-manager'
+import { registerTestIpcHandlers } from './test-ipc-handlers'
 import { testManager } from './test-manager'
 
 function createWindow(): BrowserWindow {
@@ -83,6 +86,9 @@ app.whenReady().then(() => {
   initModelDiscovery()
   registerIpcHandlers()
   registerGitIpcHandlers()
+  registerPrReviewIpcHandlers()
+  registerTestIpcHandlers()
+  registerAstIpcHandlers()
 
   // Auto-cleanup stale worktrees (>7 days old)
   import('./worktree-cleanup')
