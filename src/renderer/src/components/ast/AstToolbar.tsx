@@ -1,4 +1,4 @@
-import { GitBranch, RefreshCw, Workflow } from 'lucide-react'
+import { GitBranch, RefreshCw, Search, Workflow } from 'lucide-react'
 import type { AstOverlay, RepoGraph } from '../../../../shared/types'
 import { useAstStore } from '../../store/ast-store'
 
@@ -23,6 +23,8 @@ function scopeBreadcrumb(scope: string): string {
 export function AstToolbar({ scope, repoGraph, analysisStatus, onReanalyze }: AstToolbarProps) {
   const activeOverlays = useAstStore((s) => s.activeOverlays)
   const toggleOverlay = useAstStore((s) => s.toggleOverlay)
+  const searchQuery = useAstStore((s) => s.searchQuery)
+  const setSearchQuery = useAstStore((s) => s.setSearchQuery)
 
   const isAnalyzing = analysisStatus === 'parsing' || analysisStatus === 'analyzing'
 
@@ -54,6 +56,29 @@ export function AstToolbar({ scope, repoGraph, analysisStatus, onReanalyze }: As
           </button>
         )
       })}
+
+      <div className="h-4 w-px bg-base-border" />
+
+      {/* Search files */}
+      <div className="flex items-center gap-1">
+        <Search size={12} className="text-base-text-muted" />
+        <input
+          type="text"
+          placeholder="Search files..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-40 bg-transparent text-base-text text-xs placeholder:text-base-text-muted focus:outline-none"
+        />
+        {searchQuery && (
+          <button
+            type="button"
+            onClick={() => setSearchQuery('')}
+            className="text-base-text-muted text-xs"
+          >
+            &times;
+          </button>
+        )}
+      </div>
 
       <div className="flex-1" />
 
