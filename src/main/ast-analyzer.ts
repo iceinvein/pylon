@@ -31,7 +31,24 @@ registerResolver('typescript', typescriptResolver)
 
 // ── Directories to skip when walking the file tree ──
 
-const IGNORED_DIRS = new Set(['node_modules', '.git', 'dist', 'build', '.next', '.cache', '.turbo'])
+const IGNORED_DIRS = new Set([
+  'node_modules',
+  '.git',
+  'dist',
+  'build',
+  'out',
+  '.next',
+  '.cache',
+  '.turbo',
+  '.vite',
+  '.output',
+  '.parcel-cache',
+  'coverage',
+  '__pycache__',
+  '.mypy_cache',
+  'target', // Rust build output
+  'vendor', // Go vendor
+])
 
 // ── Public API ──
 
@@ -146,6 +163,25 @@ async function parseFileCachedMulti(filePath: string): Promise<FileNode> {
   return result
 }
 
+// ── File filtering ──
+
+/** Skip minified, bundled, generated, and declaration files */
+function isMinifiedOrGenerated(fileName: string): boolean {
+  const lower = fileName.toLowerCase()
+  return (
+    lower.endsWith('.min.js') ||
+    lower.endsWith('.min.css') ||
+    lower.endsWith('.bundle.js') ||
+    lower.endsWith('.chunk.js') ||
+    lower.endsWith('.d.ts') ||
+    lower.endsWith('.d.mts') ||
+    lower.endsWith('.map') ||
+    lower.startsWith('chunk-') ||
+    lower.startsWith('vendor-') ||
+    lower.startsWith('polyfill')
+  )
+}
+
 // ── Recursive file collection ──
 
 function collectFiles(dir: string): string[] {
@@ -162,12 +198,13 @@ function collectFiles(dir: string): string[] {
 
     for (const entry of entries) {
       if (entry.isDirectory()) {
-        if (!IGNORED_DIRS.has(entry.name)) {
+        // Skip ignored dirs and hidden dirs (e.g., .vite, .parcel-cache)
+        if (!IGNORED_DIRS.has(entry.name) && !entry.name.startsWith('.')) {
           walk(path.join(currentDir, entry.name))
         }
       } else if (entry.isFile()) {
         const ext = path.extname(entry.name).toLowerCase()
-        if (parseableExtensions.has(ext)) {
+        if (parseableExtensions.has(ext) && !isMinifiedOrGenerated(entry.name)) {
           results.push(path.join(currentDir, entry.name))
         }
       }
