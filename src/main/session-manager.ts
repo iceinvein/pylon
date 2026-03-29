@@ -14,7 +14,6 @@ import type {
 import { getDb } from './db'
 import { diffService } from './diff-service'
 import { gitWorktreeService } from './git-worktree-service'
-import { worktreeRecipeService } from './worktree-recipe-service'
 import { prRaiseService } from './pr-raise-service'
 import {
   type AgentSession,
@@ -23,6 +22,7 @@ import {
   type NormalizedEvent,
   type ProviderId,
 } from './providers'
+import { worktreeRecipeService } from './worktree-recipe-service'
 
 const logger = log.child('session-manager')
 

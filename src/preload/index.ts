@@ -52,8 +52,20 @@ const api = {
     ipcRenderer.invoke(IPC.WORKTREE_RECIPE_ANALYZE, { projectPath, model }),
   deleteWorktreeRecipe: (projectPath: string) =>
     ipcRenderer.invoke(IPC.WORKTREE_RECIPE_DELETE, { projectPath }),
-  runWorktreeSetup: (sessionId: string, projectPath: string, worktreePath: string, originalPath: string, stepIds?: string[]) =>
-    ipcRenderer.invoke(IPC.WORKTREE_SETUP_RUN, { sessionId, projectPath, worktreePath, originalPath, stepIds }),
+  runWorktreeSetup: (
+    sessionId: string,
+    projectPath: string,
+    worktreePath: string,
+    originalPath: string,
+    stepIds?: string[],
+  ) =>
+    ipcRenderer.invoke(IPC.WORKTREE_SETUP_RUN, {
+      sessionId,
+      projectPath,
+      worktreePath,
+      originalPath,
+      stepIds,
+    }),
   onWorktreeSetupProgress: (callback: (data: unknown) => void) => {
     const handler = (_event: unknown, data: unknown) => callback(data)
     ipcRenderer.on(IPC.WORKTREE_SETUP_PROGRESS, handler)

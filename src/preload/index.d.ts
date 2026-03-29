@@ -54,8 +54,13 @@ type Api = {
   getWorktreeUsage: () => Promise<{ count: number; sizeBytes: number }>
   cleanupAllWorktrees: () => Promise<{ removed: number; freedBytes: number }>
   // Worktree Recipe
-  getWorktreeRecipe: (projectPath: string) => Promise<import('../shared/types').WorktreeRecipe | null>
-  analyzeWorktreeRecipe: (projectPath: string, model?: string) => Promise<import('../shared/types').WorktreeRecipe>
+  getWorktreeRecipe: (
+    projectPath: string,
+  ) => Promise<import('../shared/types').WorktreeRecipe | null>
+  analyzeWorktreeRecipe: (
+    projectPath: string,
+    model?: string,
+  ) => Promise<import('../shared/types').WorktreeRecipe>
   deleteWorktreeRecipe: (projectPath: string) => Promise<boolean>
   runWorktreeSetup: (
     sessionId: string,

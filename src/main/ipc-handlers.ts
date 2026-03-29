@@ -358,9 +358,12 @@ export function registerIpcHandlers(): void {
     return worktreeRecipeService.getRecipe(args.projectPath)
   })
 
-  ipcMain.handle(IPC.WORKTREE_RECIPE_ANALYZE, async (_e, args: { projectPath: string; model?: string }) => {
-    return worktreeRecipeService.analyzeProject(args.projectPath, args.model)
-  })
+  ipcMain.handle(
+    IPC.WORKTREE_RECIPE_ANALYZE,
+    async (_e, args: { projectPath: string; model?: string }) => {
+      return worktreeRecipeService.analyzeProject(args.projectPath, args.model)
+    },
+  )
 
   ipcMain.handle(IPC.WORKTREE_RECIPE_DELETE, async (_e, args: { projectPath: string }) => {
     worktreeRecipeService.deleteRecipe(args.projectPath)
@@ -369,10 +372,25 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(
     IPC.WORKTREE_SETUP_RUN,
-    async (_e, args: { sessionId: string; projectPath: string; worktreePath: string; originalPath: string; stepIds?: string[] }) => {
+    async (
+      _e,
+      args: {
+        sessionId: string
+        projectPath: string
+        worktreePath: string
+        originalPath: string
+        stepIds?: string[]
+      },
+    ) => {
       const recipe = worktreeRecipeService.getRecipe(args.projectPath)
       if (!recipe) throw new Error('No recipe found for project')
-      return worktreeRecipeService.executeRecipe(args.sessionId, recipe, args.worktreePath, args.originalPath, args.stepIds)
+      return worktreeRecipeService.executeRecipe(
+        args.sessionId,
+        recipe,
+        args.worktreePath,
+        args.originalPath,
+        args.stepIds,
+      )
     },
   )
 

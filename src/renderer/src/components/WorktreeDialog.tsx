@@ -90,17 +90,20 @@ export function WorktreeDialog({ folderPath, isDirty, onConfirm, onCancel }: Wor
         {useWorktree && recipe && (
           <div className="mt-2 ml-9 flex items-center justify-between rounded-md border border-accent/20 bg-accent/5 px-3 py-2">
             <div>
-              <p className="text-accent/80 text-[11px]">Setup recipe cached</p>
-              <p className="text-accent/50 text-[10px]">
+              <p className="text-[11px] text-accent/80">Setup recipe cached</p>
+              <p className="text-[10px] text-accent/50">
                 {recipe.steps.length} {recipe.steps.length === 1 ? 'step' : 'steps'} • analyzed{' '}
                 {formatAge(recipe.createdAt)}
               </p>
             </div>
             <button
               type="button"
-              onClick={(e) => { e.stopPropagation(); handleReanalyze() }}
+              onClick={(e) => {
+                e.stopPropagation()
+                handleReanalyze()
+              }}
               disabled={reanalyzing}
-              className="rounded border border-accent/30 px-2 py-0.5 text-accent/70 text-[10px] transition-colors hover:bg-accent/10 disabled:opacity-50"
+              className="rounded border border-accent/30 px-2 py-0.5 text-[10px] text-accent/70 transition-colors hover:bg-accent/10 disabled:opacity-50"
             >
               {reanalyzing ? '...' : 'Reanalyze'}
             </button>
