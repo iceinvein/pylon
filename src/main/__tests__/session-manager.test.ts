@@ -151,20 +151,12 @@ describe('SessionManager', () => {
 
   beforeEach(async () => {
     initTestDb()
-    try {
-      const mod = await import('../session-manager')
-      console.log('[DEBUG] session-manager module keys:', Object.keys(mod))
-      SessionManager = mod.SessionManager
-      if (!SessionManager) {
-        console.error(
-          '[DEBUG] SessionManager is undefined! Full module:',
-          JSON.stringify(mod, null, 2),
-        )
-      }
-    } catch (err) {
-      console.error('[DEBUG] Failed to import session-manager:', err)
-      throw err
-    }
+    const mod = await import('../session-manager')
+    // Bun 1.3.11+ with mock.module may drop named class exports from
+    // dynamic imports while keeping the singleton. Fall back to the
+    // singleton's constructor when the class export is missing.
+    SessionManager =
+      mod.SessionManager ?? (mod.sessionManager?.constructor as typeof mod.SessionManager)
   })
 
   afterEach(() => {
