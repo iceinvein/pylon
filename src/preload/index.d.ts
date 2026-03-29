@@ -53,6 +53,23 @@ type Api = {
   getWorktreeInfo: (sessionId: string) => Promise<import('../shared/types').WorktreeInfo>
   getWorktreeUsage: () => Promise<{ count: number; sizeBytes: number }>
   cleanupAllWorktrees: () => Promise<{ removed: number; freedBytes: number }>
+  // Worktree Recipe
+  getWorktreeRecipe: (projectPath: string) => Promise<import('../shared/types').WorktreeRecipe | null>
+  analyzeWorktreeRecipe: (projectPath: string, model?: string) => Promise<import('../shared/types').WorktreeRecipe>
+  deleteWorktreeRecipe: (projectPath: string) => Promise<boolean>
+  runWorktreeSetup: (
+    sessionId: string,
+    projectPath: string,
+    worktreePath: string,
+    originalPath: string,
+    stepIds?: string[],
+  ) => Promise<import('../shared/types').SetupCompleteEvent>
+  onWorktreeSetupProgress: (
+    callback: (data: import('../shared/types').SetupProgressEvent) => void,
+  ) => () => void
+  onWorktreeSetupComplete: (
+    callback: (data: import('../shared/types').SetupCompleteEvent) => void,
+  ) => () => void
   // Git Branch Status
   getGitBranchStatus: (cwd: string) => Promise<import('../shared/types').GitBranchStatus>
   fetchAndCompare: (cwd: string) => Promise<import('../shared/types').GitFetchComparison>

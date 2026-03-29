@@ -14,6 +14,7 @@ import type {
 import { getDb } from './db'
 import { diffService } from './diff-service'
 import { gitWorktreeService } from './git-worktree-service'
+import { worktreeRecipeService } from './worktree-recipe-service'
 import { prRaiseService } from './pr-raise-service'
 import {
   type AgentSession,
@@ -157,6 +158,7 @@ export class SessionManager {
 
   setWindow(window: BrowserWindow): void {
     this.window = window
+    worktreeRecipeService.setWindow(window)
   }
 
   /** Subscribe to raw SDK messages for a specific session. Returns unsubscribe fn. */

@@ -45,6 +45,26 @@ const api = {
   getWorktreeUsage: () => ipcRenderer.invoke(IPC.WORKTREE_GET_USAGE),
   cleanupAllWorktrees: () => ipcRenderer.invoke(IPC.WORKTREE_CLEANUP_ALL),
 
+  // Worktree Recipe
+  getWorktreeRecipe: (projectPath: string) =>
+    ipcRenderer.invoke(IPC.WORKTREE_RECIPE_GET, { projectPath }),
+  analyzeWorktreeRecipe: (projectPath: string, model?: string) =>
+    ipcRenderer.invoke(IPC.WORKTREE_RECIPE_ANALYZE, { projectPath, model }),
+  deleteWorktreeRecipe: (projectPath: string) =>
+    ipcRenderer.invoke(IPC.WORKTREE_RECIPE_DELETE, { projectPath }),
+  runWorktreeSetup: (sessionId: string, projectPath: string, worktreePath: string, originalPath: string, stepIds?: string[]) =>
+    ipcRenderer.invoke(IPC.WORKTREE_SETUP_RUN, { sessionId, projectPath, worktreePath, originalPath, stepIds }),
+  onWorktreeSetupProgress: (callback: (data: unknown) => void) => {
+    const handler = (_event: unknown, data: unknown) => callback(data)
+    ipcRenderer.on(IPC.WORKTREE_SETUP_PROGRESS, handler)
+    return () => ipcRenderer.removeListener(IPC.WORKTREE_SETUP_PROGRESS, handler)
+  },
+  onWorktreeSetupComplete: (callback: (data: unknown) => void) => {
+    const handler = (_event: unknown, data: unknown) => callback(data)
+    ipcRenderer.on(IPC.WORKTREE_SETUP_COMPLETE, handler)
+    return () => ipcRenderer.removeListener(IPC.WORKTREE_SETUP_COMPLETE, handler)
+  },
+
   // Git Branch Status
   getGitBranchStatus: (cwd: string) => ipcRenderer.invoke(IPC.GIT_BRANCH_STATUS, { cwd }),
   fetchAndCompare: (cwd: string) => ipcRenderer.invoke(IPC.GIT_FETCH_COMPARE, { cwd }),

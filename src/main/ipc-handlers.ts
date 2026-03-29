@@ -15,6 +15,7 @@ import type {
 } from '../shared/types'
 import { getDb } from './db'
 import { sessionManager } from './session-manager'
+import { worktreeRecipeService } from './worktree-recipe-service'
 
 const logger = log.child('ipc')
 
@@ -350,6 +351,30 @@ export function registerIpcHandlers(): void {
     const { cleanupAllWorktrees } = await import('./worktree-cleanup')
     return cleanupAllWorktrees()
   })
+
+  // ── Worktree Recipe ──
+
+  ipcMain.handle(IPC.WORKTREE_RECIPE_GET, async (_e, args: { projectPath: string }) => {
+    return worktreeRecipeService.getRecipe(args.projectPath)
+  })
+
+  ipcMain.handle(IPC.WORKTREE_RECIPE_ANALYZE, async (_e, args: { projectPath: string; model?: string }) => {
+    return worktreeRecipeService.analyzeProject(args.projectPath, args.model)
+  })
+
+  ipcMain.handle(IPC.WORKTREE_RECIPE_DELETE, async (_e, args: { projectPath: string }) => {
+    worktreeRecipeService.deleteRecipe(args.projectPath)
+    return true
+  })
+
+  ipcMain.handle(
+    IPC.WORKTREE_SETUP_RUN,
+    async (_e, args: { sessionId: string; projectPath: string; worktreePath: string; originalPath: string; stepIds?: string[] }) => {
+      const recipe = worktreeRecipeService.getRecipe(args.projectPath)
+      if (!recipe) throw new Error('No recipe found for project')
+      return worktreeRecipeService.executeRecipe(args.sessionId, recipe, args.worktreePath, args.originalPath, args.stepIds)
+    },
+  )
 
   // ── Git Branch Status ──
 
