@@ -130,4 +130,5 @@ export const IPC = {
   AST_EXPLAIN_RESULT: 'ast:explain-result',
   AST_CHAT: 'ast:chat',
   AST_CHAT_RESULT: 'ast:chat-result',
+  AST_GET_CACHED: 'ast:get-cached',
 } as const

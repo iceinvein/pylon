@@ -268,6 +268,7 @@ const api = {
     ipcRenderer.send(IPC.LOG_FROM_RENDERER, { level, source, message }),
 
   // AST Visualizer
+  getCachedAnalysis: (scope: string) => ipcRenderer.invoke(IPC.AST_GET_CACHED, { scope }),
   analyzeScope: (scope: string) => ipcRenderer.invoke(IPC.AST_ANALYZE_SCOPE, { scope }),
   getFileAst: (filePath: string) => ipcRenderer.invoke(IPC.AST_FILE_AST, { filePath }),
   explainAstNode: (nodeId: string, filePath: string, context: string) =>

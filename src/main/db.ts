@@ -103,6 +103,19 @@ const migrations: Array<{ version: number; description: string; sql: string }> =
       CREATE INDEX IF NOT EXISTS idx_recipe_steps_recipe ON worktree_recipe_steps(recipe_id, sort_order);
     `,
   },
+  {
+    version: 12,
+    description: 'Add ast_analyses table for persisting AST scan results',
+    sql: `
+      CREATE TABLE IF NOT EXISTS ast_analyses (
+        scope TEXT PRIMARY KEY,
+        repo_graph TEXT NOT NULL,
+        arch_analysis TEXT,
+        file_count INTEGER NOT NULL DEFAULT 0,
+        analyzed_at INTEGER NOT NULL
+      );
+    `,
+  },
 ]
 
 /**

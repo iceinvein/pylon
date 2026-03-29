@@ -63,20 +63,45 @@ export function AstView() {
     }
   }, [drilledFile, setFileAst])
 
+  const setRepoGraph = useAstStore((s) => s.setRepoGraph)
+  const setArchAnalysis = useAstStore((s) => s.setArchAnalysis)
+  const setAnalysisStatus = useAstStore((s) => s.setAnalysisStatus)
+
+  // Try loading cached analysis for a scope, fall back to full analysis
+  const openScope = useCallback(
+    async (scopePath: string) => {
+      setScope(scopePath)
+
+      // Check for cached analysis first
+      const cached = await window.api.getCachedAnalysis(scopePath)
+      if (cached) {
+        setRepoGraph(cached.repoGraph as import('../../../shared/types').RepoGraph)
+        if (cached.archAnalysis) {
+          setArchAnalysis(cached.archAnalysis as import('../../../shared/types').ArchAnalysis)
+        }
+        setAnalysisStatus(
+          'ready',
+          `Loaded from cache (${new Date(cached.analyzedAt).toLocaleString()})`,
+        )
+        return
+      }
+
+      // No cache — run full analysis
+      await window.api.analyzeScope(scopePath)
+    },
+    [setScope, setRepoGraph, setArchAnalysis, setAnalysisStatus],
+  )
+
   const handleBrowse = useCallback(async () => {
     const path = await window.api.openFolder()
-    if (path) {
-      setScope(path)
-      await window.api.analyzeScope(path)
-    }
-  }, [setScope])
+    if (path) await openScope(path)
+  }, [openScope])
 
   const handleSelectProject = useCallback(
     async (path: string) => {
-      setScope(path)
-      await window.api.analyzeScope(path)
+      await openScope(path)
     },
-    [setScope],
+    [openScope],
   )
 
   const handleReanalyze = useCallback(async () => {

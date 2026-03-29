@@ -222,6 +222,11 @@ type Api = {
   onGitOpsConflictDetected: (callback: (data: unknown) => void) => () => void
   sendLog: (level: string, source: string, message: string) => void
   // AST Visualizer
+  getCachedAnalysis: (scope: string) => Promise<{
+    repoGraph: unknown
+    archAnalysis: unknown | null
+    analyzedAt: number
+  } | null>
   analyzeScope: (scope: string) => Promise<void>
   getFileAst: (filePath: string) => Promise<import('../shared/types').AstNode[]>
   explainAstNode: (
