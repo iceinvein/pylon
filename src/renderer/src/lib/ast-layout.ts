@@ -21,6 +21,8 @@ export type LayoutNode = {
   height: number
   clusterId?: string
   layerColor?: string
+  isCluster?: boolean
+  fileCount?: number
 }
 
 export type LayoutEdge = {
@@ -66,6 +68,8 @@ export type TreeLayout = {
 
 const REPO_NODE_WIDTH = 140
 const REPO_NODE_HEIGHT = 32
+const CLUSTER_NODE_WIDTH = 160
+const CLUSTER_NODE_HEIGHT = 36
 const CLUSTER_PADDING = 30
 const SIMULATION_TICKS = 300
 
@@ -99,12 +103,38 @@ function fileBaseName(filePath: string): string {
   return parts[parts.length - 1] ?? filePath
 }
 
-export function computeRepoLayout(graph: RepoGraph, analysis: ArchAnalysis | null): RepoLayout {
+/** Derive the directory path for a file (relative segments minus filename). */
+function fileDir(filePath: string): string {
+  const idx = filePath.lastIndexOf('/')
+  return idx > 0 ? filePath.slice(0, idx) : '.'
+}
+
+/** Palette for directory-based clusters when no ArchAnalysis colours exist. */
+const DIR_COLORS = [
+  '#58a6ff',
+  '#7ee787',
+  '#d2a8ff',
+  '#ff7b72',
+  '#79c0ff',
+  '#ffa657',
+  '#f778ba',
+  '#a5d6ff',
+  '#56d4dd',
+  '#e3b341',
+]
+
+export function computeRepoLayout(
+  graph: RepoGraph,
+  analysis: ArchAnalysis | null,
+  expandedClusters?: Set<string>,
+): RepoLayout {
   if (graph.files.length === 0) {
     return { nodes: [], edges: [], clusters: [] }
   }
 
-  // Build a lookup from filePath → cluster/layer info
+  const expanded = expandedClusters ?? new Set<string>()
+
+  // ── 1. Build arch-analysis lookup ──
   const fileClusterMap = new Map<string, { clusterId: string; layerColor: string }>()
 
   if (analysis) {
@@ -120,44 +150,115 @@ export function computeRepoLayout(graph: RepoGraph, analysis: ArchAnalysis | nul
     }
   }
 
-  // Create simulation nodes
-  const simNodes: SimNode[] = graph.files.map((f, i) => {
-    const info = fileClusterMap.get(f.filePath)
-    return {
-      id: f.filePath,
-      filePath: f.filePath,
-      name: fileBaseName(f.filePath),
-      x: Math.cos((2 * Math.PI * i) / graph.files.length) * 200,
-      y: Math.sin((2 * Math.PI * i) / graph.files.length) * 200,
-      vx: 0,
-      vy: 0,
-      clusterId: info?.clusterId,
-      layerColor: info?.layerColor,
+  // ── 2. Group files by directory ──
+  const dirGroups = new Map<string, typeof graph.files>()
+  for (const f of graph.files) {
+    const dir = fileDir(f.filePath)
+    let group = dirGroups.get(dir)
+    if (!group) {
+      group = []
+      dirGroups.set(dir, group)
     }
-  })
+    group.push(f)
+  }
 
-  // Build node id set for filtering edges
+  // Assign stable colours per directory
+  const dirColorMap = new Map<string, string>()
+  let colorIdx = 0
+  for (const dir of dirGroups.keys()) {
+    dirColorMap.set(dir, DIR_COLORS[colorIdx % DIR_COLORS.length])
+    colorIdx++
+  }
+
+  // ── 3. Build simulation nodes — collapsed dirs become single nodes ──
+  const simNodes: SimNode[] = []
+  // Track which files are represented by a cluster summary node
+  const collapsedFileToDir = new Map<string, string>()
+
+  let angle = 0
+  const totalItems = dirGroups.size // rough count for initial placement
+  for (const [dir, files] of dirGroups) {
+    const isExpanded = expanded.has(dir)
+
+    if (isExpanded) {
+      // Expanded: individual file nodes
+      for (const f of files) {
+        const info = fileClusterMap.get(f.filePath)
+        simNodes.push({
+          id: f.filePath,
+          filePath: f.filePath,
+          name: fileBaseName(f.filePath),
+          x: Math.cos((2 * Math.PI * angle) / Math.max(totalItems * 3, 1)) * 200,
+          y: Math.sin((2 * Math.PI * angle) / Math.max(totalItems * 3, 1)) * 200,
+          vx: 0,
+          vy: 0,
+          clusterId: info?.clusterId ?? dir,
+          layerColor: info?.layerColor ?? dirColorMap.get(dir),
+        })
+        angle++
+      }
+    } else {
+      // Collapsed: single summary node for directory
+      const dirBaseName = dir === '.' ? 'root' : (dir.split('/').pop() ?? dir)
+      for (const f of files) {
+        collapsedFileToDir.set(f.filePath, dir)
+      }
+      simNodes.push({
+        id: dir,
+        filePath: dir,
+        name: `${dirBaseName} (${files.length})`,
+        x: Math.cos((2 * Math.PI * angle) / Math.max(totalItems, 1)) * 200,
+        y: Math.sin((2 * Math.PI * angle) / Math.max(totalItems, 1)) * 200,
+        vx: 0,
+        vy: 0,
+        clusterId: dir,
+        layerColor: dirColorMap.get(dir),
+      })
+      angle++
+    }
+  }
+
+  // ── 4. Build edges — remap collapsed file edges to their dir node ──
   const nodeIdSet = new Set(simNodes.map((n) => n.id))
 
-  // Build edge descriptors — keep original string IDs separately because
-  // d3-force mutates link.source/target into node object references.
-  const filteredEdges = graph.edges.filter(
-    (e) => nodeIdSet.has(e.source) && nodeIdSet.has(e.target),
-  )
+  function resolveId(filePath: string): string {
+    const dir = collapsedFileToDir.get(filePath)
+    return dir ?? filePath
+  }
 
-  const edgeDescriptors = filteredEdges.map((e) => ({
-    sourceId: e.source,
-    targetId: e.target,
-    label: e.specifiers.length > 0 ? e.specifiers.join(', ') : undefined,
+  const edgeDescriptors: Array<{ sourceId: string; targetId: string; label?: string }> = []
+  const edgeDedupe = new Set<string>()
+
+  for (const e of graph.edges) {
+    const src = resolveId(e.source)
+    const tgt = resolveId(e.target)
+    if (!nodeIdSet.has(src) || !nodeIdSet.has(tgt)) continue
+    if (src === tgt) continue // skip self-loops within collapsed dir
+    const key = `${src}->${tgt}`
+    if (edgeDedupe.has(key)) continue
+    edgeDedupe.add(key)
+    edgeDescriptors.push({
+      sourceId: src,
+      targetId: tgt,
+      label: e.specifiers.length > 0 ? e.specifiers.join(', ') : undefined,
+    })
+  }
+
+  const simLinks: SimLink[] = edgeDescriptors.map((d) => ({
+    source: d.sourceId,
+    target: d.targetId,
+    label: d.label,
   }))
 
-  const simLinks: SimLink[] = filteredEdges.map((e) => ({
-    source: e.source,
-    target: e.target,
-    label: e.specifiers.length > 0 ? e.specifiers.join(', ') : undefined,
-  }))
+  // ── 5. Run d3-force simulation ──
+  const collideRadius = (d: SimNode) => {
+    const isClusterNode =
+      collapsedFileToDir.size > 0 && !d.filePath.includes('/')
+        ? CLUSTER_NODE_WIDTH / 2 + 12
+        : REPO_NODE_WIDTH / 2 + 10
+    return dirGroups.has(d.id) && !expanded.has(d.id) ? CLUSTER_NODE_WIDTH / 2 + 12 : isClusterNode
+  }
 
-  // Run d3-force simulation synchronously
   const simulation = forceSimulation<SimNode>(simNodes)
     .force(
       'link',
@@ -167,39 +268,77 @@ export function computeRepoLayout(graph: RepoGraph, analysis: ArchAnalysis | nul
     )
     .force('charge', forceManyBody().strength(-200))
     .force('center', forceCenter(0, 0))
-    .force('collide', forceCollide<SimNode>().radius(REPO_NODE_WIDTH / 2 + 10))
+    .force('collide', forceCollide<SimNode>().radius(collideRadius))
     .stop()
 
   for (let i = 0; i < SIMULATION_TICKS; i++) {
     simulation.tick()
   }
 
-  // Map to LayoutNodes — convert d3 center-based coords to top-left origin
-  const layoutNodes: LayoutNode[] = simNodes.map((n) => ({
-    id: n.id,
-    filePath: n.filePath,
-    name: n.name,
-    x: n.x - REPO_NODE_WIDTH / 2,
-    y: n.y - REPO_NODE_HEIGHT / 2,
-    width: REPO_NODE_WIDTH,
-    height: REPO_NODE_HEIGHT,
-    clusterId: n.clusterId,
-    layerColor: n.layerColor,
-  }))
+  // ── 6. Map to LayoutNodes ──
+  const collapsedDirs = new Set(collapsedFileToDir.values())
 
-  // Map edges using preserved string IDs (d3-force mutates source/target to objects)
+  const layoutNodes: LayoutNode[] = simNodes.map((n) => {
+    const isSummary = collapsedDirs.has(n.id)
+    const w = isSummary ? CLUSTER_NODE_WIDTH : REPO_NODE_WIDTH
+    const h = isSummary ? CLUSTER_NODE_HEIGHT : REPO_NODE_HEIGHT
+    return {
+      id: n.id,
+      filePath: n.filePath,
+      name: n.name,
+      x: n.x - w / 2,
+      y: n.y - h / 2,
+      width: w,
+      height: h,
+      clusterId: n.clusterId,
+      layerColor: n.layerColor,
+      isCluster: isSummary,
+      fileCount: isSummary ? (dirGroups.get(n.id)?.length ?? 0) : undefined,
+    }
+  })
+
+  // ── 7. Map edges ──
   const layoutEdges: LayoutEdge[] = edgeDescriptors.map((d) => ({
     source: d.sourceId,
     target: d.targetId,
     label: d.label,
   }))
 
-  // Compute cluster bounding boxes
+  // ── 8. Cluster bounding boxes for expanded directories ──
   const clusters: LayoutCluster[] = []
 
+  for (const dir of expanded) {
+    const clusterNodes = layoutNodes.filter((n) => !n.isCluster && fileDir(n.filePath) === dir)
+    if (clusterNodes.length === 0) continue
+
+    let minX = Number.POSITIVE_INFINITY
+    let minY = Number.POSITIVE_INFINITY
+    let maxX = Number.NEGATIVE_INFINITY
+    let maxY = Number.NEGATIVE_INFINITY
+
+    for (const n of clusterNodes) {
+      if (n.x < minX) minX = n.x
+      if (n.y < minY) minY = n.y
+      if (n.x + n.width > maxX) maxX = n.x + n.width
+      if (n.y + n.height > maxY) maxY = n.y + n.height
+    }
+
+    const dirBaseName = dir === '.' ? 'root' : (dir.split('/').pop() ?? dir)
+    clusters.push({
+      id: dir,
+      name: dirBaseName,
+      color: dirColorMap.get(dir) ?? '#484f58',
+      x: minX - CLUSTER_PADDING,
+      y: minY - CLUSTER_PADDING,
+      width: maxX - minX + CLUSTER_PADDING * 2,
+      height: maxY - minY + CLUSTER_PADDING * 2,
+    })
+  }
+
+  // Also add arch-analysis clusters if available
   if (analysis) {
     for (const cluster of analysis.clusters) {
-      const clusterNodes = layoutNodes.filter((n) => n.clusterId === cluster.id)
+      const clusterNodes = layoutNodes.filter((n) => n.clusterId === cluster.id && !n.isCluster)
       if (clusterNodes.length === 0) continue
 
       const layerColor = analysis.layers.find((l) => l.id === cluster.layerId)?.color ?? '#484f58'
@@ -210,15 +349,10 @@ export function computeRepoLayout(graph: RepoGraph, analysis: ArchAnalysis | nul
       let maxY = Number.NEGATIVE_INFINITY
 
       for (const n of clusterNodes) {
-        // LayoutNode x/y is top-left corner
-        const left = n.x
-        const top = n.y
-        const right = n.x + n.width
-        const bottom = n.y + n.height
-        if (left < minX) minX = left
-        if (top < minY) minY = top
-        if (right > maxX) maxX = right
-        if (bottom > maxY) maxY = bottom
+        if (n.x < minX) minX = n.x
+        if (n.y < minY) minY = n.y
+        if (n.x + n.width > maxX) maxX = n.x + n.width
+        if (n.y + n.height > maxY) maxY = n.y + n.height
       }
 
       clusters.push({

@@ -27,6 +27,10 @@ type AstStore = {
   zoom: number
   panX: number
   panY: number
+  expandedClusters: Set<string>
+  focusedNode: string | null
+  searchQuery: string
+  searchMatches: string[]
 
   setScope: (scope: string) => void
   setRepoGraph: (graph: RepoGraph) => void
@@ -42,6 +46,9 @@ type AstStore = {
   setChatLoading: (loading: boolean) => void
   setZoom: (zoom: number) => void
   setPan: (panX: number, panY: number) => void
+  toggleCluster: (clusterId: string) => void
+  setFocusedNode: (nodeId: string | null) => void
+  setSearchQuery: (query: string) => void
   reset: () => void
 }
 
@@ -63,6 +70,10 @@ const initialState = {
   zoom: 1,
   panX: 0,
   panY: 0,
+  expandedClusters: new Set<string>(),
+  focusedNode: null as string | null,
+  searchQuery: '',
+  searchMatches: [] as string[],
 }
 
 export const useAstStore = create<AstStore>((set) => ({
@@ -106,9 +117,36 @@ export const useAstStore = create<AstStore>((set) => ({
 
   setPan: (panX, panY) => set({ panX, panY }),
 
+  toggleCluster: (clusterId) =>
+    set((s) => {
+      const next = new Set(s.expandedClusters)
+      if (next.has(clusterId)) next.delete(clusterId)
+      else next.add(clusterId)
+      return { expandedClusters: next }
+    }),
+
+  setFocusedNode: (focusedNode) => set({ focusedNode }),
+
+  setSearchQuery: (query) =>
+    set((s) => {
+      const graph = s.repoGraph
+      if (!query || !graph) {
+        return { searchQuery: query, searchMatches: [] }
+      }
+      const lower = query.toLowerCase()
+      const matches = graph.files
+        .map((f) => f.filePath)
+        .filter((fp) => {
+          const name = fp.split('/').pop() ?? fp
+          return name.toLowerCase().includes(lower)
+        })
+      return { searchQuery: query, searchMatches: matches }
+    }),
+
   reset: () =>
     set({
       ...initialState,
       activeOverlays: new Set<AstOverlay>(),
+      expandedClusters: new Set<string>(),
     }),
 }))
