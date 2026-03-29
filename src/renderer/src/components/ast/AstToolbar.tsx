@@ -1,12 +1,16 @@
-import { GitBranch, RefreshCw, Search, Workflow } from 'lucide-react'
+import { ChevronDown, GitBranch, RefreshCw, Search, Workflow } from 'lucide-react'
+import { useCallback, useRef, useState } from 'react'
 import type { AstOverlay, RepoGraph } from '../../../../shared/types'
 import { useAstStore } from '../../store/ast-store'
+import { ProjectsPopover } from '../ProjectsPopover'
 
 type AstToolbarProps = {
   scope: string
   repoGraph: RepoGraph | null
   analysisStatus: string
   onReanalyze: () => void
+  onSwitchProject: (path: string) => void
+  onBrowse: () => void
 }
 
 const OVERLAYS: Array<{ id: AstOverlay; label: string; icon: typeof GitBranch }> = [
@@ -20,20 +24,58 @@ function scopeBreadcrumb(scope: string): string {
   return parts.slice(-2).join('/')
 }
 
-export function AstToolbar({ scope, repoGraph, analysisStatus, onReanalyze }: AstToolbarProps) {
+export function AstToolbar({
+  scope,
+  repoGraph,
+  analysisStatus,
+  onReanalyze,
+  onSwitchProject,
+  onBrowse,
+}: AstToolbarProps) {
   const activeOverlays = useAstStore((s) => s.activeOverlays)
   const toggleOverlay = useAstStore((s) => s.toggleOverlay)
   const searchQuery = useAstStore((s) => s.searchQuery)
   const setSearchQuery = useAstStore((s) => s.setSearchQuery)
 
+  const [popoverOpen, setPopoverOpen] = useState(false)
+  const scopeBtnRef = useRef<HTMLButtonElement>(null)
+
+  const handleSelectProject = useCallback(
+    (path: string) => {
+      setPopoverOpen(false)
+      onSwitchProject(path)
+    },
+    [onSwitchProject],
+  )
+
+  const handleBrowse = useCallback(() => {
+    setPopoverOpen(false)
+    onBrowse()
+  }, [onBrowse])
+
   const isAnalyzing = analysisStatus === 'parsing' || analysisStatus === 'analyzing'
 
   return (
     <div className="flex items-center gap-3 border-base-border border-b px-4 py-2">
-      {/* Scope breadcrumb */}
-      <span className="font-mono text-base-text-muted text-xs" title={scope}>
+      {/* Scope breadcrumb — clickable to switch project */}
+      <button
+        ref={scopeBtnRef}
+        type="button"
+        onClick={() => setPopoverOpen(!popoverOpen)}
+        className="flex items-center gap-1 rounded-md px-1.5 py-0.5 font-mono text-base-text-muted text-xs transition-colors hover:bg-base-raised hover:text-base-text"
+        title={scope}
+      >
         {scopeBreadcrumb(scope)}
-      </span>
+        <ChevronDown size={10} />
+      </button>
+
+      <ProjectsPopover
+        open={popoverOpen}
+        onClose={() => setPopoverOpen(false)}
+        onSelectProject={handleSelectProject}
+        onBrowse={handleBrowse}
+        anchorRef={scopeBtnRef}
+      />
 
       <div className="h-4 w-px bg-base-border" />
 

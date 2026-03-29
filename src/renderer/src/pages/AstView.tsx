@@ -110,6 +110,24 @@ export function AstView() {
     }
   }, [scope])
 
+  const reset = useAstStore((s) => s.reset)
+
+  const handleSwitchProject = useCallback(
+    async (path: string) => {
+      reset()
+      await openScope(path)
+    },
+    [reset, openScope],
+  )
+
+  const handleBrowseFromToolbar = useCallback(async () => {
+    const path = await window.api.openFolder()
+    if (path) {
+      reset()
+      await openScope(path)
+    }
+  }, [reset, openScope])
+
   if (!scope) {
     return <ProjectSelector onBrowse={handleBrowse} onSelectProject={handleSelectProject} />
   }
@@ -126,6 +144,8 @@ export function AstView() {
         repoGraph={repoGraph}
         analysisStatus={analysisStatus}
         onReanalyze={handleReanalyze}
+        onSwitchProject={handleSwitchProject}
+        onBrowse={handleBrowseFromToolbar}
       />
 
       {isLoading && (
