@@ -151,8 +151,17 @@ describe('SessionManager', () => {
 
   beforeEach(async () => {
     initTestDb()
-    const mod = await import('../session-manager')
-    SessionManager = mod.SessionManager
+    try {
+      const mod = await import('../session-manager')
+      console.log('[DEBUG] session-manager module keys:', Object.keys(mod))
+      SessionManager = mod.SessionManager
+      if (!SessionManager) {
+        console.error('[DEBUG] SessionManager is undefined! Full module:', JSON.stringify(mod, null, 2))
+      }
+    } catch (err) {
+      console.error('[DEBUG] Failed to import session-manager:', err)
+      throw err
+    }
   })
 
   afterEach(() => {
