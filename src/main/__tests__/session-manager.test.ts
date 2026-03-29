@@ -156,7 +156,10 @@ describe('SessionManager', () => {
       console.log('[DEBUG] session-manager module keys:', Object.keys(mod))
       SessionManager = mod.SessionManager
       if (!SessionManager) {
-        console.error('[DEBUG] SessionManager is undefined! Full module:', JSON.stringify(mod, null, 2))
+        console.error(
+          '[DEBUG] SessionManager is undefined! Full module:',
+          JSON.stringify(mod, null, 2),
+        )
       }
     } catch (err) {
       console.error('[DEBUG] Failed to import session-manager:', err)
