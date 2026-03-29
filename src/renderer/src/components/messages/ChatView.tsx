@@ -1,6 +1,7 @@
 import { ChevronDown, ChevronRight, Minimize2, Sparkles, Zap } from 'lucide-react'
 import { motion } from 'motion/react'
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
+import type { SdkMessage } from '../../../../shared/types'
 import { useAgentGrouping } from '../../hooks/use-agent-grouping'
 import { detectChoices } from '../../lib/detect-choices'
 import { parsePlanSections } from '../../lib/parse-plan'
@@ -18,8 +19,6 @@ import { ResultMessage } from './ResultMessage'
 import { SystemMessage } from './SystemMessage'
 import { TextBlock } from './TextBlock'
 import { UserMessage } from './UserMessage'
-
-import type { SdkMessage } from '../../../../shared/types'
 
 type AssistantContentBlock = {
   type: string

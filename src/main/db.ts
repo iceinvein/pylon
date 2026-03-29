@@ -114,9 +114,9 @@ function detectAppliedMigrations(database: Database.Database): Set<number> {
   // Check pr_review_findings columns
   try {
     const findingCols = new Set(
-      (
-        database.prepare('PRAGMA table_info(pr_review_findings)').all() as { name: string }[]
-      ).map((c) => c.name),
+      (database.prepare('PRAGMA table_info(pr_review_findings)').all() as { name: string }[]).map(
+        (c) => c.name,
+      ),
     )
     if (findingCols.has('domain')) applied.add(9)
   } catch {
@@ -179,9 +179,7 @@ function runMigrations(database: Database.Database): void {
 
     database.exec(migration.sql)
     database
-      .prepare(
-        'INSERT INTO schema_version (version, description, applied_at) VALUES (?, ?, ?)',
-      )
+      .prepare('INSERT INTO schema_version (version, description, applied_at) VALUES (?, ?, ?)')
       .run(migration.version, migration.description, Date.now())
   }
 }

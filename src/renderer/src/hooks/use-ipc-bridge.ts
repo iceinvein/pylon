@@ -26,7 +26,6 @@ type SessionStatusEvent = {
 
 type SessionPermissionEvent = PermissionRequest
 
-
 type StreamEventMessage = {
   type: 'stream_event'
   parent_tool_use_id?: string | null

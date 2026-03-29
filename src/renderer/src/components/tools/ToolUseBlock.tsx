@@ -44,7 +44,11 @@ function shortPath(input: Record<string, unknown>): string {
 type ToolRegistryEntry = {
   match: (name: string) => boolean
   info: (toolName: string, input: Record<string, unknown>) => ToolInfo
-  render: (props: { toolName: string; input: Record<string, unknown>; result?: string }) => React.ReactNode
+  render: (props: {
+    toolName: string
+    input: Record<string, unknown>
+    result?: string
+  }) => React.ReactNode
 }
 
 const TOOL_REGISTRY: ToolRegistryEntry[] = [
@@ -53,7 +57,9 @@ const TOOL_REGISTRY: ToolRegistryEntry[] = [
     info: (_tn, input) => ({
       icon: Terminal,
       label: 'Run',
-      summary: String(input.description ?? '').slice(0, 80) || String(input.command ?? input.cmd ?? '').slice(0, 80),
+      summary:
+        String(input.description ?? '').slice(0, 80) ||
+        String(input.command ?? input.cmd ?? '').slice(0, 80),
       iconColor: 'text-[var(--color-accent-text)]',
     }),
     render: ({ input, result }) => <BashTool input={input} result={result} />,
@@ -94,9 +100,19 @@ const TOOL_REGISTRY: ToolRegistryEntry[] = [
       const todos = input.todos as Array<{ content: string; status: string }> | undefined
       if (Array.isArray(todos)) {
         const done = todos.filter((t) => t.status === 'completed').length
-        return { icon: ListChecks, label: 'Tasks', summary: `${done}/${todos.length} completed`, iconColor: 'text-[var(--color-accent-text)]' }
+        return {
+          icon: ListChecks,
+          label: 'Tasks',
+          summary: `${done}/${todos.length} completed`,
+          iconColor: 'text-[var(--color-accent-text)]',
+        }
       }
-      return { icon: ListChecks, label: 'Tasks', summary: '', iconColor: 'text-[var(--color-accent-text)]' }
+      return {
+        icon: ListChecks,
+        label: 'Tasks',
+        summary: '',
+        iconColor: 'text-[var(--color-accent-text)]',
+      }
     },
     render: ({ input }) => <TodoWriteTool input={input} />,
   },
@@ -128,7 +144,9 @@ const TOOL_REGISTRY: ToolRegistryEntry[] = [
       summary: String(input.pattern ?? input.glob ?? input.query ?? ''),
       iconColor: 'text-[var(--color-base-text-muted)]',
     }),
-    render: ({ toolName, input, result }) => <GlobGrepTool input={input} toolName={toolName} result={result} />,
+    render: ({ toolName, input, result }) => (
+      <GlobGrepTool input={input} toolName={toolName} result={result} />
+    ),
   },
   {
     match: (n) => n === 'askuserquestion',
