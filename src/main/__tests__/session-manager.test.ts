@@ -147,16 +147,15 @@ function initTestDb() {
 }
 
 describe('SessionManager', () => {
-  let SessionManager: typeof import('../session-manager').SessionManager
+  // biome-ignore lint/suspicious/noExplicitAny: test helper — type not available at compile time
+  let SessionManager: any
 
-  beforeEach(async () => {
+  beforeEach(() => {
     initTestDb()
-    const mod = await import('../session-manager')
-    // Bun 1.3.11+ with mock.module may drop named class exports from
-    // dynamic imports while keeping the singleton. Fall back to the
-    // singleton's constructor when the class export is missing.
-    SessionManager =
-      mod.SessionManager ?? (mod.sessionManager?.constructor as typeof mod.SessionManager)
+    // Use require() instead of dynamic import() — Bun 1.3.11 on Linux
+    // drops class exports from dynamically imported modules when
+    // mock.module is active. require() resolves correctly.
+    SessionManager = require('../session-manager').SessionManager
   })
 
   afterEach(() => {
