@@ -638,3 +638,48 @@ export type AstChatMessage = {
   content: string
   highlights?: Array<{ filePath: string; symbolName: string }>
 }
+
+// ── Worktree Recipe Types ────────────────────────
+
+export type RecipeStepType = 'install' | 'copy' | 'symlink' | 'run'
+
+export type RecipeStep = {
+  id: string
+  type: RecipeStepType
+  label: string
+  command?: string
+  source?: string
+  destination?: string
+  glob?: string
+  optional?: boolean
+}
+
+export type WorktreeRecipe = {
+  id: string
+  projectPath: string
+  createdAt: number
+  updatedAt: number
+  version: number
+  steps: RecipeStep[]
+}
+
+export type SetupProgressEvent = {
+  sessionId: string
+  stepId: string
+  stepLabel: string
+  status: 'running' | 'done' | 'failed'
+  error?: string
+  current: number
+  total: number
+}
+
+export type SetupCompleteEvent = {
+  sessionId: string
+  success: boolean
+  results: Array<{
+    stepId: string
+    label: string
+    status: 'done' | 'failed'
+    error?: string
+  }>
+}

@@ -33,6 +33,13 @@ export const IPC = {
   WORKTREE_INFO: 'worktree:info',
   WORKTREE_GET_USAGE: 'worktree:get-usage',
   WORKTREE_CLEANUP_ALL: 'worktree:cleanup-all',
+  // Worktree Recipe
+  WORKTREE_RECIPE_GET: 'worktree:recipe:get',
+  WORKTREE_RECIPE_ANALYZE: 'worktree:recipe:analyze',
+  WORKTREE_RECIPE_DELETE: 'worktree:recipe:delete',
+  WORKTREE_SETUP_RUN: 'worktree:setup:run',
+  WORKTREE_SETUP_PROGRESS: 'worktree:setup:progress',
+  WORKTREE_SETUP_COMPLETE: 'worktree:setup:complete',
   // Git Branch Status
   GIT_BRANCH_STATUS: 'git:branch-status',
   GIT_FETCH_COMPARE: 'git:fetch-compare',
