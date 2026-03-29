@@ -1,6 +1,17 @@
 import { AlertTriangle, GitBranch, X } from 'lucide-react'
 import { motion } from 'motion/react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import type { WorktreeRecipe } from '../../../shared/types'
+
+function formatAge(timestamp: number): string {
+  const diff = Date.now() - timestamp
+  const minutes = Math.floor(diff / 60_000)
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  return `${days}d ago`
+}
 
 type WorktreeDialogProps = {
   folderPath: string
@@ -11,6 +22,19 @@ type WorktreeDialogProps = {
 
 export function WorktreeDialog({ folderPath, isDirty, onConfirm, onCancel }: WorktreeDialogProps) {
   const [useWorktree, setUseWorktree] = useState(false)
+  const [recipe, setRecipe] = useState<WorktreeRecipe | null>(null)
+  const [reanalyzing, setReanalyzing] = useState(false)
+
+  useEffect(() => {
+    window.api.getWorktreeRecipe(folderPath).then(setRecipe)
+  }, [folderPath])
+
+  async function handleReanalyze() {
+    setReanalyzing(true)
+    await window.api.deleteWorktreeRecipe(folderPath)
+    setRecipe(null)
+    setReanalyzing(false)
+  }
 
   return (
     <motion.div
@@ -62,6 +86,26 @@ export function WorktreeDialog({ folderPath, isDirty, onConfirm, onCancel }: Wor
             <span className="text-base-text text-xs">Open in isolated worktree</span>
           </div>
         </label>
+
+        {useWorktree && recipe && (
+          <div className="mt-2 ml-9 flex items-center justify-between rounded-md border border-accent/20 bg-accent/5 px-3 py-2">
+            <div>
+              <p className="text-accent/80 text-[11px]">Setup recipe cached</p>
+              <p className="text-accent/50 text-[10px]">
+                {recipe.steps.length} {recipe.steps.length === 1 ? 'step' : 'steps'} • analyzed{' '}
+                {formatAge(recipe.createdAt)}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); handleReanalyze() }}
+              disabled={reanalyzing}
+              className="rounded border border-accent/30 px-2 py-0.5 text-accent/70 text-[10px] transition-colors hover:bg-accent/10 disabled:opacity-50"
+            >
+              {reanalyzing ? '...' : 'Reanalyze'}
+            </button>
+          </div>
+        )}
 
         <div className="mt-5 flex justify-end gap-2">
           <button
