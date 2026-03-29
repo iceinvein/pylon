@@ -6,6 +6,7 @@ import { useGitBridge } from './hooks/use-git-bridge'
 import { useIpcBridge } from './hooks/use-ipc-bridge'
 import { usePrReviewBridge } from './hooks/use-pr-review-bridge'
 import { useTestBridge } from './hooks/use-test-bridge'
+import { useWorktreeSetupBridge } from './hooks/use-worktree-setup-bridge'
 import { resumeStoredSession, type StoredSession } from './lib/resume-session'
 import { AstView } from './pages/AstView'
 import { HomePage } from './pages/HomePage'
@@ -21,6 +22,7 @@ export default function App() {
   usePrReviewBridge()
   useTestBridge()
   useGitBridge()
+  useWorktreeSetupBridge()
   const sidebarView = useUiStore((s) => s.sidebarView)
 
   const { tabs, activeTabId, setActiveTab } = useTabStore()

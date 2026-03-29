@@ -24,6 +24,8 @@ import { resumeStoredSession, type StoredSession } from '../lib/resume-session'
 import { usePrRaiseStore } from '../store/pr-raise-store'
 import { useSessionStore } from '../store/session-store'
 import { useTabStore } from '../store/tab-store'
+import { WorktreeSetupModal } from '../components/WorktreeSetupModal'
+import { useWorktreeSetupStore } from '../store/worktree-setup-store'
 
 const emptyFiles: string[] = []
 
@@ -146,6 +148,36 @@ export function SessionView({ tab, isActive }: SessionViewProps) {
     if (permissionMode !== 'default') {
       await window.api.setPermissionMode(newSessionId, permissionMode)
     }
+
+    // ── Worktree Setup ──
+    if (tab.useWorktree) {
+      const setupStore = useWorktreeSetupStore.getState()
+      const existingRecipe = await window.api.getWorktreeRecipe(tab.cwd)
+
+      if (existingRecipe) {
+        // Cached recipe — auto-run
+        setupStore.startAnalyzing(newSessionId)
+        setupStore.setRecipe(existingRecipe)
+        setupStore.startExecuting()
+
+        const info = await window.api.getWorktreeInfo(newSessionId)
+        if (info.worktreePath) {
+          await window.api.runWorktreeSetup(newSessionId, tab.cwd, info.worktreePath, tab.cwd)
+        }
+      } else {
+        // No recipe — analyze, then user confirms via modal
+        setupStore.startAnalyzing(newSessionId)
+
+        try {
+          const recipe = await window.api.analyzeWorktreeRecipe(tab.cwd, pendingModel)
+          setupStore.setRecipe(recipe)
+          setupStore.startConfirming()
+        } catch (err) {
+          setupStore.setError(err instanceof Error ? err.message : String(err))
+        }
+      }
+    }
+
     creatingSession.current = false
     return newSessionId
   }
@@ -535,6 +567,8 @@ export function SessionView({ tab, isActive }: SessionViewProps) {
           </>
         )}
       </div>
+      {/* Worktree setup modal */}
+      <WorktreeSetupModal />
       {/* Review panel overlay — rendered outside the flex layout for full-width slide-over */}
       <ReviewPanel />
       {/* PR raise overlay */}
