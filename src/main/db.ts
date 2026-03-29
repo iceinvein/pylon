@@ -74,6 +74,35 @@ const migrations: Array<{ version: number; description: string; sql: string }> =
     description: 'Add batch_id to test_explorations',
     sql: 'ALTER TABLE test_explorations ADD COLUMN batch_id TEXT',
   },
+  {
+    version: 11,
+    description: 'Add worktree recipe tables',
+    sql: `
+      CREATE TABLE IF NOT EXISTS worktree_recipes (
+        id TEXT PRIMARY KEY,
+        project_path TEXT NOT NULL UNIQUE,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        version INTEGER NOT NULL DEFAULT 1
+      );
+
+      CREATE TABLE IF NOT EXISTS worktree_recipe_steps (
+        id TEXT PRIMARY KEY,
+        recipe_id TEXT NOT NULL,
+        sort_order INTEGER NOT NULL,
+        type TEXT NOT NULL,
+        label TEXT NOT NULL,
+        command TEXT,
+        source TEXT,
+        destination TEXT,
+        glob TEXT,
+        optional INTEGER NOT NULL DEFAULT 0,
+        FOREIGN KEY (recipe_id) REFERENCES worktree_recipes(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_recipe_steps_recipe ON worktree_recipe_steps(recipe_id, sort_order);
+    `,
+  },
 ]
 
 /**
