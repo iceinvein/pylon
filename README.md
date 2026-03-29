@@ -62,7 +62,9 @@ When conflicts arise, an AI resolver walks through each file with confidence bad
 
 ## PR Reviews
 
-<!-- screenshot: PR review view with split diff and finding annotations -->
+<p align="center">
+  <img src="docs/screenshot-2.png" alt="Pylon — PR review with file changes and severity annotations" width="800" />
+</p>
 
 Select a pull request from your repo. Pylon dispatches specialized review agents in parallel — security, bugs, performance, style, architecture, UX — each with its own system prompt you can customize.
 
