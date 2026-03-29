@@ -103,6 +103,13 @@ export function Layout({ children }: LayoutProps) {
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-base-bg text-base-text">
+      {/* Skip to main content — visible only on keyboard focus */}
+      <a
+        href="#main-content"
+        className="sr-only z-100 rounded-md bg-accent px-4 py-2 font-medium text-sm text-white focus:not-sr-only focus:fixed focus:top-14 focus:left-14"
+      >
+        Skip to content
+      </a>
       {/* Drag region for macOS title bar */}
       <div
         className="fixed top-0 right-0 left-0 z-50 h-12"
@@ -158,8 +165,10 @@ export function Layout({ children }: LayoutProps) {
         {sidebarView !== 'pr-review' && sidebarView !== 'testing' && sidebarView !== 'ast' && (
           <TabBar />
         )}
-        <main className="min-h-0 flex-1 overflow-hidden">{children}</main>
-        {sidebarView !== 'pr-review' && sidebarView !== 'testing' && (
+        <main id="main-content" className="min-h-0 flex-1 overflow-hidden">
+          {children}
+        </main>
+        {sidebarView !== 'pr-review' && sidebarView !== 'testing' && sidebarView !== 'ast' && (
           <StatusBar cwd={activeCwd} branchStatus={branchStatus} />
         )}
       </div>

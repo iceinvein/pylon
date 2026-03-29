@@ -81,7 +81,7 @@ function DotIcon({
         style={{
           width: size,
           height: size,
-          border: `1.5px solid #57534e`,
+          border: '1.5px solid var(--color-flow-dot-border)',
           backgroundColor: 'transparent',
         }}
       />
@@ -103,7 +103,7 @@ function DotIcon({
 
 /** Compute the gradient bottom color from the last element */
 function getBottomAccent(elements: FlowElement[], isStreaming: boolean): string {
-  if (!isStreaming) return '#706660' // --color-base-text-muted
+  if (!isStreaming) return 'var(--color-flow-spine-idle)'
   // Walk backwards to find the last node
   for (let i = elements.length - 1; i >= 0; i--) {
     const el = elements[i]
@@ -111,7 +111,7 @@ function getBottomAccent(elements: FlowElement[], isStreaming: boolean): string 
     if (el.kind === 'parallel' && el.nodes.length > 0)
       return NODE_STYLES[el.nodes[0].type].accentHex
   }
-  return '#78716c'
+  return 'var(--color-flow-spine-fallback)'
 }
 
 export function FlowPanel() {
@@ -183,7 +183,7 @@ export function FlowPanel() {
           style={{
             left: SPINE_LEFT,
             width: 1.5,
-            background: `linear-gradient(to bottom, #44403c, ${bottomAccent})`,
+            background: `linear-gradient(to bottom, var(--color-flow-spine-start), ${bottomAccent})`,
           }}
         />
 

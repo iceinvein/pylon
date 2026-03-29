@@ -1,5 +1,6 @@
 import { Activity, useEffect } from 'react'
 import { CommandPalette } from './components/CommandPalette'
+import { KeyboardShortcuts } from './components/KeyboardShortcuts'
 import { Layout } from './components/layout/Layout'
 import { SettingsOverlay } from './components/SettingsOverlay'
 import { useGitBridge } from './hooks/use-git-bridge'
@@ -29,7 +30,9 @@ export default function App() {
   const setNewTabPopoverOpen = useUiStore((s) => s.setNewTabPopoverOpen)
   const activeTab = tabs.find((t) => t.id === activeTabId)
 
-  // Cmd+1..9 to switch tabs, Cmd+N to open new tab popover
+  const setSettingsOpen = useUiStore((s) => s.setSettingsOpen)
+
+  // Cmd+1..9 to switch tabs, Cmd+N to open new tab popover, Cmd+, to open settings
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (!e.metaKey || e.shiftKey || e.altKey || e.ctrlKey) return
@@ -38,6 +41,13 @@ export default function App() {
       if (e.key === 'n') {
         e.preventDefault()
         setNewTabPopoverOpen(true)
+        return
+      }
+
+      // Cmd+, — open settings (standard macOS convention)
+      if (e.key === ',') {
+        e.preventDefault()
+        setSettingsOpen(true)
         return
       }
 
@@ -53,7 +63,7 @@ export default function App() {
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [tabs, setActiveTab, setNewTabPopoverOpen])
+  }, [tabs, setActiveTab, setNewTabPopoverOpen, setSettingsOpen])
 
   // Update Electron window title to reflect the active session
   const activeSession = useSessionStore((s) =>
@@ -139,6 +149,7 @@ export default function App() {
       </Layout>
       <SettingsOverlay />
       <CommandPalette />
+      <KeyboardShortcuts />
     </>
   )
 }

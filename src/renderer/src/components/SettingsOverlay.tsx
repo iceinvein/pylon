@@ -40,15 +40,15 @@ type PermissionModeOption = {
 const CLAUDE_PERMISSION_MODES: PermissionModeOption[] = [
   {
     id: 'default',
-    label: 'Default',
+    label: 'Supervised',
     icon: ShieldCheck,
-    description: 'Ask before each tool use',
+    description: 'Asks before risky actions',
   },
   {
     id: 'auto-approve',
     label: 'YOLO',
     icon: ShieldAlert,
-    description: 'Auto-approve all tool permissions',
+    description: 'Approves all actions automatically',
   },
 ]
 
@@ -267,7 +267,9 @@ function GeneralTab({
       {/* Default Model */}
       <section>
         <span className="block font-medium text-base-text text-sm">Default Model</span>
-        <p className="mt-0.5 text-base-text-muted text-xs">Model used when creating new sessions</p>
+        <p className="mt-0.5 text-base-text-muted text-xs">
+          Applied to new sessions. Change per-session from the input bar.
+        </p>
         <div className="mt-3 space-y-3">
           {claudeModels.length > 0 && (
             <div>
@@ -322,7 +324,7 @@ function GeneralTab({
       <section>
         <span className="block font-medium text-base-text text-sm">Default Permission Mode</span>
         <p className="mt-0.5 text-base-text-muted text-xs">
-          Permission behavior for new sessions (can be overridden per-session)
+          Applied to new sessions. Change per-session from the input bar.
         </p>
         <div className="mt-3 space-y-2">
           {permissionModes.map((m) => {

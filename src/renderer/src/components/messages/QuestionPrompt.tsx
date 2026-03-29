@@ -1,4 +1,5 @@
 import { MessageCircleQuestion } from 'lucide-react'
+import { AnimatePresence, motion } from 'motion/react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { QuestionItem, QuestionRequest } from '../../../../shared/types'
 
@@ -83,7 +84,7 @@ export function QuestionPrompt({ question, onRespond }: QuestionPromptProps) {
     hasTextQuestions
 
   return (
-    <div className="my-2 mr-6 ml-15 rounded-lg border border-info/40 bg-info/15 p-4">
+    <div className="my-2 mr-6 ml-15 rounded-lg border border-info/30 bg-info/8 p-4">
       <div className="space-y-4">
         {question.questions.map((q, qi) => (
           <div key={qi} className="flex items-start gap-3">
@@ -156,18 +157,26 @@ export function QuestionPrompt({ question, onRespond }: QuestionPromptProps) {
                         .trim()
                     : null
                   return (
-                    <div className="mt-2 rounded border border-base-border/50 bg-base-surface/60 px-3 py-2 transition-all duration-150 ease-out">
-                      <div key={focusedIdx ?? 'empty'} className="animate-[fadeIn_150ms_ease-out]">
-                        {cleaned ? (
-                          <pre className="max-h-48 overflow-y-auto whitespace-pre-wrap font-mono text-base-text text-xs leading-relaxed">
-                            {cleaned}
-                          </pre>
-                        ) : (
-                          <p className="py-0.5 text-[11px] text-base-text-faint italic">
-                            Hover an option to see its preview
-                          </p>
-                        )}
-                      </div>
+                    <div className="mt-2 rounded border border-base-border/50 bg-base-surface/60 px-3 py-2">
+                      <AnimatePresence mode="wait">
+                        <motion.div
+                          key={focusedIdx ?? 'empty'}
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          transition={{ duration: 0.15, ease: 'easeOut' }}
+                        >
+                          {cleaned ? (
+                            <pre className="max-h-48 overflow-y-auto whitespace-pre-wrap font-mono text-base-text text-xs leading-relaxed">
+                              {cleaned}
+                            </pre>
+                          ) : (
+                            <p className="py-0.5 text-[11px] text-base-text-faint italic">
+                              Hover an option to see its preview
+                            </p>
+                          )}
+                        </motion.div>
+                      </AnimatePresence>
                     </div>
                   )
                 })()}

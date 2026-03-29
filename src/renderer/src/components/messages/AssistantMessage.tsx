@@ -28,24 +28,37 @@ export function AssistantMessage({ content, toolResultMap, showHeader }: Assista
           <Sparkles size={13} className="text-base-text-muted" />
         </div>
       )}
-      <div className="min-w-0 flex-1 space-y-1">
+      <div className="min-w-0 flex-1">
         {showHeader && <span className="font-semibold text-base-text text-sm">Claude</span>}
         {content.map((block, i) => {
+          const prevType = i > 0 ? content[i - 1].type : null
+          const isAfterTool = prevType === 'tool_use'
+          const isToolBlock = block.type === 'tool_use'
+
           if (block.type === 'text' && block.text) {
-            return <TextBlock key={i} text={block.text} />
+            return (
+              <div key={i} className={isAfterTool ? 'mt-2' : i > 0 ? 'mt-1' : ''}>
+                <TextBlock text={block.text} />
+              </div>
+            )
           }
           if (block.type === 'thinking' && block.thinking) {
-            return <ThinkingBlock key={i} thinking={block.thinking} />
-          }
-          if (block.type === 'tool_use') {
             return (
-              <ToolUseBlock
-                key={i}
-                toolName={block.name ?? 'unknown'}
-                input={block.input ?? {}}
-                toolUseId={block.id}
-                result={toolResultMap?.get(block.id ?? '')}
-              />
+              <div key={i} className={i > 0 ? 'mt-1' : ''}>
+                <ThinkingBlock thinking={block.thinking} />
+              </div>
+            )
+          }
+          if (isToolBlock) {
+            return (
+              <div key={i} className={prevType === 'tool_use' ? 'mt-px' : i > 0 ? 'mt-1' : ''}>
+                <ToolUseBlock
+                  toolName={block.name ?? 'unknown'}
+                  input={block.input ?? {}}
+                  toolUseId={block.id}
+                  result={toolResultMap?.get(block.id ?? '')}
+                />
+              </div>
             )
           }
           return null

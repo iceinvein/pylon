@@ -500,9 +500,10 @@ export const ChatView = memo(function ChatView({ sessionId, isActive }: ChatView
             <Sparkles size={13} className="text-base-text-muted" />
           </div>
         )}
-        <div className="min-w-0 flex-1 space-y-1">
+        <div className="min-w-0 flex-1">
           {showHeader && <span className="font-semibold text-base-text text-sm">Claude</span>}
           {content.map((block, i) => {
+            const prevType = i > 0 ? content[i - 1].type : null
             if (block.type === 'tool_use' && block.name === 'Agent' && block.id) {
               const agent = agentMap.get(block.id)
               const status = agent?.done ? (agent.isError ? 'error' : 'done') : 'running'
@@ -520,7 +521,11 @@ export const ChatView = memo(function ChatView({ sessionId, isActive }: ChatView
               )
             }
             if (block.type === 'text' && block.text) {
-              return <TextBlock key={i} text={block.text} />
+              return (
+                <div key={i} className={prevType === 'tool_use' ? 'mt-2' : i > 0 ? 'mt-1' : ''}>
+                  <TextBlock text={block.text} />
+                </div>
+              )
             }
             if (block.type === 'thinking' && block.thinking) {
               return null
@@ -535,22 +540,24 @@ export const ChatView = memo(function ChatView({ sessionId, isActive }: ChatView
                   : undefined
               if (matchedPlan) {
                 return (
-                  <PlanCard
-                    key={i}
-                    plan={matchedPlan}
-                    sessionId={sessionId}
-                    sectionTitles={planSectionTitles.get(matchedPlan.toolUseId) ?? []}
-                  />
+                  <div key={i} className={i > 0 ? 'mt-1' : ''}>
+                    <PlanCard
+                      plan={matchedPlan}
+                      sessionId={sessionId}
+                      sectionTitles={planSectionTitles.get(matchedPlan.toolUseId) ?? []}
+                    />
+                  </div>
                 )
               }
               return (
-                <ToolUseBlock
-                  key={i}
-                  toolName={block.name ?? 'unknown'}
-                  input={block.input ?? {}}
-                  toolUseId={block.id}
-                  result={toolResultMap.get(block.id ?? '')}
-                />
+                <div key={i} className={prevType === 'tool_use' ? 'mt-px' : i > 0 ? 'mt-1' : ''}>
+                  <ToolUseBlock
+                    toolName={block.name ?? 'unknown'}
+                    input={block.input ?? {}}
+                    toolUseId={block.id}
+                    result={toolResultMap.get(block.id ?? '')}
+                  />
+                </div>
               )
             }
             return null

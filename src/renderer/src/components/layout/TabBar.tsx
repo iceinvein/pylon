@@ -10,10 +10,12 @@ import { WorktreeDialog } from '../WorktreeDialog'
 
 function StatusDot({ status }: { status: SessionStatus | undefined }) {
   if (!status || status === 'empty' || status === 'done') {
-    return <span className="h-2 w-2 rounded-full bg-base-text-faint" />
+    return <span className="h-1.5 w-1.5 rounded-full bg-base-text-faint/50" />
   }
   if (status === 'running' || status === 'starting' || status === 'waiting') {
-    return <span className="h-2 w-2 animate-pulse rounded-full bg-success" />
+    return (
+      <span className="h-2 w-2 animate-pulse rounded-full bg-success shadow-[0_0_4px_var(--color-success)]" />
+    )
   }
   if (status === 'error') {
     return <span className="h-2 w-2 rounded-full bg-error" />
@@ -42,7 +44,8 @@ const TabItem = memo(function TabItem({
   return (
     <div
       role="tab"
-      tabIndex={0}
+      tabIndex={isActive ? 0 : -1}
+      aria-selected={isActive}
       onClick={onSelect}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') onSelect()
@@ -94,7 +97,11 @@ export function TabBar() {
         className="flex h-9 items-center border-base-border-subtle border-b bg-base-bg px-1"
         style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
       >
-        <div className="flex min-w-0 flex-1 items-center gap-0.5">
+        <div
+          role="tablist"
+          aria-orientation="horizontal"
+          className="flex min-w-0 flex-1 items-center gap-0.5"
+        >
           {tabs.map((tab, tabIndex) => (
             <TabItem
               key={tab.id}

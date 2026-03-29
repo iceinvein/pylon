@@ -207,6 +207,7 @@ export function ToolUseBlock({ toolName, input, result }: ToolUseBlockProps) {
 
   const info = getToolInfo(toolName, input)
   const Icon = info.icon
+  const isCompleted = !!result && !expanded
 
   return (
     <div>
@@ -216,19 +217,26 @@ export function ToolUseBlock({ toolName, input, result }: ToolUseBlockProps) {
           setUserToggled(true)
           setExpanded((v) => !v)
         }}
-        className="group flex w-full items-center gap-2 py-0.5 text-left"
+        className="group flex w-full items-center gap-1.5 py-0.5 text-left"
       >
         <motion.span
           animate={{ rotate: expanded ? 90 : 0 }}
           transition={{ duration: 0.15 }}
           className="shrink-0 text-base-text-faint"
         >
-          <ChevronRight size={14} />
+          <ChevronRight size={12} />
         </motion.span>
-        <Icon size={14} className={`shrink-0 ${info.iconColor}`} />
-        <span className="font-medium text-base-text text-sm">{info.label}</span>
+        <Icon
+          size={12}
+          className={`shrink-0 ${isCompleted ? 'opacity-60' : ''} ${info.iconColor}`}
+        />
+        <span
+          className={`text-xs ${isCompleted ? 'text-base-text-muted' : 'font-medium text-base-text-secondary'}`}
+        >
+          {info.label}
+        </span>
         {info.summary && !expanded && (
-          <span className="min-w-0 flex-1 truncate text-base-text-muted text-sm">
+          <span className="min-w-0 flex-1 truncate text-base-text-faint text-xs">
             {info.summary}
           </span>
         )}

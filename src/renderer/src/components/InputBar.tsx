@@ -40,7 +40,7 @@ type PermissionModeEntry = {
 }
 
 const CLAUDE_PERMISSION_MODES: PermissionModeEntry[] = [
-  { id: 'default', label: 'Default', icon: ShieldCheck },
+  { id: 'default', label: 'Supervised', icon: ShieldCheck },
   { id: 'auto-approve', label: 'YOLO', icon: ShieldAlert },
 ]
 
@@ -105,11 +105,11 @@ const FALLBACK_MODELS: ProviderModelEntry[] = [
   },
 ]
 
-const EFFORT_LEVELS: { id: EffortLevel; label: string }[] = [
-  { id: 'low', label: 'Low' },
-  { id: 'medium', label: 'Medium' },
-  { id: 'high', label: 'High' },
-  { id: 'max', label: 'Max' },
+const EFFORT_LEVELS: { id: EffortLevel; label: string; description: string }[] = [
+  { id: 'low', label: 'Low', description: 'Quick, minimal reasoning' },
+  { id: 'medium', label: 'Medium', description: 'Balanced speed and depth' },
+  { id: 'high', label: 'High', description: 'Thorough, detailed output' },
+  { id: 'max', label: 'Max', description: 'Extended thinking, highest quality' },
 ]
 
 type InputBarProps = {
@@ -355,9 +355,18 @@ export function InputBar({
   const currentModelEntry = providerModels.find((m) => m.id === model)
   const supportedEffort = currentModelEntry?.supportsEffort ?? ['low', 'medium', 'high']
   const effortItems = EFFORT_LEVELS.filter((e) => supportedEffort.includes(e.id))
+  const permissionDescriptions: Record<string, string> = {
+    default: 'Asks before risky actions',
+    'auto-approve': 'Approves all actions automatically',
+    'on-failure': 'Asks only when a command fails',
+    'on-request': 'Asks before network and file access',
+    untrusted: 'Runs in a restricted sandbox',
+    never: 'Approves all actions automatically',
+  }
   const permissionItems = permissionModes.map((m) => ({
     id: m.id,
     label: m.label,
+    description: permissionDescriptions[m.id],
     icon: <m.icon size={13} className="shrink-0" />,
   }))
 
@@ -469,6 +478,7 @@ export function InputBar({
                       <button
                         type="button"
                         onClick={() => removeAttachment(i)}
+                        aria-label={`Remove ${att.name}`}
                         className="absolute top-0.5 right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-black/60 text-base-text opacity-0 transition-opacity group-hover:opacity-100"
                       >
                         <X size={9} />
@@ -564,6 +574,7 @@ export function InputBar({
                     key="stop"
                     onClick={onStop}
                     title="Stop"
+                    aria-label="Stop generation"
                     className="flex h-7 w-7 items-center justify-center rounded-lg bg-error text-white transition-colors hover:brightness-110"
                     initial={{ scale: 0.8, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
@@ -578,6 +589,7 @@ export function InputBar({
                     onClick={handleSend}
                     disabled={!canSend}
                     title="Send"
+                    aria-label="Send message"
                     className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-30"
                     initial={{ scale: 0.8, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}

@@ -324,7 +324,28 @@ export function SessionView({ tab, isActive }: SessionViewProps) {
         {/* Main chat column */}
         <div className="flex min-w-0 flex-1 flex-col">
           <div className="min-h-0 flex-1">
-            {sessionId ? (
+            {sessionId && tab.hydrated === false ? (
+              <div className="flex h-full flex-col gap-4 px-6 pt-8">
+                <div className="mx-auto w-full max-w-3xl space-y-4">
+                  {/* Skeleton: pulsing lines matching chat layout */}
+                  <div className="flex gap-3">
+                    <div className="h-6 w-6 shrink-0 animate-pulse rounded-full bg-base-raised" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-3 w-24 animate-pulse rounded bg-base-raised" />
+                      <div className="h-3 w-full animate-pulse rounded bg-base-raised/60" />
+                      <div className="h-3 w-3/4 animate-pulse rounded bg-base-raised/60" />
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <div className="h-6 w-6 shrink-0 animate-pulse rounded-full bg-base-raised" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-3 w-20 animate-pulse rounded bg-base-raised" />
+                      <div className="h-3 w-5/6 animate-pulse rounded bg-base-raised/60" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : sessionId ? (
               <ChatView sessionId={sessionId} isActive={isActive} />
             ) : (
               <div className="flex h-full items-center justify-center">
@@ -361,21 +382,24 @@ export function SessionView({ tab, isActive }: SessionViewProps) {
                       </motion.button>
                     ))}
                   </div>
-                  <motion.p
-                    className="mt-4 text-[11px] text-base-text-faint"
+                  <motion.div
+                    className="mt-6 grid grid-cols-2 gap-x-6 gap-y-1"
                     variants={fadeUpSmall}
                   >
-                    Type{' '}
-                    <kbd className="rounded border border-base-border px-1 py-0.5 text-[10px]">
-                      /
-                    </kbd>{' '}
-                    for commands
-                    {' · '}
-                    <kbd className="rounded border border-base-border px-1 py-0.5 text-[10px]">
-                      ⌘K
-                    </kbd>{' '}
-                    palette
-                  </motion.p>
+                    {[
+                      { keys: '/', label: 'Slash commands' },
+                      { keys: '⌘K', label: 'Command palette' },
+                      { keys: '⌘N', label: 'New tab' },
+                      { keys: '⌘?', label: 'All shortcuts' },
+                    ].map((tip) => (
+                      <div key={tip.keys} className="flex items-center gap-2 py-0.5">
+                        <kbd className="inline-flex min-w-5 justify-center rounded border border-base-border px-1 py-0.5 font-mono text-[10px] text-base-text-muted">
+                          {tip.keys}
+                        </kbd>
+                        <span className="text-[11px] text-base-text-faint">{tip.label}</span>
+                      </div>
+                    ))}
+                  </motion.div>
                 </motion.div>
               </div>
             )}
@@ -498,6 +522,8 @@ export function SessionView({ tab, isActive }: SessionViewProps) {
                 type="button"
                 onClick={() => setShowFlow((v) => !v)}
                 title={showFlow ? 'Hide flow' : 'Show flow'}
+                aria-label={showFlow ? 'Hide flow panel' : 'Show flow panel'}
+                aria-pressed={showFlow}
                 className={`group flex h-9 w-9 items-center justify-center rounded-lg transition-colors hover:bg-base-raised/60 ${
                   showFlow ? 'bg-accent/10' : ''
                 }`}
@@ -515,6 +541,8 @@ export function SessionView({ tab, isActive }: SessionViewProps) {
                 type="button"
                 onClick={() => setShowChanges((v) => !v)}
                 title={showChanges ? 'Hide changed files' : 'Show changed files'}
+                aria-label={showChanges ? 'Hide changed files' : 'Show changed files'}
+                aria-pressed={showChanges}
                 className={`group relative flex h-9 w-9 items-center justify-center rounded-lg transition-colors hover:bg-base-raised/60 ${
                   showChanges ? 'bg-accent/10' : ''
                 }`}
@@ -537,6 +565,8 @@ export function SessionView({ tab, isActive }: SessionViewProps) {
                 type="button"
                 onClick={() => setShowInfo((v) => !v)}
                 title={showInfo ? 'Hide session info' : 'Show session info'}
+                aria-label={showInfo ? 'Hide session info' : 'Show session info'}
+                aria-pressed={showInfo}
                 className={`group flex h-9 w-9 items-center justify-center rounded-lg transition-colors hover:bg-base-raised/60 ${
                   showInfo ? 'bg-accent/10' : ''
                 }`}
@@ -555,6 +585,7 @@ export function SessionView({ tab, isActive }: SessionViewProps) {
                   type="button"
                   onClick={() => usePrRaiseStore.getState().openOverlay(sessionId)}
                   title="Raise pull request"
+                  aria-label="Raise pull request"
                   className="group flex h-9 w-9 items-center justify-center rounded-lg transition-colors hover:bg-base-raised/60"
                 >
                   <GitPullRequestArrow

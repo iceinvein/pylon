@@ -138,3 +138,28 @@ Before making changes, use the `code-intelligence` MCP tools to understand the r
 ## Design Docs
 
 Design documents and implementation plans live in `docs/plans/`. Consult these when working on related features.
+
+## Design Context
+
+### Users
+Pylon serves developers across all experience levels — solo devs, team members, and power users/tinkerers. They reach for Pylon as a daily AI coding companion embedded in their workflow. Their context is focused deep work: reading code, debugging, reviewing PRs, and iterating on features. They expect a native-feeling desktop experience, not a web app in a frame.
+
+### Brand Personality
+**Elegant, calm, intelligent.** Quiet confidence — doesn't shout, doesn't clutter, never feels anxious. The warm terracotta palette and serif display type give it a distinctly crafted character. It should feel like a well-made instrument: precise, reliable, and a pleasure to hold.
+
+### Aesthetic Direction
+- **Palette:** Warm dark — clay-tinted neutrals (`#1a1714` base), never pure black or cold gray. Terracotta accent (`#a85838`) used sparingly.
+- **Typography:** Space Grotesk (UI), Instrument Serif (display), JetBrains Mono (code).
+- **Density:** Information-dense where it matters (diffs, code, tool output), breathing room on landing/empty states. Linear-style packing without feeling cramped.
+- **Motion:** Subtle, purposeful — staggered fade-ups, gentle scale on hover/tap, `easeOutQuart` easing. Never bouncy.
+- **Icons:** Lucide React, 18px nav / 13-16px inline.
+- **Theme:** Dark mode only.
+- **References:** Linear, Raycast, Intent by Augment.
+- **Anti-references:** ChatGPT (generic AI chat), VS Code (heavy IDE chrome), Electron jank.
+
+### Design Principles
+1. **Warm precision** — Every pixel deliberate, but palette and typography keep it human. Clay over chrome, serif over sterile.
+2. **Information density without clutter** — Show what matters, hide what doesn't. Tool output collapses; code highlights; status is glanceable.
+3. **Native-grade interaction** — Instant response, no layout shift, no spinners where skeletons or transitions will do.
+4. **Quiet confidence** — No gratuitous animations, no exclamation marks in UI, no "magic" language. The tool works; the interface reports calmly.
+5. **Keyboard-first, mouse-friendly** — Every action reachable by keyboard. Mouse interactions equally polished but never required.

@@ -7,7 +7,7 @@ import {
   GitBranch,
   Trash2,
 } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { resumeStoredSession, type StoredSession } from '../lib/resume-session'
 import { formatCost, timeAgo } from '../lib/utils'
 import { useTabStore } from '../store/tab-store'
@@ -69,6 +69,8 @@ export function HistoryPanel() {
   const [loading, setLoading] = useState(true)
   const [collapsed, setCollapsed] = useState<Set<string>>(loadCollapsed)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const [pendingDelete, setPendingDelete] = useState<string | null>(null)
+  const deleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const { tabs, addTab } = useTabStore()
 
   const openSessionIds = new Set(tabs.map((t) => t.sessionId).filter(Boolean))
@@ -115,11 +117,30 @@ export function HistoryPanel() {
     )
   }
 
-  async function handleDelete(e: React.MouseEvent, sessionId: string) {
+  function handleDelete(e: React.MouseEvent, sessionId: string) {
     e.stopPropagation()
-    await window.api.deleteSession(sessionId)
-    setStoredSessions((prev) => prev.filter((s) => s.id !== sessionId))
+    // Start timed delete — gives user 3s to undo
+    setPendingDelete(sessionId)
+    if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current)
+    deleteTimerRef.current = setTimeout(async () => {
+      await window.api.deleteSession(sessionId)
+      setStoredSessions((prev) => prev.filter((s) => s.id !== sessionId))
+      setPendingDelete(null)
+    }, 3000)
   }
+
+  function handleUndoDelete(e: React.MouseEvent) {
+    e.stopPropagation()
+    if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current)
+    setPendingDelete(null)
+  }
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current)
+    }
+  }, [])
 
   const availableSessions = storedSessions.filter((s) => !openSessionIds.has(s.id))
   const groups = useMemo(() => groupByProject(availableSessions), [availableSessions])
@@ -172,7 +193,9 @@ export function HistoryPanel() {
                         type="button"
                         key={session.id}
                         onClick={() => handleResume(session)}
-                        className="group flex w-full items-start gap-2 rounded-lg px-2 py-2 text-left transition-colors hover:bg-base-raised/60"
+                        className={`group flex w-full items-start gap-2 rounded-lg px-2 py-2 text-left transition-colors hover:bg-base-raised/60 ${
+                          pendingDelete === session.id ? 'opacity-40' : ''
+                        }`}
                       >
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-base-text text-xs">
@@ -199,13 +222,25 @@ export function HistoryPanel() {
                             )}
                           </div>
                         </div>
-                        <button
-                          type="button"
-                          onClick={(e) => handleDelete(e, session.id)}
-                          className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-base-text-faint opacity-0 transition-all hover:bg-base-border hover:text-error group-hover:opacity-100"
-                        >
-                          <Trash2 size={11} />
-                        </button>
+                        {pendingDelete === session.id ? (
+                          <button
+                            type="button"
+                            onClick={handleUndoDelete}
+                            aria-label="Undo delete"
+                            className="shrink-0 rounded px-1.5 py-0.5 font-medium text-[10px] text-accent-text transition-colors hover:bg-accent/15"
+                          >
+                            Undo
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={(e) => handleDelete(e, session.id)}
+                            aria-label="Delete session"
+                            className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-base-text-faint opacity-0 transition-all hover:bg-base-border hover:text-error group-hover:opacity-100"
+                          >
+                            <Trash2 size={11} />
+                          </button>
+                        )}
                       </button>
                     ))}
                     {group.sessions.length > PROJECT_SESSION_LIMIT &&

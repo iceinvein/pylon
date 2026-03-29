@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react'
 type DropdownItem = {
   id: string
   label: string
+  description?: string
   icon?: React.ReactNode
 }
 
@@ -89,7 +90,12 @@ export function DropdownMenu({
                   className={`h-1.5 w-1.5 shrink-0 rounded-full ${item.id === value ? 'bg-accent' : 'bg-transparent'}`}
                 />
                 {item.icon}
-                {item.label}
+                <span className="flex flex-col">
+                  <span>{item.label}</span>
+                  {item.description && (
+                    <span className="text-[10px] text-base-text-faint">{item.description}</span>
+                  )}
+                </span>
               </button>
             ))}
           </motion.div>

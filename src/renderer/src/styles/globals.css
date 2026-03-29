@@ -34,6 +34,12 @@
   --color-special: #9a7bc4;
   --color-special-text: #c8b0e8;
   --color-special-muted: #9a7bc420;
+
+  /* Flow visualization — spine and dot colors */
+  --color-flow-spine-start: #44403c;
+  --color-flow-spine-idle: #706660;
+  --color-flow-spine-fallback: #78716c;
+  --color-flow-dot-border: #57534e;
 }
 
 body {
@@ -101,18 +107,6 @@ body {
 pre,
 .shiki-wrapper {
   overflow-x: overlay;
-}
-
-/* Crossfade for preview panel content swaps */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(2px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
 }
 
 /* Flow panel animations */

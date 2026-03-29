@@ -7,6 +7,7 @@ import {
   GitCommit,
   HelpCircle,
   Info,
+  Keyboard,
   Network,
   Settings,
 } from 'lucide-react'
@@ -157,6 +158,18 @@ export const COMMANDS: SlashCommand[] = [
     execute: async () => {
       const path = await window.api.openFolder()
       if (path) useTabStore.getState().addTab(path)
+    },
+  },
+  {
+    id: 'keyboard-shortcuts',
+    label: 'Keyboard Shortcuts',
+    description: 'Show all keyboard shortcuts',
+    icon: Keyboard,
+    section: 'global',
+    requiresSession: false,
+    keywords: ['keys', 'hotkeys', 'bindings', 'help'],
+    execute: () => {
+      useUiStore.getState().setShortcutsOpen(true)
     },
   },
   {
