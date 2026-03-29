@@ -34,22 +34,23 @@ export function AstView() {
   const archAnalysis = useAstStore((s) => s.archAnalysis)
   const fileAst = useAstStore((s) => s.fileAst)
   const selectedFile = useAstStore((s) => s.selectedFile)
+  const drilledFile = useAstStore((s) => s.drilledFile)
   const selectedNode = useAstStore((s) => s.selectedNode)
   const analysisStatus = useAstStore((s) => s.analysisStatus)
   const analysisProgress = useAstStore((s) => s.analysisProgress)
   const setScope = useAstStore((s) => s.setScope)
   const setFileAst = useAstStore((s) => s.setFileAst)
 
-  // When selectedFile changes, request file AST
+  // When drilledFile changes, request file AST for the tree view
   useEffect(() => {
-    if (!selectedFile) {
+    if (!drilledFile) {
       setFileAst(null)
       return
     }
 
     let cancelled = false
     window.api
-      .getFileAst(selectedFile)
+      .getFileAst(drilledFile)
       .then((nodes) => {
         if (!cancelled) setFileAst(nodes)
       })
@@ -60,7 +61,7 @@ export function AstView() {
     return () => {
       cancelled = true
     }
-  }, [selectedFile, setFileAst])
+  }, [drilledFile, setFileAst])
 
   const handleBrowse = useCallback(async () => {
     const path = await window.api.openFolder()
@@ -90,8 +91,8 @@ export function AstView() {
 
   const isLoading = analysisStatus === 'parsing' || analysisStatus === 'analyzing'
 
-  // Derive filename from selectedFile
-  const fileName = selectedFile ? (selectedFile.split('/').pop() ?? selectedFile) : ''
+  // Derive filename from drilledFile (for the AST tree view heading)
+  const fileName = drilledFile ? (drilledFile.split('/').pop() ?? drilledFile) : ''
 
   return (
     <div className="flex h-full flex-col">
@@ -114,7 +115,7 @@ export function AstView() {
           <div className="min-h-0 flex-1">
             <AstSplitPanel
               left={
-                selectedFile && fileAst ? (
+                drilledFile && fileAst ? (
                   <FileAstView fileAst={fileAst} fileName={fileName} />
                 ) : (
                   <RepoMapView repoGraph={repoGraph} archAnalysis={archAnalysis} />

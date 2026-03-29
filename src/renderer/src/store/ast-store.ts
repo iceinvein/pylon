@@ -14,7 +14,8 @@ type AstStore = {
   repoGraph: RepoGraph | null
   archAnalysis: ArchAnalysis | null
   fileAst: AstNode[] | null
-  selectedFile: string | null
+  selectedFile: string | null      // file shown in CodePanel (right pane)
+  drilledFile: string | null       // file drilled into AST tree (replaces repo map in left pane)
   selectedNode: string | null
   hoveredNode: string | null
   activeOverlays: Set<AstOverlay>
@@ -37,6 +38,7 @@ type AstStore = {
   setArchAnalysis: (analysis: ArchAnalysis) => void
   setFileAst: (nodes: AstNode[] | null) => void
   selectFile: (filePath: string | null) => void
+  drillFile: (filePath: string | null) => void
   selectNode: (nodeId: string | null) => void
   setHoveredNode: (nodeId: string | null) => void
   toggleOverlay: (overlay: AstOverlay) => void
@@ -58,6 +60,7 @@ const initialState = {
   archAnalysis: null,
   fileAst: null,
   selectedFile: null,
+  drilledFile: null,
   selectedNode: null,
   hoveredNode: null,
   activeOverlays: new Set<AstOverlay>(),
@@ -88,6 +91,8 @@ export const useAstStore = create<AstStore>((set) => ({
   setFileAst: (fileAst) => set({ fileAst }),
 
   selectFile: (selectedFile) => set({ selectedFile, selectedNode: null }),
+
+  drillFile: (drilledFile) => set({ drilledFile, selectedFile: drilledFile, selectedNode: null }),
 
   selectNode: (selectedNode) => set({ selectedNode }),
 

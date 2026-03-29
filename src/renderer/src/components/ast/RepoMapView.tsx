@@ -46,6 +46,7 @@ export function RepoMapView({ repoGraph, archAnalysis }: RepoMapViewProps) {
   const selectedFile = useAstStore((s) => s.selectedFile)
   const activeOverlays = useAstStore((s) => s.activeOverlays)
   const selectFile = useAstStore((s) => s.selectFile)
+  const drillFile = useAstStore((s) => s.drillFile)
   const hoveredNode = useAstStore((s) => s.hoveredNode)
   const setHoveredNode = useAstStore((s) => s.setHoveredNode)
   const expandedClusters = useAstStore((s) => s.expandedClusters)
@@ -137,26 +138,29 @@ export function RepoMapView({ repoGraph, archAnalysis }: RepoMapViewProps) {
     window.api.explainAstNode(nodeId, filePath, nodeName)
   }, [])
 
-  /** Single-click on a file node sets focus (ego network). */
+  /** Single-click on a file node: show code in side panel + ego network focus. */
   const handleNodeClick = useCallback(
     (node: LayoutNode) => {
       if (node.isCluster) {
         toggleCluster(node.id)
       } else {
+        // Toggle ego focus (click again to clear)
         setFocusedNode(focusedNode === node.id ? null : node.id)
-      }
-    },
-    [toggleCluster, setFocusedNode, focusedNode],
-  )
-
-  /** Double-click drills into file AST view. */
-  const handleNodeDoubleClick = useCallback(
-    (node: LayoutNode) => {
-      if (!node.isCluster) {
+        // Also select the file so CodePanel shows source
         selectFile(node.filePath)
       }
     },
-    [selectFile],
+    [toggleCluster, setFocusedNode, selectFile, focusedNode],
+  )
+
+  /** Double-click drills into file AST tree view (replaces repo map). */
+  const handleNodeDoubleClick = useCallback(
+    (node: LayoutNode) => {
+      if (!node.isCluster) {
+        drillFile(node.filePath)
+      }
+    },
+    [drillFile],
   )
 
   /** Click empty canvas clears focus. */

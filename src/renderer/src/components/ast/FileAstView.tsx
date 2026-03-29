@@ -23,7 +23,7 @@ type FileAstViewProps = {
 export function FileAstView({ fileAst, fileName }: FileAstViewProps) {
   const selectedNode = useAstStore((s) => s.selectedNode)
   const selectedFile = useAstStore((s) => s.selectedFile)
-  const selectFile = useAstStore((s) => s.selectFile)
+  const drillFile = useAstStore((s) => s.drillFile)
   const selectNode = useAstStore((s) => s.selectNode)
   const hoveredNode = useAstStore((s) => s.hoveredNode)
   const setHoveredNode = useAstStore((s) => s.setHoveredNode)
@@ -50,7 +50,7 @@ export function FileAstView({ fileAst, fileName }: FileAstViewProps) {
     <div className="flex h-full flex-col">
       <button
         type="button"
-        onClick={() => selectFile(null)}
+        onClick={() => drillFile(null)}
         className="flex items-center gap-1.5 self-start px-3 py-2 text-accent-text text-xs transition-colors hover:text-base-text"
       >
         <ArrowLeft size={12} />
