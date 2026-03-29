@@ -91,6 +91,16 @@ mock.module('../pr-raise-service', () => ({
   },
 }))
 
+mock.module('../worktree-recipe-service', () => ({
+  worktreeRecipeService: {
+    setWindow: mock(() => {}),
+    getRecipe: mock(() => null),
+    deleteRecipe: mock(() => {}),
+    analyzeProject: mock(() => Promise.resolve({})),
+    executeRecipe: mock(() => Promise.resolve()),
+  },
+}))
+
 function initTestDb() {
   rawDb = new Database(':memory:')
   dbProxy = createDbProxy(rawDb)
