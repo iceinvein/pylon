@@ -318,7 +318,6 @@ export function PrDetail() {
               />
             </div>
             {/* Resize handle */}
-            {/* biome-ignore lint/a11y/noStaticElementInteractions: mouse-only resize handle */}
             <div
               onMouseDown={onResizeStart}
               className="group relative w-0 shrink-0 cursor-col-resize"

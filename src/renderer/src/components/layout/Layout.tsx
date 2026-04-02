@@ -130,7 +130,6 @@ export function Layout({ children }: LayoutProps) {
               <HistoryPanel />
             </div>
             {/* Drag handle */}
-            {/* biome-ignore lint/a11y/noStaticElementInteractions: mouse-only resize handle */}
             <div
               onMouseDown={handleDragStart}
               className="flex w-1 shrink-0 cursor-col-resize items-center justify-center border-base-border-subtle border-r bg-base-bg transition-colors hover:bg-base-border active:bg-base-text-faint"
@@ -153,7 +152,6 @@ export function Layout({ children }: LayoutProps) {
               <GitPanel />
             </div>
             {/* Drag handle */}
-            {/* biome-ignore lint/a11y/noStaticElementInteractions: mouse-only resize handle */}
             <div
               onMouseDown={handleGitDragStart}
               className="flex w-1 shrink-0 cursor-col-resize items-center justify-center border-base-border-subtle border-r bg-base-bg transition-colors hover:bg-base-border active:bg-base-text-faint"

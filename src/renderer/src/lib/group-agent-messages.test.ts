@@ -131,11 +131,7 @@ describe('groupAgentMessages', () => {
   })
 
   test('marks all agents done when session result message present, even without cost', () => {
-    const msgs = [
-      agentToolUse('agent-1'),
-      agentToolUse('agent-2'),
-      { type: 'result' },
-    ]
+    const msgs = [agentToolUse('agent-1'), agentToolUse('agent-2'), { type: 'result' }]
     const result = groupAgentMessages(msgs)
     expect(result.agentMap.get('agent-1')?.done).toBe(true)
     expect(result.agentMap.get('agent-2')?.done).toBe(true)

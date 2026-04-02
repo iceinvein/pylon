@@ -77,7 +77,6 @@ export function ReviewModal({ onStart, onClose, isRerun }: Props) {
       <div className="absolute inset-0 bg-black/60" />
 
       {/* Modal */}
-      {/* biome-ignore lint/a11y/noStaticElementInteractions: click handler prevents backdrop close propagation */}
       <div
         className="relative w-full max-w-sm rounded-xl border border-base-border bg-base-surface shadow-2xl"
         onClick={(e) => e.stopPropagation()}
