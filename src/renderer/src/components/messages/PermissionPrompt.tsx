@@ -36,14 +36,14 @@ export function PermissionPrompt({ permission, onRespond }: PermissionPromptProp
             <button
               type="button"
               onClick={() => onRespond(permission.requestId, 'allow')}
-              className="rounded-md bg-success px-3 py-1.5 font-medium text-white text-xs transition-colors hover:brightness-110"
+              className="rounded-md bg-success px-3 py-1.5 font-medium text-white text-xs transition-colors hover:bg-success/80"
             >
               Allow
             </button>
             <button
               type="button"
               onClick={() => onRespond(permission.requestId, 'deny')}
-              className="rounded-md bg-base-raised px-3 py-1.5 font-medium text-base-text text-xs transition-colors hover:brightness-110"
+              className="rounded-md bg-base-raised px-3 py-1.5 font-medium text-base-text text-xs transition-colors hover:bg-base-border"
             >
               Deny
             </button>

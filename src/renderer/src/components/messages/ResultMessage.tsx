@@ -23,12 +23,19 @@ export function ResultMessage({
 }: ResultMessageProps) {
   if (isError) {
     return (
-      <div className="my-2 mr-6 ml-15 rounded-lg border border-error/50 bg-error/20 px-4 py-3">
+      <div className="px-6 pt-2 pb-2 pl-15">
+        <div className="mb-1.5 h-px bg-error/20" />
         <div className="flex items-center gap-2">
-          <XCircle size={14} className="text-error" />
-          <span className="font-medium text-error text-sm">Error</span>
+          <span className="rounded-full bg-error/15 px-2 py-0.5 text-[11px] text-error">
+            <XCircle size={10} className="mr-1 inline-block align-[-1px]" />
+            Error
+          </span>
+          {errorMessage && (
+            <span className="min-w-0 flex-1 truncate text-[11px] text-base-text-muted">
+              {errorMessage}
+            </span>
+          )}
         </div>
-        {errorMessage && <p className="mt-2 text-error text-xs">{errorMessage}</p>}
       </div>
     )
   }
@@ -45,8 +52,18 @@ export function ResultMessage({
   if (stats.length === 0) return <div className="h-3" />
 
   return (
-    <div className="px-6 pt-1 pb-2 pl-15">
-      <span className="text-[10px] text-base-text-faint">{stats.join(' · ')}</span>
+    <div className="px-6 pt-2 pb-2 pl-15">
+      <div className="mb-1.5 h-px bg-base-border-subtle/50" />
+      <div className="flex flex-wrap items-center gap-1.5">
+        {stats.map((stat) => (
+          <span
+            key={stat}
+            className="rounded-full bg-base-surface px-2 py-0.5 text-[11px] text-base-text-faint"
+          >
+            {stat}
+          </span>
+        ))}
+      </div>
     </div>
   )
 }

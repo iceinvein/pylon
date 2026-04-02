@@ -1,6 +1,15 @@
 import { GitBranch } from 'lucide-react'
 import type { GitBranchStatus } from '../../../shared/types'
+import { formatCost } from '../lib/utils'
+import { useSessionStore } from '../store/session-store'
+import { useTabStore } from '../store/tab-store'
 import { useUiStore } from '../store/ui-store'
+
+const MODEL_SHORT: Record<string, string> = {
+  'claude-opus-4-6': 'Opus 4.6',
+  'claude-sonnet-4-6': 'Sonnet 4.6',
+  'claude-haiku-4-5': 'Haiku 4.5',
+}
 
 type StatusBarProps = {
   cwd: string
@@ -29,13 +38,36 @@ function BranchIndicator({ status }: { status: GitBranchStatus }) {
   )
 }
 
+function SessionInfo() {
+  const activeTabId = useTabStore((s) => s.activeTabId)
+  const sessionId = useTabStore((s) => s.tabs.find((t) => t.id === activeTabId)?.sessionId)
+  const session = useSessionStore((s) => (sessionId ? s.sessions.get(sessionId) : undefined))
+
+  if (!session) return null
+
+  const modelLabel = MODEL_SHORT[session.model] ?? session.model
+  const cost = session.cost?.totalUsd ?? 0
+
+  return (
+    <span className="flex items-center gap-2.5 text-base-text-faint text-xs">
+      <span>{modelLabel}</span>
+      {cost > 0 && <span className="font-mono">{formatCost(cost)}</span>}
+    </span>
+  )
+}
+
 export function StatusBar({ cwd: _cwd, branchStatus }: StatusBarProps) {
   const sidebarView = useUiStore((s) => s.sidebarView)
   const setSidebarView = useUiStore((s) => s.setSidebarView)
   const isGitOpen = sidebarView === 'git'
 
   if (!branchStatus?.isGitRepo || !branchStatus.branch) {
-    return <div className="h-6 border-base-border-subtle border-t bg-base-bg" />
+    return (
+      <div className="flex h-6 items-center border-base-border-subtle border-t bg-base-bg px-3">
+        <div className="flex-1" />
+        <SessionInfo />
+      </div>
+    )
   }
 
   return (
@@ -48,6 +80,7 @@ export function StatusBar({ cwd: _cwd, branchStatus }: StatusBarProps) {
         <BranchIndicator status={branchStatus} />
       </button>
       <div className="flex-1" />
+      <SessionInfo />
     </div>
   )
 }

@@ -318,6 +318,26 @@ export function SessionView({ tab, isActive }: SessionViewProps) {
     direction: 'left',
   })
 
+  // Cmd+Shift keyboard shortcuts for right-side panels
+  useEffect(() => {
+    if (!isActive || !sessionId) return
+    function handlePanelKeys(e: KeyboardEvent) {
+      if (!e.metaKey || !e.shiftKey || e.altKey || e.ctrlKey) return
+      if (e.key === 'f' || e.key === 'F') {
+        e.preventDefault()
+        setShowFlow((v) => !v)
+      } else if (e.key === 'c' || e.key === 'C') {
+        e.preventDefault()
+        setShowChanges((v) => !v)
+      } else if (e.key === 'i' || e.key === 'I') {
+        e.preventDefault()
+        setShowInfo((v) => !v)
+      }
+    }
+    window.addEventListener('keydown', handlePanelKeys)
+    return () => window.removeEventListener('keydown', handlePanelKeys)
+  }, [isActive, sessionId])
+
   return (
     <>
       <div className="flex h-full">
@@ -376,7 +396,7 @@ export function SessionView({ tab, isActive }: SessionViewProps) {
                         key={prompt}
                         onClick={() => handleSend(prompt, [])}
                         variants={fadeUpSmall}
-                        className="rounded-lg border border-base-border/50 px-4 py-2.5 text-left text-base-text-secondary text-sm transition-all hover:border-accent/30 hover:bg-accent/5 hover:text-base-text"
+                        className="rounded-lg border border-base-border/70 px-4 py-2.5 text-left text-base-text-secondary text-sm transition-all hover:border-accent/40 hover:bg-accent/5 hover:text-base-text"
                       >
                         {prompt}
                       </motion.button>
@@ -390,13 +410,15 @@ export function SessionView({ tab, isActive }: SessionViewProps) {
                       { keys: '/', label: 'Slash commands' },
                       { keys: '⌘K', label: 'Command palette' },
                       { keys: '⌘N', label: 'New tab' },
+                      { keys: '⌘⇧F', label: 'Flow panel' },
+                      { keys: '⌘⇧C', label: 'Changed files' },
                       { keys: '⌘?', label: 'All shortcuts' },
                     ].map((tip) => (
                       <div key={tip.keys} className="flex items-center gap-2 py-0.5">
-                        <kbd className="inline-flex min-w-5 justify-center rounded border border-base-border px-1 py-0.5 font-mono text-[10px] text-base-text-muted">
+                        <kbd className="inline-flex min-w-5 justify-center rounded border border-base-border px-1 py-0.5 font-mono text-[11px] text-base-text-muted">
                           {tip.keys}
                         </kbd>
-                        <span className="text-[11px] text-base-text-faint">{tip.label}</span>
+                        <span className="text-xs text-base-text-faint">{tip.label}</span>
                       </div>
                     ))}
                   </motion.div>
@@ -516,47 +538,49 @@ export function SessionView({ tab, isActive }: SessionViewProps) {
               )}
             </AnimatePresence>
 
-            {/* Icon strip — icons only, labels in panel headers */}
-            <div className="flex shrink-0 flex-col items-center gap-0.5 border-base-border-subtle border-l bg-base-bg pt-1">
+            {/* Icon strip with labels */}
+            <div className="flex w-10 shrink-0 flex-col items-center gap-0.5 border-base-border-subtle border-l bg-base-bg pt-1">
               <button
                 type="button"
                 onClick={() => setShowFlow((v) => !v)}
-                title={showFlow ? 'Hide flow' : 'Show flow'}
+                title={`${showFlow ? 'Hide' : 'Show'} flow (⌘⇧F)`}
                 aria-label={showFlow ? 'Hide flow panel' : 'Show flow panel'}
                 aria-pressed={showFlow}
-                className={`group flex h-9 w-9 items-center justify-center rounded-lg transition-colors hover:bg-base-raised/60 ${
+                className={`group flex h-10 w-10 flex-col items-center justify-center gap-0.5 rounded-lg transition-colors hover:bg-base-raised/60 ${
                   showFlow ? 'bg-accent/10' : ''
                 }`}
               >
                 <Workflow
-                  size={17}
+                  size={15}
                   className={`transition-colors ${
                     showFlow
                       ? 'text-accent-text'
                       : 'text-base-text-muted group-hover:text-base-text'
                   }`}
                 />
+                <span className={`text-[10px] leading-none ${showFlow ? 'text-accent-text' : 'text-base-text-faint'}`}>Flow</span>
               </button>
               <button
                 type="button"
                 onClick={() => setShowChanges((v) => !v)}
-                title={showChanges ? 'Hide changed files' : 'Show changed files'}
+                title={`${showChanges ? 'Hide' : 'Show'} changed files (⌘⇧C)`}
                 aria-label={showChanges ? 'Hide changed files' : 'Show changed files'}
                 aria-pressed={showChanges}
-                className={`group relative flex h-9 w-9 items-center justify-center rounded-lg transition-colors hover:bg-base-raised/60 ${
+                className={`group relative flex h-10 w-10 flex-col items-center justify-center gap-0.5 rounded-lg transition-colors hover:bg-base-raised/60 ${
                   showChanges ? 'bg-accent/10' : ''
                 }`}
               >
                 <GitCompareArrows
-                  size={17}
+                  size={15}
                   className={`transition-colors ${
                     showChanges
                       ? 'text-accent-text'
                       : 'text-base-text-muted group-hover:text-base-text'
                   }`}
                 />
+                <span className={`text-[10px] leading-none ${showChanges ? 'text-accent-text' : 'text-base-text-faint'}`}>Files</span>
                 {changedFiles.length > 0 && (
-                  <span className="absolute top-0.5 right-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-accent px-0.5 font-medium text-[8px] text-white">
+                  <span className="absolute top-0 right-0 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-accent px-0.5 font-medium text-[9px] text-white">
                     {changedFiles.length}
                   </span>
                 )}
@@ -564,21 +588,22 @@ export function SessionView({ tab, isActive }: SessionViewProps) {
               <button
                 type="button"
                 onClick={() => setShowInfo((v) => !v)}
-                title={showInfo ? 'Hide session info' : 'Show session info'}
+                title={`${showInfo ? 'Hide' : 'Show'} session info (⌘⇧I)`}
                 aria-label={showInfo ? 'Hide session info' : 'Show session info'}
                 aria-pressed={showInfo}
-                className={`group flex h-9 w-9 items-center justify-center rounded-lg transition-colors hover:bg-base-raised/60 ${
+                className={`group flex h-10 w-10 flex-col items-center justify-center gap-0.5 rounded-lg transition-colors hover:bg-base-raised/60 ${
                   showInfo ? 'bg-accent/10' : ''
                 }`}
               >
                 <Info
-                  size={17}
+                  size={15}
                   className={`transition-colors ${
                     showInfo
                       ? 'text-accent-text'
                       : 'text-base-text-muted group-hover:text-base-text'
                   }`}
                 />
+                <span className={`text-[10px] leading-none ${showInfo ? 'text-accent-text' : 'text-base-text-faint'}`}>Info</span>
               </button>
               {sessionId && tab.useWorktree && changedFiles.length > 0 && (
                 <button
@@ -586,12 +611,13 @@ export function SessionView({ tab, isActive }: SessionViewProps) {
                   onClick={() => usePrRaiseStore.getState().openOverlay(sessionId)}
                   title="Raise pull request"
                   aria-label="Raise pull request"
-                  className="group flex h-9 w-9 items-center justify-center rounded-lg transition-colors hover:bg-base-raised/60"
+                  className="group flex h-10 w-10 flex-col items-center justify-center gap-0.5 rounded-lg transition-colors hover:bg-base-raised/60"
                 >
                   <GitPullRequestArrow
-                    size={17}
-                    className="text-info transition-colors group-hover:brightness-125"
+                    size={15}
+                    className="text-info transition-colors group-hover:text-info/80"
                   />
+                  <span className="text-[10px] leading-none text-base-text-faint">PR</span>
                 </button>
               )}
             </div>

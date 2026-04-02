@@ -45,7 +45,7 @@ export function TasksPanel({ sessionId, isProcessing, isCompacting }: TasksPanel
           <button
             type="button"
             onClick={() => setExpanded((v) => !v)}
-            className="flex shrink-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] text-base-text-muted transition-colors hover:bg-base-raised/50"
+            className="flex shrink-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] text-base-text-muted transition-colors hover:bg-base-raised/50"
           >
             {/* Tiny progress bar */}
             <div className="h-1 w-8 overflow-hidden rounded-full bg-base-raised">

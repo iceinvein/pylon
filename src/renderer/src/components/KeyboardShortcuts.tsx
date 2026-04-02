@@ -13,6 +13,14 @@ const SHORTCUT_SECTIONS = [
     ],
   },
   {
+    title: 'Panels',
+    shortcuts: [
+      { keys: '⌘⇧F', label: 'Toggle flow panel' },
+      { keys: '⌘⇧C', label: 'Toggle changed files' },
+      { keys: '⌘⇧I', label: 'Toggle session info' },
+    ],
+  },
+  {
     title: 'Chat',
     shortcuts: [
       { keys: 'Enter', label: 'Send message' },

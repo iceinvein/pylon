@@ -22,10 +22,23 @@ const PERIODS: Array<{ id: UsagePeriod; label: string }> = [
   { id: 'all', label: 'All time' },
 ]
 
+const CHART_COLORS = {
+  primary: '#c06540',
+  primaryGlow: '#c0654040',
+  muted: '#a49a8d',
+  faint: '#948a7e',
+  grid: '#3d3630',
+  axisLine: '#4d443a',
+  tooltipBg: '#1a1714',
+  tooltipBorder: '#4d443a',
+  tooltipText: '#ede6dc',
+  warning: '#d4a854',
+} as const
+
 const MODEL_COLORS: Record<string, string> = {
-  'claude-opus-4-6': '#d97706',
-  'claude-sonnet-4-6': '#78716c',
-  'claude-haiku-4-5': '#a8a29e',
+  'claude-opus-4-6': CHART_COLORS.primary,
+  'claude-sonnet-4-6': CHART_COLORS.muted,
+  'claude-haiku-4-5': CHART_COLORS.faint,
 }
 
 const MODEL_LABELS: Record<string, string> = {
@@ -136,34 +149,34 @@ export function UsageDashboard() {
               <AreaChart data={dailyCosts}>
                 <defs>
                   <linearGradient id="costGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#d97706" stopOpacity={0.3} />
-                    <stop offset="100%" stopColor="#d97706" stopOpacity={0} />
+                    <stop offset="0%" stopColor={CHART_COLORS.primary} stopOpacity={0.3} />
+                    <stop offset="100%" stopColor={CHART_COLORS.primary} stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#292524" />
+                <CartesianGrid strokeDasharray="3 3" stroke={CHART_COLORS.grid} />
                 <XAxis
                   dataKey="day"
                   tickFormatter={formatDay}
-                  tick={{ fill: '#78716c', fontSize: 11 }}
-                  axisLine={{ stroke: '#44403c' }}
+                  tick={{ fill: CHART_COLORS.muted, fontSize: 11 }}
+                  axisLine={{ stroke: CHART_COLORS.axisLine }}
                   tickLine={false}
                 />
                 <YAxis
                   tickFormatter={(v: number) => `$${v.toFixed(2)}`}
-                  tick={{ fill: '#78716c', fontSize: 11 }}
+                  tick={{ fill: CHART_COLORS.muted, fontSize: 11 }}
                   axisLine={false}
                   tickLine={false}
                   width={60}
                 />
                 <Tooltip
-                  cursor={{ stroke: '#78716c', strokeWidth: 1 }}
+                  cursor={{ stroke: CHART_COLORS.muted, strokeWidth: 1 }}
                   wrapperStyle={{ outline: 'none' }}
                   contentStyle={{
-                    backgroundColor: '#1c1917',
-                    border: '1px solid #44403c',
+                    backgroundColor: CHART_COLORS.tooltipBg,
+                    border: `1px solid ${CHART_COLORS.tooltipBorder}`,
                     borderRadius: '8px',
                     fontSize: '12px',
-                    color: '#e7e5e4',
+                    color: CHART_COLORS.tooltipText,
                   }}
                   formatter={(value) => [formatCost(Number(value)), 'Cost']}
                   labelFormatter={(label) => formatDay(String(label))}
@@ -171,7 +184,7 @@ export function UsageDashboard() {
                 <Area
                   type="monotone"
                   dataKey="cost"
-                  stroke="#d97706"
+                  stroke={CHART_COLORS.primary}
                   strokeWidth={2}
                   fill="url(#costGradient)"
                 />
@@ -189,11 +202,11 @@ export function UsageDashboard() {
             <div className="rounded-lg border border-base-border-subtle bg-base-surface/50 p-4">
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={costByModel} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" stroke="#292524" horizontal={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={CHART_COLORS.grid} horizontal={false} />
                   <XAxis
                     type="number"
                     tickFormatter={(v: number) => `$${v.toFixed(2)}`}
-                    tick={{ fill: '#78716c', fontSize: 11 }}
+                    tick={{ fill: CHART_COLORS.muted, fontSize: 11 }}
                     axisLine={false}
                     tickLine={false}
                   />
@@ -201,7 +214,7 @@ export function UsageDashboard() {
                     type="category"
                     dataKey="model"
                     tickFormatter={(v: string) => MODEL_LABELS[v] ?? v}
-                    tick={{ fill: '#a8a29e', fontSize: 12 }}
+                    tick={{ fill: CHART_COLORS.faint, fontSize: 12 }}
                     axisLine={false}
                     tickLine={false}
                     width={80}
@@ -210,19 +223,19 @@ export function UsageDashboard() {
                     cursor={{ fill: 'rgba(255,255,255,0.05)' }}
                     wrapperStyle={{ outline: 'none' }}
                     contentStyle={{
-                      backgroundColor: '#1c1917',
-                      border: '1px solid #44403c',
+                      backgroundColor: CHART_COLORS.tooltipBg,
+                      border: `1px solid ${CHART_COLORS.tooltipBorder}`,
                       borderRadius: '8px',
                       fontSize: '12px',
-                      color: '#e7e5e4',
+                      color: CHART_COLORS.tooltipText,
                     }}
-                    itemStyle={{ color: '#d97706' }}
+                    itemStyle={{ color: CHART_COLORS.primary }}
                     formatter={(value) => [formatCost(Number(value)), 'Cost']}
                     labelFormatter={(label) => MODEL_LABELS[String(label)] ?? String(label)}
                   />
                   <Bar dataKey="cost" radius={[0, 4, 4, 0]}>
                     {costByModel.map((entry) => (
-                      <Cell key={entry.model} fill={MODEL_COLORS[entry.model] ?? '#78716c'} />
+                      <Cell key={entry.model} fill={MODEL_COLORS[entry.model] ?? CHART_COLORS.muted} />
                     ))}
                   </Bar>
                 </BarChart>
@@ -237,17 +250,17 @@ export function UsageDashboard() {
             <div className="rounded-lg border border-base-border-subtle bg-base-surface/50 p-4">
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={tokensByDay}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#292524" />
+                  <CartesianGrid strokeDasharray="3 3" stroke={CHART_COLORS.grid} />
                   <XAxis
                     dataKey="day"
                     tickFormatter={formatDay}
-                    tick={{ fill: '#78716c', fontSize: 11 }}
-                    axisLine={{ stroke: '#44403c' }}
+                    tick={{ fill: CHART_COLORS.muted, fontSize: 11 }}
+                    axisLine={{ stroke: CHART_COLORS.axisLine }}
                     tickLine={false}
                   />
                   <YAxis
                     tickFormatter={(v: number) => formatTokens(v)}
-                    tick={{ fill: '#78716c', fontSize: 11 }}
+                    tick={{ fill: CHART_COLORS.muted, fontSize: 11 }}
                     axisLine={false}
                     tickLine={false}
                     width={50}
@@ -256,11 +269,11 @@ export function UsageDashboard() {
                     cursor={{ fill: 'rgba(255,255,255,0.05)' }}
                     wrapperStyle={{ outline: 'none' }}
                     contentStyle={{
-                      backgroundColor: '#1c1917',
-                      border: '1px solid #44403c',
+                      backgroundColor: CHART_COLORS.tooltipBg,
+                      border: `1px solid ${CHART_COLORS.tooltipBorder}`,
                       borderRadius: '8px',
                       fontSize: '12px',
-                      color: '#e7e5e4',
+                      color: CHART_COLORS.tooltipText,
                     }}
                     formatter={(value) => [formatTokens(Number(value)), '']}
                     labelFormatter={(label) => formatDay(String(label))}
@@ -268,14 +281,14 @@ export function UsageDashboard() {
                   <Bar
                     dataKey="input"
                     stackId="tokens"
-                    fill="#78716c"
+                    fill={CHART_COLORS.muted}
                     name="Input"
                     radius={[0, 0, 0, 0]}
                   />
                   <Bar
                     dataKey="output"
                     stackId="tokens"
-                    fill="#d97706"
+                    fill={CHART_COLORS.primary}
                     name="Output"
                     radius={[4, 4, 0, 0]}
                   />

@@ -152,13 +152,27 @@ export function HistoryPanel() {
       </div>
       <div className="flex-1 overflow-y-auto px-2 py-2">
         {loading ? (
-          <div className="flex items-center justify-center py-8 text-base-text-faint text-xs">
-            Loading...
+          <div className="space-y-1 px-2 py-2">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="flex items-start gap-2 rounded-lg px-2 py-2">
+                <div className="min-w-0 flex-1 space-y-1.5">
+                  <div
+                    className="h-3 animate-pulse rounded bg-base-raised"
+                    style={{ width: `${75 - i * 10}%`, animationDelay: `${i * 150}ms` }}
+                  />
+                  <div
+                    className="h-2.5 animate-pulse rounded bg-base-raised/60"
+                    style={{ width: `${50 - i * 8}%`, animationDelay: `${i * 150 + 75}ms` }}
+                  />
+                </div>
+              </div>
+            ))}
           </div>
         ) : groups.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-8 text-center">
-            <p className="text-base-text-muted text-xs">No sessions yet</p>
-            <p className="mt-1 text-[11px] text-base-text-faint">Open a folder to get started</p>
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <Clock size={24} className="mb-3 text-base-text-faint/50" />
+            <p className="font-display text-base text-base-text-secondary italic">No sessions yet</p>
+            <p className="mt-1 text-base-text-muted text-xs">Open a folder to start your first session</p>
           </div>
         ) : (
           groups.map((group) => {
@@ -179,7 +193,7 @@ export function HistoryPanel() {
                   <span className="min-w-0 flex-1 truncate font-medium text-[11px] text-base-text-secondary">
                     {group.projectName}
                   </span>
-                  <span className="shrink-0 rounded-full bg-base-raised px-1.5 py-0.5 text-[10px] text-base-text-muted">
+                  <span className="shrink-0 rounded-full bg-base-raised px-1.5 py-0.5 text-[11px] text-base-text-muted">
                     {group.sessions.length}
                   </span>
                 </button>
@@ -204,7 +218,7 @@ export function HistoryPanel() {
                           {session.worktree_branch && (
                             <div className="mt-0.5 flex items-center gap-1">
                               <GitBranch size={9} className="text-accent" />
-                              <span className="text-[10px] text-accent/80">
+                              <span className="text-[11px] text-accent/80">
                                 {session.worktree_branch}
                               </span>
                             </div>

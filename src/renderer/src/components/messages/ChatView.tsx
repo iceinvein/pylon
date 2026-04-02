@@ -7,6 +7,7 @@ import { detectChoices } from '../../lib/detect-choices'
 import { parsePlanSections } from '../../lib/parse-plan'
 import { useSessionStore } from '../../store/session-store'
 import { useUiStore } from '../../store/ui-store'
+import { ThinkingIndicator } from '../ThinkingIndicator'
 import { CommitCard, hasGitCommitTools, isCommitRequest } from '../tools/CommitCard'
 import { PlanCard } from '../tools/PlanCard'
 import { SubagentBlock } from '../tools/SubagentBlock'
@@ -76,6 +77,12 @@ export const ChatView = memo(function ChatView({ sessionId, isActive }: ChatView
   const sessionPermissions = pendingPermissions.filter((p) => p.sessionId === sessionId)
   const sessionQuestions = pendingQuestions.filter((q) => q.sessionId === sessionId)
   const detectedPlans = useSessionStore((s) => s.detectedPlans.get(sessionId)) ?? []
+  const session = useSessionStore((s) => s.sessions.get(sessionId))
+  const sdkStatus = useSessionStore((s) => s.sdkStatus.get(sessionId))
+  const isRunning =
+    session?.status === 'running' || session?.status === 'starting' || session?.status === 'waiting'
+  const isCompacting = sdkStatus === 'compacting'
+  const isProcessing = (isRunning && !streaming) || isCompacting
   const bottomRef = useRef<HTMLDivElement>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const isNearBottomRef = useRef(true)
@@ -946,6 +953,24 @@ export const ChatView = memo(function ChatView({ sessionId, isActive }: ChatView
           >
             <TextBlock text={streaming} isStreaming />
             <span className="inline-block h-4 w-0.5 animate-pulse bg-accent align-text-bottom" />
+          </motion.div>
+        )}
+
+        {!streaming && isProcessing && (
+          <motion.div
+            key="thinking"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="flex gap-3 px-6 py-2"
+          >
+            <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-base-raised">
+              <Sparkles size={13} className="text-base-text-muted" />
+            </div>
+            <div className="pt-0.5">
+              <ThinkingIndicator isCompacting={isCompacting} />
+            </div>
           </motion.div>
         )}
 

@@ -1,6 +1,7 @@
 import type { ErrorInfo, ReactNode } from 'react'
 import { Component } from 'react'
 import { log } from '../../../shared/logger'
+import logoUrl from '../assets/logo.png'
 
 const logger = log.child('error-boundary')
 
@@ -23,15 +24,16 @@ export class ErrorBoundary extends Component<Props, State> {
       return (
         <div className="flex h-screen w-screen items-center justify-center bg-base-bg text-base-text-secondary">
           <div className="max-w-md space-y-4 text-center">
-            <h1 className="font-medium text-base-text text-lg">Pylon hit an unexpected error</h1>
+            <img src={logoUrl} alt="" className="mx-auto h-10 w-10 opacity-40" />
+            <h1 className="font-display text-base-text text-xl italic">Something went wrong</h1>
             <p className="max-h-24 overflow-auto text-base-text-muted text-sm">
               {this.state.error?.message ??
-                'Try reloading — if it persists, check the dev console.'}
+                "We'll get this sorted — try reloading, or check the dev console if it persists."}
             </p>
             <button
               type="button"
               onClick={() => window.location.reload()}
-              className="rounded-md bg-base-raised px-4 py-2 text-base-text text-sm transition-colors hover:brightness-110"
+              className="rounded-md bg-base-raised px-4 py-2 text-base-text text-sm transition-colors hover:bg-base-border"
             >
               Reload
             </button>

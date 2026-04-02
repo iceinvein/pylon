@@ -575,7 +575,7 @@ export function InputBar({
                     onClick={onStop}
                     title="Stop"
                     aria-label="Stop generation"
-                    className="flex h-7 w-7 items-center justify-center rounded-lg bg-error text-white transition-colors hover:brightness-110"
+                    className="flex h-7 w-7 items-center justify-center rounded-lg bg-error text-white transition-colors hover:bg-error/80"
                     initial={{ scale: 0.8, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0.8, opacity: 0 }}
