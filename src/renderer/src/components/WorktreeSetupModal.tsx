@@ -118,7 +118,7 @@ export function WorktreeSetupModal() {
               <Loader2 size={20} className="animate-spin text-accent" />
               <p className="font-medium text-base-text text-sm">Analyzing project setup...</p>
               <p className="text-base-text-muted text-xs">
-                Claude is determining what this project needs.
+                The agent is determining what this project needs.
               </p>
             </div>
           )}

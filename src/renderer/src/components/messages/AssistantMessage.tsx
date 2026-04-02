@@ -16,11 +16,17 @@ type AssistantMessageProps = {
   content: ContentBlock[]
   sessionId?: string
   toolResultMap?: Map<string, string>
-  /** Show the avatar + "Claude" header. Only true for the first assistant message in a turn. */
+  /** Show the avatar + assistant header. Only true for the first assistant message in a turn. */
   showHeader?: boolean
+  assistantName?: string
 }
 
-export function AssistantMessage({ content, toolResultMap, showHeader }: AssistantMessageProps) {
+export function AssistantMessage({
+  content,
+  toolResultMap,
+  showHeader,
+  assistantName = 'Claude',
+}: AssistantMessageProps) {
   return (
     <div className={`flex gap-3 px-6 py-2 ${showHeader ? '' : 'pl-15'}`}>
       {showHeader && (
@@ -29,7 +35,9 @@ export function AssistantMessage({ content, toolResultMap, showHeader }: Assista
         </div>
       )}
       <div className="min-w-0 flex-1">
-        {showHeader && <span className="font-semibold text-base-text text-sm">Claude</span>}
+        {showHeader && (
+          <span className="font-semibold text-base-text text-sm">{assistantName}</span>
+        )}
         {content.map((block, i) => {
           const prevType = i > 0 ? content[i - 1].type : null
           const isAfterTool = prevType === 'tool_use'

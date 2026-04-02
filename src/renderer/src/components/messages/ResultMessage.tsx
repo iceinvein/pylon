@@ -12,8 +12,16 @@ type ResultMessageProps = {
   errorMessage?: string
 }
 
+function getProviderForResult(model?: string): 'Claude' | 'Codex' {
+  const normalized = model?.trim().toLowerCase() ?? ''
+  return normalized.startsWith('gpt-') || normalized.startsWith('o') || normalized.includes('codex')
+    ? 'Codex'
+    : 'Claude'
+}
+
 export function ResultMessage({
   isError,
+  model,
   totalCostUsd,
   durationMs,
   numTurns,
@@ -42,11 +50,18 @@ export function ResultMessage({
 
   // Quiet inline stats — just metadata, not a separator
   const stats: string[] = []
-  if (totalCostUsd !== undefined) stats.push(formatCost(totalCostUsd))
+  if (totalCostUsd !== undefined && totalCostUsd > 0) stats.push(formatCost(totalCostUsd))
   if (durationMs !== undefined) stats.push(`${(durationMs / 1000).toFixed(1)}s`)
   if (numTurns !== undefined) stats.push(`${numTurns} turns`)
   if (inputTokens !== undefined || outputTokens !== undefined) {
-    stats.push(`${formatTokens(inputTokens ?? 0)} in / ${formatTokens(outputTokens ?? 0)} out`)
+    const provider = getProviderForResult(model)
+    if (provider === 'Codex') {
+      stats.push('Codex turn totals')
+      stats.push(`${formatTokens(inputTokens ?? 0)} input`)
+      stats.push(`${formatTokens(outputTokens ?? 0)} output`)
+    } else {
+      stats.push(`${formatTokens(inputTokens ?? 0)} in / ${formatTokens(outputTokens ?? 0)} out`)
+    }
   }
 
   if (stats.length === 0) return <div className="h-3" />

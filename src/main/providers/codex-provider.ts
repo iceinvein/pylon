@@ -306,7 +306,6 @@ class CodexSession implements AgentSession {
           message: {
             type: 'result',
             model: this.config.model,
-            total_cost_usd: 0,
             usage: {
               input_tokens: event.usage.input_tokens,
               output_tokens: event.usage.output_tokens,

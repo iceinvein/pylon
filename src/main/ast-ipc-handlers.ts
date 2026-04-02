@@ -78,7 +78,7 @@ export function registerAstIpcHandlers(): void {
 
     win.webContents.send(IPC.AST_ANALYSIS_PROGRESS, {
       status: 'analyzing',
-      message: `Parsed ${graph.files.length} files. Analyzing with Claude...`,
+      message: `Parsed ${graph.files.length} files. Analyzing with Claude Code...`,
     })
 
     // Stage 2: Claude architecture analysis
@@ -118,7 +118,7 @@ export function registerAstIpcHandlers(): void {
       const claudePath = resolveClaudePath()
       if (!claudePath) {
         const result = {
-          text: 'Claude CLI not found. Install Claude Code to use this feature.',
+          text: 'Claude Code CLI not found. Install Claude Code to use this feature.',
           done: true,
         }
         if (win) win.webContents.send(IPC.AST_EXPLAIN_RESULT, result)
@@ -142,7 +142,7 @@ export function registerAstIpcHandlers(): void {
     const claudePath = resolveClaudePath()
     if (!claudePath) {
       const result = {
-        text: 'Claude CLI not found. Install Claude Code to use this feature.',
+        text: 'Claude Code CLI not found. Install Claude Code to use this feature.',
         done: true,
       }
       if (win) win.webContents.send(IPC.AST_CHAT_RESULT, result)

@@ -81,6 +81,19 @@ export type FileAttachment = {
 
 export type Attachment = ImageAttachment | FileAttachment
 
+export type IpcAttachment =
+  | {
+      type: 'image'
+      content: string
+      mediaType: string
+      name?: string
+    }
+  | {
+      type: 'file'
+      content: string
+      name?: string
+    }
+
 export type PermissionRequest = {
   requestId: string
   sessionId: string

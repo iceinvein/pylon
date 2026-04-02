@@ -107,7 +107,7 @@ export function groupAgentMessages(sessionMessages: unknown[]): GroupedMessages 
   }
 
   // If session has a final result, mark all agents as done
-  const hasSessionResult = msgs.some((m) => m.type === 'result' && m.total_cost_usd !== undefined)
+  const hasSessionResult = msgs.some((m) => m.type === 'result')
   if (hasSessionResult) {
     for (const agent of agentMap.values()) {
       agent.done = true

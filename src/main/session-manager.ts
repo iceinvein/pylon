@@ -8,7 +8,6 @@ import { log } from '../shared/logger'
 import type {
   Attachment,
   EffortLevel,
-  IpcAttachment,
   PermissionMode,
   PermissionResponse,
   QuestionResponse,
@@ -88,6 +87,10 @@ type ActiveSession = {
    *  Includes uncached + cache_read + cache_creation tokens. */
   lastContextInputTokens: number
 }
+
+type IpcAttachment =
+  | { type: 'image'; content: string; mediaType: string; name?: string }
+  | { type: 'file'; content: string; name?: string }
 
 function normalizeProviderAttachments(attachments?: IpcAttachment[]): Attachment[] | undefined {
   if (!attachments?.length) return undefined

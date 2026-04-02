@@ -268,7 +268,7 @@ export function ChangesPanel() {
           conflicts: 'Merge conflicts detected. Resolve them manually in your terminal.',
           'not-a-worktree': 'This session is not using a worktree.',
           'branch-not-found': 'The original branch could not be found.',
-          'uncommitted-changes': 'Uncommitted changes in worktree. Ask Claude to commit first.',
+          'uncommitted-changes': 'Uncommitted changes in worktree. Ask the agent to commit first.',
         }
         setMergeError({
           message: messages[result.error ?? ''] ?? result.error ?? 'Merge failed',

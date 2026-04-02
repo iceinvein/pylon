@@ -4,6 +4,7 @@ import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import type { SdkMessage } from '../../../../shared/types'
 import { useAgentGrouping } from '../../hooks/use-agent-grouping'
 import { detectChoices } from '../../lib/detect-choices'
+import { getAssistantDisplayName } from '../../lib/model-display'
 import { parsePlanSections } from '../../lib/parse-plan'
 import { useSessionStore } from '../../store/session-store'
 import { useUiStore } from '../../store/ui-store'
@@ -83,6 +84,7 @@ export const ChatView = memo(function ChatView({ sessionId, isActive }: ChatView
     session?.status === 'running' || session?.status === 'starting' || session?.status === 'waiting'
   const isCompacting = sdkStatus === 'compacting'
   const isProcessing = (isRunning && !streaming) || isCompacting
+  const assistantName = getAssistantDisplayName(session?.model)
   const bottomRef = useRef<HTMLDivElement>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const isNearBottomRef = useRef(true)
@@ -495,6 +497,7 @@ export const ChatView = memo(function ChatView({ sessionId, isActive }: ChatView
           sessionId={sessionId}
           toolResultMap={toolResultMap}
           showHeader={showHeader}
+          assistantName={assistantName}
         />
       )
     }
@@ -508,7 +511,9 @@ export const ChatView = memo(function ChatView({ sessionId, isActive }: ChatView
           </div>
         )}
         <div className="min-w-0 flex-1">
-          {showHeader && <span className="font-semibold text-base-text text-sm">Claude</span>}
+          {showHeader && (
+            <span className="font-semibold text-base-text text-sm">{assistantName}</span>
+          )}
           {content.map((block, i) => {
             const prevType = i > 0 ? content[i - 1].type : null
             if (block.type === 'tool_use' && block.name === 'Agent' && block.id) {

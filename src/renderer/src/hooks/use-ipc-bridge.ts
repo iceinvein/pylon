@@ -162,7 +162,7 @@ export function useIpcBridge(): void {
 
         const updates: Record<string, unknown> = {
           cost: {
-            totalUsd: resultMsg.total_cost_usd ?? 0,
+            totalUsd: resultMsg.total_cost_usd ?? existingSession?.cost.totalUsd ?? 0,
             inputTokens: resultMsg.usage?.input_tokens ?? 0,
             outputTokens: resultMsg.usage?.output_tokens ?? 0,
             contextWindow,
