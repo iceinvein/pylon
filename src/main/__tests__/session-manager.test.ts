@@ -155,6 +155,12 @@ function initTestDb() {
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL
     );
+
+    CREATE TABLE projects (
+      path TEXT PRIMARY KEY,
+      added_at INTEGER NOT NULL,
+      last_opened_at INTEGER NOT NULL
+    );
   `)
 }
 
@@ -396,6 +402,48 @@ describe('SessionManager', () => {
     })
   })
 
+  describe('sendMessage', () => {
+    test('normalizes IPC image attachments before calling the provider', async () => {
+      const sendSpy = mock(() => ({
+        [Symbol.asyncIterator]() {
+          return {
+            next() {
+              return Promise.resolve({ value: undefined, done: true })
+            },
+          }
+        },
+      }))
+
+      mockCreateSession.mockImplementationOnce(() => ({
+        send: sendSpy,
+        stop: () => {},
+      }))
+
+      const sm = new SessionManager()
+      const id = await sm.createSession('/tmp/project', 'gpt-5.4')
+
+      await sm.sendMessage(id, 'describe this image', [
+        {
+          type: 'image',
+          content: 'dGVzdA==',
+          mediaType: 'image/png',
+          name: 'clipboard-image',
+        },
+      ])
+
+      expect(sendSpy).toHaveBeenCalledTimes(1)
+      expect(sendSpy).toHaveBeenCalledWith('describe this image', [
+        {
+          type: 'image',
+          name: 'clipboard-image',
+          mediaType: 'image/png',
+          base64: 'dGVzdA==',
+          previewUrl: '',
+        },
+      ])
+    })
+  })
+
   describe('deleteSession', () => {
     test('removes session from DB', async () => {
       const sm = new SessionManager()
@@ -428,7 +476,7 @@ describe('SessionManager', () => {
   })
 
   describe('getProjectFolders', () => {
-    test('returns unique project folders', async () => {
+    test('returns unique project folders from sessions', async () => {
       const sm = new SessionManager()
       await sm.createSession('/tmp/project-a')
       await sm.createSession('/tmp/project-b')
@@ -437,6 +485,64 @@ describe('SessionManager', () => {
       const folders = sm.getProjectFolders()
       expect(folders).toHaveLength(2)
       expect(folders.map((f) => f.path).sort()).toEqual(['/tmp/project-a', '/tmp/project-b'])
+    })
+
+    test('includes bookmarked projects without sessions', async () => {
+      const sm = new SessionManager()
+      sm.addProject('/tmp/bookmarked-only')
+
+      const folders = sm.getProjectFolders()
+      expect(folders).toHaveLength(1)
+      expect(folders[0].path).toBe('/tmp/bookmarked-only')
+    })
+
+    test('merges bookmarked and session-derived projects', async () => {
+      const sm = new SessionManager()
+      await sm.createSession('/tmp/project-a')
+      sm.addProject('/tmp/project-b')
+      sm.addProject('/tmp/project-a') // also bookmarked — should dedupe
+
+      const folders = sm.getProjectFolders()
+      expect(folders).toHaveLength(2)
+      expect(folders.map((f) => f.path).sort()).toEqual(['/tmp/project-a', '/tmp/project-b'])
+    })
+  })
+
+  describe('addProject / removeProject', () => {
+    test('addProject persists a project', () => {
+      const sm = new SessionManager()
+      sm.addProject('/tmp/new-project')
+
+      const folders = sm.getProjectFolders()
+      expect(folders.some((f) => f.path === '/tmp/new-project')).toBe(true)
+    })
+
+    test('addProject is idempotent — updates timestamp on re-add', () => {
+      const sm = new SessionManager()
+      sm.addProject('/tmp/project')
+      sm.addProject('/tmp/project')
+
+      const folders = sm.getProjectFolders()
+      expect(folders.filter((f) => f.path === '/tmp/project')).toHaveLength(1)
+    })
+
+    test('removeProject removes a bookmarked project', () => {
+      const sm = new SessionManager()
+      sm.addProject('/tmp/to-remove')
+      sm.removeProject('/tmp/to-remove')
+
+      const folders = sm.getProjectFolders()
+      expect(folders.some((f) => f.path === '/tmp/to-remove')).toBe(false)
+    })
+
+    test('removeProject does not remove session-derived projects', async () => {
+      const sm = new SessionManager()
+      await sm.createSession('/tmp/session-project')
+      sm.removeProject('/tmp/session-project') // only removes from projects table
+
+      const folders = sm.getProjectFolders()
+      // Still visible from sessions
+      expect(folders.some((f) => f.path === '/tmp/session-project')).toBe(true)
     })
   })
 

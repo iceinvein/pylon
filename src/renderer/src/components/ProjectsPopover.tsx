@@ -1,6 +1,6 @@
-import { Folder, FolderOpen } from 'lucide-react'
+import { Folder, FolderOpen, FolderPlus, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { timeAgo } from '../lib/utils'
 
 type Project = {
@@ -29,14 +29,29 @@ export function ProjectsPopover({
   const [projects, setProjects] = useState<Project[]>([])
   const popoverRef = useRef<HTMLDivElement>(null)
 
+  const refreshProjects = useCallback(() => {
+    window.api
+      .listProjects()
+      .then(setProjects)
+      .catch(() => setProjects([]))
+  }, [])
+
   useEffect(() => {
-    if (open) {
-      window.api
-        .listProjects()
-        .then(setProjects)
-        .catch(() => setProjects([]))
-    }
-  }, [open])
+    if (open) refreshProjects()
+  }, [open, refreshProjects])
+
+  async function addProjectOnly() {
+    const path = await window.api.openFolder()
+    if (!path) return
+    await window.api.addProject(path)
+    refreshProjects()
+  }
+
+  async function handleRemoveProject(e: React.MouseEvent, projectPath: string) {
+    e.stopPropagation()
+    await window.api.removeProject(projectPath)
+    refreshProjects()
+  }
 
   useEffect(() => {
     if (!open) return
@@ -102,28 +117,39 @@ export function ProjectsPopover({
           <div className="max-h-64 overflow-y-auto">
             {projects.length === 0 ? (
               <div className="px-3 py-3 text-center text-base-text-faint text-xs">
-                No recent projects
+                No projects yet
               </div>
             ) : (
               projects.map((project) => (
-                <button
-                  type="button"
-                  key={project.path}
-                  onClick={() => {
-                    onSelectProject(project.path)
-                    onClose()
-                  }}
-                  className="flex w-full items-start gap-2.5 px-3 py-2 text-left transition-colors hover:bg-base-raised/60"
-                >
-                  <Folder size={13} className="mt-0.5 shrink-0 text-base-text-faint" />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium text-base-text text-xs">
-                      {project.path.split('/').pop()}
-                    </p>
-                    <p className="truncate text-[11px] text-base-text-faint">{project.path}</p>
-                    <p className="text-[10px] text-base-text-faint">{timeAgo(project.lastUsed)}</p>
-                  </div>
-                </button>
+                <div key={project.path} className="group relative">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onSelectProject(project.path)
+                      onClose()
+                    }}
+                    className="flex w-full items-start gap-2.5 px-3 py-2 text-left transition-colors hover:bg-base-raised/60"
+                  >
+                    <Folder size={13} className="mt-0.5 shrink-0 text-base-text-faint" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium text-base-text text-xs">
+                        {project.path.split('/').pop()}
+                      </p>
+                      <p className="truncate text-[11px] text-base-text-faint">{project.path}</p>
+                      <p className="text-[10px] text-base-text-faint">
+                        {timeAgo(project.lastUsed)}
+                      </p>
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => handleRemoveProject(e, project.path)}
+                    className="absolute top-2 right-2 rounded p-0.5 text-base-text-faint opacity-0 transition-all hover:bg-base-raised hover:text-base-text group-hover:opacity-100"
+                    title="Remove from projects"
+                  >
+                    <X size={11} />
+                  </button>
+                </div>
               ))
             )}
           </div>
@@ -138,7 +164,15 @@ export function ProjectsPopover({
               className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left text-base-text-secondary text-xs transition-colors hover:bg-base-raised/60 hover:text-base-text"
             >
               <FolderOpen size={13} />
-              Browse...
+              Open Folder...
+            </button>
+            <button
+              type="button"
+              onClick={addProjectOnly}
+              className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left text-base-text-secondary text-xs transition-colors hover:bg-base-raised/60 hover:text-base-text"
+            >
+              <FolderPlus size={13} />
+              Add Project...
             </button>
           </div>
         </motion.div>

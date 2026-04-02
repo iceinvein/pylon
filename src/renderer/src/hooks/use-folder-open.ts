@@ -13,6 +13,9 @@ export function useFolderOpen(reuseTabId?: string) {
   const [dialogState, setDialogState] = useState<DialogState | null>(null)
 
   function openInTab(cwd: string, useWorktree?: boolean) {
+    // Persist this folder as a known project (fire-and-forget)
+    window.api.addProject(cwd).catch(() => {})
+
     if (reuseTabId) {
       updateTab(reuseTabId, {
         cwd,

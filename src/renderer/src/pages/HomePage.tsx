@@ -1,6 +1,6 @@
-import { Folder, FolderOpen } from 'lucide-react'
+import { Folder, FolderOpen, FolderPlus, X } from 'lucide-react'
 import { motion } from 'motion/react'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import logoUrl from '../assets/logo.png'
 import { SectionHeader } from '../components/SectionHeader'
 import { SessionHistory } from '../components/SessionHistory'
@@ -26,12 +26,29 @@ export function HomePage() {
   )
   const [projects, setProjects] = useState<Project[]>([])
 
-  useEffect(() => {
+  const refreshProjects = useCallback(() => {
     window.api
       .listProjects()
       .then(setProjects)
       .catch(() => setProjects([]))
   }, [])
+
+  useEffect(() => {
+    refreshProjects()
+  }, [refreshProjects])
+
+  async function addProjectOnly() {
+    const path = await window.api.openFolder()
+    if (!path) return
+    await window.api.addProject(path)
+    refreshProjects()
+  }
+
+  async function removeProject(e: React.MouseEvent, projectPath: string) {
+    e.stopPropagation()
+    await window.api.removeProject(projectPath)
+    refreshProjects()
+  }
 
   return (
     <div className="flex h-full flex-col items-center overflow-y-auto px-6 py-16">
@@ -56,14 +73,22 @@ export function HomePage() {
           >
             Your code, with an architect beside you.
           </motion.p>
-          <motion.div variants={fadeUp}>
+          <motion.div variants={fadeUp} className="mt-8 flex items-center gap-3">
             <button
               type="button"
               onClick={openFolder}
-              className="mt-8 inline-flex items-center gap-2.5 rounded-lg bg-accent px-5 py-2.5 font-semibold text-sm text-white transition-all hover:bg-accent-hover active:scale-[0.98]"
+              className="inline-flex items-center gap-2.5 rounded-lg bg-accent px-5 py-2.5 font-semibold text-sm text-white transition-all hover:bg-accent-hover active:scale-[0.98]"
             >
               <FolderOpen size={16} />
               Open Folder
+            </button>
+            <button
+              type="button"
+              onClick={addProjectOnly}
+              className="inline-flex items-center gap-2 rounded-lg border border-base-border px-4 py-2.5 text-base-text-secondary text-sm transition-colors hover:bg-base-raised hover:text-base-text"
+            >
+              <FolderPlus size={16} />
+              Add Project
             </button>
           </motion.div>
           {projects.length === 0 && (
@@ -82,23 +107,32 @@ export function HomePage() {
             <SectionHeader>Projects</SectionHeader>
             <div className="space-y-0.5">
               {projects.map((project) => (
-                <button
-                  type="button"
-                  key={project.path}
-                  onClick={() => openPath(project.path)}
-                  className="group flex w-full items-start gap-3 rounded-lg p-3 text-left transition-colors hover:bg-base-raised"
-                >
-                  <Folder size={14} className="mt-0.5 shrink-0 text-base-text-muted" />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium text-base-text text-sm">
-                      {project.path.split('/').pop()}
-                    </p>
-                    <p className="truncate text-base-text-muted text-xs">{project.path}</p>
-                    <p className="mt-0.5 text-[11px] text-base-text-faint">
-                      {timeAgo(project.lastUsed)}
-                    </p>
-                  </div>
-                </button>
+                <div key={project.path} className="group relative">
+                  <button
+                    type="button"
+                    onClick={() => openPath(project.path)}
+                    className="flex w-full items-start gap-3 rounded-lg p-3 text-left transition-colors hover:bg-base-raised"
+                  >
+                    <Folder size={14} className="mt-0.5 shrink-0 text-base-text-muted" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium text-base-text text-sm">
+                        {project.path.split('/').pop()}
+                      </p>
+                      <p className="truncate text-base-text-muted text-xs">{project.path}</p>
+                      <p className="mt-0.5 text-[11px] text-base-text-faint">
+                        {timeAgo(project.lastUsed)}
+                      </p>
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => removeProject(e, project.path)}
+                    className="absolute top-3 right-3 rounded p-1 text-base-text-faint opacity-0 transition-all hover:bg-base-raised hover:text-base-text group-hover:opacity-100"
+                    title="Remove from projects"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
               ))}
             </div>
           </motion.div>

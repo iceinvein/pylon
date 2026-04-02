@@ -7,6 +7,7 @@ import { log } from '../shared/logger'
 import type {
   AppSettings,
   InstalledPlugin,
+  IpcAttachment,
   PermissionMode,
   PermissionResponse,
   PluginManagementData,
@@ -166,7 +167,7 @@ export function registerIpcHandlers(): void {
       args: {
         sessionId: string
         text: string
-        attachments?: Array<{ type: string; content: string; mediaType?: string; name?: string }>
+        attachments?: IpcAttachment[]
       },
     ) => {
       sessionManager
@@ -223,6 +224,16 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(IPC.FOLDER_LIST_PROJECTS, async () => {
     return sessionManager.getProjectFolders()
+  })
+
+  ipcMain.handle(IPC.FOLDER_ADD_PROJECT, async (_e, args: { path: string }) => {
+    sessionManager.addProject(args.path)
+    return true
+  })
+
+  ipcMain.handle(IPC.FOLDER_REMOVE_PROJECT, async (_e, args: { path: string }) => {
+    sessionManager.removeProject(args.path)
+    return true
   })
 
   ipcMain.handle(IPC.FILE_READ_BASE64, async (_e, args: { path: string }) => {

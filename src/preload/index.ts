@@ -1,10 +1,11 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { IPC } from '../shared/ipc-channels'
+import type { IpcAttachment } from '../shared/types'
 
 const api = {
   createSession: (cwd: string, model?: string, useWorktree?: boolean) =>
     ipcRenderer.invoke(IPC.SESSION_CREATE, { cwd, model, useWorktree }),
-  sendMessage: (sessionId: string, text: string, attachments?: unknown[]) =>
+  sendMessage: (sessionId: string, text: string, attachments?: IpcAttachment[]) =>
     ipcRenderer.invoke(IPC.SESSION_SEND, { sessionId, text, attachments }),
   stopSession: (sessionId: string) => ipcRenderer.invoke(IPC.SESSION_STOP, { sessionId }),
   resumeSession: (sessionId: string) => ipcRenderer.invoke(IPC.SESSION_RESUME, { sessionId }),
@@ -14,6 +15,8 @@ const api = {
   openFolder: () => ipcRenderer.invoke(IPC.FOLDER_OPEN),
   checkGitStatus: (path: string) => ipcRenderer.invoke(IPC.FOLDER_CHECK_GIT_STATUS, { path }),
   listProjects: () => ipcRenderer.invoke(IPC.FOLDER_LIST_PROJECTS),
+  addProject: (path: string) => ipcRenderer.invoke(IPC.FOLDER_ADD_PROJECT, { path }),
+  removeProject: (path: string) => ipcRenderer.invoke(IPC.FOLDER_REMOVE_PROJECT, { path }),
   readFileBase64: (path: string) => ipcRenderer.invoke(IPC.FILE_READ_BASE64, { path }),
   readPlanFile: (path: string) => ipcRenderer.invoke(IPC.FILE_READ_PLAN, { path }),
   respondToPermission: (requestId: string, behavior: 'allow' | 'deny', message?: string) =>

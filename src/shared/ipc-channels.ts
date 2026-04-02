@@ -27,6 +27,8 @@ export const IPC = {
   SESSION_TITLE_UPDATED: 'session:title-updated',
   FOLDER_CHECK_GIT_STATUS: 'folder:check-git-status',
   FOLDER_LIST_PROJECTS: 'folder:list-projects',
+  FOLDER_ADD_PROJECT: 'folder:add-project',
+  FOLDER_REMOVE_PROJECT: 'folder:remove-project',
   USAGE_STATS: 'usage:stats',
   WORKTREE_MERGE_CLEANUP: 'worktree:merge-cleanup',
   WORKTREE_DISCARD_CLEANUP: 'worktree:discard-cleanup',

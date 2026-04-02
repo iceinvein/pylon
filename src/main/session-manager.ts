@@ -6,7 +6,9 @@ import type { BrowserWindow } from 'electron'
 import { IPC } from '../shared/ipc-channels'
 import { log } from '../shared/logger'
 import type {
+  Attachment,
   EffortLevel,
+  IpcAttachment,
   PermissionMode,
   PermissionResponse,
   QuestionResponse,
@@ -85,6 +87,36 @@ type ActiveSession = {
   /** Latest context input tokens from the most recent message_start event.
    *  Includes uncached + cache_read + cache_creation tokens. */
   lastContextInputTokens: number
+}
+
+function normalizeProviderAttachments(attachments?: IpcAttachment[]): Attachment[] | undefined {
+  if (!attachments?.length) return undefined
+
+  return attachments.flatMap((att): Attachment[] => {
+    if (att.type === 'image') {
+      if (!att.content || !att.mediaType) return []
+      return [
+        {
+          type: 'image',
+          name: att.name || 'image',
+          mediaType: att.mediaType,
+          base64: att.content,
+          previewUrl: '',
+        },
+      ]
+    }
+
+    if (!att.content) return []
+    return [
+      {
+        type: 'file',
+        name: att.name || 'attachment',
+        path: '',
+        size: 0,
+        content: att.content,
+      },
+    ]
+  })
 }
 
 export class SessionManager {
@@ -253,11 +285,7 @@ export class SessionManager {
     return id
   }
 
-  async sendMessage(
-    sessionId: string,
-    text: string,
-    attachments?: Array<{ type: string; content: string; mediaType?: string; name?: string }>,
-  ): Promise<void> {
+  async sendMessage(sessionId: string, text: string, attachments?: IpcAttachment[]): Promise<void> {
     if (!this.sessions.has(sessionId)) {
       this.resumeSession(sessionId)
     }
@@ -293,7 +321,8 @@ export class SessionManager {
       // Build user content blocks so the user message survives reload from DB.
       // Attachment processing (temp files, inlining) is now handled by the provider.
       const imageAtts = (attachments ?? []).filter(
-        (a) => a.type === 'image' && a.content && a.mediaType,
+        (a): a is Extract<IpcAttachment, { type: 'image' }> =>
+          a.type === 'image' && !!a.content && !!a.mediaType,
       )
       const userContent: Array<Record<string, unknown>> = []
       for (const att of imageAtts) {
@@ -311,9 +340,10 @@ export class SessionManager {
       })
 
       this.updateStatus(sessionId, 'running')
+      const providerAttachments = normalizeProviderAttachments(attachments)
 
       // ── Consume normalized event stream ────────────────
-      for await (const event of agentSession.send(text, attachments as never)) {
+      for await (const event of agentSession.send(text, providerAttachments)) {
         this.handleProviderEvent(sessionId, session, text, event)
       }
 
@@ -649,20 +679,44 @@ export class SessionManager {
   getProjectFolders(): Array<{ path: string; lastUsed: number }> {
     const db = getDb()
     const worktreeBase = join(homedir(), '.pylon', 'worktrees')
+    // Merge bookmarked projects with session-derived projects.
+    // For paths that appear in both, take the most recent timestamp.
     const rows = db
       .prepare(`
-      SELECT
-        COALESCE(original_cwd, cwd) as path,
-        MAX(updated_at) as last_used
-      FROM sessions
-      WHERE COALESCE(original_cwd, cwd) NOT LIKE ? || '%'
-      GROUP BY COALESCE(original_cwd, cwd)
+      SELECT path, MAX(last_used) as last_used FROM (
+        SELECT
+          COALESCE(original_cwd, cwd) as path,
+          MAX(updated_at) as last_used
+        FROM sessions
+        WHERE COALESCE(original_cwd, cwd) NOT LIKE ? || '%'
+        GROUP BY COALESCE(original_cwd, cwd)
+
+        UNION ALL
+
+        SELECT path, last_opened_at as last_used
+        FROM projects
+      )
+      GROUP BY path
       ORDER BY last_used DESC
       LIMIT 20
     `)
       .all(worktreeBase) as Array<{ path: string; last_used: number }>
 
     return rows.map((r) => ({ path: r.path, lastUsed: r.last_used }))
+  }
+
+  addProject(projectPath: string): void {
+    const db = getDb()
+    const now = Date.now()
+    db.prepare(`
+      INSERT INTO projects (path, added_at, last_opened_at) VALUES (?, ?, ?)
+      ON CONFLICT(path) DO UPDATE SET last_opened_at = excluded.last_opened_at
+    `).run(projectPath, now, now)
+  }
+
+  removeProject(projectPath: string): void {
+    const db = getDb()
+    db.prepare('DELETE FROM projects WHERE path = ?').run(projectPath)
   }
 
   getStoredSessions(): unknown[] {

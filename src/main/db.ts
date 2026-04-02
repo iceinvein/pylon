@@ -116,6 +116,17 @@ const migrations: Array<{ version: number; description: string; sql: string }> =
       );
     `,
   },
+  {
+    version: 13,
+    description: 'Add projects table for bookmarked project folders',
+    sql: `
+      CREATE TABLE IF NOT EXISTS projects (
+        path TEXT PRIMARY KEY,
+        added_at INTEGER NOT NULL,
+        last_opened_at INTEGER NOT NULL
+      );
+    `,
+  },
 ]
 
 /**

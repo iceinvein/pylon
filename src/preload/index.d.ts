@@ -2,7 +2,13 @@ type Api = {
   createSession: (cwd: string, model?: string, useWorktree?: boolean) => Promise<string>
   checkGitStatus: (path: string) => Promise<{ isGitRepo: boolean; isDirty: boolean }>
   listProjects: () => Promise<Array<{ path: string; lastUsed: number }>>
-  sendMessage: (sessionId: string, text: string, attachments?: unknown[]) => Promise<boolean>
+  addProject: (path: string) => Promise<boolean>
+  removeProject: (path: string) => Promise<boolean>
+  sendMessage: (
+    sessionId: string,
+    text: string,
+    attachments?: import('../shared/types').IpcAttachment[],
+  ) => Promise<boolean>
   stopSession: (sessionId: string) => Promise<boolean>
   resumeSession: (sessionId: string) => Promise<{ success: boolean; title: string; status: string }>
   listSessions: () => Promise<unknown[]>
