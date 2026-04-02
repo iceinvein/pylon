@@ -9,37 +9,37 @@
   --font-display: "Instrument Serif", "Georgia", serif;
   --font-mono: "JetBrains Mono Variable", ui-monospace, "Cascadia Code", "Fira Code", monospace;
 
-  /* Warm-shifted neutrals — clay-tinted, not pure gray */
+  /* Warm-shifted neutrals — clay-tinted, contrast-boosted */
   --color-base-bg: #1a1714;
-  --color-base-surface: #211e1a;
-  --color-base-raised: #2a2621;
-  --color-base-border: #3d3630;
-  --color-base-border-subtle: #302b26;
-  --color-base-text: #e8e0d6;
-  --color-base-text-secondary: #a89e93;
-  --color-base-text-muted: #908578;
-  --color-base-text-faint: #8a7f76;
+  --color-base-surface: #262118;
+  --color-base-raised: #332c22;
+  --color-base-border: #4d443a;
+  --color-base-border-subtle: #3d3630;
+  --color-base-text: #ede6dc;
+  --color-base-text-secondary: #c0b6a9;
+  --color-base-text-muted: #a49a8d;
+  --color-base-text-faint: #948a7e;
 
-  /* Primary — terracotta warmth */
-  --color-accent: #a85838;
-  --color-accent-hover: #be6844;
-  --color-accent-muted: #a8583840;
-  --color-accent-text: #e8a080;
+  /* Primary — terracotta warmth, vivid */
+  --color-accent: #c06540;
+  --color-accent-hover: #d4744e;
+  --color-accent-muted: #c0654038;
+  --color-accent-text: #f0a880;
 
-  /* Semantic colors — warm-shifted */
-  --color-success: #5a9e6f;
-  --color-error: #d06464;
-  --color-warning: #c49a4a;
-  --color-info: #5a8ac4;
-  --color-special: #9a7bc4;
-  --color-special-text: #c8b0e8;
-  --color-special-muted: #9a7bc420;
+  /* Semantic colors — warm-shifted, brighter */
+  --color-success: #68b27e;
+  --color-error: #e07070;
+  --color-warning: #d4a854;
+  --color-info: #6898d4;
+  --color-special: #aa84d0;
+  --color-special-text: #d4bef0;
+  --color-special-muted: #aa84d020;
 
   /* Flow visualization — spine and dot colors */
-  --color-flow-spine-start: #44403c;
-  --color-flow-spine-idle: #706660;
-  --color-flow-spine-fallback: #78716c;
-  --color-flow-dot-border: #57534e;
+  --color-flow-spine-start: #504840;
+  --color-flow-spine-idle: #807468;
+  --color-flow-spine-fallback: #887c74;
+  --color-flow-dot-border: #68605a;
 }
 
 body {
