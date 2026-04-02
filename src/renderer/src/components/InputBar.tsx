@@ -423,7 +423,6 @@ export function InputBar({
         </AnimatePresence>
 
         <div className="mx-auto max-w-3xl">
-          {/* biome-ignore lint/a11y/noStaticElementInteractions: drag-and-drop zone does not need keyboard interaction */}
           <div
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}

@@ -145,9 +145,9 @@ describe('computeRepoLayout', () => {
     // Should produce arch-analysis cluster bounding box + dir cluster
     const archCluster = layout.clusters.find((c) => c.name === 'Components')
     expect(archCluster).toBeDefined()
-    expect(archCluster!.color).toBe('#4af')
-    expect(archCluster!.width).toBeGreaterThan(0)
-    expect(archCluster!.height).toBeGreaterThan(0)
+    expect(archCluster?.color).toBe('#4af')
+    expect(archCluster?.width).toBeGreaterThan(0)
+    expect(archCluster?.height).toBeGreaterThan(0)
   })
 
   test('cluster bounding box encloses all cluster nodes', () => {
@@ -179,10 +179,10 @@ describe('computeRepoLayout', () => {
 
     for (const node of layout.nodes) {
       // Node should be within cluster bounds (with padding)
-      expect(node.x).toBeGreaterThanOrEqual(cluster!.x)
-      expect(node.y).toBeGreaterThanOrEqual(cluster!.y)
-      expect(node.x + node.width).toBeLessThanOrEqual(cluster!.x + cluster!.width)
-      expect(node.y + node.height).toBeLessThanOrEqual(cluster!.y + cluster!.height)
+      expect(node.x).toBeGreaterThanOrEqual(cluster?.x ?? 0)
+      expect(node.y).toBeGreaterThanOrEqual(cluster?.y ?? 0)
+      expect(node.x + node.width).toBeLessThanOrEqual((cluster?.x ?? 0) + (cluster?.width ?? 0))
+      expect(node.y + node.height).toBeLessThanOrEqual((cluster?.y ?? 0) + (cluster?.height ?? 0))
     }
   })
 
