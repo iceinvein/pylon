@@ -418,7 +418,7 @@ export function SessionView({ tab, isActive }: SessionViewProps) {
                         <kbd className="inline-flex min-w-5 justify-center rounded border border-base-border px-1 py-0.5 font-mono text-[11px] text-base-text-muted">
                           {tip.keys}
                         </kbd>
-                        <span className="text-xs text-base-text-faint">{tip.label}</span>
+                        <span className="text-base-text-faint text-xs">{tip.label}</span>
                       </div>
                     ))}
                   </motion.div>
@@ -463,7 +463,6 @@ export function SessionView({ tab, isActive }: SessionViewProps) {
                   transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
                   className="flex shrink-0 overflow-hidden"
                 >
-                  {/* biome-ignore lint/a11y/noStaticElementInteractions: mouse-only resize handle */}
                   <div
                     onMouseDown={handleFlowDragStart}
                     className="flex w-1 shrink-0 cursor-col-resize items-center justify-center border-base-border-subtle border-l bg-base-bg transition-colors hover:bg-base-border active:bg-base-text-faint"
@@ -491,7 +490,6 @@ export function SessionView({ tab, isActive }: SessionViewProps) {
                   transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
                   className="flex shrink-0 overflow-hidden"
                 >
-                  {/* biome-ignore lint/a11y/noStaticElementInteractions: mouse-only resize handle */}
                   <div
                     onMouseDown={handleChangesDragStart}
                     className="flex w-1 shrink-0 cursor-col-resize items-center justify-center border-base-border-subtle border-l bg-base-bg transition-colors hover:bg-base-border active:bg-base-text-faint"
@@ -521,7 +519,6 @@ export function SessionView({ tab, isActive }: SessionViewProps) {
                   transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
                   className="flex shrink-0 overflow-hidden"
                 >
-                  {/* biome-ignore lint/a11y/noStaticElementInteractions: mouse-only resize handle */}
                   <div
                     onMouseDown={handleInfoDragStart}
                     className="flex w-1 shrink-0 cursor-col-resize items-center justify-center border-base-border-subtle border-l bg-base-bg transition-colors hover:bg-base-border active:bg-base-text-faint"
@@ -558,7 +555,11 @@ export function SessionView({ tab, isActive }: SessionViewProps) {
                       : 'text-base-text-muted group-hover:text-base-text'
                   }`}
                 />
-                <span className={`text-[10px] leading-none ${showFlow ? 'text-accent-text' : 'text-base-text-faint'}`}>Flow</span>
+                <span
+                  className={`text-[10px] leading-none ${showFlow ? 'text-accent-text' : 'text-base-text-faint'}`}
+                >
+                  Flow
+                </span>
               </button>
               <button
                 type="button"
@@ -578,7 +579,11 @@ export function SessionView({ tab, isActive }: SessionViewProps) {
                       : 'text-base-text-muted group-hover:text-base-text'
                   }`}
                 />
-                <span className={`text-[10px] leading-none ${showChanges ? 'text-accent-text' : 'text-base-text-faint'}`}>Files</span>
+                <span
+                  className={`text-[10px] leading-none ${showChanges ? 'text-accent-text' : 'text-base-text-faint'}`}
+                >
+                  Files
+                </span>
                 {changedFiles.length > 0 && (
                   <span className="absolute top-0 right-0 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-accent px-0.5 font-medium text-[9px] text-white">
                     {changedFiles.length}
@@ -603,7 +608,11 @@ export function SessionView({ tab, isActive }: SessionViewProps) {
                       : 'text-base-text-muted group-hover:text-base-text'
                   }`}
                 />
-                <span className={`text-[10px] leading-none ${showInfo ? 'text-accent-text' : 'text-base-text-faint'}`}>Info</span>
+                <span
+                  className={`text-[10px] leading-none ${showInfo ? 'text-accent-text' : 'text-base-text-faint'}`}
+                >
+                  Info
+                </span>
               </button>
               {sessionId && tab.useWorktree && changedFiles.length > 0 && (
                 <button
@@ -617,7 +626,7 @@ export function SessionView({ tab, isActive }: SessionViewProps) {
                     size={15}
                     className="text-info transition-colors group-hover:text-info/80"
                   />
-                  <span className="text-[10px] leading-none text-base-text-faint">PR</span>
+                  <span className="text-[10px] text-base-text-faint leading-none">PR</span>
                 </button>
               )}
             </div>

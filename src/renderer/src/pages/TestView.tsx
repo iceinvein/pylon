@@ -267,7 +267,6 @@ export function TestView() {
       </div>
 
       {/* Resize handle */}
-      {/* biome-ignore lint/a11y/noStaticElementInteractions: mouse-only resize handle */}
       <div
         onMouseDown={handleSidebarDragStart}
         className="flex w-1 shrink-0 cursor-col-resize items-center justify-center border-base-border-subtle border-r bg-base-bg transition-colors hover:bg-base-border active:bg-base-text-faint"

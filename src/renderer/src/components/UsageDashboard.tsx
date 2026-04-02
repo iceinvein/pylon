@@ -202,7 +202,11 @@ export function UsageDashboard() {
             <div className="rounded-lg border border-base-border-subtle bg-base-surface/50 p-4">
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={costByModel} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" stroke={CHART_COLORS.grid} horizontal={false} />
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    stroke={CHART_COLORS.grid}
+                    horizontal={false}
+                  />
                   <XAxis
                     type="number"
                     tickFormatter={(v: number) => `$${v.toFixed(2)}`}
@@ -235,7 +239,10 @@ export function UsageDashboard() {
                   />
                   <Bar dataKey="cost" radius={[0, 4, 4, 0]}>
                     {costByModel.map((entry) => (
-                      <Cell key={entry.model} fill={MODEL_COLORS[entry.model] ?? CHART_COLORS.muted} />
+                      <Cell
+                        key={entry.model}
+                        fill={MODEL_COLORS[entry.model] ?? CHART_COLORS.muted}
+                      />
                     ))}
                   </Bar>
                 </BarChart>

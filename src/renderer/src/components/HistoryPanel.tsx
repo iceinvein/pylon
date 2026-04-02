@@ -171,8 +171,12 @@ export function HistoryPanel() {
         ) : groups.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <Clock size={24} className="mb-3 text-base-text-faint/50" />
-            <p className="font-display text-base text-base-text-secondary italic">No sessions yet</p>
-            <p className="mt-1 text-base-text-muted text-xs">Open a folder to start your first session</p>
+            <p className="font-display text-base text-base-text-secondary italic">
+              No sessions yet
+            </p>
+            <p className="mt-1 text-base-text-muted text-xs">
+              Open a folder to start your first session
+            </p>
           </div>
         ) : (
           groups.map((group) => {
