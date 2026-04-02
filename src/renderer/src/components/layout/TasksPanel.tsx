@@ -3,12 +3,9 @@ import { AnimatePresence, motion } from 'motion/react'
 import { useState } from 'react'
 import type { TaskItem } from '../../store/session-store'
 import { useSessionStore } from '../../store/session-store'
-import { ThinkingIndicator } from '../ThinkingIndicator'
 
 type TasksPanelProps = {
   sessionId: string | null
-  isProcessing: boolean
-  isCompacting: boolean
 }
 
 function TaskIcon({ status }: { status: TaskItem['status'] }) {
@@ -17,7 +14,7 @@ function TaskIcon({ status }: { status: TaskItem['status'] }) {
   return <Circle size={11} className="text-base-text-faint" />
 }
 
-export function TasksPanel({ sessionId, isProcessing, isCompacting }: TasksPanelProps) {
+export function TasksPanel({ sessionId }: TasksPanelProps) {
   const tasks = useSessionStore((s) => (sessionId ? s.tasks.get(sessionId) : undefined)) ?? []
   const [expanded, setExpanded] = useState(false)
 
@@ -27,19 +24,11 @@ export function TasksPanel({ sessionId, isProcessing, isCompacting }: TasksPanel
   const total = tasks.length
   const allDone = completed === total
 
-  // Nothing to show
-  if (!isProcessing && !hasTasks) return null
+  if (!hasTasks) return null
 
   return (
     <div className="mx-auto w-full max-w-3xl px-4">
       <div className="flex items-center gap-3 py-1.5">
-        {/* Thinking indicator — inline, not a separate section */}
-        {isProcessing && (
-          <div className="min-w-0 flex-1">
-            <ThinkingIndicator isCompacting={isCompacting} />
-          </div>
-        )}
-
         {/* Task progress — compact pill */}
         {hasTasks && (
           <button

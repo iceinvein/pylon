@@ -6,6 +6,7 @@ import type {
   Attachment,
   EffortLevel,
   ImageAttachment,
+  IpcAttachment,
   PermissionMode,
   Tab,
 } from '../../../shared/types'
@@ -34,13 +35,6 @@ type SessionViewProps = {
   isActive: boolean
 }
 
-type IpcAttachment = {
-  type: string
-  content: string
-  mediaType?: string
-  name?: string
-}
-
 export function SessionView({ tab, isActive }: SessionViewProps) {
   const { updateTab } = useTabStore()
   const setSession = useSessionStore((s) => s.setSession)
@@ -54,12 +48,8 @@ export function SessionView({ tab, isActive }: SessionViewProps) {
   const sessionId = tab.sessionId
   const session = sessionId ? sessions.get(sessionId) : undefined
   const currentModel = session?.model || pendingModel
-  const streaming = useSessionStore((s) => (sessionId ? s.streamingText.get(sessionId) : undefined))
-  const sdkStatus = useSessionStore((s) => (sessionId ? s.sdkStatus.get(sessionId) : null))
   const isRunning =
     session?.status === 'running' || session?.status === 'starting' || session?.status === 'waiting'
-  const isCompacting = sdkStatus === 'compacting'
-  const isProcessing = (isRunning && !streaming) || isCompacting
 
   // Load global defaults for new sessions, or sync from backend for existing ones
   useEffect(() => {
@@ -426,11 +416,7 @@ export function SessionView({ tab, isActive }: SessionViewProps) {
               </div>
             )}
           </div>
-          <TasksPanel
-            sessionId={sessionId ?? null}
-            isProcessing={isProcessing}
-            isCompacting={isCompacting}
-          />
+          <TasksPanel sessionId={sessionId ?? null} />
           <div>
             <InputBar
               tabId={tab.id}
