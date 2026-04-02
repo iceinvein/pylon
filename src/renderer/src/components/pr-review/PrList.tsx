@@ -1,6 +1,7 @@
 import { Check, ChevronDown, Loader2, Search } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import type { GhPullRequest } from '../../../../shared/types'
 import { usePrReviewStore } from '../../store/pr-review-store'
 import { PrCard } from './PrCard'
 
@@ -55,9 +56,31 @@ export function PrList() {
     ? prs.filter(
         (pr) =>
           pr.title.toLowerCase().includes(search.toLowerCase()) ||
-          String(pr.number).includes(search),
+          String(pr.number).includes(search) ||
+          pr.repo.fullName.toLowerCase().includes(search.toLowerCase()),
       )
     : prs
+
+  const showingAllRepos = !selectedRepo
+
+  /** Group PRs by repo when viewing all repos, preserving order of first appearance. */
+  const groupedPrs = useMemo(() => {
+    if (!showingAllRepos) return null
+    const groups: Array<{ repoFullName: string; prs: GhPullRequest[] }> = []
+    const seen = new Map<string, GhPullRequest[]>()
+    for (const pr of filteredPrs) {
+      const key = pr.repo.fullName
+      const existing = seen.get(key)
+      if (existing) {
+        existing.push(pr)
+      } else {
+        const arr = [pr]
+        seen.set(key, arr)
+        groups.push({ repoFullName: key, prs: arr })
+      }
+    }
+    return groups
+  }, [showingAllRepos, filteredPrs])
 
   const selectedLabel = selectedRepo
     ? (repos.find((r) => r.fullName === selectedRepo)?.fullName ?? selectedRepo)
@@ -156,6 +179,34 @@ export function PrList() {
             {repos.length === 0
               ? 'No GitHub projects found. Add a project first.'
               : 'No open PRs found.'}
+          </div>
+        ) : groupedPrs ? (
+          <div className="space-y-3">
+            {groupedPrs.map((group) => (
+              <div key={group.repoFullName}>
+                <div className="sticky top-0 z-10 flex items-center gap-2 bg-base-bg/95 px-2 py-1.5 backdrop-blur-sm">
+                  <span className="truncate font-mono text-[11px] text-base-text-secondary">
+                    {group.repoFullName}
+                  </span>
+                  <span className="shrink-0 rounded-full bg-base-border/50 px-1.5 py-px text-[10px] text-base-text-faint tabular-nums">
+                    {group.prs.length}
+                  </span>
+                </div>
+                <div className="space-y-1">
+                  {group.prs.map((pr) => (
+                    <PrCard
+                      key={`${pr.repo.fullName}#${pr.number}`}
+                      pr={pr}
+                      selected={
+                        selectedPr?.number === pr.number &&
+                        selectedPr?.repo.fullName === pr.repo.fullName
+                      }
+                      onClick={() => selectPr(pr)}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         ) : (
           <div className="space-y-1">

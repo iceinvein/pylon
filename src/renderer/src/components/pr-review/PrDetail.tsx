@@ -209,6 +209,9 @@ export function PrDetail() {
             className={`mt-0.5 shrink-0 ${pr.isDraft ? 'text-base-text-muted' : 'text-emerald-500'}`}
           />
           <div className="min-w-0 flex-1">
+            <div className="mb-0.5 truncate font-mono text-[11px] text-base-text-muted">
+              {pr.repo.fullName}
+            </div>
             <div className="flex items-baseline gap-2">
               <h2 className="font-semibold text-base-text text-sm">{pr.title}</h2>
               <span className="shrink-0 text-base-text-faint text-xs">#{pr.number}</span>

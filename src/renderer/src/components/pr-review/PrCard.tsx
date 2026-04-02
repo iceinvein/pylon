@@ -4,6 +4,7 @@ import type { GhPullRequest } from '../../../../shared/types'
 type PrCardProps = {
   pr: GhPullRequest
   selected: boolean
+  showRepo?: boolean
   onClick: () => void
 }
 
@@ -18,7 +19,7 @@ function timeAgo(dateStr: string): string {
   return `${days}d ago`
 }
 
-export function PrCard({ pr, selected, onClick }: PrCardProps) {
+export function PrCard({ pr, selected, showRepo, onClick }: PrCardProps) {
   return (
     <button
       type="button"
@@ -39,6 +40,11 @@ export function PrCard({ pr, selected, onClick }: PrCardProps) {
           <div className="truncate text-base-text text-sm">{pr.title}</div>
           <div className="mt-0.5 flex items-center gap-2 text-base-text-muted text-xs">
             <span>#{pr.number}</span>
+            {showRepo && (
+              <span className="truncate font-mono text-base-text-secondary">
+                {pr.repo.fullName}
+              </span>
+            )}
             <span>{pr.author}</span>
             <span>{timeAgo(pr.updatedAt)}</span>
           </div>
