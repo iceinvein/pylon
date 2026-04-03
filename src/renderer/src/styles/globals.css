@@ -34,6 +34,7 @@
   --color-special: #aa84d0;
   --color-special-text: #d4bef0;
   --color-special-muted: #aa84d020;
+  --color-success-muted: #68b27e20;
 
   /* Flow visualization — spine and dot colors */
   --color-flow-spine-start: #504840;
