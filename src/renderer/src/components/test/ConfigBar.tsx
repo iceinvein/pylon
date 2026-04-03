@@ -41,7 +41,9 @@ export function ConfigBar({
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const anyRunning = explorations.some((e) => e.status === 'running' || e.status === 'pending')
-  const allDone = explorations.length > 0 && explorations.every((e) => e.status !== 'running' && e.status !== 'pending')
+  const allDone =
+    explorations.length > 0 &&
+    explorations.every((e) => e.status !== 'running' && e.status !== 'pending')
   const totalFindings = explorations.reduce((sum, e) => sum + e.findingsCount, 0)
   const totalCost = explorations.reduce((sum, e) => sum + e.totalCostUsd, 0)
 
@@ -50,7 +52,7 @@ export function ConfigBar({
       if (intervalRef.current) clearInterval(intervalRef.current)
       return
     }
-    const startTimes = explorations.filter((e) => e.startedAt).map((e) => e.startedAt!)
+    const startTimes = explorations.map((e) => e.startedAt).filter((t): t is number => t !== null)
     if (startTimes.length === 0) return
     const earliest = Math.min(...startTimes)
     const tick = () => setElapsed(Date.now() - earliest)
@@ -79,9 +81,7 @@ export function ConfigBar({
             {allDone ? '✓' : '⏱'} {formatElapsed(elapsed)}
           </span>
           {totalCost > 0 && (
-            <span className="text-[11px] text-base-text-faint">
-              {formatCost(totalCost)}
-            </span>
+            <span className="text-[11px] text-base-text-faint">{formatCost(totalCost)}</span>
           )}
           {allDone && (
             <span className="text-[11px] text-base-text-muted">
@@ -107,7 +107,7 @@ export function ConfigBar({
         <button
           type="button"
           onClick={onStopAll}
-          className="flex items-center gap-1.5 rounded-lg border border-[var(--color-error)]/30 bg-[var(--color-error)]/10 px-2.5 py-1 text-[11px] text-[var(--color-error)] transition-colors hover:bg-[var(--color-error)]/20"
+          className="flex items-center gap-1.5 rounded-lg border border-error/30 bg-error/10 px-2.5 py-1 text-[11px] text-error transition-colors hover:bg-error/20"
         >
           <Square size={10} />
           Stop All

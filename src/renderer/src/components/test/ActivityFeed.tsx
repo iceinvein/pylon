@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react'
 import type { ExplorationAgentMessage, TestExploration } from '../../../../shared/types'
-import { formatActivityEntry, type ActivityEntry } from '../../lib/activity-format'
+import { type ActivityEntry, formatActivityEntry } from '../../lib/activity-format'
 import { getAgentColor } from './AgentTileStrip'
 
 type ActivityFeedProps = {
@@ -45,11 +45,12 @@ export function ActivityFeed({
     return entries
   }, [explorations, agentMessages, agentFilter])
 
+  const entryCount = feedEntries.length
   useEffect(() => {
-    if (isRunning && !userScrolledUp.current) {
+    if (entryCount > 0 && isRunning && !userScrolledUp.current) {
       bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
     }
-  }, [feedEntries.length, isRunning])
+  }, [entryCount, isRunning])
 
   const handleScroll = () => {
     const el = containerRef.current
@@ -78,11 +79,7 @@ export function ActivityFeed({
           </span>
         )}
       </div>
-      <div
-        ref={containerRef}
-        onScroll={handleScroll}
-        className="flex-1 overflow-y-auto px-3 py-2"
-      >
+      <div ref={containerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto px-3 py-2">
         {feedEntries.length === 0 && (
           <p className="py-8 text-center text-base-text-faint text-xs">
             {isRunning ? 'Waiting for agent activity…' : 'No activity recorded'}
@@ -96,7 +93,7 @@ export function ActivityFeed({
                 entry.highlight === 'finding'
                   ? 'bg-yellow-500/10'
                   : entry.highlight === 'test'
-                    ? 'bg-[var(--color-success-muted)]/30'
+                    ? 'bg-success-muted/30'
                     : ''
               }`}
             >
@@ -106,9 +103,7 @@ export function ActivityFeed({
               />
               <span
                 className={`min-w-0 flex-1 truncate ${
-                  entry.highlight
-                    ? 'text-base-text'
-                    : 'text-base-text-secondary'
+                  entry.highlight ? 'text-base-text' : 'text-base-text-secondary'
                 }`}
               >
                 {entry.summary}

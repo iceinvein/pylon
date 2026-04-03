@@ -11,14 +11,12 @@ type GeneratedTestItemProps = {
 function HighlightedCode({ code }: { code: string }) {
   const html = useShiki(code, 'typescript')
   if (!html) {
-    return (
-      <pre className="whitespace-pre-wrap text-base-text-secondary text-xs">{code}</pre>
-    )
+    return <pre className="whitespace-pre-wrap text-base-text-secondary text-xs">{code}</pre>
   }
-  // Shiki output is trusted — generated locally by our highlighter from local file content
   return (
     <div
-      className="text-xs [&_pre]:!bg-transparent [&_code]:!bg-transparent"
+      className="text-xs [&_code]:bg-transparent! [&_pre]:bg-transparent!"
+      // biome-ignore lint/security/noDangerouslySetInnerHtml: Shiki HTML is generated locally, not user input
       dangerouslySetInnerHTML={{ __html: html }}
     />
   )
