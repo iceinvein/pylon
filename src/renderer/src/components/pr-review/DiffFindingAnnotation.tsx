@@ -90,7 +90,7 @@ export function DiffFindingAnnotation({ finding, checked, onToggle, onPost }: Pr
           {isPosting ? (
             <Loader2 size={12} className="animate-spin text-base-text-secondary" />
           ) : finding.posted ? (
-            <CheckCircle2 size={12} className="text-[var(--color-success)]" />
+            <CheckCircle2 size={12} className="text-success" />
           ) : (
             <input
               type="checkbox"
@@ -107,10 +107,10 @@ export function DiffFindingAnnotation({ finding, checked, onToggle, onPost }: Pr
           <div className="flex items-center gap-1.5">
             <Icon
               size={11}
-              className={`shrink-0 ${finding.posted ? 'text-[var(--color-success)]' : config.text}`}
+              className={`shrink-0 ${finding.posted ? 'text-success' : config.text}`}
             />
             <span
-              className={`font-semibold text-[10px] uppercase tracking-wide ${finding.posted ? 'text-[var(--color-success)]' : config.text}`}
+              className={`font-semibold text-[10px] uppercase tracking-wide ${finding.posted ? 'text-success' : config.text}`}
             >
               {finding.posted ? 'Posted' : config.label}
             </span>

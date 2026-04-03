@@ -73,7 +73,15 @@ const SEVERITY_STYLES: Record<
   },
 }
 
-export function FindingCard({ finding, checked, isPosting, onToggle, onPost, onNavigate, showFilePath }: Props) {
+export function FindingCard({
+  finding,
+  checked,
+  isPosting,
+  onToggle,
+  onPost,
+  onNavigate,
+  showFilePath,
+}: Props) {
   const style = SEVERITY_STYLES[finding.severity] ?? SEVERITY_STYLES.suggestion
   const Icon = style.icon
 
@@ -90,7 +98,7 @@ export function FindingCard({ finding, checked, isPosting, onToggle, onPost, onN
           {isPosting ? (
             <Loader2 size={14} className="animate-spin text-base-text-secondary" />
           ) : finding.posted ? (
-            <CheckCircle2 size={14} className="text-[var(--color-success)]" />
+            <CheckCircle2 size={14} className="text-success" />
           ) : (
             <input
               type="checkbox"
@@ -108,12 +116,12 @@ export function FindingCard({ finding, checked, isPosting, onToggle, onPost, onN
           <div className="flex items-start gap-2">
             <Icon
               size={13}
-              className={`mt-0.5 shrink-0 ${finding.posted ? 'text-[var(--color-success)]' : style.text}`}
+              className={`mt-0.5 shrink-0 ${finding.posted ? 'text-success' : style.text}`}
             />
             <div className="min-w-0 flex-1">
               <div className="flex items-baseline gap-2">
                 <span
-                  className={`font-semibold text-[10px] uppercase tracking-wide ${finding.posted ? 'text-[var(--color-success)]' : style.text}`}
+                  className={`font-semibold text-[10px] uppercase tracking-wide ${finding.posted ? 'text-success' : style.text}`}
                 >
                   {finding.posted ? 'Posted' : style.label}
                 </span>

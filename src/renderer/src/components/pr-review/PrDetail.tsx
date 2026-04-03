@@ -18,6 +18,7 @@ import rehypeSanitize from 'rehype-sanitize'
 import remarkGfm from 'remark-gfm'
 import type { ReviewFocus } from '../../../../shared/types'
 import { usePrReviewStore } from '../../store/pr-review-store'
+import { AllFindingsPanel } from './AllFindingsPanel'
 import { DiffFileTree } from './DiffFileTree'
 import { DiffPane } from './DiffPane'
 import { PostActions } from './PostActions'
@@ -100,6 +101,9 @@ export function PrDetail() {
     activeReview,
     activeFindings,
     selectedFindingIds,
+    findingsViewMode,
+    navigateToFindingId,
+    clearNavigateToFinding,
     startReview,
     stopReview,
     toggleFinding,
@@ -115,6 +119,14 @@ export function PrDetail() {
   useEffect(() => {
     setSelectedFile(null)
   }, [])
+
+  useEffect(() => {
+    if (!navigateToFindingId) return
+    const finding = activeFindings.find((f) => f.id === navigateToFindingId)
+    if (finding?.file) {
+      setSelectedFile(finding.file)
+    }
+  }, [navigateToFindingId, activeFindings])
 
   const onResizeStart = useCallback(
     (e: React.MouseEvent) => {
@@ -325,15 +337,24 @@ export function PrDetail() {
               <div className="absolute inset-y-0 -left-px w-0.75 transition-colors group-hover:bg-base-text-faint group-active:bg-base-text-muted" />
             </div>
             <div className="min-w-0 flex-1">
-              <DiffPane
-                selectedFile={selectedFile}
-                files={prDetail.files}
-                fileDiffs={fileDiffs}
-                findings={activeFindings}
-                selectedFindingIds={selectedFindingIds}
-                onToggleFinding={toggleFinding}
-                onPostFinding={handlePostFinding}
-              />
+              {findingsViewMode === 'all-issues' ? (
+                <AllFindingsPanel
+                  repoFullName={selectedPr.repo.fullName}
+                  prNumber={selectedPr.number}
+                />
+              ) : (
+                <DiffPane
+                  selectedFile={selectedFile}
+                  files={prDetail.files}
+                  fileDiffs={fileDiffs}
+                  findings={activeFindings}
+                  selectedFindingIds={selectedFindingIds}
+                  onToggleFinding={toggleFinding}
+                  onPostFinding={handlePostFinding}
+                  navigateToFindingId={navigateToFindingId}
+                  onNavigated={clearNavigateToFinding}
+                />
+              )}
             </div>
           </div>
         </div>

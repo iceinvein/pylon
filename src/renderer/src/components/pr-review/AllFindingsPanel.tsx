@@ -90,7 +90,9 @@ export function AllFindingsPanel({ repoFullName, prNumber }: Props) {
           <div className="flex flex-col items-center justify-center gap-2 py-16 text-base-text-faint">
             <CheckCircle2 size={24} strokeWidth={1.5} />
             <p className="text-xs">
-              {activeFindings.length === 0 ? 'No findings from this review.' : 'No findings match the current filter.'}
+              {activeFindings.length === 0
+                ? 'No findings from this review.'
+                : 'No findings match the current filter.'}
             </p>
           </div>
         ) : (

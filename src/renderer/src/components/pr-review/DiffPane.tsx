@@ -20,6 +20,8 @@ type Props = {
   selectedFindingIds: Set<string>
   onToggleFinding: (id: string) => void
   onPostFinding: (finding: ReviewFinding) => void
+  navigateToFindingId?: string | null
+  onNavigated?: () => void
 }
 
 type DiffMode = 'unified' | 'split'
@@ -39,6 +41,8 @@ export function DiffPane({
   selectedFindingIds,
   onToggleFinding,
   onPostFinding,
+  navigateToFindingId,
+  onNavigated,
 }: Props) {
   const [mode, setMode] = useState<DiffMode>('unified')
   const [activeFindingIdx, setActiveFindingIdx] = useState(-1)
@@ -101,6 +105,23 @@ export function DiffPane({
     }, 100)
     return () => clearTimeout(timer)
   }, [fileFindings])
+
+  useEffect(() => {
+    if (!navigateToFindingId || !scrollRef.current) return
+    // Wait for DOM to render the finding annotation
+    const timer = setTimeout(() => {
+      const el = scrollRef.current?.querySelector(
+        `[data-finding-id="${navigateToFindingId}"]`,
+      ) as HTMLElement | null
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        el.classList.add('diff-finding-highlight')
+        setTimeout(() => el.classList.remove('diff-finding-highlight'), 1200)
+      }
+      onNavigated?.()
+    }, 150)
+    return () => clearTimeout(timer)
+  }, [navigateToFindingId, onNavigated])
 
   const scrollToFinding = useCallback(
     (idx: number) => {
