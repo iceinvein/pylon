@@ -987,7 +987,8 @@ ${JSON.stringify(input)}`,
         .map((b) => b.text)
         .join('')
 
-      const parsed = JSON.parse(text) as { groups: number[][] }
+      const cleaned = text.replace(/^```json?\s*|\s*```$/g, '').trim()
+      const parsed = JSON.parse(cleaned) as { groups: number[][] }
       if (!Array.isArray(parsed.groups)) throw new Error('Invalid response format')
 
       return this.applyMergeGroups(group, parsed.groups, severityRank)
@@ -1017,7 +1018,9 @@ ${JSON.stringify(input)}`,
       }
 
       // Sort by severity — keep highest as primary
-      valid.sort((a, b) => (severityRank[group[a].severity] ?? 99) - (severityRank[group[b].severity] ?? 99))
+      valid.sort(
+        (a, b) => (severityRank[group[a].severity] ?? 99) - (severityRank[group[b].severity] ?? 99),
+      )
       const primary = group[valid[0]]
       const others = valid.slice(1).map((i) => group[i])
 
@@ -1027,9 +1030,11 @@ ${JSON.stringify(input)}`,
 
       result.push({
         ...primary,
-        description: primary.description + (mergedFrom.length > 0
-          ? `\n\n_Also flagged by: ${mergedFrom.map((m) => m.domain).join(', ')}_`
-          : ''),
+        description:
+          primary.description +
+          (mergedFrom.length > 0
+            ? `\n\n_Also flagged by: ${mergedFrom.map((m) => m.domain).join(', ')}_`
+            : ''),
         mergedFrom: mergedFrom.length > 0 ? mergedFrom : undefined,
       })
     }
@@ -1058,9 +1063,11 @@ ${JSON.stringify(input)}`,
     return [
       {
         ...primary,
-        description: primary.description + (mergedFrom.length > 0
-          ? `\n\n_Also flagged by: ${mergedFrom.map((m) => m.domain).join(', ')}_`
-          : ''),
+        description:
+          primary.description +
+          (mergedFrom.length > 0
+            ? `\n\n_Also flagged by: ${mergedFrom.map((m) => m.domain).join(', ')}_`
+            : ''),
         mergedFrom: mergedFrom.length > 0 ? mergedFrom : undefined,
       },
     ]
