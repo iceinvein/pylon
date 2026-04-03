@@ -27,7 +27,13 @@ type FindingCardProps = {
   cwd?: string
 }
 
-export function FindingCard({ finding, agentColor, goalText, linkedTestPath, cwd }: FindingCardProps) {
+export function FindingCard({
+  finding,
+  agentColor,
+  goalText,
+  linkedTestPath,
+  cwd,
+}: FindingCardProps) {
   const [showTest, setShowTest] = useState(false)
   const Icon = SEVERITY_ICONS[finding.severity]
 
@@ -56,9 +62,7 @@ export function FindingCard({ finding, agentColor, goalText, linkedTestPath, cwd
           </div>
           <p className="mb-1 font-medium text-base-text text-sm">{finding.title}</p>
           <p className="mb-1 text-base-text-secondary text-xs">{finding.description}</p>
-          {finding.url && (
-            <p className="mb-1 truncate text-info text-xs">{finding.url}</p>
-          )}
+          {finding.url && <p className="mb-1 truncate text-info text-xs">{finding.url}</p>}
 
           {finding.reproductionSteps.length > 0 && (
             <div className="mt-2">

@@ -70,10 +70,10 @@ export function ComparisonView() {
       </div>
 
       <div className="flex items-center gap-3 border-base-border-subtle border-b px-4 py-2">
-        <span className="rounded bg-[var(--color-success)]/20 px-2 py-0.5 text-[11px] text-[var(--color-success)]">
+        <span className="rounded bg-success/20 px-2 py-0.5 text-[11px] text-success">
           +{diff.new.length} new
         </span>
-        <span className="rounded bg-[var(--color-error)]/20 px-2 py-0.5 text-[11px] text-[var(--color-error)]">
+        <span className="rounded bg-error/20 px-2 py-0.5 text-[11px] text-error">
           -{diff.resolved.length} resolved
         </span>
         <span className="rounded bg-base-border px-2 py-0.5 text-[11px] text-base-text-muted">
@@ -91,7 +91,7 @@ export function ComparisonView() {
           </div>
           <div className="flex-1 space-y-2 overflow-y-auto p-3">
             {diff.resolved.map((f) => (
-              <div key={f.id} className="rounded-lg border-l-2 border-l-[var(--color-error)] opacity-60">
+              <div key={f.id} className="rounded-lg border-l-2 border-l-error opacity-60">
                 <FindingCard finding={f} />
               </div>
             ))}
@@ -110,7 +110,7 @@ export function ComparisonView() {
           </div>
           <div className="flex-1 space-y-2 overflow-y-auto p-3">
             {diff.new.map((f) => (
-              <div key={f.id} className="rounded-lg border-l-2 border-l-[var(--color-success)]">
+              <div key={f.id} className="rounded-lg border-l-2 border-l-success">
                 <FindingCard finding={f} />
               </div>
             ))}

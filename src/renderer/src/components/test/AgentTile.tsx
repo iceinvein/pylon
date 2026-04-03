@@ -40,7 +40,7 @@ export function AgentTile({
     <button
       type="button"
       onClick={() => onToggleFilter(explorationId)}
-      className={`group relative min-w-[170px] max-w-[220px] shrink-0 rounded-lg border px-3 py-2.5 text-left transition-colors ${
+      className={`group relative min-w-42.5 max-w-55 shrink-0 rounded-lg border px-3 py-2.5 text-left transition-colors ${
         isFiltered
           ? 'border-base-border bg-base-border/40'
           : 'border-base-border-subtle bg-base-raised/50 hover:bg-base-raised'
@@ -59,13 +59,9 @@ export function AgentTile({
         )}
       </div>
       {latestAction && isRunning && (
-        <p className="mt-1 truncate text-[11px] text-base-text-muted">
-          {latestAction.summary}
-        </p>
+        <p className="mt-1 truncate text-[11px] text-base-text-muted">{latestAction.summary}</p>
       )}
-      {!isRunning && (
-        <p className="mt-1 text-[11px] text-base-text-faint capitalize">{status}</p>
-      )}
+      {!isRunning && <p className="mt-1 text-[11px] text-base-text-faint capitalize">{status}</p>}
       {isRunning && (
         <button
           type="button"

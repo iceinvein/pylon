@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import type { TestExploration, ExplorationAgentMessage } from '../../../../shared/types'
+import type { ExplorationAgentMessage, TestExploration } from '../../../../shared/types'
 import { formatActivityEntry } from '../../lib/activity-format'
 import { AgentTile } from './AgentTile'
 

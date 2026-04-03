@@ -42,9 +42,7 @@ function Step1Project({
   return (
     <div className="flex flex-1 flex-col items-center justify-center px-6">
       <Folder className="mb-4 h-10 w-10 text-base-text-muted" />
-      <h2 className="mb-1 font-display font-medium text-base-text text-xl">
-        Choose a project
-      </h2>
+      <h2 className="mb-1 font-display font-medium text-base-text text-xl">Choose a project</h2>
       <p className="mb-6 text-base-text-secondary text-sm">
         Select the project you want to explore
       </p>
@@ -71,9 +69,7 @@ function Step1Project({
               className="absolute top-full z-20 mt-1 w-full rounded-lg border border-base-border bg-base-raised shadow-lg"
             >
               {projects.length === 0 ? (
-                <p className="px-4 py-3 text-base-text-muted text-sm">
-                  No recent projects
-                </p>
+                <p className="px-4 py-3 text-base-text-muted text-sm">No recent projects</p>
               ) : (
                 <div className="max-h-64 overflow-y-auto py-1">
                   {projects.map((p) => (
@@ -91,9 +87,7 @@ function Step1Project({
                         <p className="truncate font-medium text-base-text text-sm">
                           {p.path.split('/').pop()}
                         </p>
-                        <p className="truncate text-[11px] text-base-text-faint">
-                          {p.path}
-                        </p>
+                        <p className="truncate text-[11px] text-base-text-faint">{p.path}</p>
                       </div>
                       <span className="shrink-0 text-[11px] text-base-text-faint">
                         {timeAgo(p.lastUsed)}
@@ -135,10 +129,8 @@ function Step2Goals({
 }) {
   const [customGoalInput, setCustomGoalInput] = useState('')
 
-  const selectedCount =
-    suggestedGoals.filter((g) => g.selected).length + customGoals.length
-  const allSuggestedSelected =
-    suggestedGoals.length > 0 && suggestedGoals.every((g) => g.selected)
+  const selectedCount = suggestedGoals.filter((g) => g.selected).length + customGoals.length
+  const allSuggestedSelected = suggestedGoals.length > 0 && suggestedGoals.every((g) => g.selected)
 
   function handleToggleAll() {
     for (const goal of suggestedGoals) {
@@ -162,9 +154,7 @@ function Step2Goals({
     <div className="flex flex-1 flex-col overflow-hidden px-6 py-4">
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <h2 className="font-display font-medium text-base-text text-xl">
-            Exploration goals
-          </h2>
+          <h2 className="font-display font-medium text-base-text text-xl">Exploration goals</h2>
           <p className="mt-0.5 text-base-text-secondary text-sm">
             {goalsLoading
               ? 'Analyzing project...'
@@ -214,12 +204,8 @@ function Step2Goals({
                     {goal.selected && <Check className="h-3 w-3" />}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium text-base-text text-sm">
-                      {goal.title}
-                    </p>
-                    <p className="mt-0.5 text-base-text-secondary text-xs">
-                      {goal.description}
-                    </p>
+                    <p className="font-medium text-base-text text-sm">{goal.title}</p>
+                    <p className="mt-0.5 text-base-text-secondary text-xs">{goal.description}</p>
                     {goal.area && (
                       <span className="mt-1 inline-block rounded bg-base-border/60 px-1.5 py-0.5 text-[10px] text-base-text-faint">
                         {goal.area}
@@ -239,9 +225,7 @@ function Step2Goals({
                 <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded border border-accent bg-accent text-white">
                   <Check className="h-3 w-3" />
                 </div>
-                <p className="min-w-0 flex-1 font-medium text-base-text text-sm">
-                  {goal}
-                </p>
+                <p className="min-w-0 flex-1 font-medium text-base-text text-sm">{goal}</p>
                 <button
                   type="button"
                   onClick={() => onRemoveCustom(i)}
@@ -253,7 +237,7 @@ function Step2Goals({
             ))}
 
             {/* Custom goal input */}
-            <div className="flex items-center gap-2 rounded-lg border border-dashed border-base-border p-3">
+            <div className="flex items-center gap-2 rounded-lg border border-base-border border-dashed p-3">
               <Plus className="h-4 w-4 shrink-0 text-base-text-muted" />
               <input
                 type="text"
@@ -342,22 +326,15 @@ function Step3Config({
   onLaunch: () => void
 }) {
   const serverInfo = projectScan
-    ? [
-        projectScan.framework,
-        projectScan.detectedPort ? `port ${projectScan.detectedPort}` : null,
-      ]
+    ? [projectScan.framework, projectScan.detectedPort ? `port ${projectScan.detectedPort}` : null]
         .filter(Boolean)
         .join(' · ')
     : null
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden px-6 py-4">
-      <h2 className="mb-1 font-display font-medium text-base-text text-xl">
-        Configuration
-      </h2>
-      <p className="mb-6 text-base-text-secondary text-sm">
-        Configure server, agents, and launch
-      </p>
+      <h2 className="mb-1 font-display font-medium text-base-text text-xl">Configuration</h2>
+      <p className="mb-6 text-base-text-secondary text-sm">Configure server, agents, and launch</p>
 
       <div className="min-h-0 flex-1 space-y-6 overflow-y-auto">
         {/* Server section */}
@@ -399,9 +376,7 @@ function Step3Config({
                 <input
                   type="text"
                   value={customUrl ?? ''}
-                  onChange={(e) =>
-                    onSetCustomUrl(e.target.value || null)
-                  }
+                  onChange={(e) => onSetCustomUrl(e.target.value || null)}
                   placeholder="http://localhost:3000"
                   className="w-full rounded-lg border border-base-border bg-base-raised px-3 py-2 text-base-text text-sm placeholder-base-text-muted outline-none transition-colors focus:border-accent"
                 />
@@ -428,9 +403,7 @@ function Step3Config({
             >
               <Minus className="h-4 w-4" />
             </button>
-            <span className="w-6 text-center font-medium text-base-text text-lg">
-              {agentCount}
-            </span>
+            <span className="w-6 text-center font-medium text-base-text text-lg">{agentCount}</span>
             <button
               type="button"
               onClick={() => onSetAgentCount(agentCount + 1)}
@@ -485,9 +458,7 @@ function Step3Config({
 
         {/* E2E output path */}
         <section>
-          <h3 className="mb-2 font-medium text-base-text text-sm">
-            E2E output path
-          </h3>
+          <h3 className="mb-2 font-medium text-base-text text-sm">E2E output path</h3>
           <input
             type="text"
             value={e2ePath}
@@ -512,8 +483,8 @@ function Step3Config({
           className="flex items-center gap-2 rounded-lg bg-accent px-5 py-2 font-medium text-sm text-white transition-colors hover:bg-accent/90"
         >
           <Play className="h-4 w-4" />
-          Start {agentCount} agent{agentCount !== 1 ? 's' : ''} on{' '}
-          {goalCount} goal{goalCount !== 1 ? 's' : ''}
+          Start {agentCount} agent{agentCount !== 1 ? 's' : ''} on {goalCount} goal
+          {goalCount !== 1 ? 's' : ''}
         </button>
       </div>
     </div>
@@ -575,9 +546,7 @@ export function SetupWizard() {
   function handleLaunch() {
     if (!selectedProject) return
 
-    const selectedGoalTexts = suggestedGoals
-      .filter((g) => g.selected)
-      .map((g) => g.title)
+    const selectedGoalTexts = suggestedGoals.filter((g) => g.selected).map((g) => g.title)
     const allGoals = [...selectedGoalTexts, ...customGoals]
     if (allGoals.length === 0) return
 
@@ -592,8 +561,7 @@ export function SetupWizard() {
     })
   }
 
-  const selectedGoalCount =
-    suggestedGoals.filter((g) => g.selected).length + customGoals.length
+  const selectedGoalCount = suggestedGoals.filter((g) => g.selected).length + customGoals.length
 
   const steps = [1, 2, 3] as const
 
@@ -603,9 +571,7 @@ export function SetupWizard() {
       <div className="flex items-center justify-center gap-2 border-base-border-subtle border-b px-4 py-3">
         {steps.map((step, i) => (
           <div key={step} className="flex items-center gap-2">
-            {i > 0 && (
-              <span className="text-base-text-faint text-xs">·</span>
-            )}
+            {i > 0 && <span className="text-base-text-faint text-xs">·</span>}
             <button
               type="button"
               onClick={() => {
@@ -621,11 +587,7 @@ export function SetupWizard() {
                     : 'bg-base-border text-base-text-muted'
               } ${step > setupStep ? 'cursor-not-allowed' : 'cursor-pointer'}`}
             >
-              {step < setupStep ? (
-                <Check className="h-3 w-3" />
-              ) : (
-                step
-              )}
+              {step < setupStep ? <Check className="h-3 w-3" /> : step}
             </button>
           </div>
         ))}
@@ -642,10 +604,7 @@ export function SetupWizard() {
             transition={{ duration: 0.2 }}
             className="flex flex-1 flex-col overflow-hidden"
           >
-            <Step1Project
-              projects={projects}
-              onSelect={handleProjectSelect}
-            />
+            <Step1Project projects={projects} onSelect={handleProjectSelect} />
           </motion.div>
         )}
 
