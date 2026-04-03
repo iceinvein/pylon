@@ -15,6 +15,8 @@ type Props = {
   isPosting: boolean
   onToggle: () => void
   onPost: () => void
+  onNavigate?: () => void
+  showFilePath?: boolean
 }
 
 const DOMAIN_LABELS: Record<string, string> = {
@@ -71,7 +73,7 @@ const SEVERITY_STYLES: Record<
   },
 }
 
-export function FindingCard({ finding, checked, isPosting, onToggle, onPost }: Props) {
+export function FindingCard({ finding, checked, isPosting, onToggle, onPost, onNavigate, showFilePath }: Props) {
   const style = SEVERITY_STYLES[finding.severity] ?? SEVERITY_STYLES.suggestion
   const Icon = style.icon
 
@@ -124,8 +126,22 @@ export function FindingCard({ finding, checked, isPosting, onToggle, onPost }: P
               </div>
               {finding.file && (
                 <div className="mt-0.5 font-mono text-[11px] text-base-text-muted">
-                  {finding.file}
-                  {finding.line ? `:${finding.line}` : ''}
+                  {showFilePath && onNavigate ? (
+                    <button
+                      type="button"
+                      onClick={onNavigate}
+                      className="transition-colors hover:text-base-text"
+                    >
+                      {finding.file}
+                      {finding.line ? `:${finding.line}` : ''}{' '}
+                      <span className="text-base-text-faint">→</span>
+                    </button>
+                  ) : (
+                    <>
+                      {finding.file}
+                      {finding.line ? `:${finding.line}` : ''}
+                    </>
+                  )}
                 </div>
               )}
             </div>
@@ -133,6 +149,11 @@ export function FindingCard({ finding, checked, isPosting, onToggle, onPost }: P
           <p className="mt-2 pl-5 text-base-text-secondary text-xs leading-relaxed">
             {finding.description}
           </p>
+          {finding.mergedFrom && finding.mergedFrom.length > 0 && (
+            <p className="mt-1 pl-5 text-[10px] text-base-text-faint italic">
+              Also flagged by: {finding.mergedFrom.map((m) => m.domain).join(', ')}
+            </p>
+          )}
         </div>
 
         {/* Post action */}
