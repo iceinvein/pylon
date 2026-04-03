@@ -4,6 +4,7 @@ import type {
   ExplorationAgentMessage,
   ExplorationMode,
   ExplorationUpdate,
+  FindingSeverity,
   GoalSuggestionUpdate,
   ProjectScan,
   SuggestedGoal,
@@ -21,6 +22,8 @@ type BatchConfig = {
   autoStartServer: boolean
   projectScan?: ProjectScan
 }
+
+type TestViewMode = 'setup' | 'monitoring' | 'comparison'
 
 type ExplorationConfig = {
   url: string
@@ -61,6 +64,21 @@ type TestStore = {
   testsByExploration: Record<string, string[]>
   agentMessagesByExploration: Record<string, ExplorationAgentMessage[]>
 
+  // View mode
+  viewMode: TestViewMode
+  setupStep: 1 | 2 | 3
+
+  // Filters
+  severityFilter: FindingSeverity[] | null
+  agentFilter: string | null
+
+  // Comparison
+  comparisonBaselineId: string | null
+  comparisonTargetId: string | null
+
+  // Batch tracking
+  lastBatchId: string | null
+
   // Actions
   loadProjects: () => Promise<void>
   selectProject: (cwd: string) => void
@@ -84,6 +102,13 @@ type TestStore = {
   handleExplorationUpdate: (data: ExplorationUpdate) => void
   getBatchFindings: (batchId: string) => Array<TestFinding & { goalText: string }>
   handleGoalSuggestion: (data: GoalSuggestionUpdate) => void
+  setViewMode: (mode: TestViewMode) => void
+  setSetupStep: (step: 1 | 2 | 3) => void
+  setSeverityFilter: (severity: FindingSeverity) => void
+  clearSeverityFilter: () => void
+  setAgentFilter: (id: string | null) => void
+  enterComparison: (baselineId: string, targetId: string) => void
+  exitComparison: () => void
 }
 
 export const useTestStore = create<TestStore>((set, get) => ({
@@ -104,6 +129,13 @@ export const useTestStore = create<TestStore>((set, get) => ({
   findingsByExploration: {},
   testsByExploration: {},
   agentMessagesByExploration: {},
+  viewMode: 'setup' as TestViewMode,
+  setupStep: 1 as 1 | 2 | 3,
+  severityFilter: null,
+  agentFilter: null,
+  comparisonBaselineId: null,
+  comparisonTargetId: null,
+  lastBatchId: null,
 
   loadProjects: async () => {
     try {
@@ -217,6 +249,10 @@ export const useTestStore = create<TestStore>((set, get) => ({
           findingsByExploration: newFindings,
           testsByExploration: newTests,
           agentMessagesByExploration: newAgentMessages,
+          viewMode: 'monitoring' as TestViewMode,
+          lastBatchId: explorations[0]?.batchId ?? null,
+          agentFilter: null,
+          severityFilter: null,
         }
       })
     } catch (err) {
@@ -429,4 +465,51 @@ export const useTestStore = create<TestStore>((set, get) => ({
       }
     })
   },
+
+  setViewMode: (mode) => set({ viewMode: mode }),
+
+  setSetupStep: (step) => set({ setupStep: step }),
+
+  setSeverityFilter: (severity) => {
+    set((s) => {
+      if (!s.severityFilter) {
+        return { severityFilter: [severity] }
+      }
+      const exists = s.severityFilter.includes(severity)
+      if (exists) {
+        const next = s.severityFilter.filter((sv) => sv !== severity)
+        return { severityFilter: next.length === 0 ? null : next }
+      }
+      return { severityFilter: [...s.severityFilter, severity] }
+    })
+  },
+
+  clearSeverityFilter: () => set({ severityFilter: null }),
+
+  setAgentFilter: (id) => set({ agentFilter: id }),
+
+  enterComparison: (baselineId, targetId) => {
+    set({
+      viewMode: 'comparison',
+      comparisonBaselineId: baselineId,
+      comparisonTargetId: targetId,
+    })
+    const state = get()
+    if (!state.findingsByExploration[baselineId]) {
+      state.loadExploration(baselineId)
+    }
+    if (!state.findingsByExploration[targetId]) {
+      state.loadExploration(targetId)
+    }
+  },
+
+  exitComparison: () => {
+    set({
+      viewMode: 'monitoring',
+      comparisonBaselineId: null,
+      comparisonTargetId: null,
+    })
+  },
 }))
+
+export type { TestViewMode }
