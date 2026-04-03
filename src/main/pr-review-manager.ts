@@ -541,12 +541,12 @@ class PrReviewManager {
       return
     }
 
-    const deduped = this.deduplicateFindings(allFindings)
+    const deduped = await this.deduplicateFindings(allFindings)
 
     // Persist findings
     const db = getDb()
     const insertFinding = db.prepare(
-      'INSERT INTO pr_review_findings (id, review_id, file, line, severity, title, description, domain) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO pr_review_findings (id, review_id, file, line, severity, title, description, domain, merged_from) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
     )
     for (const f of deduped) {
       insertFinding.run(
@@ -558,6 +558,7 @@ class PrReviewManager {
         f.title,
         f.description,
         f.domain,
+        f.mergedFrom ? JSON.stringify(f.mergedFrom) : null,
       )
     }
 
@@ -891,40 +892,178 @@ Output findings in the same \`review-findings\` format.`
     })
   }
 
-  private deduplicateFindings(findings: ReviewFinding[]): ReviewFinding[] {
+  private async deduplicateFindings(findings: ReviewFinding[]): Promise<ReviewFinding[]> {
     const SEVERITY_RANK: Record<string, number> = {
       critical: 0,
       warning: 1,
       suggestion: 2,
       nitpick: 3,
     }
-    const grouped = new Map<string, ReviewFinding>()
 
+    // Phase 1: Group by file:line (domain-agnostic)
+    const groups = new Map<string, ReviewFinding[]>()
     for (const f of findings) {
-      // Include domain so different agents' findings on the same line are preserved.
-      // Only collapse findings from the same agent on the same file+line (true duplicates
-      // from multi-chunk reviews where the agent re-flags something).
-      const key = `${f.domain ?? 'unknown'}:${f.file}:${f.line ?? 'null'}`
-      const existing = grouped.get(key)
-      if (!existing) {
-        grouped.set(key, f)
-      } else {
-        const existingRank = SEVERITY_RANK[existing.severity] ?? 99
-        const newRank = SEVERITY_RANK[f.severity] ?? 99
-        if (newRank < existingRank) {
-          grouped.set(key, {
-            ...f,
-            description: `${f.description}\n\n_Also noted:_ ${existing.title}`,
-          })
-        } else {
-          grouped.set(key, {
-            ...existing,
-            description: `${existing.description}\n\n_Also noted:_ ${f.title}`,
-          })
-        }
+      const key = `${f.file}:${f.line ?? 'null'}`
+      const group = groups.get(key)
+      if (group) group.push(f)
+      else groups.set(key, [f])
+    }
+
+    const result: ReviewFinding[] = []
+
+    for (const group of groups.values()) {
+      if (group.length === 1) {
+        result.push(group[0])
+        continue
+      }
+
+      // Phase 2: LLM merge for groups with 2+ findings
+      try {
+        const merged = await this.llmMergeGroup(group, SEVERITY_RANK)
+        result.push(...merged)
+      } catch (err) {
+        logger.warn('LLM dedupe failed, falling back to severity-based merge:', err)
+        result.push(...this.severityMergeGroup(group, SEVERITY_RANK))
       }
     }
-    return Array.from(grouped.values())
+
+    return result
+  }
+
+  private async llmMergeGroup(
+    group: ReviewFinding[],
+    severityRank: Record<string, number>,
+  ): Promise<ReviewFinding[]> {
+    const apiKey = process.env.ANTHROPIC_API_KEY
+    if (!apiKey) {
+      logger.warn('No ANTHROPIC_API_KEY for dedupe, using severity merge fallback')
+      return this.severityMergeGroup(group, severityRank)
+    }
+
+    const input = group.map((f, i) => ({
+      index: i,
+      domain: f.domain ?? 'unknown',
+      severity: f.severity,
+      title: f.title,
+      description: f.description.slice(0, 200),
+    }))
+
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 3000)
+
+    try {
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 256,
+          messages: [
+            {
+              role: 'user',
+              content: `You are deduplicating code review findings on the same file and line.
+Given these findings, group the ones that describe the same underlying issue.
+Return ONLY valid JSON: {"groups":[[0,2],[1]]}
+where each inner array contains the indices of findings that should be merged.
+Keep findings that are genuinely different issues separate.
+
+Findings:
+${JSON.stringify(input)}`,
+            },
+          ],
+        }),
+        signal: controller.signal,
+      })
+
+      if (!response.ok) throw new Error(`API error: ${response.status}`)
+
+      const data = (await response.json()) as { content: { type: string; text: string }[] }
+      const text = data.content
+        .filter((b): b is { type: 'text'; text: string } => b.type === 'text')
+        .map((b) => b.text)
+        .join('')
+
+      const parsed = JSON.parse(text) as { groups: number[][] }
+      if (!Array.isArray(parsed.groups)) throw new Error('Invalid response format')
+
+      return this.applyMergeGroups(group, parsed.groups, severityRank)
+    } finally {
+      clearTimeout(timeout)
+    }
+  }
+
+  private applyMergeGroups(
+    group: ReviewFinding[],
+    mergeGroups: number[][],
+    severityRank: Record<string, number>,
+  ): ReviewFinding[] {
+    const result: ReviewFinding[] = []
+    const used = new Set<number>()
+
+    for (const indices of mergeGroups) {
+      if (indices.length === 0) continue
+      const valid = indices.filter((i) => i >= 0 && i < group.length && !used.has(i))
+      if (valid.length === 0) continue
+
+      for (const i of valid) used.add(i)
+
+      if (valid.length === 1) {
+        result.push(group[valid[0]])
+        continue
+      }
+
+      // Sort by severity — keep highest as primary
+      valid.sort((a, b) => (severityRank[group[a].severity] ?? 99) - (severityRank[group[b].severity] ?? 99))
+      const primary = group[valid[0]]
+      const others = valid.slice(1).map((i) => group[i])
+
+      const mergedFrom = others
+        .filter((o) => o.domain !== primary.domain)
+        .map((o) => ({ domain: o.domain ?? 'unknown', title: o.title }))
+
+      result.push({
+        ...primary,
+        description: primary.description + (mergedFrom.length > 0
+          ? `\n\n_Also flagged by: ${mergedFrom.map((m) => m.domain).join(', ')}_`
+          : ''),
+        mergedFrom: mergedFrom.length > 0 ? mergedFrom : undefined,
+      })
+    }
+
+    // Any findings not in merge groups pass through
+    for (let i = 0; i < group.length; i++) {
+      if (!used.has(i)) result.push(group[i])
+    }
+
+    return result
+  }
+
+  private severityMergeGroup(
+    group: ReviewFinding[],
+    severityRank: Record<string, number>,
+  ): ReviewFinding[] {
+    const sorted = [...group].sort(
+      (a, b) => (severityRank[a.severity] ?? 99) - (severityRank[b.severity] ?? 99),
+    )
+    const primary = sorted[0]
+    const others = sorted.slice(1)
+    const mergedFrom = others
+      .filter((o) => o.domain !== primary.domain)
+      .map((o) => ({ domain: o.domain ?? 'unknown', title: o.title }))
+
+    return [
+      {
+        ...primary,
+        description: primary.description + (mergedFrom.length > 0
+          ? `\n\n_Also flagged by: ${mergedFrom.map((m) => m.domain).join(', ')}_`
+          : ''),
+        mergedFrom: mergedFrom.length > 0 ? mergedFrom : undefined,
+      },
+    ]
   }
 
   private parseFindings(text: string): ReviewFinding[] {
