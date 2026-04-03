@@ -1257,6 +1257,7 @@ Output findings in the same \`review-findings\` format.`
       description: f.description as string,
       domain: (f.domain as ReviewFocus) ?? null,
       posted: Boolean(f.posted),
+      mergedFrom: f.merged_from ? JSON.parse(f.merged_from as string) : undefined,
     }))
 
     return {
@@ -1275,10 +1276,20 @@ Output findings in the same \`review-findings\` format.`
     // Clear existing findings for this review first
     db.prepare('DELETE FROM pr_review_findings WHERE review_id = ?').run(reviewId)
     const insert = db.prepare(
-      'INSERT INTO pr_review_findings (id, review_id, file, line, severity, title, description, domain) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO pr_review_findings (id, review_id, file, line, severity, title, description, domain, merged_from) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
     )
     for (const f of findings) {
-      insert.run(f.id, reviewId, f.file, f.line, f.severity, f.title, f.description, f.domain)
+      insert.run(
+        f.id,
+        reviewId,
+        f.file,
+        f.line,
+        f.severity,
+        f.title,
+        f.description,
+        f.domain,
+        f.mergedFrom ? JSON.stringify(f.mergedFrom) : null,
+      )
     }
   }
 

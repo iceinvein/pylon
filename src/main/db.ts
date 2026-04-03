@@ -127,6 +127,11 @@ const migrations: Array<{ version: number; description: string; sql: string }> =
       );
     `,
   },
+  {
+    version: 14,
+    description: 'Add merged_from to pr_review_findings',
+    sql: 'ALTER TABLE pr_review_findings ADD COLUMN merged_from TEXT',
+  },
 ]
 
 /**
@@ -172,6 +177,7 @@ function detectAppliedMigrations(database: Database.Database): Set<number> {
       ),
     )
     if (findingCols.has('domain')) applied.add(9)
+    if (findingCols.has('merged_from')) applied.add(14)
   } catch {
     /* table doesn't exist yet */
   }
