@@ -15,6 +15,8 @@ type Props = {
   isPosting: boolean
   onToggle: () => void
   onPost: () => void
+  onNavigate?: () => void
+  showFilePath?: boolean
 }
 
 const DOMAIN_LABELS: Record<string, string> = {
@@ -43,7 +45,7 @@ const SEVERITY_STYLES: Record<
     text: 'text-[var(--color-error)]',
     label: 'Critical',
     bg: 'bg-[var(--color-error)]/5',
-    postedBorder: 'border-emerald-900/30',
+    postedBorder: 'border-[var(--color-success)]/30',
   },
   warning: {
     icon: AlertTriangle,
@@ -51,7 +53,7 @@ const SEVERITY_STYLES: Record<
     text: 'text-[var(--color-warning)]',
     label: 'Warning',
     bg: 'bg-[var(--color-accent-hover)]/5',
-    postedBorder: 'border-emerald-900/30',
+    postedBorder: 'border-[var(--color-success)]/30',
   },
   suggestion: {
     icon: Lightbulb,
@@ -59,7 +61,7 @@ const SEVERITY_STYLES: Record<
     text: 'text-[var(--color-info)]',
     label: 'Suggestion',
     bg: 'bg-[var(--color-info)]/5',
-    postedBorder: 'border-emerald-900/30',
+    postedBorder: 'border-[var(--color-success)]/30',
   },
   nitpick: {
     icon: Info,
@@ -67,16 +69,24 @@ const SEVERITY_STYLES: Record<
     text: 'text-[var(--color-base-text-muted)]',
     label: 'Nitpick',
     bg: 'bg-[var(--color-base-text-muted)]/5',
-    postedBorder: 'border-emerald-900/30',
+    postedBorder: 'border-[var(--color-success)]/30',
   },
 }
 
-export function FindingCard({ finding, checked, isPosting, onToggle, onPost }: Props) {
+export function FindingCard({
+  finding,
+  checked,
+  isPosting,
+  onToggle,
+  onPost,
+  onNavigate,
+  showFilePath,
+}: Props) {
   const style = SEVERITY_STYLES[finding.severity] ?? SEVERITY_STYLES.suggestion
   const Icon = style.icon
 
   const borderClass = finding.posted ? style.postedBorder : style.border
-  const bgClass = finding.posted ? 'bg-emerald-500/5' : style.bg
+  const bgClass = finding.posted ? 'bg-[var(--color-success)]/5' : style.bg
 
   return (
     <div
@@ -88,7 +98,7 @@ export function FindingCard({ finding, checked, isPosting, onToggle, onPost }: P
           {isPosting ? (
             <Loader2 size={14} className="animate-spin text-base-text-secondary" />
           ) : finding.posted ? (
-            <CheckCircle2 size={14} className="text-emerald-500" />
+            <CheckCircle2 size={14} className="text-success" />
           ) : (
             <input
               type="checkbox"
@@ -106,12 +116,12 @@ export function FindingCard({ finding, checked, isPosting, onToggle, onPost }: P
           <div className="flex items-start gap-2">
             <Icon
               size={13}
-              className={`mt-0.5 shrink-0 ${finding.posted ? 'text-emerald-500' : style.text}`}
+              className={`mt-0.5 shrink-0 ${finding.posted ? 'text-success' : style.text}`}
             />
             <div className="min-w-0 flex-1">
               <div className="flex items-baseline gap-2">
                 <span
-                  className={`font-semibold text-[10px] uppercase tracking-wide ${finding.posted ? 'text-emerald-500' : style.text}`}
+                  className={`font-semibold text-[10px] uppercase tracking-wide ${finding.posted ? 'text-success' : style.text}`}
                 >
                   {finding.posted ? 'Posted' : style.label}
                 </span>
@@ -124,8 +134,22 @@ export function FindingCard({ finding, checked, isPosting, onToggle, onPost }: P
               </div>
               {finding.file && (
                 <div className="mt-0.5 font-mono text-[11px] text-base-text-muted">
-                  {finding.file}
-                  {finding.line ? `:${finding.line}` : ''}
+                  {showFilePath && onNavigate ? (
+                    <button
+                      type="button"
+                      onClick={onNavigate}
+                      className="transition-colors hover:text-base-text"
+                    >
+                      {finding.file}
+                      {finding.line ? `:${finding.line}` : ''}{' '}
+                      <span className="text-base-text-faint">→</span>
+                    </button>
+                  ) : (
+                    <>
+                      {finding.file}
+                      {finding.line ? `:${finding.line}` : ''}
+                    </>
+                  )}
                 </div>
               )}
             </div>
@@ -133,6 +157,11 @@ export function FindingCard({ finding, checked, isPosting, onToggle, onPost }: P
           <p className="mt-2 pl-5 text-base-text-secondary text-xs leading-relaxed">
             {finding.description}
           </p>
+          {finding.mergedFrom && finding.mergedFrom.length > 0 && (
+            <p className="mt-1 pl-5 text-[10px] text-base-text-faint italic">
+              Also flagged by: {finding.mergedFrom.map((m) => m.domain).join(', ')}
+            </p>
+          )}
         </div>
 
         {/* Post action */}

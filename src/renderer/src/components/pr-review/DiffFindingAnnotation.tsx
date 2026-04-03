@@ -39,27 +39,27 @@ const SEVERITY_CONFIG: Record<
 > = {
   critical: {
     icon: AlertCircle,
-    border: 'border-l-red-500',
+    border: 'border-l-[var(--color-error)]',
     text: 'text-[var(--color-error)]',
     bg: 'bg-[var(--color-error)]/5',
     label: 'Critical',
-    postedBorder: 'border-l-emerald-500',
+    postedBorder: 'border-l-[var(--color-success)]',
   },
   warning: {
     icon: AlertTriangle,
-    border: 'border-l-amber-500',
+    border: 'border-l-[var(--color-warning)]',
     text: 'text-[var(--color-warning)]',
     bg: 'bg-[var(--color-accent-hover)]/5',
     label: 'Warning',
-    postedBorder: 'border-l-emerald-500',
+    postedBorder: 'border-l-[var(--color-success)]',
   },
   suggestion: {
     icon: Lightbulb,
-    border: 'border-l-blue-500',
+    border: 'border-l-[var(--color-info)]',
     text: 'text-[var(--color-info)]',
     bg: 'bg-[var(--color-info)]/5',
     label: 'Suggestion',
-    postedBorder: 'border-l-emerald-500',
+    postedBorder: 'border-l-[var(--color-success)]',
   },
   nitpick: {
     icon: Info,
@@ -67,7 +67,7 @@ const SEVERITY_CONFIG: Record<
     text: 'text-[var(--color-base-text-muted)]',
     bg: 'bg-[var(--color-base-text-muted)]/5',
     label: 'Nitpick',
-    postedBorder: 'border-l-emerald-500',
+    postedBorder: 'border-l-[var(--color-success)]',
   },
 }
 
@@ -78,7 +78,7 @@ export function DiffFindingAnnotation({ finding, checked, onToggle, onPost }: Pr
   const Icon = config.icon
 
   const borderClass = finding.posted ? config.postedBorder : config.border
-  const bgClass = finding.posted ? 'bg-emerald-500/5' : config.bg
+  const bgClass = finding.posted ? 'bg-[var(--color-success)]/5' : config.bg
 
   return (
     <div
@@ -90,7 +90,7 @@ export function DiffFindingAnnotation({ finding, checked, onToggle, onPost }: Pr
           {isPosting ? (
             <Loader2 size={12} className="animate-spin text-base-text-secondary" />
           ) : finding.posted ? (
-            <CheckCircle2 size={12} className="text-emerald-500" />
+            <CheckCircle2 size={12} className="text-success" />
           ) : (
             <input
               type="checkbox"
@@ -107,10 +107,10 @@ export function DiffFindingAnnotation({ finding, checked, onToggle, onPost }: Pr
           <div className="flex items-center gap-1.5">
             <Icon
               size={11}
-              className={`shrink-0 ${finding.posted ? 'text-emerald-500' : config.text}`}
+              className={`shrink-0 ${finding.posted ? 'text-success' : config.text}`}
             />
             <span
-              className={`font-semibold text-[10px] uppercase tracking-wide ${finding.posted ? 'text-emerald-500' : config.text}`}
+              className={`font-semibold text-[10px] uppercase tracking-wide ${finding.posted ? 'text-success' : config.text}`}
             >
               {finding.posted ? 'Posted' : config.label}
             </span>

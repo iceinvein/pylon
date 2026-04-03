@@ -2,6 +2,7 @@ import { ChevronDown, ChevronRight, Eye, FileText, FolderOpen } from 'lucide-rea
 import { useState } from 'react'
 import type { ReviewFinding } from '../../../../shared/types'
 import { filePathMatches } from '../../lib/diff-utils'
+import { usePrReviewStore } from '../../store/pr-review-store'
 
 type FileEntry = {
   path: string
@@ -92,47 +93,79 @@ function countDirFindings(findings: ReviewFinding[], node: DirNode): number {
 }
 
 const SEVERITY_COLORS: Record<string, string> = {
-  critical: 'bg-[var(--color-error)] text-white',
-  warning: 'bg-[var(--color-accent-hover)]/80 text-white',
-  suggestion: 'bg-[var(--color-info)]/80 text-white',
-  nitpick: 'bg-[var(--color-base-text-faint)] text-white',
+  critical: 'bg-[var(--color-error)] text-base-text',
+  warning: 'bg-[var(--color-accent-hover)]/80 text-base-text',
+  suggestion: 'bg-[var(--color-info)]/80 text-base-text',
+  nitpick: 'bg-[var(--color-base-text-faint)] text-base-text',
 }
 
 export function DiffFileTree({ files, findings, selectedFile, onSelectFile }: Props) {
+  const { findingsViewMode, setFindingsViewMode } = usePrReviewStore()
   const tree = collapseTree(buildTree(files))
   const generalFindings = findings.filter((f) => !f.file)
 
   return (
     <div className="flex h-full flex-col overflow-y-auto border-base-border-subtle border-r bg-base-bg/50">
-      {/* Overview entry */}
-      <button
-        type="button"
-        onClick={() => onSelectFile(null)}
-        className={`flex items-center gap-2 border-base-border-subtle/50 border-b px-3 py-2 text-left text-[11px] transition-colors ${
-          selectedFile === null
-            ? 'bg-base-raised/60 text-base-text'
-            : 'text-base-text-secondary hover:bg-base-raised/30'
-        }`}
-      >
-        <Eye size={12} className="shrink-0 text-base-text-muted" />
-        <span className="flex-1">Overview</span>
-        {generalFindings.length > 0 && (
-          <span className="rounded-full bg-base-text-faint px-1.5 py-0.5 font-medium text-[9px] text-white tabular-nums">
-            {generalFindings.length}
-          </span>
-        )}
-      </button>
-
-      {/* File tree */}
-      <div className="flex-1 overflow-y-auto py-1">
-        <DirContent
-          node={tree}
-          findings={findings}
-          selectedFile={selectedFile}
-          onSelectFile={onSelectFile}
-          depth={0}
-        />
+      {/* Segmented control */}
+      <div className="flex border-base-border-subtle/50 border-b p-1.5">
+        <button
+          type="button"
+          onClick={() => setFindingsViewMode('files')}
+          className={`flex-1 rounded-md px-2 py-1 text-center font-medium text-[10px] transition-colors ${
+            findingsViewMode === 'files'
+              ? 'bg-base-raised text-base-text'
+              : 'text-base-text-muted hover:text-base-text'
+          }`}
+        >
+          Files
+        </button>
+        <button
+          type="button"
+          onClick={() => setFindingsViewMode('all-issues')}
+          className={`flex-1 rounded-md px-2 py-1 text-center font-medium text-[10px] transition-colors ${
+            findingsViewMode === 'all-issues'
+              ? 'bg-base-raised text-base-text'
+              : 'text-base-text-muted hover:text-base-text'
+          }`}
+        >
+          All Issues
+          {findings.length > 0 && <span className="ml-1 tabular-nums">({findings.length})</span>}
+        </button>
       </div>
+
+      {findingsViewMode === 'files' && (
+        <>
+          {/* Overview entry */}
+          <button
+            type="button"
+            onClick={() => onSelectFile(null)}
+            className={`flex items-center gap-2 border-base-border-subtle/50 border-b px-3 py-2 text-left text-[11px] transition-colors ${
+              selectedFile === null
+                ? 'bg-base-raised/60 text-base-text'
+                : 'text-base-text-secondary hover:bg-base-raised/30'
+            }`}
+          >
+            <Eye size={12} className="shrink-0 text-base-text-muted" />
+            <span className="flex-1">Overview</span>
+            {generalFindings.length > 0 && (
+              <span className="rounded-full bg-base-text-faint px-1.5 py-0.5 font-medium text-[9px] text-base-text tabular-nums">
+                {generalFindings.length}
+              </span>
+            )}
+          </button>
+
+          {/* File tree */}
+          <div className="flex-1 overflow-y-auto py-1">
+            <DirContent
+              node={tree}
+              findings={findings}
+              selectedFile={selectedFile}
+              onSelectFile={onSelectFile}
+              depth={0}
+            />
+          </div>
+        </>
+      )}
     </div>
   )
 }
@@ -235,7 +268,7 @@ function DirEntry({
         <FolderOpen size={11} className="shrink-0 text-base-text-faint" />
         <span className="min-w-0 flex-1 truncate font-mono">{dir.name}</span>
         {dirCount > 0 && (
-          <span className="shrink-0 rounded-full bg-base-text-faint/60 px-1.5 py-0.5 font-medium text-[9px] text-white tabular-nums">
+          <span className="shrink-0 rounded-full bg-base-text-faint/60 px-1.5 py-0.5 font-medium text-[9px] text-base-text tabular-nums">
             {dirCount}
           </span>
         )}

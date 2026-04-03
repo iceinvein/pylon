@@ -350,6 +350,7 @@ export type ReviewFinding = {
   description: string
   domain: ReviewFocus | null
   posted: boolean
+  mergedFrom?: { domain: string; title: string }[]
 }
 
 export type ReviewFocus = 'security' | 'bugs' | 'performance' | 'style' | 'architecture' | 'ux'
