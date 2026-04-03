@@ -92,10 +92,10 @@ function countDirFindings(findings: ReviewFinding[], node: DirNode): number {
 }
 
 const SEVERITY_COLORS: Record<string, string> = {
-  critical: 'bg-[var(--color-error)] text-white',
-  warning: 'bg-[var(--color-accent-hover)]/80 text-white',
-  suggestion: 'bg-[var(--color-info)]/80 text-white',
-  nitpick: 'bg-[var(--color-base-text-faint)] text-white',
+  critical: 'bg-[var(--color-error)] text-base-text',
+  warning: 'bg-[var(--color-accent-hover)]/80 text-base-text',
+  suggestion: 'bg-[var(--color-info)]/80 text-base-text',
+  nitpick: 'bg-[var(--color-base-text-faint)] text-base-text',
 }
 
 export function DiffFileTree({ files, findings, selectedFile, onSelectFile }: Props) {
@@ -117,7 +117,7 @@ export function DiffFileTree({ files, findings, selectedFile, onSelectFile }: Pr
         <Eye size={12} className="shrink-0 text-base-text-muted" />
         <span className="flex-1">Overview</span>
         {generalFindings.length > 0 && (
-          <span className="rounded-full bg-base-text-faint px-1.5 py-0.5 font-medium text-[9px] text-white tabular-nums">
+          <span className="rounded-full bg-base-text-faint px-1.5 py-0.5 font-medium text-[9px] text-base-text tabular-nums">
             {generalFindings.length}
           </span>
         )}
@@ -235,7 +235,7 @@ function DirEntry({
         <FolderOpen size={11} className="shrink-0 text-base-text-faint" />
         <span className="min-w-0 flex-1 truncate font-mono">{dir.name}</span>
         {dirCount > 0 && (
-          <span className="shrink-0 rounded-full bg-base-text-faint/60 px-1.5 py-0.5 font-medium text-[9px] text-white tabular-nums">
+          <span className="shrink-0 rounded-full bg-base-text-faint/60 px-1.5 py-0.5 font-medium text-[9px] text-base-text tabular-nums">
             {dirCount}
           </span>
         )}

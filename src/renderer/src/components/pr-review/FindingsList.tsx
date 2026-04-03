@@ -62,7 +62,9 @@ export function FindingsList({ repoFullName, prNumber }: Props) {
           )}
         </div>
         {postedCount > 0 && (
-          <span className="ml-auto text-[10px] text-emerald-600">{postedCount} posted</span>
+          <span className="ml-auto text-[10px] text-[var(--color-success)]">
+            {postedCount} posted
+          </span>
         )}
       </div>
 

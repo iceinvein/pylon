@@ -43,7 +43,7 @@ const SEVERITY_STYLES: Record<
     text: 'text-[var(--color-error)]',
     label: 'Critical',
     bg: 'bg-[var(--color-error)]/5',
-    postedBorder: 'border-emerald-900/30',
+    postedBorder: 'border-[var(--color-success)]/30',
   },
   warning: {
     icon: AlertTriangle,
@@ -51,7 +51,7 @@ const SEVERITY_STYLES: Record<
     text: 'text-[var(--color-warning)]',
     label: 'Warning',
     bg: 'bg-[var(--color-accent-hover)]/5',
-    postedBorder: 'border-emerald-900/30',
+    postedBorder: 'border-[var(--color-success)]/30',
   },
   suggestion: {
     icon: Lightbulb,
@@ -59,7 +59,7 @@ const SEVERITY_STYLES: Record<
     text: 'text-[var(--color-info)]',
     label: 'Suggestion',
     bg: 'bg-[var(--color-info)]/5',
-    postedBorder: 'border-emerald-900/30',
+    postedBorder: 'border-[var(--color-success)]/30',
   },
   nitpick: {
     icon: Info,
@@ -67,7 +67,7 @@ const SEVERITY_STYLES: Record<
     text: 'text-[var(--color-base-text-muted)]',
     label: 'Nitpick',
     bg: 'bg-[var(--color-base-text-muted)]/5',
-    postedBorder: 'border-emerald-900/30',
+    postedBorder: 'border-[var(--color-success)]/30',
   },
 }
 
@@ -76,7 +76,7 @@ export function FindingCard({ finding, checked, isPosting, onToggle, onPost }: P
   const Icon = style.icon
 
   const borderClass = finding.posted ? style.postedBorder : style.border
-  const bgClass = finding.posted ? 'bg-emerald-500/5' : style.bg
+  const bgClass = finding.posted ? 'bg-[var(--color-success)]/5' : style.bg
 
   return (
     <div
@@ -88,7 +88,7 @@ export function FindingCard({ finding, checked, isPosting, onToggle, onPost }: P
           {isPosting ? (
             <Loader2 size={14} className="animate-spin text-base-text-secondary" />
           ) : finding.posted ? (
-            <CheckCircle2 size={14} className="text-emerald-500" />
+            <CheckCircle2 size={14} className="text-[var(--color-success)]" />
           ) : (
             <input
               type="checkbox"
@@ -106,12 +106,12 @@ export function FindingCard({ finding, checked, isPosting, onToggle, onPost }: P
           <div className="flex items-start gap-2">
             <Icon
               size={13}
-              className={`mt-0.5 shrink-0 ${finding.posted ? 'text-emerald-500' : style.text}`}
+              className={`mt-0.5 shrink-0 ${finding.posted ? 'text-[var(--color-success)]' : style.text}`}
             />
             <div className="min-w-0 flex-1">
               <div className="flex items-baseline gap-2">
                 <span
-                  className={`font-semibold text-[10px] uppercase tracking-wide ${finding.posted ? 'text-emerald-500' : style.text}`}
+                  className={`font-semibold text-[10px] uppercase tracking-wide ${finding.posted ? 'text-[var(--color-success)]' : style.text}`}
                 >
                   {finding.posted ? 'Posted' : style.label}
                 </span>
