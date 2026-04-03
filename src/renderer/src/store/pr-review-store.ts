@@ -109,6 +109,9 @@ type PrReviewStore = {
   _loadPrsSeq: number
   _selectPrSeq: number
   unseenCount: number
+  findingsViewMode: 'files' | 'all-issues'
+  severityFilter: Set<string>
+  navigateToFindingId: string | null
 
   checkGhStatus: () => Promise<void>
   setGhPath: (path: string) => Promise<void>
@@ -141,6 +144,10 @@ type PrReviewStore = {
   markPrSeen: (repo: string, prNumber: number) => Promise<void>
   loadCachedPrs: (repo?: string) => Promise<void>
   forcePoll: () => Promise<void>
+  setFindingsViewMode: (mode: 'files' | 'all-issues') => void
+  toggleSeverityFilter: (severity: string) => void
+  navigateToFinding: (findingId: string) => void
+  clearNavigateToFinding: () => void
 }
 
 export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
@@ -167,6 +174,9 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
   _loadPrsSeq: 0,
   _selectPrSeq: 0,
   unseenCount: 0,
+  findingsViewMode: 'files',
+  severityFilter: new Set(['critical', 'warning', 'suggestion', 'nitpick']),
+  navigateToFindingId: null,
 
   checkGhStatus: async () => {
     set({ ghStatusLoading: true })
@@ -507,6 +517,27 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
     }
   },
 
+  setFindingsViewMode: (mode) => set({ findingsViewMode: mode }),
+
+  toggleSeverityFilter: (severity) =>
+    set((state) => {
+      const next = new Set(state.severityFilter)
+      if (next.has(severity)) next.delete(severity)
+      else next.add(severity)
+      return { severityFilter: next }
+    }),
+
+  navigateToFinding: (findingId) => {
+    const finding = get().activeFindings.find((f) => f.id === findingId)
+    if (!finding) return
+    set({
+      findingsViewMode: 'files',
+      navigateToFindingId: findingId,
+    })
+  },
+
+  clearNavigateToFinding: () => set({ navigateToFindingId: null }),
+
   handleReviewUpdate: (data) => {
     set((s) => {
       if (s.activeReview?.id !== data.reviewId) return s
@@ -552,6 +583,9 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
         }
         updates.activeFindings = findings
         updates.agentProgress = data.agentProgress ?? []
+        updates.findingsViewMode = 'files'
+        updates.severityFilter = new Set(['critical', 'warning', 'suggestion', 'nitpick'])
+        updates.navigateToFindingId = null
       }
 
       // Update the review in the reviews list
