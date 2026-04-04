@@ -13,6 +13,8 @@ const MODEL_SHORT: Record<string, string> = {
 type StatusBarProps = {
   cwd: string
   branchStatus: GitBranchStatus | undefined
+  gitPanelOpen?: boolean
+  onToggleGitPanel?: () => void
 }
 
 function BranchIndicator({ status }: { status: GitBranchStatus }) {
@@ -54,7 +56,12 @@ function SessionInfo() {
   )
 }
 
-export function StatusBar({ cwd: _cwd, branchStatus }: StatusBarProps) {
+export function StatusBar({
+  cwd: _cwd,
+  branchStatus,
+  gitPanelOpen,
+  onToggleGitPanel,
+}: StatusBarProps) {
   if (!branchStatus?.isGitRepo || !branchStatus.branch) {
     return (
       <div className="flex h-6 items-center border-base-border-subtle border-t bg-base-bg px-3">
@@ -66,9 +73,13 @@ export function StatusBar({ cwd: _cwd, branchStatus }: StatusBarProps) {
 
   return (
     <div className="flex h-6 items-center border-base-border-subtle border-t bg-base-bg px-3">
-      <div className="rounded px-1 py-0.5">
+      <button
+        type="button"
+        onClick={onToggleGitPanel}
+        className={`rounded px-1 py-0.5 transition-colors hover:bg-base-raised ${gitPanelOpen ? 'bg-base-raised' : ''}`}
+      >
         <BranchIndicator status={branchStatus} />
-      </div>
+      </button>
       <div className="flex-1" />
       <SessionInfo />
     </div>

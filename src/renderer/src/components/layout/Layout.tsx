@@ -1,9 +1,11 @@
 // src/renderer/src/components/layout/Layout.tsx
+import { AnimatePresence, motion } from 'motion/react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { GitBranchStatus } from '../../../../shared/types'
 import logoUrl from '../../assets/logo.png'
 import { useSessionStore } from '../../store/session-store'
 import { useUiStore } from '../../store/ui-store'
+import { GitPanel } from '../git/GitPanel'
 import { StatusBar } from '../StatusBar'
 import { ModeSwitcher } from './ModeSwitcher'
 import { SessionSidebar } from './SessionSidebar'
@@ -42,6 +44,10 @@ export function Layout({ children }: LayoutProps) {
     )
     return unsub
   }, [activeCwd, setBranchStatus])
+
+  // Git panel
+  const [gitPanelOpen, setGitPanelOpen] = useState(false)
+  const toggleGitPanel = useCallback(() => setGitPanelOpen((v) => !v), [])
 
   // Sidebar width + drag
   const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_WIDTH)
@@ -91,7 +97,7 @@ export function Layout({ children }: LayoutProps) {
 
       {/* Titlebar: drag region + logo + mode switcher */}
       <div
-        className="fixed top-0 right-0 left-0 z-50 flex h-12 items-center gap-3 px-4"
+        className="fixed top-0 right-0 left-0 z-50 flex h-12 items-center gap-3 border-b border-base-border-subtle bg-base-bg px-4"
         style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
       >
         {/* macOS traffic lights spacer */}
@@ -106,29 +112,55 @@ export function Layout({ children }: LayoutProps) {
         <div className="flex-1" />
       </div>
 
-      {/* Sidebar */}
-      <div
-        className="flex shrink-0 border-base-border-subtle border-r pt-12"
-        style={{ width: sidebarWidth }}
-      >
-        <div className="min-w-0 flex-1">
-          {activeMode === 'sessions' && <SessionSidebar />}
-          {/* PR, Testing, Code sidebars will be wired in Phase 3 */}
-        </div>
-        {/* Drag handle */}
+      {/* Sidebar — only shown in sessions mode; other modes have their own internal layout */}
+      {activeMode === 'sessions' && (
         <div
-          onMouseDown={handleDragStart}
-          className="flex w-1 shrink-0 cursor-col-resize items-center justify-center transition-colors hover:bg-base-border active:bg-base-text-faint"
-        />
-      </div>
+          className="flex shrink-0 border-base-border-subtle border-r pt-12"
+          style={{ width: sidebarWidth }}
+        >
+          <div className="min-w-0 flex-1">
+            <SessionSidebar />
+          </div>
+          {/* Drag handle */}
+          <div
+            onMouseDown={handleDragStart}
+            className="flex w-1 shrink-0 cursor-col-resize items-center justify-center transition-colors hover:bg-base-border active:bg-base-text-faint"
+          />
+        </div>
+      )}
 
       {/* Main content */}
       <div className="flex min-w-0 flex-1 flex-col pt-12">
         <main id="main-content" className="min-h-0 flex-1 overflow-hidden">
           {children}
         </main>
-        {activeMode === 'sessions' && <StatusBar cwd={activeCwd} branchStatus={branchStatus} />}
+        {activeMode === 'sessions' && (
+          <StatusBar
+            cwd={activeCwd}
+            branchStatus={branchStatus}
+            gitPanelOpen={gitPanelOpen}
+            onToggleGitPanel={toggleGitPanel}
+          />
+        )}
       </div>
+
+      {/* Git panel slide-over */}
+      <AnimatePresence initial={false}>
+        {gitPanelOpen && activeMode === 'sessions' && (
+          <motion.div
+            key="git-panel"
+            initial={{ width: 0, opacity: 0 }}
+            animate={{ width: 340, opacity: 1 }}
+            exit={{ width: 0, opacity: 0 }}
+            transition={{ duration: 0.15, ease: [0.25, 0.1, 0.25, 1] }}
+            className="flex shrink-0 overflow-hidden border-base-border-subtle border-l pt-12"
+          >
+            <div className="min-w-0 flex-1">
+              <GitPanel />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
