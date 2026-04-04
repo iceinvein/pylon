@@ -1,174 +1,133 @@
-import { AnimatePresence, motion } from 'motion/react'
-import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
+// src/renderer/src/components/layout/Layout.tsx
+import { useCallback, useEffect, useRef, useState } from 'react'
+import logoUrl from '../../assets/logo.png'
 import type { GitBranchStatus } from '../../../../shared/types'
 import { useSessionStore } from '../../store/session-store'
-import { useTabStore } from '../../store/tab-store'
 import { useUiStore } from '../../store/ui-store'
-import { GitPanel } from '../git/GitPanel'
-import { HistoryPanel } from '../HistoryPanel'
+import { ModeSwitcher } from './ModeSwitcher'
+import { SessionSidebar } from './SessionSidebar'
 import { StatusBar } from '../StatusBar'
-import { NavRail } from './NavRail'
-import { TabBar } from './TabBar'
+
+const DEFAULT_WIDTH = 260
+const MIN_WIDTH = 200
+const MAX_WIDTH = 400
 
 type LayoutProps = {
-  children: ReactNode
+  children: React.ReactNode
 }
 
-const MIN_WIDTH = 200
-const MAX_WIDTH = 500
-const DEFAULT_WIDTH = 260
-
-const GIT_MIN_WIDTH = 300
-const GIT_MAX_WIDTH = 700
-const GIT_DEFAULT_WIDTH = 420
-
 export function Layout({ children }: LayoutProps) {
-  const activeTabId = useTabStore((s) => s.activeTabId)
-  const tabs = useTabStore((s) => s.tabs)
-  const activeTab = tabs.find((t) => t.id === activeTabId)
-  const activeCwd = activeTab?.cwd ?? ''
+  const activeMode = useUiStore((s) => s.activeMode)
+  const activeSessionId = useUiStore((s) => s.activeSessionId)
+
+  // Derive cwd from active session for StatusBar + git watching
+  const sessions = useSessionStore((s) => s.sessions)
+  const activeSession = activeSessionId ? sessions.get(activeSessionId) : undefined
+  const activeCwd = activeSession?.cwd ?? ''
+
   const branchStatus = useSessionStore((s) =>
     activeCwd ? s.branchStatus.get(activeCwd) : undefined,
   )
-
-  const sidebarView = useUiStore((s) => s.sidebarView)
-  const showSidebar = sidebarView === 'history'
-
   const setBranchStatus = useSessionStore((s) => s.setBranchStatus)
 
-  // Tell main process to watch this cwd + listen for push updates
+  // Watch git for active session's cwd
   useEffect(() => {
     if (!activeCwd) return
-
-    // Start watching in main process
     window.api.watchGitCwd(activeCwd)
 
-    // Listen for status changes pushed from main
     const unsub = window.api.onGitStatusChanged(
       (data: { cwd: string; status: GitBranchStatus }) => {
         setBranchStatus(data.cwd, data.status)
       },
     )
-
     return unsub
   }, [activeCwd, setBranchStatus])
 
-  const [panelWidth, setPanelWidth] = useState(DEFAULT_WIDTH)
-  const [gitPanelWidth, setGitPanelWidth] = useState(GIT_DEFAULT_WIDTH)
+  // Sidebar width + drag
+  const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_WIDTH)
   const dragging = useRef(false)
   const dragStartX = useRef(0)
   const dragStartWidth = useRef(0)
 
-  const makeDragHandler = useCallback(
-    (currentWidth: number, setWidth: (w: number) => void, minW: number, maxW: number) =>
-      (e: React.MouseEvent) => {
-        e.preventDefault()
-        dragging.current = true
-        dragStartX.current = e.clientX
-        dragStartWidth.current = currentWidth
-
-        document.body.style.userSelect = 'none'
-        document.body.style.cursor = 'col-resize'
-
-        const handleMouseMove = (ev: MouseEvent) => {
-          if (!dragging.current) return
-          const delta = ev.clientX - dragStartX.current
-          setWidth(Math.min(maxW, Math.max(minW, dragStartWidth.current + delta)))
-        }
-
-        const handleMouseUp = () => {
-          dragging.current = false
-          document.body.style.userSelect = ''
-          document.body.style.cursor = ''
-          document.removeEventListener('mousemove', handleMouseMove)
-          document.removeEventListener('mouseup', handleMouseUp)
-        }
-
-        document.addEventListener('mousemove', handleMouseMove)
-        document.addEventListener('mouseup', handleMouseUp)
-      },
-    [],
-  )
-
   const handleDragStart = useCallback(
-    (e: React.MouseEvent) => makeDragHandler(panelWidth, setPanelWidth, MIN_WIDTH, MAX_WIDTH)(e),
-    [panelWidth, makeDragHandler],
-  )
+    (e: React.MouseEvent) => {
+      e.preventDefault()
+      dragging.current = true
+      dragStartX.current = e.clientX
+      dragStartWidth.current = sidebarWidth
 
-  const handleGitDragStart = useCallback(
-    (e: React.MouseEvent) =>
-      makeDragHandler(gitPanelWidth, setGitPanelWidth, GIT_MIN_WIDTH, GIT_MAX_WIDTH)(e),
-    [gitPanelWidth, makeDragHandler],
+      document.body.style.userSelect = 'none'
+      document.body.style.cursor = 'col-resize'
+
+      const handleMouseMove = (ev: MouseEvent) => {
+        if (!dragging.current) return
+        const delta = ev.clientX - dragStartX.current
+        setSidebarWidth(Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, dragStartWidth.current + delta)))
+      }
+
+      const handleMouseUp = () => {
+        dragging.current = false
+        document.body.style.userSelect = ''
+        document.body.style.cursor = ''
+        document.removeEventListener('mousemove', handleMouseMove)
+        document.removeEventListener('mouseup', handleMouseUp)
+      }
+
+      document.addEventListener('mousemove', handleMouseMove)
+      document.addEventListener('mouseup', handleMouseUp)
+    },
+    [sidebarWidth],
   )
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-base-bg text-base-text">
-      {/* Skip to main content — visible only on keyboard focus */}
+      {/* Skip to main content */}
       <a
         href="#main-content"
         className="sr-only z-100 rounded-md bg-accent px-4 py-2 font-medium text-sm text-white focus:not-sr-only focus:fixed focus:top-14 focus:left-14"
       >
         Skip to content
       </a>
-      {/* Drag region for macOS title bar */}
+
+      {/* Titlebar: drag region + logo + mode switcher */}
       <div
-        className="fixed top-0 right-0 left-0 z-50 h-12"
+        className="fixed top-0 right-0 left-0 z-50 flex h-12 items-center gap-3 px-4"
         style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
-      />
-      <NavRail />
-      <AnimatePresence initial={false}>
-        {showSidebar && (
-          <motion.div
-            key="sidebar"
-            initial={{ width: 0, opacity: 0 }}
-            animate={{ width: panelWidth + 5, opacity: 1 }}
-            exit={{ width: 0, opacity: 0 }}
-            transition={{ duration: 0.15, ease: [0.25, 0.1, 0.25, 1] }}
-            className="flex shrink-0 overflow-hidden bg-base-bg pt-12"
-          >
-            <div className="min-w-0 flex-1">
-              <HistoryPanel />
-            </div>
-            {/* Drag handle */}
-            <div
-              onMouseDown={handleDragStart}
-              className="flex w-1 shrink-0 cursor-col-resize items-center justify-center border-base-border-subtle border-r bg-base-bg transition-colors hover:bg-base-border active:bg-base-text-faint"
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
-      {/* Git management panel */}
-      <AnimatePresence initial={false}>
-        {sidebarView === 'git' && (
-          <motion.div
-            key="git-panel"
-            initial={{ width: 0, opacity: 0 }}
-            animate={{ width: gitPanelWidth + 5, opacity: 1 }}
-            exit={{ width: 0, opacity: 0 }}
-            transition={{ duration: 0.15, ease: [0.25, 0.1, 0.25, 1] }}
-            className="flex shrink-0 overflow-hidden pt-12"
-          >
-            <div className="min-w-0 flex-1">
-              <GitPanel />
-            </div>
-            {/* Drag handle */}
-            <div
-              onMouseDown={handleGitDragStart}
-              className="flex w-1 shrink-0 cursor-col-resize items-center justify-center border-base-border-subtle border-r bg-base-bg transition-colors hover:bg-base-border active:bg-base-text-faint"
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
+      >
+        {/* macOS traffic lights spacer */}
+        <div className="w-16 shrink-0" />
+        <img
+          src={logoUrl}
+          alt="Pylon"
+          className="h-5 w-5 shrink-0"
+          style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+        />
+        <ModeSwitcher />
+        <div className="flex-1" />
+      </div>
+
+      {/* Sidebar */}
+      <div
+        className="flex shrink-0 border-r border-base-border-subtle pt-12"
+        style={{ width: sidebarWidth }}
+      >
+        <div className="min-w-0 flex-1">
+          {activeMode === 'sessions' && <SessionSidebar />}
+          {/* PR, Testing, Code sidebars will be wired in Phase 3 */}
+        </div>
+        {/* Drag handle */}
+        <div
+          onMouseDown={handleDragStart}
+          className="flex w-1 shrink-0 cursor-col-resize items-center justify-center transition-colors hover:bg-base-border active:bg-base-text-faint"
+        />
+      </div>
+
+      {/* Main content */}
       <div className="flex min-w-0 flex-1 flex-col pt-12">
-        {sidebarView !== 'pr-review' && sidebarView !== 'testing' && sidebarView !== 'ast' && (
-          <TabBar />
-        )}
         <main id="main-content" className="min-h-0 flex-1 overflow-hidden">
           {children}
         </main>
-        {sidebarView !== 'pr-review' && sidebarView !== 'testing' && sidebarView !== 'ast' && (
-          <StatusBar cwd={activeCwd} branchStatus={branchStatus} />
-        )}
+        {activeMode === 'sessions' && <StatusBar cwd={activeCwd} branchStatus={branchStatus} />}
       </div>
     </div>
   )
