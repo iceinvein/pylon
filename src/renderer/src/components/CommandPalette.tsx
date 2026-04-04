@@ -5,7 +5,6 @@ import { type CommandContext, getCommands, type SlashCommand } from '../lib/comm
 import { resumeStoredSession, type StoredSession } from '../lib/resume-session'
 import { timeAgo } from '../lib/utils'
 import { useSessionStore } from '../store/session-store'
-import { useTabStore } from '../store/tab-store'
 import { useUiStore } from '../store/ui-store'
 
 type PaletteItem = {
@@ -20,25 +19,23 @@ type PaletteItem = {
 
 export function CommandPalette() {
   const { commandPaletteOpen, toggleCommandPalette } = useUiStore()
-  const { tabs, activeTabId, addTab } = useTabStore()
+  const activeSessionId = useUiStore((s) => s.activeSessionId)
   const [query, setQuery] = useState('')
   const [selectedIdx, setSelectedIdx] = useState(0)
   const [recentSessions, setRecentSessions] = useState<StoredSession[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
 
-  const activeTab = tabs.find((t) => t.id === activeTabId)
-  const sessionId = activeTab?.sessionId ?? null
+  const sessionId = activeSessionId ?? null
 
   // Build the command context from current state
   // Note: permissionMode is local state in SessionView, not in the session store.
   // We default to 'default' here — the status command uses it for informational display only.
-  const sessions = useSessionStore((s) => s.sessions)
-  const session = sessionId ? sessions.get(sessionId) : undefined
+  const liveSessions = useSessionStore((s) => s.sessions)
+  const session = sessionId ? liveSessions.get(sessionId) : undefined
   const context: CommandContext = {
     sessionId,
-    activeTabId: activeTabId ?? null,
-    cwd: activeTab?.cwd ?? null,
+    activeSessionId: activeSessionId ?? null,
     model: session?.model ?? 'claude-opus-4-6',
     permissionMode: 'default',
   }
@@ -46,17 +43,16 @@ export function CommandPalette() {
   // Load recent sessions when palette opens
   useEffect(() => {
     if (!commandPaletteOpen) return
-    window.api.listSessions().then((sessions) => {
-      const openSessionIds = new Set(tabs.map((t) => t.sessionId).filter(Boolean))
-      const available = (sessions as StoredSession[]).filter((s) => !openSessionIds.has(s.id))
+    window.api.listSessions().then((allSessions) => {
+      const available = (allSessions as StoredSession[]).filter((s) => !liveSessions.has(s.id))
       setRecentSessions(available.slice(0, 10))
     })
-  }, [commandPaletteOpen, tabs])
+  }, [commandPaletteOpen, liveSessions])
 
   async function handleResumeSession(session: StoredSession) {
     toggleCommandPalette()
-    const { title } = await resumeStoredSession(session)
-    addTab(session.cwd, title, session.id)
+    await resumeStoredSession(session)
+    useUiStore.getState().setActiveSession(session.id)
   }
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: handleResumeSession captures data via recentSessions; context is rebuilt each render
@@ -95,12 +91,10 @@ export function CommandPalette() {
     return result
   }, [
     sessionId,
-    activeTabId,
+    activeSessionId,
     toggleCommandPalette,
-    addTab,
     recentSessions,
     context.model,
-    context.cwd,
   ])
 
   const filtered = items.filter((item) => {

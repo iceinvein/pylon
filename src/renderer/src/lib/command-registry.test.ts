@@ -6,16 +6,14 @@ import { COMMANDS, findCommand, getCommands } from './command-registry'
 
 const fullContext: CommandContext = {
   sessionId: 'test-session-123',
-  activeTabId: 'tab-1',
-  cwd: '/Users/test/project',
+  activeSessionId: 'test-session-123',
   model: 'claude-opus-4-6',
   permissionMode: 'default',
 }
 
 const noSessionContext: CommandContext = {
   sessionId: null,
-  activeTabId: null,
-  cwd: null,
+  activeSessionId: null,
   model: 'claude-opus-4-6',
   permissionMode: 'default',
 }
@@ -102,7 +100,7 @@ describe('command-registry', () => {
       const systemMsg = getSystemMsg()
       expect(systemMsg).toBeDefined()
       expect(systemMsg?.content).toContain('claude-opus-4-6')
-      expect(systemMsg?.content).toContain('/Users/test/project')
+      expect(systemMsg?.content).toContain('/test')
       expect(systemMsg?.content).toContain('default')
     })
 

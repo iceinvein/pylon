@@ -101,9 +101,10 @@ export const COMMANDS: SlashCommand[] = [
     keywords: ['info', 'session'],
     execute: (ctx) => {
       if (!ctx.sessionId) return
+      const session = useSessionStore.getState().sessions.get(ctx.sessionId)
       const lines = [
         `**Model:** ${ctx.model}`,
-        `**Directory:** ${ctx.cwd ?? 'unknown'}`,
+        `**Directory:** ${session?.cwd ?? 'unknown'}`,
         `**Permission mode:** ${ctx.permissionMode}`,
       ]
       useSessionStore.getState().appendMessage(ctx.sessionId, {
@@ -148,14 +149,13 @@ export const COMMANDS: SlashCommand[] = [
   {
     id: 'open-folder',
     label: 'Open folder',
-    description: 'Open a project folder in a new tab',
+    description: 'Open a project folder',
     icon: FolderOpen,
     section: 'global',
     requiresSession: false,
     keywords: ['project', 'directory'],
-    execute: async () => {
-      const path = await window.api.openFolder()
-      if (path) useTabStore.getState().addTab(path)
+    execute: () => {
+      useUiStore.getState().setNewSessionPopoverOpen(true)
     },
   },
   {
@@ -179,7 +179,7 @@ export const COMMANDS: SlashCommand[] = [
     requiresSession: false,
     keywords: ['ast', 'architecture', 'visualization', 'graph', 'dependencies'],
     execute: () => {
-      useUiStore.getState().setSidebarView('ast')
+      useUiStore.getState().setActiveMode('code')
     },
   },
 ]
