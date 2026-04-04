@@ -114,7 +114,7 @@ export function PlanCard({ plan, sessionId, sectionTitles }: PlanCardProps) {
           <button
             type="button"
             onClick={handleOpenReview}
-            className="flex-1 rounded-md border border-accent/50 bg-accent/20 px-4 py-2 font-medium text-[13px] text-accent-text transition-colors hover:bg-accent/40"
+            className="flex-1 rounded-md border border-base-text/30 bg-base-text/10 px-4 py-2 font-medium text-[13px] text-base-text transition-colors hover:bg-base-text/20"
           >
             Review Again
           </button>

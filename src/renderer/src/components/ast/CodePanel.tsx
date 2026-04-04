@@ -246,7 +246,7 @@ export function CodePanel({ selectedFile, fileAst, selectedNodeId }: CodePanelPr
         </span>
         <span className="ml-1 text-[10px] text-base-text-muted/50">{lang}</span>
         {startLine > 0 && (
-          <span className="ml-auto text-[10px] text-accent-text/70">
+          <span className="ml-auto text-[10px] text-base-text-muted">
             L{startLine}–{endLine}
           </span>
         )}
@@ -294,12 +294,12 @@ export function CodePanel({ selectedFile, fileAst, selectedNodeId }: CodePanelPr
                 <tr
                   key={lineNum}
                   data-line={lineNum}
-                  className={isHighlighted ? 'bg-accent/10' : ''}
+                  className={isHighlighted ? 'bg-base-raised/60' : ''}
                 >
                   <td
                     className={`w-12 select-none border-r pr-3 text-right align-top ${
                       isHighlighted
-                        ? 'border-accent/30 text-accent-text/60'
+                        ? 'border-base-border-subtle text-base-text-muted'
                         : 'border-transparent text-base-text-muted/30'
                     }`}
                   >

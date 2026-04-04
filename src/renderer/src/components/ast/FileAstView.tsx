@@ -51,7 +51,7 @@ export function FileAstView({ fileAst, fileName }: FileAstViewProps) {
       <button
         type="button"
         onClick={() => drillFile(null)}
-        className="flex items-center gap-1.5 self-start px-3 py-2 text-accent-text text-xs transition-colors hover:text-base-text"
+        className="flex items-center gap-1.5 self-start px-3 py-2 text-base-text-secondary text-xs transition-colors hover:text-base-text"
       >
         <ArrowLeft size={12} />
         Back to repo map

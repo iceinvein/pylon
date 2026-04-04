@@ -40,7 +40,7 @@ export function CommitDetail({ commit }: CommitDetailProps) {
                 ref.type === 'tag'
                   ? 'bg-special/50 text-special'
                   : ref.isCurrent
-                    ? 'bg-accent-muted/50 text-warning'
+                    ? 'bg-warning/10 text-warning'
                     : 'bg-base-raised text-base-text-secondary'
               }`}
             >

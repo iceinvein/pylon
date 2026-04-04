@@ -145,21 +145,21 @@ Design documents and implementation plans live in `docs/plans/`. Consult these w
 Pylon serves developers across all experience levels — solo devs, team members, and power users/tinkerers. They reach for Pylon as a daily AI coding companion embedded in their workflow. Their context is focused deep work: reading code, debugging, reviewing PRs, and iterating on features. They expect a native-feeling desktop experience, not a web app in a frame.
 
 ### Brand Personality
-**Elegant, calm, intelligent.** Quiet confidence — doesn't shout, doesn't clutter, never feels anxious. The warm terracotta palette and serif display type give it a distinctly crafted character. It should feel like a well-made instrument: precise, reliable, and a pleasure to hold.
+**Precise, refined, deliberate.** Every detail is considered — nothing is accidental. Pylon communicates through restraint: surfaces, typography, and spacing do the work, not color or ornamentation. It should feel like a precision instrument — sharp, reliable, and crafted with intent. Confidence comes from what's left out as much as what's included.
 
 ### Aesthetic Direction
-- **Palette:** Warm dark — clay-tinted neutrals (`#1a1714` base), never pure black or cold gray. Terracotta accent (`#a85838`) used sparingly.
-- **Typography:** Space Grotesk (UI), Instrument Serif (display), JetBrains Mono (code).
-- **Density:** Information-dense where it matters (diffs, code, tool output), breathing room on landing/empty states. Linear-style packing without feeling cramped.
+- **Palette:** Neutral dark, pure monochrome. The interface is grayscale — the accent is achromatic (`#ececed`, white/near-white). Color appears only through semantic states (success, error, warning, info, special). Primary buttons are inverted: light bg (`bg-accent`), dark text (`text-base-bg`). No pure black.
+- **Typography:** Space Grotesk (UI), Instrument Serif (display — used sparingly), JetBrains Mono (code).
+- **Density:** Context-dependent. Working views (diffs, code, tool output) are dense and data-rich. Navigation, empty states, and landing views breathe. Never one-size-fits-all.
 - **Motion:** Subtle, purposeful — staggered fade-ups, gentle scale on hover/tap, `easeOutQuart` easing. Never bouncy.
 - **Icons:** Lucide React, 18px nav / 13-16px inline.
 - **Theme:** Dark mode only.
-- **References:** Linear, Raycast, Intent by Augment.
+- **References:** Linear 2024+ (dense, fast, keyboard-driven), Vercel / v0.dev (minimal, monochrome-forward), Raycast (command-palette UX, restrained color).
 - **Anti-references:** ChatGPT (generic AI chat), VS Code (heavy IDE chrome), Electron jank.
 
 ### Design Principles
-1. **Warm precision** — Every pixel deliberate, but palette and typography keep it human. Clay over chrome, serif over sterile.
-2. **Information density without clutter** — Show what matters, hide what doesn't. Tool output collapses; code highlights; status is glanceable.
+1. **Precision through restraint** — Every pixel is deliberate. Color is earned, not given freely. Let surfaces, type, and spacing communicate hierarchy. If removing an element doesn't hurt, remove it.
+2. **Information density, contextually** — Working views are dense and data-rich. Navigation and empty states breathe. Two density modes, not one.
 3. **Native-grade interaction** — Instant response, no layout shift, no spinners where skeletons or transitions will do.
 4. **Quiet confidence** — No gratuitous animations, no exclamation marks in UI, no "magic" language. The tool works; the interface reports calmly.
 5. **Keyboard-first, mouse-friendly** — Every action reachable by keyboard. Mouse interactions equally polished but never required.

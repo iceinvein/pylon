@@ -89,7 +89,7 @@ export function AstToolbar({
             onClick={() => toggleOverlay(id)}
             className={`flex items-center gap-1 rounded-md px-2 py-1 text-xs transition-colors ${
               isActive
-                ? 'bg-accent/15 text-accent-text'
+                ? 'bg-base-raised text-base-text'
                 : 'text-base-text-muted hover:text-base-text'
             }`}
           >

@@ -230,7 +230,7 @@ export function GitCommitTab({ cwd, sessionId }: GitCommitTabProps) {
                 type="button"
                 onClick={handleAnalyze}
                 disabled={analyzing || !sessionId || stagedCount === 0}
-                className="flex items-center gap-1.5 rounded border border-accent px-3 py-1.5 text-warning text-xs transition-colors hover:bg-accent-muted/30 disabled:opacity-50"
+                className="flex items-center gap-1.5 rounded border border-warning/50 px-3 py-1.5 text-warning text-xs transition-colors hover:bg-warning/10 disabled:opacity-50"
               >
                 {analyzing ? (
                   <Loader2 size={11} className="animate-spin" />

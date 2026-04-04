@@ -190,14 +190,14 @@ function Step2Goals({
                   onClick={() => onToggle(goal.id)}
                   className={`flex w-full items-start gap-3 rounded-lg border p-3 text-left transition-colors ${
                     goal.selected
-                      ? 'border-accent/40 bg-accent/5'
+                      ? 'border-base-border bg-base-raised/50'
                       : 'border-base-border bg-base-raised/50 hover:border-base-border-hover'
                   }`}
                 >
                   <div
                     className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
                       goal.selected
-                        ? 'border-accent bg-accent text-white'
+                        ? 'border-accent bg-accent text-base-bg'
                         : 'border-base-border bg-transparent'
                     }`}
                   >
@@ -220,9 +220,9 @@ function Step2Goals({
             {customGoals.map((goal, i) => (
               <div
                 key={`custom-${i}`}
-                className="flex items-center gap-3 rounded-lg border border-accent/40 bg-accent/5 p-3"
+                className="flex items-center gap-3 rounded-lg border border-base-border bg-base-raised/50 p-3"
               >
-                <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded border border-accent bg-accent text-white">
+                <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded border border-accent bg-accent text-base-bg">
                   <Check className="h-3 w-3" />
                 </div>
                 <p className="min-w-0 flex-1 font-medium text-base-text text-sm">{goal}</p>
@@ -275,7 +275,7 @@ function Step2Goals({
           type="button"
           onClick={onContinue}
           disabled={selectedCount === 0}
-          className="rounded-lg bg-accent px-5 py-2 font-medium text-sm text-white transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-40"
+          className="rounded-lg bg-accent px-5 py-2 font-medium text-base-bg text-sm transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-40"
         >
           Continue
         </button>
@@ -352,7 +352,7 @@ function Step3Config({
                   type="button"
                   onClick={() => onSetAutoStart(!autoStartServer)}
                   className={`relative h-5 w-9 rounded-full transition-colors ${
-                    autoStartServer ? 'bg-accent' : 'bg-base-border'
+                    autoStartServer ? 'bg-base-text' : 'bg-base-border'
                   }`}
                 >
                   <span
@@ -427,7 +427,7 @@ function Step3Config({
               onClick={() => onSetMode('manual')}
               className={`rounded-lg border px-3 py-1.5 text-sm transition-colors ${
                 mode === 'manual'
-                  ? 'border-accent bg-accent/10 text-accent'
+                  ? 'border-base-text bg-base-text/10 text-base-text'
                   : 'border-base-border text-base-text-secondary hover:border-base-border-hover'
               }`}
             >
@@ -438,7 +438,7 @@ function Step3Config({
               onClick={() => onSetMode('requirements')}
               className={`rounded-lg border px-3 py-1.5 text-sm transition-colors ${
                 mode === 'requirements'
-                  ? 'border-accent bg-accent/10 text-accent'
+                  ? 'border-base-text bg-base-text/10 text-base-text'
                   : 'border-base-border text-base-text-secondary hover:border-base-border-hover'
               }`}
             >
@@ -480,7 +480,7 @@ function Step3Config({
         <button
           type="button"
           onClick={onLaunch}
-          className="flex items-center gap-2 rounded-lg bg-accent px-5 py-2 font-medium text-sm text-white transition-colors hover:bg-accent/90"
+          className="flex items-center gap-2 rounded-lg bg-accent px-5 py-2 font-medium text-base-bg text-sm transition-colors hover:bg-accent/90"
         >
           <Play className="h-4 w-4" />
           Start {agentCount} agent{agentCount !== 1 ? 's' : ''} on {goalCount} goal
@@ -581,9 +581,9 @@ export function SetupWizard() {
               disabled={step > setupStep}
               className={`flex h-6 w-6 items-center justify-center rounded-full text-xs transition-colors ${
                 step === setupStep
-                  ? 'bg-accent font-medium text-white'
+                  ? 'bg-accent font-medium text-base-bg'
                   : step < setupStep
-                    ? 'bg-accent/20 text-accent hover:bg-accent/30'
+                    ? 'bg-base-text/10 text-base-text-secondary hover:bg-base-text/15'
                     : 'bg-base-border text-base-text-muted'
               } ${step > setupStep ? 'cursor-not-allowed' : 'cursor-pointer'}`}
             >

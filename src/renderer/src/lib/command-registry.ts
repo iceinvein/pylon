@@ -12,13 +12,11 @@ import {
   Settings,
 } from 'lucide-react'
 import { useSessionStore } from '../store/session-store'
-import { useTabStore } from '../store/tab-store'
 import { useUiStore } from '../store/ui-store'
 
 export type CommandContext = {
   sessionId: string | null
-  activeTabId: string | null
-  cwd: string | null
+  activeSessionId: string | null
   model: string
   permissionMode: string
 }
@@ -39,18 +37,18 @@ export const COMMANDS: SlashCommand[] = [
   {
     id: 'clear',
     label: 'Clear chat',
-    description: 'Clear conversation and start fresh in this tab',
+    description: 'Clear conversation and start fresh in this session',
     icon: Eraser,
     section: 'session',
     requiresSession: true,
     execute: async (ctx) => {
-      if (!ctx.sessionId || !ctx.activeTabId) return
+      if (!ctx.sessionId) return
       try {
         await window.api.stopSession(ctx.sessionId)
       } catch {}
       useSessionStore.getState().setMessages(ctx.sessionId, [])
       useSessionStore.getState().clearTasks(ctx.sessionId)
-      useTabStore.getState().updateTab(ctx.activeTabId, { sessionId: null })
+      useUiStore.getState().deselectSession()
     },
   },
   {

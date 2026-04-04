@@ -56,7 +56,7 @@ export function AstChatPanel() {
             <div
               className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full font-bold text-[10px] ${
                 msg.role === 'user'
-                  ? 'bg-accent-text/20 text-accent-text'
+                  ? 'bg-base-text-secondary/20 text-base-text-secondary'
                   : 'bg-purple-500/20 text-purple-400'
               }`}
             >
@@ -96,7 +96,7 @@ export function AstChatPanel() {
           type="button"
           onClick={handleSend}
           disabled={chatLoading || !input.trim()}
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-accent-text text-white transition-colors hover:bg-accent-text/80 disabled:opacity-40"
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-base-text text-base-bg transition-colors hover:bg-base-text/80 disabled:opacity-40"
         >
           <Send size={12} />
         </button>

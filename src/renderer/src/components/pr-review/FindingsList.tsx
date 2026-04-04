@@ -51,7 +51,7 @@ export function FindingsList({ repoFullName, prNumber }: Props) {
             </span>
           )}
           {warningCount > 0 && (
-            <span className="rounded bg-accent-hover/10 px-1.5 py-0.5 font-medium text-[10px] text-warning tabular-nums">
+            <span className="rounded bg-warning/10 px-1.5 py-0.5 font-medium text-[10px] text-warning tabular-nums">
               {warningCount} warning{warningCount !== 1 ? 's' : ''}
             </span>
           )}

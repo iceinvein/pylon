@@ -339,8 +339,8 @@ function GeneralTab({
                 className={`flex w-full items-center gap-3 rounded-lg border px-4 py-3 text-left transition-colors ${
                   isSelected
                     ? isDangerous
-                      ? 'border-accent/50 bg-accent-muted/20 text-accent-text'
-                      : 'border-accent/60 bg-base-raised text-base-text'
+                      ? 'border-base-text/30 bg-base-text/10 text-base-text'
+                      : 'border-base-text/40 bg-base-raised text-base-text'
                     : 'border-base-border/50 text-base-text-secondary hover:border-base-border hover:text-base-text'
                 }`}
               >

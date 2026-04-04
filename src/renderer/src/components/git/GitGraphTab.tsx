@@ -125,7 +125,7 @@ export function GitGraphTab({ cwd }: GitGraphTabProps) {
                       key={ref.name}
                       className={`whitespace-nowrap rounded px-1 py-0.5 text-[9px] ${
                         ref.isCurrent
-                          ? 'bg-accent-muted/50 text-warning'
+                          ? 'bg-warning/10 text-warning'
                           : 'bg-base-raised text-base-text-muted'
                       }`}
                     >

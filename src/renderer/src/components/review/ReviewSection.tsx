@@ -63,7 +63,7 @@ export function ReviewSection({ index, title, body, comment, onSetComment }: Rev
   return (
     <div
       className={`border-l-[3px] px-5 py-4 transition-colors ${
-        hasComment ? 'border-l-amber-500 bg-accent-hover/5' : 'border-l-transparent'
+        hasComment ? 'border-l-warning bg-warning/5' : 'border-l-transparent'
       }`}
     >
       <div className="flex items-start gap-3">
@@ -107,9 +107,9 @@ export function ReviewSection({ index, title, body, comment, onSetComment }: Rev
 
       {/* Comment bubble */}
       {hasComment && !editing && !collapsed && (
-        <div className="mt-3 ml-11 rounded-md border border-accent/30 bg-accent-hover/10 px-3 py-2">
+        <div className="mt-3 ml-11 rounded-md border border-base-border bg-base-raised/50 px-3 py-2">
           <div className="mb-1 flex items-center gap-1.5">
-            <div className="flex h-4 w-4 items-center justify-center rounded-full bg-accent-hover/30">
+            <div className="flex h-4 w-4 items-center justify-center rounded-full bg-base-text/20">
               <span className="font-bold text-[9px] text-warning">U</span>
             </div>
             <span className="font-semibold text-[10px] text-warning">COMMENT</span>
@@ -133,7 +133,7 @@ export function ReviewSection({ index, title, body, comment, onSetComment }: Rev
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Add your feedback..."
-            className="w-full resize-none rounded-md border border-accent/30 bg-accent-hover/10 px-3 py-2 text-base-text text-xs leading-relaxed outline-none placeholder:text-base-text-faint focus:border-accent/50"
+            className="w-full resize-none rounded-md border border-base-border bg-base-raised/50 px-3 py-2 text-base-text text-xs leading-relaxed outline-none placeholder:text-base-text-faint focus:border-base-text/30"
             rows={3}
           />
           <div className="mt-1 text-[10px] text-base-text-faint">

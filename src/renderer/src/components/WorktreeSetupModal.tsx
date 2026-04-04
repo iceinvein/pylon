@@ -164,7 +164,7 @@ export function WorktreeSetupModal() {
                   type="button"
                   onClick={handleRunSetup}
                   disabled={checkedSteps.size === 0}
-                  className="rounded-lg bg-accent px-3.5 py-1.5 font-medium text-white text-xs transition-colors hover:bg-accent-hover disabled:opacity-50"
+                  className="rounded-lg bg-accent px-3.5 py-1.5 font-medium text-base-bg text-xs transition-colors hover:bg-accent-hover disabled:opacity-50"
                 >
                   Run Setup
                 </button>
@@ -190,7 +190,7 @@ export function WorktreeSetupModal() {
                   return (
                     <div
                       key={step.id}
-                      className={`flex items-center gap-2.5 rounded-md px-2.5 py-2 ${isCurrentStep ? 'bg-accent/5' : ''}`}
+                      className={`flex items-center gap-2.5 rounded-md px-2.5 py-2 ${isCurrentStep ? 'bg-base-raised/50' : ''}`}
                     >
                       {isStepDone ? (
                         <Check size={13} className="shrink-0 text-emerald-500" />
@@ -215,7 +215,7 @@ export function WorktreeSetupModal() {
                 <div className="mt-3">
                   <div className="h-1 overflow-hidden rounded-full bg-base-raised">
                     <div
-                      className="h-full rounded-full bg-accent transition-all duration-300"
+                      className="h-full rounded-full bg-base-text transition-all duration-300"
                       style={{ width: `${(progress.current / progress.total) * 100}%` }}
                     />
                   </div>
@@ -277,7 +277,7 @@ export function WorktreeSetupModal() {
                   <button
                     type="button"
                     onClick={handleFixIt}
-                    className="rounded-lg border border-accent/30 px-3.5 py-1.5 text-accent text-xs transition-colors hover:bg-accent/5"
+                    className="rounded-lg border border-base-border px-3.5 py-1.5 text-base-text-secondary text-xs transition-colors hover:bg-base-raised"
                   >
                     Fix It
                   </button>
@@ -285,7 +285,7 @@ export function WorktreeSetupModal() {
                 <button
                   type="button"
                   onClick={handleOpenAnyway}
-                  className="rounded-lg bg-accent px-3.5 py-1.5 font-medium text-white text-xs transition-colors hover:bg-accent-hover"
+                  className="rounded-lg bg-accent px-3.5 py-1.5 font-medium text-base-bg text-xs transition-colors hover:bg-accent-hover"
                 >
                   {failedResults.length > 0 ? 'Open Anyway' : 'Continue'}
                 </button>

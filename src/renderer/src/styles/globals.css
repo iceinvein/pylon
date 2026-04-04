@@ -9,22 +9,22 @@
   --font-display: "Instrument Serif", "Georgia", serif;
   --font-mono: "JetBrains Mono Variable", ui-monospace, "Cascadia Code", "Fira Code", monospace;
 
-  /* Warm-shifted neutrals — clay-tinted, contrast-boosted */
-  --color-base-bg: #1a1714;
-  --color-base-surface: #262118;
-  --color-base-raised: #332c22;
-  --color-base-border: #4d443a;
-  --color-base-border-subtle: #3d3630;
-  --color-base-text: #ede6dc;
-  --color-base-text-secondary: #c0b6a9;
-  --color-base-text-muted: #a49a8d;
-  --color-base-text-faint: #948a7e;
+  /* True neutral darks — clean, modern, no hue bias */
+  --color-base-bg: #131314;
+  --color-base-surface: #1b1b1c;
+  --color-base-raised: #262627;
+  --color-base-border: #38383a;
+  --color-base-border-subtle: #2d2d2f;
+  --color-base-text: #ececed;
+  --color-base-text-secondary: #ababae;
+  --color-base-text-muted: #8b8b8f;
+  --color-base-text-faint: #656568;
 
-  /* Primary — terracotta warmth, vivid */
-  --color-accent: #c06540;
-  --color-accent-hover: #d4744e;
-  --color-accent-muted: #c0654038;
-  --color-accent-text: #f0a880;
+  /* Accent — monochrome, reserved for interactive states */
+  --color-accent: #ececed;
+  --color-accent-hover: #ffffff;
+  --color-accent-muted: #ececed15;
+  --color-accent-text: #ececed;
 
   /* Semantic colors — warm-shifted, brighter */
   --color-success: #68b27e;
@@ -37,10 +37,10 @@
   --color-success-muted: #68b27e20;
 
   /* Flow visualization — spine and dot colors */
-  --color-flow-spine-start: #504840;
-  --color-flow-spine-idle: #807468;
-  --color-flow-spine-fallback: #887c74;
-  --color-flow-dot-border: #68605a;
+  --color-flow-spine-start: #404042;
+  --color-flow-spine-idle: #6e6e72;
+  --color-flow-spine-fallback: #7a7a7e;
+  --color-flow-dot-border: #58585c;
 }
 
 body {
@@ -142,7 +142,7 @@ pre,
 
 @keyframes flow-highlight-fade {
   0% {
-    background-color: rgba(196, 112, 74, 0.1);
+    background-color: rgba(140, 140, 145, 0.1);
   }
   100% {
     background-color: transparent;

@@ -74,8 +74,8 @@ export function UserMessage({ message }: UserMessageProps) {
         )}
       </AnimatePresence>
 
-      <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent/15">
-        <User size={13} className="text-accent-text" />
+      <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-base-text/10">
+        <User size={13} className="text-base-text-secondary" />
       </div>
       <div className="min-w-0 flex-1">
         <span className="font-semibold text-base-text text-sm">You</span>

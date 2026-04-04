@@ -66,7 +66,7 @@ export function WorktreeDialog({ folderPath, isDirty, onConfirm, onCancel }: Wor
         </p>
 
         {isDirty && (
-          <div className="mt-3 flex items-start gap-2 rounded-lg border border-accent/50 bg-accent-muted/30 px-3 py-2">
+          <div className="mt-3 flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2">
             <AlertTriangle size={14} className="mt-0.5 shrink-0 text-warning" />
             <p className="text-warning/90 text-xs">
               This repo has uncommitted changes. Consider using a worktree for isolation.
@@ -88,10 +88,10 @@ export function WorktreeDialog({ folderPath, isDirty, onConfirm, onCancel }: Wor
         </label>
 
         {useWorktree && recipe && (
-          <div className="mt-2 ml-9 flex items-center justify-between rounded-md border border-accent/20 bg-accent/5 px-3 py-2">
+          <div className="mt-2 ml-9 flex items-center justify-between rounded-md border border-base-border-subtle bg-base-raised/50 px-3 py-2">
             <div>
-              <p className="text-[11px] text-accent/80">Setup recipe cached</p>
-              <p className="text-[10px] text-accent/50">
+              <p className="text-[11px] text-base-text-secondary">Setup recipe cached</p>
+              <p className="text-[10px] text-base-text-muted">
                 {recipe.steps.length} {recipe.steps.length === 1 ? 'step' : 'steps'} • analyzed{' '}
                 {formatAge(recipe.createdAt)}
               </p>
@@ -103,7 +103,7 @@ export function WorktreeDialog({ folderPath, isDirty, onConfirm, onCancel }: Wor
                 handleReanalyze()
               }}
               disabled={reanalyzing}
-              className="rounded border border-accent/30 px-2 py-0.5 text-[10px] text-accent/70 transition-colors hover:bg-accent/10 disabled:opacity-50"
+              className="rounded border border-base-border px-2 py-0.5 text-[10px] text-base-text-muted transition-colors hover:bg-base-raised disabled:opacity-50"
             >
               {reanalyzing ? '...' : 'Reanalyze'}
             </button>
@@ -121,7 +121,7 @@ export function WorktreeDialog({ folderPath, isDirty, onConfirm, onCancel }: Wor
           <button
             type="button"
             onClick={() => onConfirm(useWorktree)}
-            className="rounded-lg bg-accent px-3.5 py-1.5 font-medium text-white text-xs transition-colors hover:bg-accent-hover"
+            className="rounded-lg bg-accent px-3.5 py-1.5 font-medium text-base-bg text-xs transition-colors hover:bg-accent-hover"
           >
             Open
           </button>

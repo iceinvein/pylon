@@ -21,15 +21,6 @@ export type SessionCost = {
   maxOutputTokens: number
 }
 
-export type Tab = {
-  id: string
-  sessionId: string | null
-  cwd: string
-  label: string
-  useWorktree?: boolean
-  hydrated?: boolean
-}
-
 /**
  * Shape of a raw SDK message as received from the Claude/Codex provider
  * and stored in the renderer's Zustand message store.
