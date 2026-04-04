@@ -1,30 +1,46 @@
+// src/renderer/src/hooks/use-folder-open.ts
 import { useState } from 'react'
-import { useTabStore } from '../store/tab-store'
+import { useUiStore } from '../store/ui-store'
+import { useSessionStore } from '../store/session-store'
 
 type DialogState = { path: string; isDirty: boolean }
 
-/**
- * @param reuseTabId — if provided, update this tab instead of creating a new one.
- *   Used when the active tab is a blank "New Tab" so we reuse it in-place.
- */
-export function useFolderOpen(reuseTabId?: string) {
-  const addTab = useTabStore((s) => s.addTab)
-  const updateTab = useTabStore((s) => s.updateTab)
+export function useFolderOpen() {
+  const setActiveSession = useUiStore((s) => s.setActiveSession)
+  const setSession = useSessionStore((s) => s.setSession)
   const [dialogState, setDialogState] = useState<DialogState | null>(null)
 
-  function openInTab(cwd: string, useWorktree?: boolean) {
-    // Persist this folder as a known project (fire-and-forget)
+  async function openInSession(cwd: string, useWorktree?: boolean) {
+    // Persist this folder as a known project
     window.api.addProject(cwd).catch(() => {})
 
-    if (reuseTabId) {
-      updateTab(reuseTabId, {
-        cwd,
-        label: cwd.split('/').pop() ?? cwd,
-        useWorktree,
-      })
-    } else {
-      addTab(cwd, undefined, undefined, useWorktree || undefined)
-    }
+    // Get default model from settings
+    const settings = await window.api.getSettings()
+    const model = (settings as { defaultModel: string }).defaultModel || 'claude-opus-4-6'
+
+    // Create the session
+    const sessionId = await window.api.createSession(cwd, model, useWorktree)
+
+    // Hydrate session state
+    setSession({
+      id: sessionId,
+      cwd,
+      status: 'empty',
+      model,
+      title: '',
+      cost: {
+        inputTokens: 0,
+        outputTokens: 0,
+        totalUsd: 0,
+        contextWindow: 0,
+        contextInputTokens: 0,
+        maxOutputTokens: 0,
+      },
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    })
+
+    setActiveSession(sessionId)
   }
 
   async function openPath(path: string) {
@@ -32,7 +48,7 @@ export function useFolderOpen(reuseTabId?: string) {
     if (status.isGitRepo) {
       setDialogState({ path, isDirty: status.isDirty })
     } else {
-      openInTab(path)
+      await openInSession(path)
     }
   }
 
@@ -44,7 +60,7 @@ export function useFolderOpen(reuseTabId?: string) {
 
   function confirmDialog(useWorktree: boolean) {
     if (dialogState) {
-      openInTab(dialogState.path, useWorktree || undefined)
+      openInSession(dialogState.path, useWorktree || undefined)
     }
     setDialogState(null)
   }
