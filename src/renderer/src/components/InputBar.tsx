@@ -113,7 +113,6 @@ const EFFORT_LEVELS: { id: EffortLevel; label: string; description: string }[] =
 ]
 
 type InputBarProps = {
-  tabId: string
   sessionId: string | null
   isActive: boolean
   isRunning: boolean
@@ -129,7 +128,6 @@ type InputBarProps = {
 }
 
 export function InputBar({
-  tabId,
   sessionId,
   isActive,
   isRunning,
@@ -166,7 +164,7 @@ export function InputBar({
     currentProvider === 'codex' ? CODEX_PERMISSION_MODES : CLAUDE_PERMISSION_MODES
 
   // Restore draft from previous tab switch (if any)
-  const savedDraft = useDraftStore.getState().getDraft(tabId)
+  const savedDraft = useDraftStore.getState().getDraft(sessionId ?? '')
   const [text, setText] = useState(savedDraft?.text ?? '')
   const [attachments, setAttachments] = useState<Attachment[]>(savedDraft?.attachments ?? [])
   const [isDragging, setIsDragging] = useState(false)
@@ -218,12 +216,12 @@ export function InputBar({
       const t = textRef.current
       const fileAtts = attachmentsRef.current.filter((a): a is FileAttachment => a.type === 'file')
       if (t || fileAtts.length > 0) {
-        useDraftStore.getState().setDraft(tabId, { text: t, attachments: fileAtts })
+        useDraftStore.getState().setDraft(sessionId ?? '', { text: t, attachments: fileAtts })
       } else {
-        useDraftStore.getState().clearDraft(tabId)
+        useDraftStore.getState().clearDraft(sessionId ?? '')
       }
     }
-  }, [tabId])
+  }, [sessionId])
 
   function adjustHeight() {
     const el = textareaRef.current
@@ -258,7 +256,7 @@ export function InputBar({
     onSend(trimmed, attachments)
     setText('')
     setAttachments([])
-    useDraftStore.getState().clearDraft(tabId)
+    useDraftStore.getState().clearDraft(sessionId ?? '')
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto'
     }
@@ -427,8 +425,8 @@ export function InputBar({
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
-            className={`rounded-2xl border border-base-border/60 bg-base-surface transition-colors focus-within:border-accent/40 ${
-              isDragging ? 'border-accent/50 bg-accent/5' : ''
+            className={`rounded-2xl border border-base-border/60 bg-base-surface transition-colors focus-within:border-base-text/30 ${
+              isDragging ? 'border-base-text/30 bg-base-text/5' : ''
             }`}
           >
             {/* Attachments */}
@@ -589,7 +587,7 @@ export function InputBar({
                     disabled={!canSend}
                     title="Send"
                     aria-label="Send message"
-                    className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-30"
+                    className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent text-base-bg transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-30"
                     initial={{ scale: 0.8, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0.8, opacity: 0 }}
