@@ -1,7 +1,7 @@
 // src/renderer/src/hooks/use-folder-open.ts
 import { useState } from 'react'
-import { useUiStore } from '../store/ui-store'
 import { useSessionStore } from '../store/session-store'
+import { useUiStore } from '../store/ui-store'
 
 type DialogState = { path: string; isDirty: boolean }
 

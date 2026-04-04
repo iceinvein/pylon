@@ -5,7 +5,9 @@ function resetStore() {
   useUiStore.setState({
     commandPaletteOpen: false,
     settingsOpen: false,
-    sidebarView: 'home',
+    activeMode: 'sessions',
+    activeSessionId: null,
+    recentSessionIds: [],
     draftText: null,
   })
 }
@@ -17,7 +19,9 @@ describe('ui-store', () => {
     const state = useUiStore.getState()
     expect(state.commandPaletteOpen).toBe(false)
     expect(state.settingsOpen).toBe(false)
-    expect(state.sidebarView).toBe('home')
+    expect(state.activeMode).toBe('sessions')
+    expect(state.activeSessionId).toBeNull()
+    expect(state.recentSessionIds).toEqual([])
     expect(state.draftText).toBeNull()
   })
 
@@ -35,11 +39,52 @@ describe('ui-store', () => {
     expect(useUiStore.getState().settingsOpen).toBe(false)
   })
 
-  test('setSidebarView changes view', () => {
-    useUiStore.getState().setSidebarView('history')
-    expect(useUiStore.getState().sidebarView).toBe('history')
-    useUiStore.getState().setSidebarView('settings')
-    expect(useUiStore.getState().sidebarView).toBe('settings')
+  test('setActiveMode changes mode', () => {
+    useUiStore.getState().setActiveMode('pr-review')
+    expect(useUiStore.getState().activeMode).toBe('pr-review')
+    useUiStore.getState().setActiveMode('code')
+    expect(useUiStore.getState().activeMode).toBe('code')
+  })
+
+  test('setActiveSession sets active and pushes previous to recents', () => {
+    useUiStore.getState().setActiveSession('session-1')
+    expect(useUiStore.getState().activeSessionId).toBe('session-1')
+    expect(useUiStore.getState().recentSessionIds).toEqual([])
+
+    useUiStore.getState().setActiveSession('session-2')
+    expect(useUiStore.getState().activeSessionId).toBe('session-2')
+    expect(useUiStore.getState().recentSessionIds).toEqual(['session-1'])
+
+    useUiStore.getState().setActiveSession('session-3')
+    expect(useUiStore.getState().activeSessionId).toBe('session-3')
+    expect(useUiStore.getState().recentSessionIds).toEqual(['session-2', 'session-1'])
+  })
+
+  test('setActiveSession caps recents at 3', () => {
+    useUiStore.getState().setActiveSession('s1')
+    useUiStore.getState().setActiveSession('s2')
+    useUiStore.getState().setActiveSession('s3')
+    useUiStore.getState().setActiveSession('s4')
+    useUiStore.getState().setActiveSession('s5')
+    expect(useUiStore.getState().activeSessionId).toBe('s5')
+    expect(useUiStore.getState().recentSessionIds).toEqual(['s4', 's3', 's2'])
+  })
+
+  test('setActiveSession promotes from recents', () => {
+    useUiStore.getState().setActiveSession('s1')
+    useUiStore.getState().setActiveSession('s2')
+    useUiStore.getState().setActiveSession('s3')
+    // Now: active=s3, recents=[s2, s1]
+    useUiStore.getState().setActiveSession('s1')
+    // s1 promoted from recents to active, s3 pushed to recents
+    expect(useUiStore.getState().activeSessionId).toBe('s1')
+    expect(useUiStore.getState().recentSessionIds).toEqual(['s3', 's2'])
+  })
+
+  test('deselectSession clears activeSessionId', () => {
+    useUiStore.getState().setActiveSession('session-1')
+    useUiStore.getState().deselectSession()
+    expect(useUiStore.getState().activeSessionId).toBeNull()
   })
 
   test('setDraftText sets and clears draft', () => {

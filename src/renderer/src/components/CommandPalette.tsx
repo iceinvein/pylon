@@ -89,13 +89,7 @@ export function CommandPalette() {
     }
 
     return result
-  }, [
-    sessionId,
-    activeSessionId,
-    toggleCommandPalette,
-    recentSessions,
-    context.model,
-  ])
+  }, [sessionId, activeSessionId, toggleCommandPalette, recentSessions, context.model])
 
   const filtered = items.filter((item) => {
     const q = query.toLowerCase()

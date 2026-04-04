@@ -1,13 +1,13 @@
 // src/renderer/src/components/layout/SessionSidebar.tsx
 import { ChevronDown, ChevronRight, Plus } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useFolderOpen } from '../../hooks/use-folder-open'
 import { groupByProject } from '../../lib/group-sessions'
 import { resumeStoredSession, type StoredSession } from '../../lib/resume-session'
 import { useSessionStore } from '../../store/session-store'
 import { useUiStore } from '../../store/ui-store'
 import { ProjectsPopover } from '../ProjectsPopover'
 import { WorktreeDialog } from '../WorktreeDialog'
-import { useFolderOpen } from '../../hooks/use-folder-open'
 import { SessionCard } from './SessionCard'
 
 const COLLAPSED_KEY = 'pylon:sidebar-collapsed'
@@ -133,8 +133,8 @@ export function SessionSidebar() {
   return (
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-base-border-subtle px-3 py-2.5">
-        <span className="text-xs font-medium text-base-text-secondary uppercase tracking-wider">
+      <div className="flex items-center justify-between border-base-border-subtle border-b px-3 py-2.5">
+        <span className="font-medium text-base-text-secondary text-xs uppercase tracking-wider">
           Sessions
         </span>
         <button
@@ -168,7 +168,7 @@ export function SessionSidebar() {
           </div>
         ) : groups.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
-            <p className="text-xs text-base-text-muted">No sessions yet</p>
+            <p className="text-base-text-muted text-xs">No sessions yet</p>
             <p className="mt-1 text-[10px] text-base-text-faint">
               Press ⌘N to start your first session
             </p>
@@ -189,14 +189,14 @@ export function SessionSidebar() {
                   ) : (
                     <ChevronDown size={10} className="shrink-0 text-base-text-faint" />
                   )}
-                  <span className="text-[10px] font-semibold uppercase tracking-[0.05em] text-base-text-muted">
+                  <span className="font-semibold text-[10px] text-base-text-muted uppercase tracking-[0.05em]">
                     {group.projectName}
                   </span>
                 </button>
 
                 {/* Session cards with tree line */}
                 {!isCollapsed && (
-                  <div className="ml-[7px] border-l border-base-border-subtle/50 pl-2">
+                  <div className="ml-1.75 border-base-border-subtle/50 border-l pl-2">
                     {(expanded.has(group.projectPath)
                       ? group.sessions
                       : group.sessions.slice(0, PROJECT_SESSION_LIMIT)

@@ -1,12 +1,12 @@
 // src/renderer/src/components/layout/Layout.tsx
 import { useCallback, useEffect, useRef, useState } from 'react'
-import logoUrl from '../../assets/logo.png'
 import type { GitBranchStatus } from '../../../../shared/types'
+import logoUrl from '../../assets/logo.png'
 import { useSessionStore } from '../../store/session-store'
 import { useUiStore } from '../../store/ui-store'
+import { StatusBar } from '../StatusBar'
 import { ModeSwitcher } from './ModeSwitcher'
 import { SessionSidebar } from './SessionSidebar'
-import { StatusBar } from '../StatusBar'
 
 const DEFAULT_WIDTH = 260
 const MIN_WIDTH = 200
@@ -108,7 +108,7 @@ export function Layout({ children }: LayoutProps) {
 
       {/* Sidebar */}
       <div
-        className="flex shrink-0 border-r border-base-border-subtle pt-12"
+        className="flex shrink-0 border-base-border-subtle border-r pt-12"
         style={{ width: sidebarWidth }}
       >
         <div className="min-w-0 flex-1">

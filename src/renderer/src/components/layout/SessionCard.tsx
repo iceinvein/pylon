@@ -1,10 +1,10 @@
 // src/renderer/src/components/layout/SessionCard.tsx
 import { Clock, DollarSign, GitBranch, Trash2 } from 'lucide-react'
 import { memo } from 'react'
+import type { SdkMessage, SessionStatus } from '../../../../shared/types'
 import type { StoredSession } from '../../lib/resume-session'
 import { getSessionPreview } from '../../lib/session-preview'
 import { formatCost, timeAgo } from '../../lib/utils'
-import type { SessionStatus, SdkMessage } from '../../../../shared/types'
 
 type SessionCardProps = {
   session: StoredSession
@@ -45,14 +45,14 @@ export const SessionCard = memo(function SessionCard({
         isPendingDelete ? 'opacity-40' : ''
       } ${
         isActive
-          ? 'border-l-2 border-accent bg-base-raised text-base-text'
-          : 'border-l-2 border-transparent text-base-text-secondary hover:bg-base-raised/60'
+          ? 'border-accent border-l-2 bg-base-raised text-base-text'
+          : 'border-transparent border-l-2 text-base-text-secondary hover:bg-base-raised/60'
       }`}
     >
       {/* Title + status */}
       <div className="flex items-center justify-between gap-2">
         <span
-          className={`min-w-0 flex-1 truncate text-xs font-medium ${
+          className={`min-w-0 flex-1 truncate font-medium text-xs ${
             isActive ? 'text-base-text' : 'text-base-text-secondary'
           }`}
         >
@@ -73,7 +73,7 @@ export const SessionCard = memo(function SessionCard({
 
       {/* Preview */}
       {preview && (
-        <p className="line-clamp-2 text-[10px] leading-relaxed text-base-text-muted">{preview}</p>
+        <p className="line-clamp-2 text-[10px] text-base-text-muted leading-relaxed">{preview}</p>
       )}
 
       {/* Metadata footer */}
@@ -102,7 +102,7 @@ export const SessionCard = memo(function SessionCard({
           <button
             type="button"
             onClick={onUndoDelete}
-            className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium text-accent-text transition-colors hover:bg-accent/15"
+            className="shrink-0 rounded px-1.5 py-0.5 font-medium text-[10px] text-accent-text transition-colors hover:bg-accent/15"
           >
             Undo
           </button>
