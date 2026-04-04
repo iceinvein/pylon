@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { buildFlowGraph } from '../../lib/flow-graph'
 import type { FlowElement, FlowNode as FlowNodeType } from '../../lib/flow-types'
 import { useSessionStore } from '../../store/session-store'
-import { useTabStore } from '../../store/tab-store'
+import { useUiStore } from '../../store/ui-store'
 import { FlowNode } from './FlowNode'
 import type { DotShape as DotShapeType } from './flow-constants'
 import { NODE_STYLES } from './flow-constants'
@@ -115,8 +115,7 @@ function getBottomAccent(elements: FlowElement[], isStreaming: boolean): string 
 }
 
 export function FlowPanel() {
-  const activeTab = useTabStore((s) => s.tabs.find((t) => t.id === s.activeTabId))
-  const sessionId = activeTab?.sessionId
+  const sessionId = useUiStore((s) => s.activeSessionId)
   const messages =
     useSessionStore((s) => (sessionId ? s.messages.get(sessionId) : undefined)) ?? emptyMessages
   const isStreaming = useSessionStore((s) => (sessionId ? !!s.streamingText.get(sessionId) : false))

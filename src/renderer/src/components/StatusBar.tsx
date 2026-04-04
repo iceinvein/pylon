@@ -2,7 +2,6 @@ import { GitBranch } from 'lucide-react'
 import type { GitBranchStatus } from '../../../shared/types'
 import { formatCost } from '../lib/utils'
 import { useSessionStore } from '../store/session-store'
-import { useTabStore } from '../store/tab-store'
 import { useUiStore } from '../store/ui-store'
 
 const MODEL_SHORT: Record<string, string> = {
@@ -39,8 +38,7 @@ function BranchIndicator({ status }: { status: GitBranchStatus }) {
 }
 
 function SessionInfo() {
-  const activeTabId = useTabStore((s) => s.activeTabId)
-  const sessionId = useTabStore((s) => s.tabs.find((t) => t.id === activeTabId)?.sessionId)
+  const sessionId = useUiStore((s) => s.activeSessionId)
   const session = useSessionStore((s) => (sessionId ? s.sessions.get(sessionId) : undefined))
 
   if (!session) return null
@@ -57,10 +55,6 @@ function SessionInfo() {
 }
 
 export function StatusBar({ cwd: _cwd, branchStatus }: StatusBarProps) {
-  const sidebarView = useUiStore((s) => s.sidebarView)
-  const setSidebarView = useUiStore((s) => s.setSidebarView)
-  const isGitOpen = sidebarView === 'git'
-
   if (!branchStatus?.isGitRepo || !branchStatus.branch) {
     return (
       <div className="flex h-6 items-center border-base-border-subtle border-t bg-base-bg px-3">
@@ -72,13 +66,9 @@ export function StatusBar({ cwd: _cwd, branchStatus }: StatusBarProps) {
 
   return (
     <div className="flex h-6 items-center border-base-border-subtle border-t bg-base-bg px-3">
-      <button
-        type="button"
-        onClick={() => setSidebarView(isGitOpen ? 'home' : 'git')}
-        className={`rounded px-1 py-0.5 transition-colors hover:bg-base-raised ${isGitOpen ? 'bg-base-raised' : ''}`}
-      >
+      <div className="rounded px-1 py-0.5">
         <BranchIndicator status={branchStatus} />
-      </button>
+      </div>
       <div className="flex-1" />
       <SessionInfo />
     </div>

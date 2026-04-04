@@ -20,7 +20,7 @@ import {
 import { AnimatePresence, motion } from 'motion/react'
 import { computeDiffHunks, parseUnifiedDiff } from '../lib/diff-utils'
 import { useSessionStore } from '../store/session-store'
-import { useTabStore } from '../store/tab-store'
+import { useUiStore } from '../store/ui-store'
 import { DiffView } from './DiffView'
 
 type FileDiffData = {
@@ -193,9 +193,7 @@ function FileRow({ filePath, sessionCwd, status, onSelect }: FileRowProps) {
 const emptyChangedFiles: string[] = []
 
 export function ChangesPanel() {
-  const { tabs, activeTabId } = useTabStore()
-  const activeTab = tabs.find((t) => t.id === activeTabId)
-  const sessionId = activeTab?.sessionId ?? null
+  const sessionId = useUiStore((s) => s.activeSessionId)
 
   const changedFilesRaw = useSessionStore((s) =>
     sessionId ? s.changedFiles.get(sessionId) : undefined,
@@ -204,7 +202,7 @@ export function ChangesPanel() {
 
   const session = useSessionStore((s) => (sessionId ? s.sessions.get(sessionId) : undefined))
 
-  const sessionCwd = session?.cwd ?? activeTab?.cwd ?? ''
+  const sessionCwd = session?.cwd ?? ''
 
   // Navigation state: null = file list, string = viewing diff for that file
   const [selectedFile, setSelectedFile] = useState<string | null>(null)

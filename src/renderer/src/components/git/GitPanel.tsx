@@ -1,6 +1,7 @@
 import { GitBranch, GitCommitHorizontal, Terminal } from 'lucide-react'
 import { useState } from 'react'
-import { useTabStore } from '../../store/tab-store'
+import { useSessionStore } from '../../store/session-store'
+import { useUiStore } from '../../store/ui-store'
 import { GitCommitTab } from './GitCommitTab'
 import { GitGraphTab } from './GitGraphTab'
 import { GitOpsTab } from './GitOpsTab'
@@ -14,11 +15,12 @@ const TAB_CONFIG: { id: GitTab; label: string; icon: typeof GitBranch }[] = [
 ]
 
 export function GitPanel() {
-  const [activeTab, setActiveTab] = useState<GitTab>('graph')
-  const tabs = useTabStore((s) => s.tabs)
-  const activeTabId = useTabStore((s) => s.activeTabId)
-  const tab = tabs.find((t) => t.id === activeTabId)
-  const cwd = tab?.cwd ?? ''
+  const [activeGitTab, setActiveGitTab] = useState<GitTab>('graph')
+  const activeSessionId = useUiStore((s) => s.activeSessionId)
+  const activeSession = useSessionStore((s) =>
+    activeSessionId ? s.sessions.get(activeSessionId) : undefined,
+  )
+  const cwd = activeSession?.cwd ?? ''
 
   if (!cwd) {
     return (
@@ -36,9 +38,9 @@ export function GitPanel() {
           <button
             key={id}
             type="button"
-            onClick={() => setActiveTab(id)}
+            onClick={() => setActiveGitTab(id)}
             className={`flex flex-1 items-center justify-center gap-1.5 px-3 py-2.5 text-xs transition-colors ${
-              activeTab === id
+              activeGitTab === id
                 ? 'border-accent border-b-2 text-base-text'
                 : 'text-base-text-muted hover:text-base-text'
             }`}
@@ -51,9 +53,9 @@ export function GitPanel() {
 
       {/* Tab content — placeholders until tab components are built */}
       <div className="min-h-0 flex-1 overflow-hidden">
-        {activeTab === 'graph' && <GitGraphTab cwd={cwd} sessionId={tab?.sessionId ?? null} />}
-        {activeTab === 'commit' && <GitCommitTab cwd={cwd} sessionId={tab?.sessionId ?? null} />}
-        {activeTab === 'command' && <GitOpsTab cwd={cwd} sessionId={tab?.sessionId ?? null} />}
+        {activeGitTab === 'graph' && <GitGraphTab cwd={cwd} sessionId={activeSessionId ?? null} />}
+        {activeGitTab === 'commit' && <GitCommitTab cwd={cwd} sessionId={activeSessionId ?? null} />}
+        {activeGitTab === 'command' && <GitOpsTab cwd={cwd} sessionId={activeSessionId ?? null} />}
       </div>
     </div>
   )

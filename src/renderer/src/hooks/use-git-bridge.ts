@@ -2,13 +2,15 @@ import { useEffect } from 'react'
 import { useGitCommitStore } from '../store/git-commit-store'
 import { useGitGraphStore } from '../store/git-graph-store'
 import { useGitOpsStore } from '../store/git-ops-store'
-import { useTabStore } from '../store/tab-store'
+import { useSessionStore } from '../store/session-store'
+import { useUiStore } from '../store/ui-store'
 
 export function useGitBridge() {
-  const tabs = useTabStore((s) => s.tabs)
-  const activeTabId = useTabStore((s) => s.activeTabId)
-  const activeTab = tabs.find((t) => t.id === activeTabId)
-  const cwd = activeTab?.cwd ?? ''
+  const activeSessionId = useUiStore((s) => s.activeSessionId)
+  const activeSession = useSessionStore((s) =>
+    activeSessionId ? s.sessions.get(activeSessionId) : undefined,
+  )
+  const cwd = activeSession?.cwd ?? ''
 
   const fetchGraph = useGitGraphStore((s) => s.fetchGraph)
   const fetchBranches = useGitGraphStore((s) => s.fetchBranches)
