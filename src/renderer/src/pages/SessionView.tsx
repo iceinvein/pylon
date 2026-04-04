@@ -1,14 +1,12 @@
 import { GitCompareArrows, GitPullRequestArrow, Info, Workflow } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type {
-  AppSettings,
   Attachment,
   EffortLevel,
   ImageAttachment,
   IpcAttachment,
   PermissionMode,
-  Tab,
 } from '../../../shared/types'
 import { ChangesPanel } from '../components/ChangesPanel'
 import { FlowPanel } from '../components/flow/FlowPanel'
@@ -22,169 +20,58 @@ import { SessionInfoPanel } from '../components/SessionInfoPanel'
 import { WorktreeSetupModal } from '../components/WorktreeSetupModal'
 import { usePersistedWidth } from '../hooks/use-persisted-width'
 import { fadeUpSmall, stagger } from '../lib/animations'
-import { resumeStoredSession, type StoredSession } from '../lib/resume-session'
 import { usePrRaiseStore } from '../store/pr-raise-store'
 import { useSessionStore } from '../store/session-store'
-import { useTabStore } from '../store/tab-store'
-import { useWorktreeSetupStore } from '../store/worktree-setup-store'
 
 const emptyFiles: string[] = []
 
 type SessionViewProps = {
-  tab: Tab
+  sessionId: string
   isActive: boolean
 }
 
-export function SessionView({ tab, isActive }: SessionViewProps) {
-  const { updateTab } = useTabStore()
-  const setSession = useSessionStore((s) => s.setSession)
+export function SessionView({ sessionId, isActive }: SessionViewProps) {
   const updateSession = useSessionStore((s) => s.updateSession)
-  const sessions = useSessionStore((s) => s.sessions)
-  const creatingSession = useRef(false)
-  const [pendingModel, setPendingModel] = useState('claude-opus-4-6')
+  const session = useSessionStore((s) => s.sessions.get(sessionId))
+  const [pendingModel, setPendingModel] = useState(session?.model || 'claude-opus-4-6')
   const [effort, setEffort] = useState<EffortLevel>('high')
   const [permissionMode, setPermissionMode] = useState<PermissionMode>('default')
 
-  const sessionId = tab.sessionId
-  const session = sessionId ? sessions.get(sessionId) : undefined
+  const cwd = session?.cwd ?? ''
   const currentModel = session?.model || pendingModel
   const isRunning =
     session?.status === 'running' || session?.status === 'starting' || session?.status === 'waiting'
 
-  // Load global defaults for new sessions, or sync from backend for existing ones
+  // Sync UI state from backend for the active session
   useEffect(() => {
-    if (sessionId) {
-      // Existing session: sync UI state from backend
-      window.api.getSessionInfo(sessionId).then((info) => {
-        if (info) {
-          setPendingModel(info.model)
-          setPermissionMode(info.permissionMode as PermissionMode)
-        }
-      })
-    } else {
-      // New session: load global defaults
-      window.api.getSettings().then((s) => {
-        const settings = s as AppSettings
-        setPendingModel(settings.defaultModel)
-        setPermissionMode(settings.defaultPermissionMode)
-      })
-    }
+    window.api.getSessionInfo(sessionId).then((info) => {
+      if (info) {
+        setPendingModel(info.model)
+        setPermissionMode(info.permissionMode as PermissionMode)
+      }
+    })
   }, [sessionId])
 
-  // Check git branch status on mount/tab switch
+  // Worktree state (replaces tab.useWorktree)
+  const [isWorktree, setIsWorktree] = useState(false)
+  useEffect(() => {
+    window.api.getWorktreeInfo(sessionId).then((info) => {
+      setIsWorktree(!!info.worktreePath)
+    })
+  }, [sessionId])
+
+  // Check git branch status on mount/session switch
   const setBranchStatus = useSessionStore((s) => s.setBranchStatus)
-  const branchStatus = useSessionStore((s) => s.branchStatus.get(tab.cwd))
+  const branchStatus = useSessionStore((s) => s.branchStatus.get(cwd))
   useEffect(() => {
-    window.api.getGitBranchStatus(tab.cwd).then((status) => {
-      setBranchStatus(tab.cwd, status)
+    if (!cwd) return
+    window.api.getGitBranchStatus(cwd).then((status) => {
+      setBranchStatus(cwd, status)
     })
-  }, [tab.cwd, setBranchStatus])
-
-  // Lazy hydration: when switching to a restored-but-unhydrated tab
-  useEffect(() => {
-    // Only trigger for tabs explicitly marked as unhydrated by the restore logic.
-    // hydrated === undefined means a fresh tab (not restored) — skip.
-    // hydrated === true means already hydrated — skip.
-    // hydrated === false means restored but not yet hydrated — hydrate now.
-    if (!sessionId || tab.hydrated !== false) return
-
-    let cancelled = false
-
-    async function hydrate() {
-      const allSessions = (await window.api.listSessions()) as StoredSession[]
-      const session = allSessions.find((s) => s.id === sessionId)
-      if (cancelled || !session) return
-
-      await resumeStoredSession(session)
-      updateTab(tab.id, { hydrated: true })
-    }
-
-    hydrate()
-    return () => {
-      cancelled = true
-    }
-  }, [sessionId, tab.hydrated, tab.id, updateTab])
-
-  async function ensureSession(): Promise<string> {
-    if (sessionId) return sessionId
-    if (creatingSession.current) {
-      // Wait a bit and return whatever was created
-      await new Promise((r) => setTimeout(r, 100))
-      return tab.sessionId ?? ''
-    }
-
-    creatingSession.current = true
-    const newSessionId = await window.api.createSession(tab.cwd, pendingModel, tab.useWorktree)
-
-    setSession({
-      id: newSessionId,
-      cwd: tab.cwd,
-      status: 'empty',
-      model: pendingModel,
-      title: '',
-      cost: {
-        inputTokens: 0,
-        outputTokens: 0,
-        totalUsd: 0,
-        contextWindow: 0,
-        contextInputTokens: 0,
-        maxOutputTokens: 0,
-      },
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    })
-
-    updateTab(tab.id, { sessionId: newSessionId })
-    if (permissionMode !== 'default') {
-      await window.api.setPermissionMode(newSessionId, permissionMode)
-    }
-
-    // ── Worktree Setup ──
-    if (tab.useWorktree) {
-      const setupStore = useWorktreeSetupStore.getState()
-      const existingRecipe = await window.api.getWorktreeRecipe(tab.cwd)
-
-      if (existingRecipe) {
-        // Cached recipe — auto-run
-        setupStore.startAnalyzing(newSessionId)
-        setupStore.setRecipe(existingRecipe)
-        setupStore.startExecuting()
-
-        const info = await window.api.getWorktreeInfo(newSessionId)
-        if (info.worktreePath) {
-          await window.api.runWorktreeSetup(newSessionId, tab.cwd, info.worktreePath, tab.cwd)
-        }
-      } else {
-        // No recipe — analyze, then user confirms via modal
-        setupStore.startAnalyzing(newSessionId)
-
-        try {
-          const recipe = await window.api.analyzeWorktreeRecipe(tab.cwd, pendingModel)
-          setupStore.setRecipe(recipe)
-          setupStore.startConfirming()
-        } catch (err) {
-          setupStore.setError(err instanceof Error ? err.message : String(err))
-        }
-      }
-    }
-
-    creatingSession.current = false
-    return newSessionId
-  }
+  }, [cwd, setBranchStatus])
 
   async function handleSend(text: string, attachments: Attachment[]) {
-    // Re-check branch status before first message
-    if (!sessionId) {
-      try {
-        const freshStatus = await window.api.getGitBranchStatus(tab.cwd)
-        setBranchStatus(tab.cwd, freshStatus)
-      } catch {
-        // ignore — don't block sending
-      }
-    }
-
-    const sid = await ensureSession()
-    if (!sid) return
+    if (!sessionId) return
 
     // Optimistically add user message to store
     const userContent: unknown[] = []
@@ -204,7 +91,7 @@ export function SessionView({ tab, isActive }: SessionViewProps) {
       userContent.push({ type: 'text', text })
     }
 
-    useSessionStore.getState().appendMessage(sid, {
+    useSessionStore.getState().appendMessage(sessionId, {
       type: 'user',
       content:
         userContent.length === 1 &&
@@ -232,7 +119,7 @@ export function SessionView({ tab, isActive }: SessionViewProps) {
       }
     })
 
-    await window.api.sendMessage(sid, text, ipcAttachments)
+    await window.api.sendMessage(sessionId, text, ipcAttachments)
   }
 
   const handleModelChange = useCallback(
@@ -334,28 +221,7 @@ export function SessionView({ tab, isActive }: SessionViewProps) {
         {/* Main chat column */}
         <div className="flex min-w-0 flex-1 flex-col">
           <div className="min-h-0 flex-1">
-            {sessionId && tab.hydrated === false ? (
-              <div className="flex h-full flex-col gap-4 px-6 pt-8">
-                <div className="mx-auto w-full max-w-3xl space-y-4">
-                  {/* Skeleton: pulsing lines matching chat layout */}
-                  <div className="flex gap-3">
-                    <div className="h-6 w-6 shrink-0 animate-pulse rounded-full bg-base-raised" />
-                    <div className="flex-1 space-y-2">
-                      <div className="h-3 w-24 animate-pulse rounded bg-base-raised" />
-                      <div className="h-3 w-full animate-pulse rounded bg-base-raised/60" />
-                      <div className="h-3 w-3/4 animate-pulse rounded bg-base-raised/60" />
-                    </div>
-                  </div>
-                  <div className="flex gap-3">
-                    <div className="h-6 w-6 shrink-0 animate-pulse rounded-full bg-base-raised" />
-                    <div className="flex-1 space-y-2">
-                      <div className="h-3 w-20 animate-pulse rounded bg-base-raised" />
-                      <div className="h-3 w-5/6 animate-pulse rounded bg-base-raised/60" />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ) : sessionId ? (
+            {sessionId ? (
               <ChatView sessionId={sessionId} isActive={isActive} />
             ) : (
               <div className="flex h-full items-center justify-center">
@@ -386,7 +252,7 @@ export function SessionView({ tab, isActive }: SessionViewProps) {
                         key={prompt}
                         onClick={() => handleSend(prompt, [])}
                         variants={fadeUpSmall}
-                        className="rounded-lg border border-base-border/70 px-4 py-2.5 text-left text-base-text-secondary text-sm transition-all hover:border-accent/40 hover:bg-accent/5 hover:text-base-text"
+                        className="rounded-lg border border-base-border/70 px-4 py-2.5 text-left text-base-text-secondary text-sm transition-all hover:border-base-border hover:bg-base-raised/40 hover:text-base-text"
                       >
                         {prompt}
                       </motion.button>
@@ -399,7 +265,7 @@ export function SessionView({ tab, isActive }: SessionViewProps) {
                     {[
                       { keys: '/', label: 'Slash commands' },
                       { keys: '⌘K', label: 'Command palette' },
-                      { keys: '⌘N', label: 'New tab' },
+                      { keys: '⌘N', label: 'New session' },
                       { keys: '⌘⇧F', label: 'Flow panel' },
                       { keys: '⌘⇧C', label: 'Changed files' },
                       { keys: '⌘?', label: 'All shortcuts' },
@@ -416,10 +282,9 @@ export function SessionView({ tab, isActive }: SessionViewProps) {
               </div>
             )}
           </div>
-          <TasksPanel sessionId={sessionId ?? null} />
+          <TasksPanel sessionId={sessionId} />
           <div>
             <InputBar
-              tabId={tab.id}
               sessionId={sessionId}
               isActive={isActive}
               isRunning={isRunning}
@@ -530,19 +395,17 @@ export function SessionView({ tab, isActive }: SessionViewProps) {
                 aria-label={showFlow ? 'Hide flow panel' : 'Show flow panel'}
                 aria-pressed={showFlow}
                 className={`group flex h-10 w-10 flex-col items-center justify-center gap-0.5 rounded-lg transition-colors hover:bg-base-raised/60 ${
-                  showFlow ? 'bg-accent/10' : ''
+                  showFlow ? 'bg-base-raised' : ''
                 }`}
               >
                 <Workflow
                   size={15}
                   className={`transition-colors ${
-                    showFlow
-                      ? 'text-accent-text'
-                      : 'text-base-text-muted group-hover:text-base-text'
+                    showFlow ? 'text-base-text' : 'text-base-text-muted group-hover:text-base-text'
                   }`}
                 />
                 <span
-                  className={`text-[10px] leading-none ${showFlow ? 'text-accent-text' : 'text-base-text-faint'}`}
+                  className={`text-[10px] leading-none ${showFlow ? 'text-base-text-secondary' : 'text-base-text-faint'}`}
                 >
                   Flow
                 </span>
@@ -554,24 +417,24 @@ export function SessionView({ tab, isActive }: SessionViewProps) {
                 aria-label={showChanges ? 'Hide changed files' : 'Show changed files'}
                 aria-pressed={showChanges}
                 className={`group relative flex h-10 w-10 flex-col items-center justify-center gap-0.5 rounded-lg transition-colors hover:bg-base-raised/60 ${
-                  showChanges ? 'bg-accent/10' : ''
+                  showChanges ? 'bg-base-raised' : ''
                 }`}
               >
                 <GitCompareArrows
                   size={15}
                   className={`transition-colors ${
                     showChanges
-                      ? 'text-accent-text'
+                      ? 'text-base-text'
                       : 'text-base-text-muted group-hover:text-base-text'
                   }`}
                 />
                 <span
-                  className={`text-[10px] leading-none ${showChanges ? 'text-accent-text' : 'text-base-text-faint'}`}
+                  className={`text-[10px] leading-none ${showChanges ? 'text-base-text-secondary' : 'text-base-text-faint'}`}
                 >
                   Files
                 </span>
                 {changedFiles.length > 0 && (
-                  <span className="absolute top-0 right-0 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-accent px-0.5 font-medium text-[9px] text-white">
+                  <span className="absolute top-0 right-0 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-accent px-0.5 font-medium text-[9px] text-base-bg">
                     {changedFiles.length}
                   </span>
                 )}
@@ -583,24 +446,22 @@ export function SessionView({ tab, isActive }: SessionViewProps) {
                 aria-label={showInfo ? 'Hide session info' : 'Show session info'}
                 aria-pressed={showInfo}
                 className={`group flex h-10 w-10 flex-col items-center justify-center gap-0.5 rounded-lg transition-colors hover:bg-base-raised/60 ${
-                  showInfo ? 'bg-accent/10' : ''
+                  showInfo ? 'bg-base-raised' : ''
                 }`}
               >
                 <Info
                   size={15}
                   className={`transition-colors ${
-                    showInfo
-                      ? 'text-accent-text'
-                      : 'text-base-text-muted group-hover:text-base-text'
+                    showInfo ? 'text-base-text' : 'text-base-text-muted group-hover:text-base-text'
                   }`}
                 />
                 <span
-                  className={`text-[10px] leading-none ${showInfo ? 'text-accent-text' : 'text-base-text-faint'}`}
+                  className={`text-[10px] leading-none ${showInfo ? 'text-base-text-secondary' : 'text-base-text-faint'}`}
                 >
                   Info
                 </span>
               </button>
-              {sessionId && tab.useWorktree && changedFiles.length > 0 && (
+              {sessionId && isWorktree && changedFiles.length > 0 && (
                 <button
                   type="button"
                   onClick={() => usePrRaiseStore.getState().openOverlay(sessionId)}
