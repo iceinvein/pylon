@@ -29,6 +29,10 @@ const api = {
     ipcRenderer.invoke(IPC.SESSION_SET_EFFORT, { sessionId, effort }),
   setPermissionMode: (sessionId: string, mode: string) =>
     ipcRenderer.invoke(IPC.SESSION_SET_PERMISSION_MODE, { sessionId, mode }),
+  setSessionMode: (sessionId: string, mode: string) =>
+    ipcRenderer.invoke(IPC.SESSION_SET_MODE, { sessionId, mode }),
+  respondToPlanApproval: (requestId: string, approved: boolean) =>
+    ipcRenderer.invoke(IPC.SESSION_PLAN_APPROVAL_RESPONSE, { requestId, approved }),
   getSessionInfo: (sessionId: string) => ipcRenderer.invoke(IPC.SESSION_GET_INFO, { sessionId }),
   getProviderModels: () => ipcRenderer.invoke(IPC.PROVIDER_MODELS),
   getSettings: () => ipcRenderer.invoke(IPC.SETTINGS_GET),
@@ -259,6 +263,11 @@ const api = {
     const handler = (_event: unknown, data: unknown) => callback(data)
     ipcRenderer.on(IPC.SESSION_QUESTION, handler)
     return () => ipcRenderer.removeListener(IPC.SESSION_QUESTION, handler)
+  },
+  onPlanApproval: (callback: (data: unknown) => void) => {
+    const handler = (_event: unknown, data: unknown) => callback(data)
+    ipcRenderer.on(IPC.SESSION_PLAN_APPROVAL, handler)
+    return () => ipcRenderer.removeListener(IPC.SESSION_PLAN_APPROVAL, handler)
   },
   onSessionTitleUpdated: (callback: (data: unknown) => void) => {
     const handler = (_event: unknown, data: unknown) => callback(data)

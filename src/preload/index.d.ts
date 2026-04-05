@@ -26,6 +26,9 @@ type Api = {
   setModel: (sessionId: string, model: string) => Promise<boolean>
   setEffort: (sessionId: string, effort: string) => Promise<boolean>
   setPermissionMode: (sessionId: string, mode: string) => Promise<boolean>
+  setSessionMode: (sessionId: string, mode: string) => Promise<boolean>
+  respondToPlanApproval: (requestId: string, approved: boolean) => Promise<boolean>
+  onPlanApproval: (callback: (data: unknown) => void) => () => void
   getSessionInfo: (sessionId: string) => Promise<{ model: string; permissionMode: string } | null>
   getProviderModels: () => Promise<
     Array<{
