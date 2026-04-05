@@ -451,6 +451,19 @@ class ClaudeSession implements AgentSession {
         }
       }
 
+      // Intercept ExitPlanMode — route to plan approval UI
+      if (toolName === 'ExitPlanMode') {
+        if (config.onPlanApprovalRequest) {
+          const result = await config.onPlanApprovalRequest(input)
+          if (result.approved) {
+            return { behavior: 'allow' as const, updatedInput: input }
+          }
+          return { behavior: 'deny' as const, message: 'User rejected the plan' }
+        }
+        // If no handler configured, allow by default
+        return { behavior: 'allow' as const, updatedInput: input }
+      }
+
       // Auto-approve mode: skip permission prompt
       if (config.permissionMode === 'auto-approve') {
         return { behavior: 'allow' as const, updatedInput: input }
@@ -473,6 +486,7 @@ class ClaudeSession implements AgentSession {
       enableFileCheckpointing: true,
       settingSources: ['user', 'project', 'local'],
       effort: config.effort,
+      permissionMode: config.permissionMode === 'plan' ? ('plan' as const) : undefined,
       betas: config.betas as SdkOptions['betas'],
       canUseTool,
     }
