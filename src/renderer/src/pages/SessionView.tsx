@@ -39,7 +39,7 @@ export function SessionView({ sessionId, isActive }: SessionViewProps) {
   const [effort, setEffort] = useState<EffortLevel>('high')
   const [permissionMode, setPermissionMode] = useState<PermissionMode>('default')
   const sessionMode = useSessionStore(
-    (s) => (sessionId ? s.sessions.get(sessionId)?.mode ?? 'normal' : 'normal') as SessionMode,
+    (s) => (sessionId ? (s.sessions.get(sessionId)?.mode ?? 'normal') : 'normal') as SessionMode,
   )
 
   // Provider models for plan mode support detection

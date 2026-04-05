@@ -445,7 +445,11 @@ export function InputBar({
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
             className={`rounded-2xl border bg-base-surface transition-colors focus-within:border-base-text/30 ${
-              isDragging ? 'border-base-text/30 bg-base-text/5' : mode === 'plan' ? 'border-violet-800/50' : 'border-base-border/60'
+              isDragging
+                ? 'border-base-text/30 bg-base-text/5'
+                : mode === 'plan'
+                  ? 'border-violet-800/50'
+                  : 'border-base-border/60'
             }`}
           >
             {/* Attachments */}

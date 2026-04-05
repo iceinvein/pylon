@@ -277,16 +277,10 @@ export function registerIpcHandlers(): void {
     },
   )
 
-  ipcMain.handle(
-    IPC.SESSION_SET_MODE,
-    async (_e, args: { sessionId: string; mode: string }) => {
-      sessionManager.setMode(
-        args.sessionId,
-        args.mode as import('../shared/types').SessionMode,
-      )
-      return true
-    },
-  )
+  ipcMain.handle(IPC.SESSION_SET_MODE, async (_e, args: { sessionId: string; mode: string }) => {
+    sessionManager.setMode(args.sessionId, args.mode as import('../shared/types').SessionMode)
+    return true
+  })
 
   ipcMain.handle(
     IPC.SESSION_PLAN_APPROVAL_RESPONSE,

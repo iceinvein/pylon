@@ -278,7 +278,11 @@ export function useIpcBridge(): void {
     })
 
     const unsubPlanApproval = window.api.onPlanApproval((raw) => {
-      const approval = raw as { requestId: string; sessionId: string; allowedPrompts?: Array<{ tool: string; prompt: string }> }
+      const approval = raw as {
+        requestId: string
+        sessionId: string
+        allowedPrompts?: Array<{ tool: string; prompt: string }>
+      }
       store().setPendingPlanApproval(approval.sessionId, approval)
     })
 

@@ -50,7 +50,7 @@ export function PlanApprovalCard({ approval, onRespond }: PlanApprovalCardProps)
               {hasPrompts && (
                 <div className="mt-2 space-y-1">
                   <p className="text-base-text-faint text-xs">Permissions needed:</p>
-                  {approval.allowedPrompts!.map((p, i) => (
+                  {approval.allowedPrompts?.map((p, i) => (
                     <div
                       key={i}
                       className="flex items-center gap-2 text-base-text-secondary text-xs"

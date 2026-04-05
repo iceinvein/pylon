@@ -80,8 +80,8 @@ export const ChatView = memo(function ChatView({ sessionId, isActive }: ChatView
   const sessionQuestions = pendingQuestions.filter((q) => q.sessionId === sessionId)
   const detectedPlans = useSessionStore((s) => s.detectedPlans.get(sessionId)) ?? []
   const session = useSessionStore((s) => s.sessions.get(sessionId))
-  const pendingPlanApproval = useSessionStore(
-    (s) => sessionId ? s.pendingPlanApprovals.get(sessionId) : undefined,
+  const pendingPlanApproval = useSessionStore((s) =>
+    sessionId ? s.pendingPlanApprovals.get(sessionId) : undefined,
   )
   const sdkStatus = useSessionStore((s) => s.sdkStatus.get(sessionId))
   const isRunning =
@@ -1010,7 +1010,7 @@ export const ChatView = memo(function ChatView({ sessionId, isActive }: ChatView
             approval={pendingPlanApproval}
             onRespond={(requestId, approved) => {
               window.api.respondToPlanApproval(requestId, approved)
-              useSessionStore.getState().clearPendingPlanApproval(sessionId!)
+              if (sessionId) useSessionStore.getState().clearPendingPlanApproval(sessionId)
             }}
           />
         )}
