@@ -86,9 +86,23 @@ export function ThinkingIndicator({ isCompacting }: ThinkingIndicatorProps) {
   }, [phase, charIdx, dotCount, basePhrase.length, dotCycle])
 
   return (
-    <span>
-      <span className="text-base-text-muted text-xs">{displayText}</span>
-      <span className="inline-block h-3 w-0.5 animate-pulse bg-accent align-text-bottom" />
+    <span className="relative inline-flex items-baseline gap-0.5 overflow-hidden rounded-sm">
+      {/* Subtle horizontal shimmer behind the thinking text */}
+      <span
+        className="pointer-events-none absolute inset-0 animate-shimmer rounded-sm"
+        style={{
+          background:
+            'linear-gradient(to right, transparent, color-mix(in srgb, var(--color-base-raised) 30%, transparent), transparent)',
+          backgroundSize: '200% 100%',
+        }}
+        aria-hidden="true"
+      />
+      <span className="relative text-base-text-muted text-xs">{displayText}</span>
+      {/* Glowing thin cursor bar */}
+      <span
+        className="relative inline-block h-3 w-0.5 animate-pulse bg-accent align-text-bottom"
+        style={{ boxShadow: '0 0 4px color-mix(in srgb, var(--color-accent) 40%, transparent)' }}
+      />
     </span>
   )
 }

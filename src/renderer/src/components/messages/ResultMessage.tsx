@@ -1,4 +1,5 @@
-import { XCircle } from 'lucide-react'
+import { CheckCircle, XCircle } from 'lucide-react'
+import { motion } from 'motion/react'
 import { formatCost, formatTokens } from '../../lib/utils'
 
 type ResultMessageProps = {
@@ -19,6 +20,12 @@ function getProviderForResult(model?: string): 'Claude' | 'Codex' {
     : 'Claude'
 }
 
+const ENTRANCE = {
+  initial: { opacity: 0, scale: 0.97, y: 4 },
+  animate: { opacity: 1, scale: 1, y: 0 },
+  transition: { duration: 0.3, ease: [0.25, 1, 0.5, 1] as const },
+}
+
 export function ResultMessage({
   isError,
   model,
@@ -31,8 +38,19 @@ export function ResultMessage({
 }: ResultMessageProps) {
   if (isError) {
     return (
-      <div className="px-6 pt-2 pb-2 pl-15">
-        <div className="mb-1.5 h-px bg-error/20" />
+      <motion.div
+        className="px-6 pt-2 pb-2 pl-15"
+        initial={ENTRANCE.initial}
+        animate={ENTRANCE.animate}
+        transition={ENTRANCE.transition}
+      >
+        <div
+          className="mb-1.5 h-px animate-result-divider"
+          style={{
+            background:
+              'linear-gradient(to right, transparent, color-mix(in srgb, var(--color-error) 20%, transparent), transparent)',
+          }}
+        />
         <div className="flex items-center gap-2">
           <span className="rounded-full bg-error/15 px-2 py-0.5 text-error text-xs">
             <XCircle size={10} className="mr-1 inline-block align-[-1px]" />
@@ -44,7 +62,7 @@ export function ResultMessage({
             </span>
           )}
         </div>
-      </div>
+      </motion.div>
     )
   }
 
@@ -67,9 +85,21 @@ export function ResultMessage({
   if (stats.length === 0) return <div className="h-3" />
 
   return (
-    <div className="px-6 pt-2 pb-2 pl-15">
-      <div className="mb-1.5 h-px bg-base-border-subtle/50" />
+    <motion.div
+      className="px-6 pt-2 pb-2 pl-15"
+      initial={ENTRANCE.initial}
+      animate={ENTRANCE.animate}
+      transition={ENTRANCE.transition}
+    >
+      <div
+        className="mb-1.5 h-px animate-result-divider"
+        style={{
+          background:
+            'linear-gradient(to right, transparent, color-mix(in srgb, var(--color-success) 20%, transparent), transparent)',
+        }}
+      />
       <div className="flex flex-wrap items-center gap-1.5">
+        <CheckCircle size={12} className="shrink-0 text-success" />
         {stats.map((stat) => (
           <span
             key={stat}
@@ -79,6 +109,6 @@ export function ResultMessage({
           </span>
         ))}
       </div>
-    </div>
+    </motion.div>
   )
 }

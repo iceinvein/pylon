@@ -196,11 +196,14 @@ function ToolRenderer({
 export function ToolUseBlock({ toolName, input, result }: ToolUseBlockProps) {
   const [expanded, setExpanded] = useState(!result)
   const [userToggled, setUserToggled] = useState(false)
+  const [settleKey, setSettleKey] = useState(0)
   const prevResult = useRef(result)
 
   useEffect(() => {
     if (result && !prevResult.current && !userToggled) {
       setExpanded(false)
+      // Trigger the settle micro-pulse
+      setSettleKey((k) => k + 1)
     }
     prevResult.current = result
   }, [result, userToggled])
@@ -210,7 +213,7 @@ export function ToolUseBlock({ toolName, input, result }: ToolUseBlockProps) {
   const isCompleted = !!result && !expanded
 
   return (
-    <div>
+    <div className={isCompleted ? 'opacity-90' : ''}>
       <button
         type="button"
         onClick={() => {
@@ -226,10 +229,12 @@ export function ToolUseBlock({ toolName, input, result }: ToolUseBlockProps) {
         >
           <ChevronRight size={12} />
         </motion.span>
-        <Icon
-          size={12}
-          className={`shrink-0 ${isCompleted ? 'opacity-60' : ''} ${info.iconColor}`}
-        />
+        <span
+          key={settleKey}
+          className={`shrink-0 ${settleKey > 0 ? 'animate-settle' : ''} ${isCompleted ? 'opacity-60' : ''} ${info.iconColor}`}
+        >
+          <Icon size={12} />
+        </span>
         <span
           className={`text-xs ${isCompleted ? 'text-base-text-muted' : 'font-medium text-base-text-secondary'}`}
         >
