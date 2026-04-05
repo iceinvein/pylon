@@ -66,6 +66,7 @@ const CLAUDE_CAPABILITIES: ProviderCapabilities = {
   sessionResume: true,
   midSessionModelSwitch: false,
   fileCheckpointing: true,
+  planMode: true,
 }
 
 // ── Provider ─────────────────────────────────────

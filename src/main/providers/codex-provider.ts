@@ -99,6 +99,7 @@ const CODEX_CAPABILITIES: ProviderCapabilities = {
   sessionResume: true,
   midSessionModelSwitch: false,
   fileCheckpointing: false,
+  planMode: false,
 }
 
 // ── Approval Mode Mapping ────────────────────────
