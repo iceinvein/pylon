@@ -105,11 +105,20 @@ const FALLBACK_MODELS: ProviderModelEntry[] = [
   },
 ]
 
-const EFFORT_LEVELS: { id: EffortLevel; label: string; description: string }[] = [
+type EffortLevelEntry = { id: EffortLevel; label: string; description: string }
+
+const CLAUDE_EFFORT_LEVELS: EffortLevelEntry[] = [
   { id: 'low', label: 'Low', description: 'Quick, minimal reasoning' },
   { id: 'medium', label: 'Medium', description: 'Balanced speed and depth' },
   { id: 'high', label: 'High', description: 'Thorough, detailed output' },
   { id: 'max', label: 'Max', description: 'Extended thinking, highest quality' },
+]
+
+const CODEX_EFFORT_LEVELS: EffortLevelEntry[] = [
+  { id: 'low', label: 'Low', description: 'Minimal reasoning' },
+  { id: 'medium', label: 'Medium', description: 'Standard reasoning' },
+  { id: 'high', label: 'High', description: 'Deep reasoning' },
+  { id: 'max', label: 'xHigh', description: 'Maximum reasoning effort' },
 ]
 
 type InputBarProps = {
@@ -352,7 +361,8 @@ export function InputBar({
   // Build dropdown items with filtering — driven by the model's declared capabilities
   const currentModelEntry = providerModels.find((m) => m.id === model)
   const supportedEffort = currentModelEntry?.supportsEffort ?? ['low', 'medium', 'high']
-  const effortItems = EFFORT_LEVELS.filter((e) => supportedEffort.includes(e.id))
+  const effortLevels = currentProvider === 'codex' ? CODEX_EFFORT_LEVELS : CLAUDE_EFFORT_LEVELS
+  const effortItems = effortLevels.filter((e) => supportedEffort.includes(e.id))
   const permissionDescriptions: Record<string, string> = {
     default: 'Asks before risky actions',
     'auto-approve': 'Approves all actions automatically',
