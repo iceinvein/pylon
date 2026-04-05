@@ -579,22 +579,30 @@ export function InputBar({
               </Tooltip>
 
               {providerSupportsPlanMode && (
-                <button
-                  type="button"
-                  onClick={() => onModeChange(mode === 'plan' ? 'normal' : 'plan')}
-                  className={`flex h-7 items-center gap-1 rounded-full border px-2.5 text-xs transition-colors ${
-                    mode === 'plan'
-                      ? 'border-violet-800/50 bg-violet-900/40 text-violet-300'
-                      : 'border-base-border text-base-text-muted hover:border-base-text/30 hover:text-base-text-secondary'
-                  }`}
+                <Tooltip
+                  content={mode === 'plan' ? 'Exit plan mode (⇧⌘L)' : 'Plan before executing (⇧⌘L)'}
+                  side="top"
                 >
-                  <ClipboardList size={13} />
-                  <span>Plan</span>
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => onModeChange(mode === 'plan' ? 'normal' : 'plan')}
+                    className={`flex h-7 items-center gap-1 rounded-full border px-2.5 text-xs transition-colors ${
+                      mode === 'plan'
+                        ? 'border-violet-800/50 bg-violet-900/40 text-violet-300'
+                        : 'border-base-border text-base-text-muted hover:border-base-text/30 hover:text-base-text-secondary'
+                    }`}
+                  >
+                    <ClipboardList size={13} />
+                    <span>Plan</span>
+                  </button>
+                </Tooltip>
               )}
 
               <div className={mode === 'plan' ? 'pointer-events-none opacity-40' : ''}>
-                <Tooltip content="Permission mode" side="top">
+                <Tooltip
+                  content={mode === 'plan' ? 'Overridden while in plan mode' : 'Permission mode'}
+                  side="top"
+                >
                   <DropdownMenu
                     items={permissionItems}
                     value={permissionMode}
