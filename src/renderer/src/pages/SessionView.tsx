@@ -19,6 +19,7 @@ import { PanelHeader } from '../components/PanelHeader'
 import { PrRaiseOverlay } from '../components/pr-raise/PrRaiseOverlay'
 import { ReviewPanel } from '../components/review/ReviewPanel'
 import { SessionInfoPanel } from '../components/SessionInfoPanel'
+import { Tooltip } from '../components/Tooltip'
 import { WorktreeSetupModal } from '../components/WorktreeSetupModal'
 import { usePersistedWidth } from '../hooks/use-persisted-width'
 import { fadeUpSmall, stagger } from '../lib/animations'
@@ -523,97 +524,101 @@ export function SessionView({ tab, isActive }: SessionViewProps) {
 
             {/* Icon strip with labels */}
             <div className="flex w-10 shrink-0 flex-col items-center gap-0.5 border-base-border-subtle border-l bg-base-bg pt-1">
-              <button
-                type="button"
-                onClick={() => setShowFlow((v) => !v)}
-                title={`${showFlow ? 'Hide' : 'Show'} flow (⌘⇧F)`}
-                aria-label={showFlow ? 'Hide flow panel' : 'Show flow panel'}
-                aria-pressed={showFlow}
-                className={`group flex h-10 w-10 flex-col items-center justify-center gap-0.5 rounded-lg transition-colors hover:bg-base-raised/60 ${
-                  showFlow ? 'bg-accent/10' : ''
-                }`}
-              >
-                <Workflow
-                  size={15}
-                  className={`transition-colors ${
-                    showFlow
-                      ? 'text-accent-text'
-                      : 'text-base-text-muted group-hover:text-base-text'
-                  }`}
-                />
-                <span
-                  className={`text-[10px] leading-none ${showFlow ? 'text-accent-text' : 'text-base-text-faint'}`}
-                >
-                  Flow
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowChanges((v) => !v)}
-                title={`${showChanges ? 'Hide' : 'Show'} changed files (⌘⇧C)`}
-                aria-label={showChanges ? 'Hide changed files' : 'Show changed files'}
-                aria-pressed={showChanges}
-                className={`group relative flex h-10 w-10 flex-col items-center justify-center gap-0.5 rounded-lg transition-colors hover:bg-base-raised/60 ${
-                  showChanges ? 'bg-accent/10' : ''
-                }`}
-              >
-                <GitCompareArrows
-                  size={15}
-                  className={`transition-colors ${
-                    showChanges
-                      ? 'text-accent-text'
-                      : 'text-base-text-muted group-hover:text-base-text'
-                  }`}
-                />
-                <span
-                  className={`text-[10px] leading-none ${showChanges ? 'text-accent-text' : 'text-base-text-faint'}`}
-                >
-                  Files
-                </span>
-                {changedFiles.length > 0 && (
-                  <span className="absolute top-0 right-0 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-accent px-0.5 font-medium text-[9px] text-white">
-                    {changedFiles.length}
-                  </span>
-                )}
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowInfo((v) => !v)}
-                title={`${showInfo ? 'Hide' : 'Show'} session info (⌘⇧I)`}
-                aria-label={showInfo ? 'Hide session info' : 'Show session info'}
-                aria-pressed={showInfo}
-                className={`group flex h-10 w-10 flex-col items-center justify-center gap-0.5 rounded-lg transition-colors hover:bg-base-raised/60 ${
-                  showInfo ? 'bg-accent/10' : ''
-                }`}
-              >
-                <Info
-                  size={15}
-                  className={`transition-colors ${
-                    showInfo
-                      ? 'text-accent-text'
-                      : 'text-base-text-muted group-hover:text-base-text'
-                  }`}
-                />
-                <span
-                  className={`text-[10px] leading-none ${showInfo ? 'text-accent-text' : 'text-base-text-faint'}`}
-                >
-                  Info
-                </span>
-              </button>
-              {sessionId && tab.useWorktree && changedFiles.length > 0 && (
+              <Tooltip content="Agent Flow" shortcut="⌘⇧F" side="left">
                 <button
                   type="button"
-                  onClick={() => usePrRaiseStore.getState().openOverlay(sessionId)}
-                  title="Raise pull request"
-                  aria-label="Raise pull request"
-                  className="group flex h-10 w-10 flex-col items-center justify-center gap-0.5 rounded-lg transition-colors hover:bg-base-raised/60"
+                  onClick={() => setShowFlow((v) => !v)}
+                  aria-label={showFlow ? 'Hide flow panel' : 'Show flow panel'}
+                  aria-pressed={showFlow}
+                  className={`group flex h-10 w-10 flex-col items-center justify-center gap-0.5 rounded-lg transition-colors hover:bg-base-raised/60 ${
+                    showFlow ? 'bg-accent/10' : ''
+                  }`}
                 >
-                  <GitPullRequestArrow
+                  <Workflow
                     size={15}
-                    className="text-info transition-colors group-hover:text-info/80"
+                    className={`transition-colors ${
+                      showFlow
+                        ? 'text-accent-text'
+                        : 'text-base-text-muted group-hover:text-base-text'
+                    }`}
                   />
-                  <span className="text-[10px] text-base-text-faint leading-none">PR</span>
+                  <span
+                    className={`text-[10px] leading-none ${showFlow ? 'text-accent-text' : 'text-base-text-faint'}`}
+                  >
+                    Flow
+                  </span>
                 </button>
+              </Tooltip>
+              <Tooltip content="Changed Files" shortcut="⌘⇧C" side="left">
+                <button
+                  type="button"
+                  onClick={() => setShowChanges((v) => !v)}
+                  aria-label={showChanges ? 'Hide changed files' : 'Show changed files'}
+                  aria-pressed={showChanges}
+                  className={`group relative flex h-10 w-10 flex-col items-center justify-center gap-0.5 rounded-lg transition-colors hover:bg-base-raised/60 ${
+                    showChanges ? 'bg-accent/10' : ''
+                  }`}
+                >
+                  <GitCompareArrows
+                    size={15}
+                    className={`transition-colors ${
+                      showChanges
+                        ? 'text-accent-text'
+                        : 'text-base-text-muted group-hover:text-base-text'
+                    }`}
+                  />
+                  <span
+                    className={`text-[10px] leading-none ${showChanges ? 'text-accent-text' : 'text-base-text-faint'}`}
+                  >
+                    Files
+                  </span>
+                  {changedFiles.length > 0 && (
+                    <span className="absolute top-0 right-0 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-accent px-0.5 font-medium text-[9px] text-white">
+                      {changedFiles.length}
+                    </span>
+                  )}
+                </button>
+              </Tooltip>
+              <Tooltip content="Session Info" shortcut="⌘⇧I" side="left">
+                <button
+                  type="button"
+                  onClick={() => setShowInfo((v) => !v)}
+                  aria-label={showInfo ? 'Hide session info' : 'Show session info'}
+                  aria-pressed={showInfo}
+                  className={`group flex h-10 w-10 flex-col items-center justify-center gap-0.5 rounded-lg transition-colors hover:bg-base-raised/60 ${
+                    showInfo ? 'bg-accent/10' : ''
+                  }`}
+                >
+                  <Info
+                    size={15}
+                    className={`transition-colors ${
+                      showInfo
+                        ? 'text-accent-text'
+                        : 'text-base-text-muted group-hover:text-base-text'
+                    }`}
+                  />
+                  <span
+                    className={`text-[10px] leading-none ${showInfo ? 'text-accent-text' : 'text-base-text-faint'}`}
+                  >
+                    Info
+                  </span>
+                </button>
+              </Tooltip>
+              {sessionId && tab.useWorktree && changedFiles.length > 0 && (
+                <Tooltip content="Raise Pull Request" side="left">
+                  <button
+                    type="button"
+                    onClick={() => usePrRaiseStore.getState().openOverlay(sessionId)}
+                    aria-label="Raise pull request"
+                    className="group flex h-10 w-10 flex-col items-center justify-center gap-0.5 rounded-lg transition-colors hover:bg-base-raised/60"
+                  >
+                    <GitPullRequestArrow
+                      size={15}
+                      className="text-info transition-colors group-hover:text-info/80"
+                    />
+                    <span className="text-[10px] text-base-text-faint leading-none">PR</span>
+                  </button>
+                </Tooltip>
               )}
             </div>
           </>

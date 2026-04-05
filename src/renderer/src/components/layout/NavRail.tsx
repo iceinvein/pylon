@@ -2,6 +2,7 @@ import { Clock, FlaskConical, GitPullRequestDraft, Home, Network, Settings } fro
 import { motion } from 'motion/react'
 import { usePrReviewStore } from '../../store/pr-review-store'
 import { useUiStore } from '../../store/ui-store'
+import { Tooltip } from '../Tooltip'
 
 export function NavRail() {
   const { sidebarView, setSidebarView, setSettingsOpen } = useUiStore()
@@ -12,55 +13,66 @@ export function NavRail() {
       className="flex w-14 flex-col items-center gap-0.5 border-base-border-subtle border-r bg-base-bg pt-12 pb-3"
       style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
     >
-      <NavButton
-        active={sidebarView === 'home'}
-        onClick={() => setSidebarView('home')}
-        title="Home"
-        label="Home"
-        icon={Home}
-      />
-      <NavButton
-        active={sidebarView === 'history'}
-        onClick={() => setSidebarView(sidebarView === 'history' ? 'home' : 'history')}
-        title="Session History"
-        label="History"
-        icon={Clock}
-      />
-      <NavButton
-        active={sidebarView === 'pr-review'}
-        onClick={() => setSidebarView(sidebarView === 'pr-review' ? 'home' : 'pr-review')}
-        title="PR Review"
-        label="PRs"
-        icon={GitPullRequestDraft}
-        badge={unseenCount}
-      />
-      <NavButton
-        active={sidebarView === 'testing'}
-        onClick={() => setSidebarView(sidebarView === 'testing' ? 'home' : 'testing')}
-        title="AI Testing"
-        label="Test"
-        icon={FlaskConical}
-      />
-      <NavButton
-        active={sidebarView === 'ast'}
-        onClick={() => setSidebarView(sidebarView === 'ast' ? 'home' : 'ast')}
-        title="Explore Codebase"
-        label="Code"
-        icon={Network}
-      />
+      <Tooltip content="Sessions" shortcut="⌘⇧1" side="right">
+        <NavButton
+          active={sidebarView === 'home'}
+          onClick={() => setSidebarView('home')}
+          title="Sessions"
+          label="Home"
+          icon={Home}
+        />
+      </Tooltip>
+      <Tooltip content="Session History" shortcut="⌘⇧2" side="right">
+        <NavButton
+          active={sidebarView === 'history'}
+          onClick={() => setSidebarView(sidebarView === 'history' ? 'home' : 'history')}
+          title="Session History"
+          label="History"
+          icon={Clock}
+        />
+      </Tooltip>
+      <Tooltip content="PR Review" shortcut="⌘⇧3" side="right">
+        <NavButton
+          active={sidebarView === 'pr-review'}
+          onClick={() => setSidebarView(sidebarView === 'pr-review' ? 'home' : 'pr-review')}
+          title="PR Review"
+          label="PRs"
+          icon={GitPullRequestDraft}
+          badge={unseenCount}
+        />
+      </Tooltip>
+      <Tooltip content="AI Testing" shortcut="⌘⇧4" side="right">
+        <NavButton
+          active={sidebarView === 'testing'}
+          onClick={() => setSidebarView(sidebarView === 'testing' ? 'home' : 'testing')}
+          title="AI Testing"
+          label="Test"
+          icon={FlaskConical}
+        />
+      </Tooltip>
+      <Tooltip content="Explore Codebase" shortcut="⌘⇧5" side="right">
+        <NavButton
+          active={sidebarView === 'ast'}
+          onClick={() => setSidebarView(sidebarView === 'ast' ? 'home' : 'ast')}
+          title="Explore Codebase"
+          label="Code"
+          icon={Network}
+        />
+      </Tooltip>
 
       <div className="mt-auto flex flex-col items-center gap-1">
-        <motion.button
-          onClick={() => setSettingsOpen(true)}
-          title="Settings"
-          aria-label="Settings"
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          transition={{ duration: 0.1 }}
-          className="relative flex h-9 w-9 items-center justify-center rounded-lg text-base-text-muted transition-colors hover:text-base-text"
-        >
-          <Settings size={18} />
-        </motion.button>
+        <Tooltip content="Settings" side="right">
+          <motion.button
+            onClick={() => setSettingsOpen(true)}
+            aria-label="Settings"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            transition={{ duration: 0.1 }}
+            className="relative flex h-9 w-9 items-center justify-center rounded-lg text-base-text-muted transition-colors hover:text-base-text"
+          >
+            <Settings size={18} />
+          </motion.button>
+        </Tooltip>
       </div>
     </div>
   )

@@ -4,6 +4,7 @@ import { formatCost } from '../lib/utils'
 import { useSessionStore } from '../store/session-store'
 import { useTabStore } from '../store/tab-store'
 import { useUiStore } from '../store/ui-store'
+import { Tooltip } from './Tooltip'
 
 const MODEL_SHORT: Record<string, string> = {
   'claude-opus-4-6': 'Opus 4.6',
@@ -50,8 +51,14 @@ function SessionInfo() {
 
   return (
     <span className="flex items-center gap-2.5 text-base-text-faint text-xs">
-      <span>{modelLabel}</span>
-      {cost > 0 && <span className="font-mono">{formatCost(cost)}</span>}
+      <Tooltip content="Active model" side="top">
+        <span className="cursor-default">{modelLabel}</span>
+      </Tooltip>
+      {cost > 0 && (
+        <Tooltip content="Session cost" side="top">
+          <span className="cursor-default font-mono">{formatCost(cost)}</span>
+        </Tooltip>
+      )}
     </span>
   )
 }
@@ -72,13 +79,16 @@ export function StatusBar({ cwd: _cwd, branchStatus }: StatusBarProps) {
 
   return (
     <div className="flex h-6 items-center border-base-border-subtle border-t bg-base-bg px-3">
-      <button
-        type="button"
-        onClick={() => setSidebarView(isGitOpen ? 'home' : 'git')}
-        className={`rounded px-1 py-0.5 transition-colors hover:bg-base-raised ${isGitOpen ? 'bg-base-raised' : ''}`}
-      >
-        <BranchIndicator status={branchStatus} />
-      </button>
+      <Tooltip content="Current branch" side="top">
+        <button
+          type="button"
+          onClick={() => setSidebarView(isGitOpen ? 'home' : 'git')}
+          aria-label="Current branch"
+          className={`rounded px-1 py-0.5 transition-colors hover:bg-base-raised ${isGitOpen ? 'bg-base-raised' : ''}`}
+        >
+          <BranchIndicator status={branchStatus} />
+        </button>
+      </Tooltip>
       <div className="flex-1" />
       <SessionInfo />
     </div>

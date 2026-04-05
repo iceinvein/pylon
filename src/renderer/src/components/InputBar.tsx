@@ -30,6 +30,7 @@ import { useDraftStore } from '../store/draft-store'
 import { useUiStore } from '../store/ui-store'
 import { ContextIndicator } from './ContextIndicator'
 import { DropdownMenu } from './DropdownMenu'
+import { Tooltip } from './Tooltip'
 
 // ── Permission mode definitions per provider ─────
 
@@ -518,48 +519,55 @@ export function InputBar({
                 accept="image/*,text/*,.pdf,.json,.ts,.tsx,.js,.jsx,.py,.md,.yaml,.yml,.toml,.csv"
               />
 
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                title="Attach file"
-                aria-label="Attach file"
-                className="flex h-7 w-7 items-center justify-center rounded-full border border-base-border/50 text-base-text-secondary transition-colors hover:border-base-border hover:text-base-text"
-              >
-                <Paperclip size={13} />
-              </button>
+              <Tooltip content="Attach file" side="top">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  aria-label="Attach file"
+                  className="flex h-7 w-7 items-center justify-center rounded-full border border-base-border/50 text-base-text-secondary transition-colors hover:border-base-border hover:text-base-text"
+                >
+                  <Paperclip size={13} />
+                </button>
+              </Tooltip>
 
-              <DropdownMenu
-                items={providerModels.map((m) => ({ id: m.id, label: m.label }))}
-                value={model}
-                onChange={(id) => {
-                  onModelChange(id)
-                  // When switching providers, reset permission mode to the new provider's default
-                  const newProvider = providerModels.find((m) => m.id === id)?.provider
-                  const oldProvider = currentProvider
-                  if (newProvider && newProvider !== oldProvider) {
-                    const defaultMode = newProvider === 'codex' ? 'on-failure' : 'default'
-                    onPermissionModeChange(defaultMode as PermissionMode)
-                  }
-                }}
-              />
+              <Tooltip content="Model" side="top">
+                <DropdownMenu
+                  items={providerModels.map((m) => ({ id: m.id, label: m.label }))}
+                  value={model}
+                  onChange={(id) => {
+                    onModelChange(id)
+                    // When switching providers, reset permission mode to the new provider's default
+                    const newProvider = providerModels.find((m) => m.id === id)?.provider
+                    const oldProvider = currentProvider
+                    if (newProvider && newProvider !== oldProvider) {
+                      const defaultMode = newProvider === 'codex' ? 'on-failure' : 'default'
+                      onPermissionModeChange(defaultMode as PermissionMode)
+                    }
+                  }}
+                />
+              </Tooltip>
 
-              <DropdownMenu
-                items={effortItems}
-                value={effort}
-                onChange={(id) => onEffortChange(id as EffortLevel)}
-                triggerIcon={<SlidersHorizontal size={13} />}
-                triggerClassName={effortTriggerClass}
-                minWidth={140}
-              />
+              <Tooltip content="Effort level" side="top">
+                <DropdownMenu
+                  items={effortItems}
+                  value={effort}
+                  onChange={(id) => onEffortChange(id as EffortLevel)}
+                  triggerIcon={<SlidersHorizontal size={13} />}
+                  triggerClassName={effortTriggerClass}
+                  minWidth={140}
+                />
+              </Tooltip>
 
-              <DropdownMenu
-                items={permissionItems}
-                value={permissionMode}
-                onChange={(id) => onPermissionModeChange(id as PermissionMode)}
-                triggerIcon={<currentMode.icon size={13} />}
-                triggerClassName={permissionTriggerClass}
-                minWidth={160}
-              />
+              <Tooltip content="Permission mode" side="top">
+                <DropdownMenu
+                  items={permissionItems}
+                  value={permissionMode}
+                  onChange={(id) => onPermissionModeChange(id as PermissionMode)}
+                  triggerIcon={<currentMode.icon size={13} />}
+                  triggerClassName={permissionTriggerClass}
+                  minWidth={160}
+                />
+              </Tooltip>
 
               <div className="flex-1" />
 
@@ -569,34 +577,36 @@ export function InputBar({
 
               <AnimatePresence mode="wait">
                 {isRunning ? (
-                  <motion.button
-                    key="stop"
-                    onClick={onStop}
-                    title="Stop"
-                    aria-label="Stop generation"
-                    className="flex h-7 w-7 items-center justify-center rounded-lg bg-error text-white transition-colors hover:bg-error/80"
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0.8, opacity: 0 }}
-                    transition={{ duration: 0.12 }}
-                  >
-                    <Square size={12} />
-                  </motion.button>
+                  <Tooltip content="Stop generation" side="top">
+                    <motion.button
+                      key="stop"
+                      onClick={onStop}
+                      aria-label="Stop generation"
+                      className="flex h-7 w-7 items-center justify-center rounded-lg bg-error text-white transition-colors hover:bg-error/80"
+                      initial={{ scale: 0.8, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      exit={{ scale: 0.8, opacity: 0 }}
+                      transition={{ duration: 0.12 }}
+                    >
+                      <Square size={12} />
+                    </motion.button>
+                  </Tooltip>
                 ) : (
-                  <motion.button
-                    key="send"
-                    onClick={handleSend}
-                    disabled={!canSend}
-                    title="Send"
-                    aria-label="Send message"
-                    className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-30"
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0.8, opacity: 0 }}
-                    transition={{ duration: 0.12 }}
-                  >
-                    <ArrowUp size={14} strokeWidth={2.5} />
-                  </motion.button>
+                  <Tooltip content="Send message" shortcut="↩" side="top">
+                    <motion.button
+                      key="send"
+                      onClick={handleSend}
+                      disabled={!canSend}
+                      aria-label="Send message"
+                      className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-30"
+                      initial={{ scale: 0.8, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      exit={{ scale: 0.8, opacity: 0 }}
+                      transition={{ duration: 0.12 }}
+                    >
+                      <ArrowUp size={14} strokeWidth={2.5} />
+                    </motion.button>
+                  </Tooltip>
                 )}
               </AnimatePresence>
             </div>
