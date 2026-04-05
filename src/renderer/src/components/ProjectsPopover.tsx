@@ -135,7 +135,7 @@ export function ProjectsPopover({
                       <p className="truncate font-medium text-base-text text-xs">
                         {project.path.split('/').pop()}
                       </p>
-                      <p className="truncate text-[11px] text-base-text-faint">{project.path}</p>
+                      <p className="truncate text-base-text-faint text-xs">{project.path}</p>
                       <p className="text-[10px] text-base-text-faint">
                         {timeAgo(project.lastUsed)}
                       </p>

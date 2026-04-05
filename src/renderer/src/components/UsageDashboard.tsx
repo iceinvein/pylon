@@ -23,22 +23,22 @@ const PERIODS: Array<{ id: UsagePeriod; label: string }> = [
 ]
 
 const CHART_COLORS = {
-  primary: '#c06540',
-  primaryGlow: '#c0654040',
-  muted: '#a49a8d',
-  faint: '#948a7e',
-  grid: '#3d3630',
-  axisLine: '#4d443a',
-  tooltipBg: '#1a1714',
-  tooltipBorder: '#4d443a',
-  tooltipText: '#ede6dc',
+  primary: '#d4a854',
+  primaryGlow: '#d4a85440',
+  muted: '#8b8b8f',
+  faint: '#656568',
+  grid: '#2d2d2f',
+  axisLine: '#3a3a3c',
+  tooltipBg: '#1b1b1c',
+  tooltipBorder: '#3a3a3c',
+  tooltipText: '#ececed',
   warning: '#d4a854',
 } as const
 
 const MODEL_COLORS: Record<string, string> = {
-  'claude-opus-4-6': CHART_COLORS.primary,
-  'claude-sonnet-4-6': CHART_COLORS.muted,
-  'claude-haiku-4-5': CHART_COLORS.faint,
+  'claude-opus-4-6': '#d4a854',
+  'claude-sonnet-4-6': '#6898d4',
+  'claude-haiku-4-5': '#68b27e',
 }
 
 const MODEL_LABELS: Record<string, string> = {

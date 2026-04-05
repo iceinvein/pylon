@@ -74,7 +74,7 @@ export function PrRaiseDescription({ body, onBodyChange, generating }: Props) {
           <button
             type="button"
             onClick={() => setEditing(true)}
-            className="absolute top-0 right-0 flex items-center gap-1.5 rounded-md border border-base-border bg-base-raised px-2.5 py-1.5 text-[11px] text-base-text-secondary opacity-0 transition-all hover:bg-base-border hover:text-base-text group-hover:opacity-100"
+            className="absolute top-0 right-0 flex items-center gap-1.5 rounded-md border border-base-border bg-base-raised px-2.5 py-1.5 text-base-text-secondary text-xs opacity-0 transition-all hover:bg-base-border hover:text-base-text group-hover:opacity-100"
           >
             <Pencil size={12} />
             Edit

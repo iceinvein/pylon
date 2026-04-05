@@ -185,7 +185,7 @@ export function PrList() {
             {groupedPrs.map((group) => (
               <div key={group.repoFullName}>
                 <div className="sticky top-0 z-10 flex items-center gap-2 bg-base-bg/95 px-2 py-1.5 backdrop-blur-sm">
-                  <span className="truncate font-mono text-[11px] text-base-text-secondary">
+                  <span className="truncate font-mono text-base-text-secondary text-xs">
                     {group.repoFullName}
                   </span>
                   <span className="shrink-0 rounded-full bg-base-border/50 px-1.5 py-px text-[10px] text-base-text-faint tabular-nums">

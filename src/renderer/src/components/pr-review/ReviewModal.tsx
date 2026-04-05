@@ -98,7 +98,7 @@ export function ReviewModal({ onStart, onClose, isRerun }: Props) {
 
         {/* Focus areas */}
         <div className="px-5 py-4">
-          <p className="mb-3 font-medium text-[11px] text-base-text-muted uppercase tracking-wider">
+          <p className="mb-3 font-medium text-base-text-muted text-xs uppercase tracking-wider">
             Focus areas
           </p>
           <div className="space-y-1.5">
@@ -147,7 +147,7 @@ export function ReviewModal({ onStart, onClose, isRerun }: Props) {
 
         {/* Footer */}
         <div className="flex items-center justify-between border-base-border-subtle border-t px-5 py-3.5">
-          <span className="text-[11px] text-base-text-muted">
+          <span className="text-base-text-muted text-xs">
             {selected.length} area{selected.length !== 1 ? 's' : ''} selected
           </span>
           <button

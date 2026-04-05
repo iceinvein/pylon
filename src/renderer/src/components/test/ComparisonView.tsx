@@ -70,13 +70,13 @@ export function ComparisonView() {
       </div>
 
       <div className="flex items-center gap-3 border-base-border-subtle border-b px-4 py-2">
-        <span className="rounded bg-success/20 px-2 py-0.5 text-[11px] text-success">
+        <span className="rounded bg-success/20 px-2 py-0.5 text-success text-xs">
           +{diff.new.length} new
         </span>
-        <span className="rounded bg-error/20 px-2 py-0.5 text-[11px] text-error">
+        <span className="rounded bg-error/20 px-2 py-0.5 text-error text-xs">
           -{diff.resolved.length} resolved
         </span>
-        <span className="rounded bg-base-border px-2 py-0.5 text-[11px] text-base-text-muted">
+        <span className="rounded bg-base-border px-2 py-0.5 text-base-text-muted text-xs">
           {diff.unchanged.length} unchanged
         </span>
       </div>
@@ -85,7 +85,7 @@ export function ComparisonView() {
         <div className="flex flex-1 flex-col overflow-hidden border-base-border-subtle border-r">
           <div className="border-base-border-subtle border-b px-4 py-2">
             <p className="font-medium text-base-text text-sm">Baseline</p>
-            <p className="text-[11px] text-base-text-faint">
+            <p className="text-base-text-faint text-xs">
               {formatDate(baselineExploration.createdAt)} · {baselineFindings.length} findings
             </p>
           </div>
@@ -104,7 +104,7 @@ export function ComparisonView() {
         <div className="flex flex-1 flex-col overflow-hidden">
           <div className="border-base-border-subtle border-b px-4 py-2">
             <p className="font-medium text-base-text text-sm">Current</p>
-            <p className="text-[11px] text-base-text-faint">
+            <p className="text-base-text-faint text-xs">
               {formatDate(targetExploration.createdAt)} · {targetFindings.length} findings
             </p>
           </div>

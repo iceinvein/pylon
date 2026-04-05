@@ -88,11 +88,11 @@ function CodeBlock({ className, children }: { className?: string; children?: Rea
   return (
     <div className="group relative my-3 overflow-hidden rounded-lg border border-base-border-subtle bg-base-surface">
       <div className="flex items-center justify-between border-base-border-subtle/60 border-b bg-base-surface/80 px-3 py-1.5">
-        <span className="font-mono text-[11px] text-base-text-muted">{label}</span>
+        <span className="font-mono text-base-text-muted text-xs">{label}</span>
         <button
           type="button"
           onClick={handleCopy}
-          className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-base-text-muted transition-colors hover:bg-base-raised hover:text-base-text"
+          className="flex items-center gap-1 rounded px-1.5 py-0.5 text-base-text-muted text-xs transition-colors hover:bg-base-raised hover:text-base-text"
         >
           {copied ? <Check size={11} /> : <Copy size={11} />}
           {copied ? 'Copied' : 'Copy'}
@@ -190,7 +190,7 @@ function InsightCard({ text }: { text: string }) {
     <div className="my-3 border-special/30 border-l-2 px-4 py-3">
       <div className="mb-2.5 flex items-center gap-1.5">
         <Lightbulb size={12} className="text-special/50" />
-        <span className="text-[11px] text-special/50 tracking-wide">Insight</span>
+        <span className="text-special/50 text-xs tracking-wide">Insight</span>
       </div>
       <div className={proseClasses}>
         <ReactMarkdown remarkPlugins={[remarkGfm]} components={insightMarkdownComponents}>

@@ -66,7 +66,7 @@ export function FindingCard({
 
           {finding.reproductionSteps.length > 0 && (
             <div className="mt-2">
-              <p className="mb-1 text-[11px] text-base-text-muted uppercase tracking-wider">
+              <p className="mb-1 text-base-text-muted text-xs uppercase tracking-wider">
                 Reproduction steps
               </p>
               <ol className="list-inside list-decimal space-y-0.5 text-base-text-secondary text-xs">

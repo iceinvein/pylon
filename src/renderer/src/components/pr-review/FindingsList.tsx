@@ -41,7 +41,7 @@ export function FindingsList({ repoFullName, prNumber }: Props) {
     <div>
       {/* Header with stats */}
       <div className="mb-3 flex items-center gap-2">
-        <span className="font-medium text-[11px] text-base-text-secondary">
+        <span className="font-medium text-base-text-secondary text-xs">
           {activeFindings.length} finding{activeFindings.length !== 1 ? 's' : ''}
         </span>
         <div className="flex items-center gap-1.5">

@@ -127,13 +127,13 @@ export function FindingCard({
                 </span>
                 <span className="font-medium text-base-text text-xs">{finding.title}</span>
                 {finding.domain && (
-                  <span className="rounded bg-base-raised px-1.5 py-0.5 font-medium text-[9px] text-base-text-muted uppercase tracking-wider">
+                  <span className="rounded bg-base-raised px-1.5 py-0.5 font-medium text-[10px] text-base-text-muted uppercase tracking-wider">
                     {DOMAIN_LABELS[finding.domain] ?? finding.domain}
                   </span>
                 )}
               </div>
               {finding.file && (
-                <div className="mt-0.5 font-mono text-[11px] text-base-text-muted">
+                <div className="mt-0.5 font-mono text-base-text-muted text-xs">
                   {showFilePath && onNavigate ? (
                     <button
                       type="button"

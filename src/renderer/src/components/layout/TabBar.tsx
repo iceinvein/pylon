@@ -61,7 +61,7 @@ const TabItem = memo(function TabItem({
       <div className="relative ml-1 flex h-5 shrink-0 items-center justify-center">
         {shortcutNum !== null && (
           <span
-            className={`px-1 text-[11px] tabular-nums transition-opacity group-hover:opacity-0 ${
+            className={`px-1 text-xs tabular-nums transition-opacity group-hover:opacity-0 ${
               isActive ? 'text-base-text-muted' : 'text-base-text-faint'
             }`}
           >

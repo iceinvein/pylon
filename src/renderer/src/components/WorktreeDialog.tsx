@@ -90,7 +90,7 @@ export function WorktreeDialog({ folderPath, isDirty, onConfirm, onCancel }: Wor
         {useWorktree && recipe && (
           <div className="mt-2 ml-9 flex items-center justify-between rounded-md border border-accent/20 bg-accent/5 px-3 py-2">
             <div>
-              <p className="text-[11px] text-accent/80">Setup recipe cached</p>
+              <p className="text-accent/80 text-xs">Setup recipe cached</p>
               <p className="text-[10px] text-accent/50">
                 {recipe.steps.length} {recipe.steps.length === 1 ? 'step' : 'steps'} • analyzed{' '}
                 {formatAge(recipe.createdAt)}

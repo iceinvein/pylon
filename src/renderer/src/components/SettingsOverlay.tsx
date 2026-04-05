@@ -660,7 +660,7 @@ export function SettingsOverlay() {
                               <button
                                 type="button"
                                 onClick={() => resetAgentPrompt(agent.id)}
-                                className="text-[11px] text-base-text-muted transition-colors hover:text-base-text"
+                                className="text-base-text-muted text-xs transition-colors hover:text-base-text"
                               >
                                 Reset to default
                               </button>

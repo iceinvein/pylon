@@ -409,7 +409,7 @@ export function ChangesPanel() {
                             type="button"
                             onClick={handleDiscardCleanup}
                             disabled={discardLoading}
-                            className="rounded bg-error px-2 py-1.5 font-medium text-[11px] text-white transition-colors hover:bg-error disabled:opacity-50"
+                            className="rounded bg-error px-2 py-1.5 font-medium text-white text-xs transition-colors hover:bg-error disabled:opacity-50"
                           >
                             {discardLoading ? (
                               <Loader2 size={11} className="animate-spin" />
@@ -420,7 +420,7 @@ export function ChangesPanel() {
                           <button
                             type="button"
                             onClick={() => setShowDiscardConfirm(false)}
-                            className="rounded px-2 py-1.5 text-[11px] text-base-text-muted transition-colors hover:bg-base-raised hover:text-base-text"
+                            className="rounded px-2 py-1.5 text-base-text-muted text-xs transition-colors hover:bg-base-raised hover:text-base-text"
                           >
                             Cancel
                           </button>

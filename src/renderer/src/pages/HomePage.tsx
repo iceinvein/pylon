@@ -119,7 +119,7 @@ export function HomePage() {
                         {project.path.split('/').pop()}
                       </p>
                       <p className="truncate text-base-text-muted text-xs">{project.path}</p>
-                      <p className="mt-0.5 text-[11px] text-base-text-faint">
+                      <p className="mt-0.5 text-base-text-faint text-xs">
                         {timeAgo(project.lastUsed)}
                       </p>
                     </div>

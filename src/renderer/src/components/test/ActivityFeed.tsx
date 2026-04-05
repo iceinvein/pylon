@@ -67,10 +67,10 @@ export function ActivityFeed({
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-2 border-base-border-subtle border-b px-3 py-2">
-        <span className="font-semibold text-[11px] text-base-text-secondary uppercase tracking-wider">
+        <span className="font-semibold text-base-text-secondary text-xs uppercase tracking-wider">
           Activity
         </span>
-        <span className="text-[11px] text-base-text-faint">
+        <span className="text-base-text-faint text-xs">
           {actionCount} action{actionCount !== 1 ? 's' : ''}
         </span>
         {filterLabel && (

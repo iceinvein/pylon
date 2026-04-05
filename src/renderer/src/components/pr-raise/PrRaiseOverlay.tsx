@@ -166,7 +166,7 @@ export function PrRaiseOverlay() {
                 />
 
                 {/* Tabs */}
-                <div className="flex border-base-border-subtle border-b px-6 text-[13px]">
+                <div className="flex border-base-border-subtle border-b px-6 text-sm">
                   {(['description', 'files', 'commits'] as const).map((tab) => (
                     <button
                       key={tab}
@@ -220,7 +220,7 @@ export function PrRaiseOverlay() {
                   <button
                     type="button"
                     onClick={closeOverlay}
-                    className="rounded-md border border-base-border bg-base-raised px-5 py-2 text-[13px] text-base-text transition-colors hover:bg-base-border"
+                    className="rounded-md border border-base-border bg-base-raised px-5 py-2 text-base-text text-sm transition-colors hover:bg-base-border"
                   >
                     Cancel
                   </button>
@@ -228,7 +228,7 @@ export function PrRaiseOverlay() {
                     type="button"
                     onClick={handleCreate}
                     disabled={creating || !editedTitle || !info || result?.success === true}
-                    className="rounded-md bg-info px-5 py-2 font-medium text-[13px] text-white transition-colors hover:bg-info disabled:opacity-40"
+                    className="rounded-md bg-info px-5 py-2 font-medium text-sm text-white transition-colors hover:bg-info disabled:opacity-40"
                   >
                     {creating ? (
                       <span className="flex items-center gap-2">

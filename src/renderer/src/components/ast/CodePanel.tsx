@@ -265,7 +265,7 @@ export function CodePanel({ selectedFile, fileAst, selectedNodeId }: CodePanelPr
             ) : (
               <ChevronRight size={12} className="text-base-text-muted" />
             )}
-            <span className="text-[11px] text-base-text-muted">
+            <span className="text-base-text-muted text-xs">
               External Dependencies ({externalDeps.length})
             </span>
           </button>
@@ -274,7 +274,7 @@ export function CodePanel({ selectedFile, fileAst, selectedNodeId }: CodePanelPr
               {externalDeps.map((dep) => (
                 <div key={dep.name} className="flex items-center gap-1">
                   <Package size={10} className="shrink-0 text-base-text-muted/50" />
-                  <span className="text-[11px] text-base-text-muted">{dep.name}</span>
+                  <span className="text-base-text-muted text-xs">{dep.name}</span>
                 </div>
               ))}
             </div>
@@ -284,7 +284,7 @@ export function CodePanel({ selectedFile, fileAst, selectedNodeId }: CodePanelPr
 
       {/* Code body */}
       <div ref={containerRef} className="flex-1 overflow-auto bg-[#121212]">
-        <table className="w-full border-collapse font-mono text-[13px] leading-[1.65]">
+        <table className="w-full border-collapse font-mono text-sm leading-[1.65]">
           <tbody>
             {tokenizedLines.map((lineTokens, i) => {
               const lineNum = i + 1

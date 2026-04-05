@@ -171,7 +171,7 @@ export function QuestionPrompt({ question, onRespond }: QuestionPromptProps) {
                               {cleaned}
                             </pre>
                           ) : (
-                            <p className="py-0.5 text-[11px] text-base-text-faint italic">
+                            <p className="py-0.5 text-base-text-faint text-xs italic">
                               Hover an option to see its preview
                             </p>
                           )}

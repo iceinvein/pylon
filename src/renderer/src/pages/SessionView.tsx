@@ -405,7 +405,7 @@ export function SessionView({ tab, isActive }: SessionViewProps) {
                       { keys: '⌘?', label: 'All shortcuts' },
                     ].map((tip) => (
                       <div key={tip.keys} className="flex items-center gap-2 py-0.5">
-                        <kbd className="inline-flex min-w-5 justify-center rounded border border-base-border px-1 py-0.5 font-mono text-[11px] text-base-text-muted">
+                        <kbd className="inline-flex min-w-5 justify-center rounded border border-base-border px-1 py-0.5 font-mono text-base-text-muted text-xs">
                           {tip.keys}
                         </kbd>
                         <span className="text-base-text-faint text-xs">{tip.label}</span>
@@ -571,7 +571,7 @@ export function SessionView({ tab, isActive }: SessionViewProps) {
                   Files
                 </span>
                 {changedFiles.length > 0 && (
-                  <span className="absolute top-0 right-0 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-accent px-0.5 font-medium text-[9px] text-white">
+                  <span className="absolute top-0 right-0 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-accent px-0.5 font-medium text-[10px] text-white">
                     {changedFiles.length}
                   </span>
                 )}

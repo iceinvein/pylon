@@ -114,14 +114,14 @@ export function DiffFindingAnnotation({ finding, checked, onToggle, onPost }: Pr
             >
               {finding.posted ? 'Posted' : config.label}
             </span>
-            <span className="font-medium text-[11px] text-base-text">{finding.title}</span>
+            <span className="font-medium text-base-text text-xs">{finding.title}</span>
             {finding.domain && (
-              <span className="rounded bg-base-raised px-1 py-0.5 font-medium text-[9px] text-base-text-muted uppercase tracking-wider">
+              <span className="rounded bg-base-raised px-1 py-0.5 font-medium text-[10px] text-base-text-muted uppercase tracking-wider">
                 {DOMAIN_LABELS[finding.domain] ?? finding.domain}
               </span>
             )}
           </div>
-          <p className="mt-1 text-[11px] text-base-text-secondary leading-relaxed">
+          <p className="mt-1 text-base-text-secondary text-xs leading-relaxed">
             {finding.description}
           </p>
         </div>

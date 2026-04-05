@@ -194,10 +194,10 @@ export function HistoryPanel() {
                     <ChevronDown size={12} className="shrink-0 text-base-text-faint" />
                   )}
                   <Folder size={12} className="shrink-0 text-base-text-muted" />
-                  <span className="min-w-0 flex-1 truncate font-medium text-[11px] text-base-text-secondary">
+                  <span className="min-w-0 flex-1 truncate font-medium text-base-text-secondary text-xs">
                     {group.projectName}
                   </span>
-                  <span className="shrink-0 rounded-full bg-base-raised px-1.5 py-0.5 text-[11px] text-base-text-muted">
+                  <span className="shrink-0 rounded-full bg-base-raised px-1.5 py-0.5 text-base-text-muted text-xs">
                     {group.sessions.length}
                   </span>
                 </button>
@@ -222,18 +222,18 @@ export function HistoryPanel() {
                           {session.worktree_branch && (
                             <div className="mt-0.5 flex items-center gap-1">
                               <GitBranch size={9} className="text-accent" />
-                              <span className="text-[11px] text-accent/80">
+                              <span className="text-accent/80 text-xs">
                                 {session.worktree_branch}
                               </span>
                             </div>
                           )}
                           <div className="mt-0.5 flex items-center gap-2.5">
-                            <span className="flex items-center gap-1 text-[11px] text-base-text-faint">
+                            <span className="flex items-center gap-1 text-base-text-faint text-xs">
                               <Clock size={9} />
                               {timeAgo(session.updated_at)}
                             </span>
                             {session.total_cost_usd > 0 && (
-                              <span className="flex items-center gap-1 text-[11px] text-base-text-faint">
+                              <span className="flex items-center gap-1 text-base-text-faint text-xs">
                                 <DollarSign size={9} />
                                 {formatCost(session.total_cost_usd)}
                               </span>
@@ -268,7 +268,7 @@ export function HistoryPanel() {
                           onClick={() =>
                             setExpanded((prev) => new Set([...prev, group.projectPath]))
                           }
-                          className="w-full rounded-md px-2 py-1.5 text-center text-[11px] text-base-text-muted transition-colors hover:bg-base-raised/50 hover:text-base-text-secondary"
+                          className="w-full rounded-md px-2 py-1.5 text-center text-base-text-muted text-xs transition-colors hover:bg-base-raised/50 hover:text-base-text-secondary"
                         >
                           Show {group.sessions.length - PROJECT_SESSION_LIMIT} more
                         </button>

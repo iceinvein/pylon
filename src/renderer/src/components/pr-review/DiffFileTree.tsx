@@ -139,7 +139,7 @@ export function DiffFileTree({ files, findings, selectedFile, onSelectFile }: Pr
           <button
             type="button"
             onClick={() => onSelectFile(null)}
-            className={`flex items-center gap-2 border-base-border-subtle/50 border-b px-3 py-2 text-left text-[11px] transition-colors ${
+            className={`flex items-center gap-2 border-base-border-subtle/50 border-b px-3 py-2 text-left text-xs transition-colors ${
               selectedFile === null
                 ? 'bg-base-raised/60 text-base-text'
                 : 'text-base-text-secondary hover:bg-base-raised/30'
@@ -148,7 +148,7 @@ export function DiffFileTree({ files, findings, selectedFile, onSelectFile }: Pr
             <Eye size={12} className="shrink-0 text-base-text-muted" />
             <span className="flex-1">Overview</span>
             {generalFindings.length > 0 && (
-              <span className="rounded-full bg-base-text-faint px-1.5 py-0.5 font-medium text-[9px] text-base-text tabular-nums">
+              <span className="rounded-full bg-base-text-faint px-1.5 py-0.5 font-medium text-[10px] text-base-text tabular-nums">
                 {generalFindings.length}
               </span>
             )}
@@ -207,7 +207,7 @@ function DirContent({
               type="button"
               key={file.path}
               onClick={() => onSelectFile(file.path)}
-              className={`flex w-full items-center gap-1.5 py-1 pr-2 text-left text-[11px] transition-colors ${
+              className={`flex w-full items-center gap-1.5 py-1 pr-2 text-left text-xs transition-colors ${
                 selectedFile === file.path
                   ? 'bg-base-raised/60 text-base-text'
                   : 'text-base-text-secondary hover:bg-base-raised/30 hover:text-base-text'
@@ -221,7 +221,7 @@ function DirContent({
                   {severityCounts.map(({ severity, count }) => (
                     <span
                       key={severity}
-                      className={`rounded-full px-1.5 py-0.5 font-medium text-[9px] tabular-nums ${SEVERITY_COLORS[severity] || SEVERITY_COLORS.nitpick}`}
+                      className={`rounded-full px-1.5 py-0.5 font-medium text-[10px] tabular-nums ${SEVERITY_COLORS[severity] || SEVERITY_COLORS.nitpick}`}
                     >
                       {count}
                     </span>
@@ -261,14 +261,14 @@ function DirEntry({
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
-        className="flex w-full items-center gap-1.5 py-1 pr-2 text-left text-[11px] text-base-text-muted transition-colors hover:text-base-text"
+        className="flex w-full items-center gap-1.5 py-1 pr-2 text-left text-base-text-muted text-xs transition-colors hover:text-base-text"
         style={{ paddingLeft: `${depth * 12 + 8}px` }}
       >
         <Chevron size={10} className="shrink-0" />
         <FolderOpen size={11} className="shrink-0 text-base-text-faint" />
         <span className="min-w-0 flex-1 truncate font-mono">{dir.name}</span>
         {dirCount > 0 && (
-          <span className="shrink-0 rounded-full bg-base-text-faint/60 px-1.5 py-0.5 font-medium text-[9px] text-base-text tabular-nums">
+          <span className="shrink-0 rounded-full bg-base-text-faint/60 px-1.5 py-0.5 font-medium text-[10px] text-base-text tabular-nums">
             {dirCount}
           </span>
         )}
