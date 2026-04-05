@@ -1,4 +1,4 @@
-import { GitBranch } from 'lucide-react'
+import { ClipboardList, GitBranch } from 'lucide-react'
 import type { GitBranchStatus } from '../../../shared/types'
 import { formatCost } from '../lib/utils'
 import { useSessionStore } from '../store/session-store'
@@ -43,6 +43,7 @@ function BranchIndicator({ status }: { status: GitBranchStatus }) {
 function SessionInfo() {
   const sessionId = useUiStore((s) => s.activeSessionId)
   const session = useSessionStore((s) => (sessionId ? s.sessions.get(sessionId) : undefined))
+  const mode = useSessionStore((s) => (sessionId ? s.sessions.get(sessionId)?.mode : undefined))
 
   if (!session) return null
 
@@ -51,6 +52,12 @@ function SessionInfo() {
 
   return (
     <span className="flex items-center gap-2.5 text-base-text-faint text-xs">
+      {mode === 'plan' && (
+        <span className="flex items-center gap-1 rounded-full bg-violet-900/40 px-2 py-0.5 text-violet-300 text-[10px]">
+          <ClipboardList size={10} />
+          Plan
+        </span>
+      )}
       <Tooltip content="Active model" side="top">
         <span className="cursor-default">{modelLabel}</span>
       </Tooltip>
