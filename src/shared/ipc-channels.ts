@@ -133,4 +133,8 @@ export const IPC = {
   AST_CHAT: 'ast:chat',
   AST_CHAT_RESULT: 'ast:chat-result',
   AST_GET_CACHED: 'ast:get-cached',
+  // Plan Mode
+  SESSION_SET_MODE: 'session:set-mode',
+  SESSION_PLAN_APPROVAL: 'session:plan-approval',
+  SESSION_PLAN_APPROVAL_RESPONSE: 'session:plan-approval-response',
 } as const
