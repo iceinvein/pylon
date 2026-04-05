@@ -61,7 +61,7 @@ export function BranchList({ branches, onCheckout, onScrollTo }: BranchListProps
       {open && (
         <div className="absolute top-full left-0 z-50 mt-1 max-h-80 min-w-50 overflow-y-auto rounded-lg border border-base-border bg-base-surface p-1.5 shadow-xl">
           {local.length > 0 && (
-            <p className="mb-1 px-2 font-medium text-[9px] text-base-text-muted uppercase tracking-wider">
+            <p className="mb-1 px-2 font-medium text-[10px] text-base-text-muted uppercase tracking-wider">
               Local
             </p>
           )}
@@ -102,7 +102,7 @@ export function BranchList({ branches, onCheckout, onScrollTo }: BranchListProps
               <button
                 type="button"
                 onClick={() => setShowRemotes(!showRemotes)}
-                className="mt-1 flex w-full items-center gap-1 rounded px-2 py-1 text-[9px] text-base-text-muted uppercase tracking-wider hover:bg-base-raised hover:text-base-text-secondary"
+                className="mt-1 flex w-full items-center gap-1 rounded px-2 py-1 text-[10px] text-base-text-muted uppercase tracking-wider hover:bg-base-raised hover:text-base-text-secondary"
               >
                 {showRemotes ? <ChevronDown size={9} /> : <ChevronRight size={9} />}
                 Remotes ({remote.length})

@@ -89,7 +89,7 @@ export function FindingsPanel({
         <button
           type="button"
           onClick={clearSeverityFilter}
-          className={`rounded-full border px-2 py-0.5 text-[11px] transition-colors ${
+          className={`rounded-full border px-2 py-0.5 text-xs transition-colors ${
             !severityFilter
               ? 'border-base-border bg-base-border/50 text-base-text'
               : 'border-base-border-subtle text-base-text-muted hover:text-base-text'
@@ -105,7 +105,7 @@ export function FindingsPanel({
               key={sev}
               type="button"
               onClick={() => setSeverityFilter(sev)}
-              className={`rounded-full border px-2 py-0.5 text-[11px] capitalize transition-colors ${
+              className={`rounded-full border px-2 py-0.5 text-xs capitalize transition-colors ${
                 isActive
                   ? SEVERITY_PILL_COLORS[sev]
                   : 'border-base-border-subtle text-base-text-muted hover:text-base-text'

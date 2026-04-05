@@ -34,12 +34,12 @@ export function ResultMessage({
       <div className="px-6 pt-2 pb-2 pl-15">
         <div className="mb-1.5 h-px bg-error/20" />
         <div className="flex items-center gap-2">
-          <span className="rounded-full bg-error/15 px-2 py-0.5 text-[11px] text-error">
+          <span className="rounded-full bg-error/15 px-2 py-0.5 text-error text-xs">
             <XCircle size={10} className="mr-1 inline-block align-[-1px]" />
             Error
           </span>
           {errorMessage && (
-            <span className="min-w-0 flex-1 truncate text-[11px] text-base-text-muted">
+            <span className="min-w-0 flex-1 truncate text-base-text-muted text-xs">
               {errorMessage}
             </span>
           )}
@@ -73,7 +73,7 @@ export function ResultMessage({
         {stats.map((stat) => (
           <span
             key={stat}
-            className="rounded-full bg-base-surface px-2 py-0.5 text-[11px] text-base-text-faint"
+            className="rounded-full bg-base-surface px-2 py-0.5 text-base-text-faint text-xs"
           >
             {stat}
           </span>

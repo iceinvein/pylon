@@ -4,7 +4,5 @@ type SectionHeaderProps = {
 
 /** Tiny uppercase label for section dividers (Projects, Recent, History, etc.) */
 export function SectionHeader({ children }: SectionHeaderProps) {
-  return (
-    <p className="mb-3 text-[11px] text-base-text-faint uppercase tracking-[0.15em]">{children}</p>
-  )
+  return <p className="mb-3 text-base-text-faint text-xs uppercase tracking-[0.15em]">{children}</p>
 }

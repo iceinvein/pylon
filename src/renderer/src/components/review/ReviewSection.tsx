@@ -81,7 +81,7 @@ export function ReviewSection({ index, title, body, comment, onSetComment }: Rev
           <button
             type="button"
             onClick={() => setCollapsed(!collapsed)}
-            className="text-left font-medium text-[13px] text-base-text leading-relaxed transition-colors hover:text-base-text"
+            className="text-left font-medium text-base-text text-sm leading-relaxed transition-colors hover:text-base-text"
           >
             {title}
           </button>
@@ -110,7 +110,7 @@ export function ReviewSection({ index, title, body, comment, onSetComment }: Rev
         <div className="mt-3 ml-11 rounded-md border border-base-border bg-base-raised/50 px-3 py-2">
           <div className="mb-1 flex items-center gap-1.5">
             <div className="flex h-4 w-4 items-center justify-center rounded-full bg-base-text/20">
-              <span className="font-bold text-[9px] text-warning">U</span>
+              <span className="font-bold text-[10px] text-warning">U</span>
             </div>
             <span className="font-semibold text-[10px] text-warning">COMMENT</span>
             <button

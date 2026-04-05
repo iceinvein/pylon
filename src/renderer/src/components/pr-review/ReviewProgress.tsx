@@ -354,13 +354,13 @@ export function ReviewProgress({ reviewId: _reviewId, onStop, isLive = true }: P
                           <div className="flex items-baseline gap-2">
                             <span className="font-medium text-base-text text-xs">{f.title}</span>
                             {f.domain && (
-                              <span className="rounded bg-base-raised px-1.5 py-0.5 font-medium text-[9px] text-base-text-muted uppercase tracking-wider">
+                              <span className="rounded bg-base-raised px-1.5 py-0.5 font-medium text-[10px] text-base-text-muted uppercase tracking-wider">
                                 {DOMAIN_LABELS[f.domain] ?? f.domain}
                               </span>
                             )}
                           </div>
                           {f.file && (
-                            <div className="mt-0.5 font-mono text-[11px] text-base-text-muted">
+                            <div className="mt-0.5 font-mono text-base-text-muted text-xs">
                               {f.file}
                               {f.line ? `:${f.line}` : ''}
                             </div>

@@ -87,9 +87,9 @@ function Step1Project({
                         <p className="truncate font-medium text-base-text text-sm">
                           {p.path.split('/').pop()}
                         </p>
-                        <p className="truncate text-[11px] text-base-text-faint">{p.path}</p>
+                        <p className="truncate text-base-text-faint text-xs">{p.path}</p>
                       </div>
-                      <span className="shrink-0 text-[11px] text-base-text-faint">
+                      <span className="shrink-0 text-base-text-faint text-xs">
                         {timeAgo(p.lastUsed)}
                       </span>
                     </button>
@@ -364,7 +364,7 @@ function Step3Config({
                 <span className="text-base-text text-sm">Auto-start dev server</span>
               </label>
               {autoStartServer && serverInfo && (
-                <p className="ml-12 text-[11px] text-base-text-faint">
+                <p className="ml-12 text-base-text-faint text-xs">
                   {projectScan?.serverRunning ? (
                     <span className="text-success">Server already running</span>
                   ) : (
@@ -382,7 +382,7 @@ function Step3Config({
                 />
               )}
               {!autoStartServer && !projectScan?.serverRunning && !customUrl && (
-                <p className="flex items-center gap-1.5 text-[11px] text-warning">
+                <p className="flex items-center gap-1.5 text-warning text-xs">
                   <AlertTriangle className="h-3 w-3" />
                   No URL provided — agent will need a running server
                 </p>

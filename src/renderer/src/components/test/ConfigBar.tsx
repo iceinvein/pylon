@@ -65,26 +65,26 @@ export function ConfigBar({
 
   return (
     <div className="flex items-center gap-3 border-base-border-subtle border-b px-4 py-2.5">
-      <span className="rounded bg-base-raised px-2 py-0.5 text-[11px] text-base-text">
+      <span className="rounded bg-base-raised px-2 py-0.5 text-base-text text-xs">
         {projectName}
       </span>
-      <span className="text-[11px] text-base-text-muted">
+      <span className="text-base-text-muted text-xs">
         {goalCount} goal{goalCount !== 1 ? 's' : ''}
       </span>
-      <span className="text-[11px] text-base-text-muted">
+      <span className="text-base-text-muted text-xs">
         {agentCount} agent{agentCount !== 1 ? 's' : ''}
       </span>
 
       {(anyRunning || allDone) && (
         <>
-          <span className="text-[11px] text-base-text-muted">
+          <span className="text-base-text-muted text-xs">
             {allDone ? '✓' : '⏱'} {formatElapsed(elapsed)}
           </span>
           {totalCost > 0 && (
-            <span className="text-[11px] text-base-text-faint">{formatCost(totalCost)}</span>
+            <span className="text-base-text-faint text-xs">{formatCost(totalCost)}</span>
           )}
           {allDone && (
-            <span className="text-[11px] text-base-text-muted">
+            <span className="text-base-text-muted text-xs">
               · {totalFindings} finding{totalFindings !== 1 ? 's' : ''}
             </span>
           )}
@@ -97,7 +97,7 @@ export function ConfigBar({
         <button
           type="button"
           onClick={onCompare}
-          className="flex items-center gap-1 text-[11px] text-info transition-colors hover:text-info/80"
+          className="flex items-center gap-1 text-info text-xs transition-colors hover:text-info/80"
         >
           <GitCompare size={12} />
           Compare
@@ -107,7 +107,7 @@ export function ConfigBar({
         <button
           type="button"
           onClick={onStopAll}
-          className="flex items-center gap-1.5 rounded-lg border border-error/30 bg-error/10 px-2.5 py-1 text-[11px] text-error transition-colors hover:bg-error/20"
+          className="flex items-center gap-1.5 rounded-lg border border-error/30 bg-error/10 px-2.5 py-1 text-error text-xs transition-colors hover:bg-error/20"
         >
           <Square size={10} />
           Stop All
@@ -117,7 +117,7 @@ export function ConfigBar({
         <button
           type="button"
           onClick={onRunAgain}
-          className="flex items-center gap-1.5 rounded-lg border border-base-border bg-base-raised px-2.5 py-1 text-[11px] text-base-text transition-colors hover:bg-base-border"
+          className="flex items-center gap-1.5 rounded-lg border border-base-border bg-base-raised px-2.5 py-1 text-base-text text-xs transition-colors hover:bg-base-border"
         >
           <ArrowLeft size={10} />
           Run Again
@@ -126,7 +126,7 @@ export function ConfigBar({
       <button
         type="button"
         onClick={onNewRun}
-        className="flex items-center gap-1.5 rounded-lg border border-base-border bg-base-raised px-2.5 py-1 text-[11px] text-base-text-secondary transition-colors hover:text-base-text"
+        className="flex items-center gap-1.5 rounded-lg border border-base-border bg-base-raised px-2.5 py-1 text-base-text-secondary text-xs transition-colors hover:text-base-text"
       >
         <Plus size={10} />
         New Run

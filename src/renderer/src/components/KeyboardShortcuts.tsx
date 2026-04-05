@@ -102,7 +102,7 @@ export function KeyboardShortcuts() {
             <div className="border-base-border-subtle/60 border-t px-4 py-2">
               <p className="text-[10px] text-base-text-faint">
                 Press{' '}
-                <kbd className="rounded border border-base-border/50 bg-base-raised/40 px-1 py-px text-[9px]">
+                <kbd className="rounded border border-base-border/50 bg-base-raised/40 px-1 py-px text-[10px]">
                   esc
                 </kbd>{' '}
                 to close

@@ -123,7 +123,7 @@ export function GitGraphTab({ cwd }: GitGraphTabProps) {
                   {commit.refs.slice(0, 2).map((ref) => (
                     <span
                       key={ref.name}
-                      className={`whitespace-nowrap rounded px-1 py-0.5 text-[9px] ${
+                      className={`whitespace-nowrap rounded px-1 py-0.5 text-[10px] ${
                         ref.isCurrent
                           ? 'bg-warning/10 text-warning'
                           : 'bg-base-raised text-base-text-muted'

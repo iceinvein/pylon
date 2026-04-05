@@ -20,7 +20,7 @@ export function PrRaiseCommits({ commits }: Props) {
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-base-text text-sm">{commit.message}</p>
-              <div className="mt-1 flex items-center gap-2 text-[11px] text-base-text-muted">
+              <div className="mt-1 flex items-center gap-2 text-base-text-muted text-xs">
                 <code className="rounded bg-base-raised px-1.5 py-0.5 font-mono text-warning/70">
                   {commit.hash.slice(0, 7)}
                 </code>

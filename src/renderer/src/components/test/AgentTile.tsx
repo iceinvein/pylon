@@ -59,9 +59,9 @@ export function AgentTile({
         )}
       </div>
       {latestAction && isRunning && (
-        <p className="mt-1 truncate text-[11px] text-base-text-muted">{latestAction.summary}</p>
+        <p className="mt-1 truncate text-base-text-muted text-xs">{latestAction.summary}</p>
       )}
-      {!isRunning && <p className="mt-1 text-[11px] text-base-text-faint capitalize">{status}</p>}
+      {!isRunning && <p className="mt-1 text-base-text-faint text-xs capitalize">{status}</p>}
       {isRunning && (
         <button
           type="button"

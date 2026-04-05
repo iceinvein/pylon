@@ -275,19 +275,19 @@ export function CommandPalette() {
 
             <div className="flex items-center gap-3 border-base-border-subtle/60 border-t px-4 py-2">
               <span className="flex items-center gap-1 text-[10px] text-base-text-faint">
-                <kbd className="rounded border border-base-border/50 bg-base-raised/40 px-1 py-px text-[9px]">
+                <kbd className="rounded border border-base-border/50 bg-base-raised/40 px-1 py-px text-[10px]">
                   ↑↓
                 </kbd>
                 navigate
               </span>
               <span className="flex items-center gap-1 text-[10px] text-base-text-faint">
-                <kbd className="rounded border border-base-border/50 bg-base-raised/40 px-1 py-px text-[9px]">
+                <kbd className="rounded border border-base-border/50 bg-base-raised/40 px-1 py-px text-[10px]">
                   ↵
                 </kbd>
                 run
               </span>
               <span className="flex items-center gap-1 text-[10px] text-base-text-faint">
-                <kbd className="rounded border border-base-border/50 bg-base-raised/40 px-1 py-px text-[9px]">
+                <kbd className="rounded border border-base-border/50 bg-base-raised/40 px-1 py-px text-[10px]">
                   esc
                 </kbd>
                 close
@@ -333,7 +333,7 @@ function CommandRow({
       </div>
       <div className="min-w-0 flex-1">
         <p className="text-base-text text-sm transition-colors duration-75">{cmd.label}</p>
-        <p className="text-[11px] text-base-text-muted leading-tight">{cmd.description}</p>
+        <p className="text-base-text-muted text-xs leading-tight">{cmd.description}</p>
       </div>
     </button>
   )

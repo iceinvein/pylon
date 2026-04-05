@@ -80,16 +80,14 @@ export function ReviewHistory() {
                 className="flex min-w-0 flex-1 items-center gap-2.5 px-2.5 py-2"
               >
                 <StatusIcon size={12} className={`shrink-0 ${config.color} ${config.iconClass}`} />
-                <span className="text-[11px] text-base-text-secondary">{timeAgo(r.createdAt)}</span>
-                <span className="truncate text-[11px] text-base-text-faint">
-                  {r.focus.join(', ')}
-                </span>
+                <span className="text-base-text-secondary text-xs">{timeAgo(r.createdAt)}</span>
+                <span className="truncate text-base-text-faint text-xs">{r.focus.join(', ')}</span>
                 {r.costUsd > 0 && (
                   <span className="shrink-0 font-mono text-[10px] text-base-text-faint">
                     {formatCost(r.costUsd)}
                   </span>
                 )}
-                <span className={`ml-auto shrink-0 font-medium text-[11px] ${config.color}`}>
+                <span className={`ml-auto shrink-0 font-medium text-xs ${config.color}`}>
                   {config.label(findingsCount)}
                 </span>
               </button>

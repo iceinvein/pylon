@@ -175,8 +175,8 @@ export function DiffPane({
       <div className="flex h-full flex-col">
         <div className="flex items-center gap-2 border-base-border-subtle border-b bg-base-surface/30 px-4 py-2">
           <Eye size={12} className="text-base-text-muted" />
-          <span className="font-medium text-[11px] text-base-text">Overview</span>
-          <span className="text-[11px] text-base-text-faint">General findings</span>
+          <span className="font-medium text-base-text text-xs">Overview</span>
+          <span className="text-base-text-faint text-xs">General findings</span>
         </div>
         <div className="flex-1 overflow-y-auto p-4">
           {generalFindings.length === 0 ? (
@@ -218,7 +218,7 @@ export function DiffPane({
     <div className="flex h-full flex-col">
       {/* Toolbar */}
       <div className="flex items-center gap-3 border-base-border-subtle border-b bg-base-surface/30 px-4 py-2">
-        <div className="min-w-0 flex-1 truncate font-mono text-[11px]">
+        <div className="min-w-0 flex-1 truncate font-mono text-xs">
           {dirPath && <span className="text-base-text-faint">{dirPath}/</span>}
           <span className="text-base-text">{fileName}</span>
         </div>
@@ -240,7 +240,7 @@ export function DiffPane({
               <ChevronUp size={13} strokeWidth={2.5} />
             </button>
             <span
-              className="cursor-default border-base-border border-x px-2.5 py-1 font-medium text-[11px] text-base-text tabular-nums"
+              className="cursor-default border-base-border border-x px-2.5 py-1 font-medium text-base-text text-xs tabular-nums"
               title={`${fileFindings.length} finding${fileFindings.length !== 1 ? 's' : ''} in this file`}
             >
               {activeFindingIdx >= 0 ? (

@@ -223,7 +223,7 @@ export function ReviewPanel() {
                 type="button"
                 onClick={handleApprove}
                 disabled={!canAct}
-                className="rounded-md border border-base-border bg-base-raised px-5 py-2 text-[13px] text-base-text transition-colors hover:bg-base-border disabled:opacity-40"
+                className="rounded-md border border-base-border bg-base-raised px-5 py-2 text-base-text text-sm transition-colors hover:bg-base-border disabled:opacity-40"
               >
                 Approve
               </button>
@@ -232,7 +232,7 @@ export function ReviewPanel() {
                   type="button"
                   onClick={handleRequestChanges}
                   disabled={!canAct}
-                  className="rounded-md bg-accent px-5 py-2 font-semibold text-[13px] text-base-bg transition-colors hover:bg-accent-hover disabled:opacity-40"
+                  className="rounded-md bg-accent px-5 py-2 font-semibold text-base-bg text-sm transition-colors hover:bg-accent-hover disabled:opacity-40"
                 >
                   Request Changes
                 </button>

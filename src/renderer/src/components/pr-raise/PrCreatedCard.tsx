@@ -22,7 +22,7 @@ export function PrCreatedCard({ prNumber, title, url, baseBranch, headBranch, st
               <span className="font-medium text-base-text text-sm">PR #{prNumber}</span>
               <span className="truncate text-base-text-secondary text-sm">{title}</span>
             </div>
-            <div className="mt-0.5 flex items-center gap-2 text-[11px] text-base-text-muted">
+            <div className="mt-0.5 flex items-center gap-2 text-base-text-muted text-xs">
               <span className="rounded bg-base-raised px-1.5 py-0.5">{baseBranch}</span>
               <span>←</span>
               <span className="rounded bg-base-raised px-1.5 py-0.5">{headBranch}</span>

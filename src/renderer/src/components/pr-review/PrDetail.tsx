@@ -221,14 +221,14 @@ export function PrDetail() {
             className={`mt-0.5 shrink-0 ${pr.isDraft ? 'text-base-text-muted' : 'text-emerald-500'}`}
           />
           <div className="min-w-0 flex-1">
-            <div className="mb-0.5 truncate font-mono text-[11px] text-base-text-muted">
+            <div className="mb-0.5 truncate font-mono text-base-text-muted text-xs">
               {pr.repo.fullName}
             </div>
             <div className="flex items-baseline gap-2">
               <h2 className="font-semibold text-base-text text-sm">{pr.title}</h2>
               <span className="shrink-0 text-base-text-faint text-xs">#{pr.number}</span>
             </div>
-            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-base-text-muted">
+            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-base-text-muted text-xs">
               <span className="flex items-center gap-1">
                 <User size={10} /> {pr.author}
               </span>
@@ -269,7 +269,7 @@ export function PrDetail() {
             </button>
           )}
           {isRunning && (
-            <span className="flex shrink-0 items-center gap-1.5 rounded-lg border border-base-border px-3 py-1.5 text-[11px] text-base-text-secondary">
+            <span className="flex shrink-0 items-center gap-1.5 rounded-lg border border-base-border px-3 py-1.5 text-base-text-secondary text-xs">
               <Loader2 size={11} className="animate-spin" />
               Reviewing...
             </span>
