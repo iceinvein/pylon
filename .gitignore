@@ -12,3 +12,4 @@ docs/superpowers
 .DS_Store
 .worktrees
 .superpowers
+.claude/
