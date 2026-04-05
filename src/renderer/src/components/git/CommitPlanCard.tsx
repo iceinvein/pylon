@@ -64,7 +64,7 @@ export function CommitPlanCard({
           type="button"
           onClick={onExecute}
           disabled={executing}
-          className="shrink-0 rounded bg-emerald-600 p-1.5 text-white transition-colors hover:bg-emerald-500 disabled:opacity-50"
+          className="shrink-0 rounded bg-success p-1.5 text-base-bg transition-colors hover:bg-success/80 disabled:opacity-50"
           title="Commit this group"
         >
           <Play size={11} />

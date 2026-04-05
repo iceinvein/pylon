@@ -109,10 +109,10 @@ const FALLBACK_MODELS: ProviderModelEntry[] = [
 type EffortLevelEntry = { id: EffortLevel; label: string; description: string }
 
 const CLAUDE_EFFORT_LEVELS: EffortLevelEntry[] = [
-  { id: 'low', label: 'Low', description: 'Quick, minimal reasoning' },
-  { id: 'medium', label: 'Medium', description: 'Balanced speed and depth' },
-  { id: 'high', label: 'High', description: 'Thorough, detailed output' },
-  { id: 'max', label: 'Max', description: 'Extended thinking, highest quality' },
+  { id: 'low', label: 'Low', description: 'Quick answers, minimal thinking' },
+  { id: 'medium', label: 'Medium', description: 'Balanced depth and speed' },
+  { id: 'high', label: 'High', description: 'Thorough analysis, more thinking' },
+  { id: 'max', label: 'Max', description: 'Maximum depth, full context' },
 ]
 
 const CODEX_EFFORT_LEVELS: EffortLevelEntry[] = [
@@ -590,7 +590,7 @@ export function InputBar({
                       key="stop"
                       onClick={onStop}
                       aria-label="Stop generation"
-                      className="flex h-7 w-7 items-center justify-center rounded-lg bg-error text-white transition-colors hover:bg-error/80"
+                      className="flex h-7 w-7 items-center justify-center rounded-lg bg-error text-base-bg transition-colors hover:bg-error/80"
                       initial={{ scale: 0.8, opacity: 0 }}
                       animate={{ scale: 1, opacity: 1 }}
                       exit={{ scale: 0.8, opacity: 0 }}

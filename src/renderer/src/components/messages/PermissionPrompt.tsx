@@ -66,7 +66,7 @@ export function PermissionPrompt({ permission, onRespond }: PermissionPromptProp
                 <button
                   type="button"
                   onClick={handleAllow}
-                  className="rounded-md bg-success px-3 py-1.5 font-medium text-white text-xs transition-colors hover:bg-success/80"
+                  className="rounded-md bg-success px-3 py-1.5 font-medium text-base-bg text-xs transition-colors hover:bg-success/80"
                 >
                   Allow
                 </button>
@@ -77,6 +77,9 @@ export function PermissionPrompt({ permission, onRespond }: PermissionPromptProp
                 >
                   Deny
                 </button>
+                <span aria-live="polite" className="sr-only">
+                  {granted ? 'Permission granted' : ''}
+                </span>
               </div>
             </div>
           </div>

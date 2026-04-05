@@ -228,7 +228,7 @@ export function PrRaiseOverlay() {
                     type="button"
                     onClick={handleCreate}
                     disabled={creating || !editedTitle || !info || result?.success === true}
-                    className="rounded-md bg-info px-5 py-2 font-medium text-sm text-white transition-colors hover:bg-info disabled:opacity-40"
+                    className="rounded-md bg-info px-5 py-2 font-medium text-base-bg text-sm transition-colors hover:bg-info disabled:opacity-40"
                   >
                     {creating ? (
                       <span className="flex items-center gap-2">

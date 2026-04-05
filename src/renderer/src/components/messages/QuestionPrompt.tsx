@@ -194,7 +194,7 @@ export function QuestionPrompt({ question, onRespond }: QuestionPromptProps) {
               type="button"
               disabled={!allAnswered}
               onClick={handleSubmit}
-              className="rounded-md bg-info px-4 py-1.5 font-medium text-white text-xs transition-colors hover:bg-info/80 disabled:opacity-40"
+              className="rounded-md bg-info px-4 py-1.5 font-medium text-base-bg text-xs transition-colors hover:bg-info/80 disabled:opacity-40"
             >
               Reply
             </button>

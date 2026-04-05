@@ -7,7 +7,7 @@ const sectionProseClasses = [
   'prose prose-invert prose-sm max-w-none',
   'prose-p:text-[var(--color-base-text)] prose-li:text-[var(--color-base-text)]',
   'prose-headings:text-[var(--color-base-text)] prose-strong:text-[var(--color-base-text)]',
-  'prose-a:text-violet-400 prose-a:no-underline hover:prose-a:underline',
+  'prose-a:text-[var(--color-special-text)] prose-a:no-underline hover:prose-a:underline',
   'prose-pre:bg-[var(--color-base-surface)] prose-pre:border prose-pre:border-[var(--color-base-border-subtle)] prose-pre:rounded-lg prose-pre:my-2',
   'prose-code:text-[var(--color-accent-text)] prose-code:bg-[var(--color-base-raised)] prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-xs prose-code:font-[family-name:var(--font-mono)]',
   'prose-code:before:content-none prose-code:after:content-none',

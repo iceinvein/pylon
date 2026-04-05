@@ -37,7 +37,7 @@ function StatusDot({ status }: { status: string }) {
 function PluginItem({ plugin }: { plugin: SessionPlugin }) {
   return (
     <div className="group flex items-center gap-2 rounded px-3 py-1.5">
-      <Blocks size={12} className="shrink-0 text-violet-400/70" />
+      <Blocks size={12} className="shrink-0 text-special-text/70" />
       <span className="truncate text-base-text text-xs">{plugin.name}</span>
     </div>
   )

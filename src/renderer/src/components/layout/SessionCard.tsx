@@ -62,11 +62,11 @@ export const SessionCard = memo(function SessionCard({
           {statusInfo && (
             <>
               <span className={`h-1.5 w-1.5 rounded-full ${statusInfo.dot}`} />
-              <span className={`text-[9px] ${statusInfo.color}`}>{statusInfo.label}</span>
+              <span className={`text-[10px] ${statusInfo.color}`}>{statusInfo.label}</span>
             </>
           )}
           {!statusInfo && status !== 'empty' && (
-            <span className="text-[9px] text-base-text-faint">idle</span>
+            <span className="text-[10px] text-base-text-faint">idle</span>
           )}
         </div>
       </div>

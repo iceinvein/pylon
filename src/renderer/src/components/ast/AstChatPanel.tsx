@@ -57,7 +57,7 @@ export function AstChatPanel() {
               className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full font-bold text-[10px] ${
                 msg.role === 'user'
                   ? 'bg-base-text-secondary/20 text-base-text-secondary'
-                  : 'bg-purple-500/20 text-purple-400'
+                  : 'bg-special/20 text-special-text'
               }`}
             >
               {msg.role === 'user' ? 'U' : 'C'}
@@ -70,7 +70,7 @@ export function AstChatPanel() {
 
         {chatLoading && (
           <div className="flex items-start gap-2">
-            <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-purple-500/20 font-bold text-[10px] text-purple-400">
+            <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-special/20 font-bold text-[10px] text-special-text">
               C
             </div>
             <p className="animate-pulse text-base-text-muted text-xs">Thinking...</p>
