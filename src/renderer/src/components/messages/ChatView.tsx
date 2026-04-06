@@ -16,6 +16,7 @@ import { ToolUseBlock } from '../tools/ToolUseBlock'
 import { AssistantMessage } from './AssistantMessage'
 import { ChoiceButtons } from './ChoiceButtons'
 import { PermissionPrompt } from './PermissionPrompt'
+import { PlanApprovalCard } from './PlanApprovalCard'
 import { QuestionPrompt } from './QuestionPrompt'
 import { ResultMessage } from './ResultMessage'
 import { SystemMessage } from './SystemMessage'
@@ -79,6 +80,9 @@ export const ChatView = memo(function ChatView({ sessionId, isActive }: ChatView
   const sessionQuestions = pendingQuestions.filter((q) => q.sessionId === sessionId)
   const detectedPlans = useSessionStore((s) => s.detectedPlans.get(sessionId)) ?? []
   const session = useSessionStore((s) => s.sessions.get(sessionId))
+  const pendingPlanApproval = useSessionStore((s) =>
+    sessionId ? s.pendingPlanApprovals.get(sessionId) : undefined,
+  )
   const sdkStatus = useSessionStore((s) => s.sdkStatus.get(sessionId))
   const isRunning =
     session?.status === 'running' || session?.status === 'starting' || session?.status === 'waiting'
@@ -1000,6 +1004,16 @@ export const ChatView = memo(function ChatView({ sessionId, isActive }: ChatView
             <QuestionPrompt question={q} onRespond={handleQuestionRespond} />
           </motion.div>
         ))}
+
+        {pendingPlanApproval && (
+          <PlanApprovalCard
+            approval={pendingPlanApproval}
+            onRespond={(requestId, approved) => {
+              window.api.respondToPlanApproval(requestId, approved)
+              if (sessionId) useSessionStore.getState().clearPendingPlanApproval(sessionId)
+            }}
+          />
+        )}
 
         {detectedChoices && (
           <motion.div

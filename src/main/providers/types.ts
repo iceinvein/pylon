@@ -43,6 +43,8 @@ export type ProviderCapabilities = {
   midSessionModelSwitch: boolean
   /** Whether the provider exposes file checkpointing / rewind */
   fileCheckpointing: boolean
+  /** Whether the provider supports plan mode (read-only planning before execution) */
+  planMode: boolean
 }
 
 // ── Session Configuration ────────────────────────
@@ -65,6 +67,8 @@ export type ProviderSessionConfig = {
   /** Called before any tool execution, regardless of permission mode.
    *  Used by session manager for git baseline capture, etc. */
   onBeforeToolUse?: (toolName: string, input: Record<string, unknown>) => void
+  /** Called when the provider intercepts an ExitPlanMode tool call and needs user approval. */
+  onPlanApprovalRequest?: (input: Record<string, unknown>) => Promise<{ approved: boolean }>
   /** SDK-specific session/thread ID for resuming a prior conversation */
   resumeSessionId?: string
   /** Betas/experimental flags to enable */

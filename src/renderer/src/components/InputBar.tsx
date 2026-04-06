@@ -1,5 +1,6 @@
 import {
   ArrowUp,
+  ClipboardList,
   Image,
   Paperclip,
   Shield,
@@ -25,6 +26,7 @@ import type {
   FileAttachment,
   ImageAttachment,
   PermissionMode,
+  SessionMode,
 } from '../../../shared/types'
 import { useDraftStore } from '../store/draft-store'
 import { useUiStore } from '../store/ui-store'
@@ -109,10 +111,10 @@ const FALLBACK_MODELS: ProviderModelEntry[] = [
 type EffortLevelEntry = { id: EffortLevel; label: string; description: string }
 
 const CLAUDE_EFFORT_LEVELS: EffortLevelEntry[] = [
-  { id: 'low', label: 'Low', description: 'Quick, minimal reasoning' },
-  { id: 'medium', label: 'Medium', description: 'Balanced speed and depth' },
-  { id: 'high', label: 'High', description: 'Thorough, detailed output' },
-  { id: 'max', label: 'Max', description: 'Extended thinking, highest quality' },
+  { id: 'low', label: 'Low', description: 'Quick answers, minimal thinking' },
+  { id: 'medium', label: 'Medium', description: 'Balanced depth and speed' },
+  { id: 'high', label: 'High', description: 'Thorough analysis, more thinking' },
+  { id: 'max', label: 'Max', description: 'Maximum depth, full context' },
 ]
 
 const CODEX_EFFORT_LEVELS: EffortLevelEntry[] = [
@@ -135,6 +137,9 @@ type InputBarProps = {
   onSend: (text: string, attachments: Attachment[]) => void
   onStop: () => void
   behindCount?: number
+  mode: SessionMode
+  onModeChange: (mode: SessionMode) => void
+  providerSupportsPlanMode: boolean
 }
 
 export function InputBar({
@@ -150,6 +155,9 @@ export function InputBar({
   onSend,
   onStop,
   behindCount,
+  mode,
+  onModeChange,
+  providerSupportsPlanMode,
 }: InputBarProps) {
   // ── Dynamic model catalog from provider registry ──
   const [providerModels, setProviderModels] = useState<ProviderModelEntry[]>(FALLBACK_MODELS)
@@ -436,8 +444,12 @@ export function InputBar({
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
-            className={`rounded-2xl border border-base-border/60 bg-base-surface transition-colors focus-within:border-base-text/30 ${
-              isDragging ? 'border-base-text/30 bg-base-text/5' : ''
+            className={`rounded-2xl border bg-base-surface transition-colors focus-within:border-base-text/30 ${
+              isDragging
+                ? 'border-base-text/30 bg-base-text/5'
+                : mode === 'plan'
+                  ? 'border-violet-800/50'
+                  : 'border-base-border/60'
             }`}
           >
             {/* Attachments */}
@@ -566,16 +578,41 @@ export function InputBar({
                 />
               </Tooltip>
 
-              <Tooltip content="Permission mode" side="top">
-                <DropdownMenu
-                  items={permissionItems}
-                  value={permissionMode}
-                  onChange={(id) => onPermissionModeChange(id as PermissionMode)}
-                  triggerIcon={<currentMode.icon size={13} />}
-                  triggerClassName={permissionTriggerClass}
-                  minWidth={160}
-                />
-              </Tooltip>
+              {providerSupportsPlanMode && (
+                <Tooltip
+                  content={mode === 'plan' ? 'Exit plan mode (⇧⌘L)' : 'Plan before executing (⇧⌘L)'}
+                  side="top"
+                >
+                  <button
+                    type="button"
+                    onClick={() => onModeChange(mode === 'plan' ? 'normal' : 'plan')}
+                    className={`flex h-7 items-center gap-1 rounded-full border px-2.5 text-xs transition-colors ${
+                      mode === 'plan'
+                        ? 'border-violet-800/50 bg-violet-900/40 text-violet-300'
+                        : 'border-base-border text-base-text-muted hover:border-base-text/30 hover:text-base-text-secondary'
+                    }`}
+                  >
+                    <ClipboardList size={13} />
+                    <span>Plan</span>
+                  </button>
+                </Tooltip>
+              )}
+
+              <div className={mode === 'plan' ? 'pointer-events-none opacity-40' : ''}>
+                <Tooltip
+                  content={mode === 'plan' ? 'Overridden while in plan mode' : 'Permission mode'}
+                  side="top"
+                >
+                  <DropdownMenu
+                    items={permissionItems}
+                    value={permissionMode}
+                    onChange={(id) => onPermissionModeChange(id as PermissionMode)}
+                    triggerIcon={<currentMode.icon size={13} />}
+                    triggerClassName={permissionTriggerClass}
+                    minWidth={160}
+                  />
+                </Tooltip>
+              </div>
 
               <div className="flex-1" />
 
@@ -590,7 +627,7 @@ export function InputBar({
                       key="stop"
                       onClick={onStop}
                       aria-label="Stop generation"
-                      className="flex h-7 w-7 items-center justify-center rounded-lg bg-error text-white transition-colors hover:bg-error/80"
+                      className="flex h-7 w-7 items-center justify-center rounded-lg bg-error text-base-bg transition-colors hover:bg-error/80"
                       initial={{ scale: 0.8, opacity: 0 }}
                       animate={{ scale: 1, opacity: 1 }}
                       exit={{ scale: 0.8, opacity: 0 }}
@@ -606,7 +643,7 @@ export function InputBar({
                       onClick={handleSend}
                       disabled={!canSend}
                       aria-label="Send message"
-                      className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent text-base-bg transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-30"
+                      className={`flex h-7 w-7 items-center justify-center rounded-lg text-base-bg transition-colors disabled:cursor-not-allowed disabled:opacity-30 ${mode === 'plan' ? 'bg-violet-600 hover:bg-violet-500' : 'bg-accent hover:bg-accent-hover'}`}
                       initial={{ scale: 0.8, opacity: 0 }}
                       animate={{ scale: 1, opacity: 1 }}
                       exit={{ scale: 0.8, opacity: 0 }}

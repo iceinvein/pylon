@@ -222,7 +222,7 @@ export function GitCommitTab({ cwd, sessionId }: GitCommitTabProps) {
                 type="button"
                 onClick={handleManualCommit}
                 disabled={!commitMsg.trim() || stagedCount === 0}
-                className="flex-1 rounded bg-emerald-600 px-3 py-1.5 font-medium text-white text-xs transition-colors hover:bg-emerald-500 disabled:opacity-50"
+                className="flex-1 rounded bg-success px-3 py-1.5 font-medium text-base-bg text-xs transition-colors hover:bg-success/80 disabled:opacity-50"
               >
                 Commit ({stagedCount} staged)
               </button>

@@ -256,6 +256,10 @@ export function useIpcBridge(): void {
       if (status !== undefined) updates.status = status
       if (model !== undefined) updates.model = model
       store().updateSession(sessionId, updates)
+      const { mode } = raw as { mode?: string }
+      if (mode === 'normal' || mode === 'plan') {
+        store().setSessionMode(sessionId, mode)
+      }
     })
 
     const unsubPermission = window.api.onSessionPermission((raw) => {
@@ -273,12 +277,22 @@ export function useIpcBridge(): void {
       store().updateSession(sessionId, { title })
     })
 
+    const unsubPlanApproval = window.api.onPlanApproval((raw) => {
+      const approval = raw as {
+        requestId: string
+        sessionId: string
+        allowedPrompts?: Array<{ tool: string; prompt: string }>
+      }
+      store().setPendingPlanApproval(approval.sessionId, approval)
+    })
+
     return () => {
       unsubMessage()
       unsubStatus()
       unsubPermission()
       unsubQuestion()
       unsubTitle()
+      unsubPlanApproval()
     }
   }, [])
 }

@@ -2,12 +2,14 @@ import { create } from 'zustand'
 import type {
   DetectedPlan,
   GitBranchStatus,
+  PendingPlanApproval,
   PermissionRequest,
   PlanComment,
   PlanReviewStatus,
   QuestionRequest,
   SdkMessage,
   SessionInitInfo,
+  SessionMode,
   SessionStatus,
 } from '../../../shared/types'
 
@@ -27,6 +29,7 @@ type SessionState = {
   }
   createdAt: number
   updatedAt: number
+  mode: SessionMode
 }
 
 type TaskItem = {
@@ -63,6 +66,7 @@ type SessionStore = {
   initInfo: Map<string, SessionInitInfo>
   /** Git branch status per cwd (keyed by cwd path, not session id) */
   branchStatus: Map<string, GitBranchStatus>
+  pendingPlanApprovals: Map<string, PendingPlanApproval>
 
   setSession: (session: SessionState) => void
   updateSession: (sessionId: string, updates: Partial<SessionState>) => void
@@ -90,6 +94,9 @@ type SessionStore = {
   setPlanComments: (sessionId: string, filePath: string, comments: PlanComment[]) => void
   setInitInfo: (sessionId: string, info: SessionInitInfo) => void
   setBranchStatus: (cwd: string, status: GitBranchStatus) => void
+  setSessionMode: (sessionId: string, mode: SessionMode) => void
+  setPendingPlanApproval: (sessionId: string, approval: PendingPlanApproval) => void
+  clearPendingPlanApproval: (sessionId: string) => void
 }
 
 export const useSessionStore = create<SessionStore>((set) => ({
@@ -107,6 +114,7 @@ export const useSessionStore = create<SessionStore>((set) => ({
   detectedPlans: new Map(),
   initInfo: new Map(),
   branchStatus: new Map(),
+  pendingPlanApprovals: new Map(),
 
   setSession: (session) =>
     set((state) => {
@@ -308,6 +316,29 @@ export const useSessionStore = create<SessionStore>((set) => ({
       const next = new Map(state.branchStatus)
       next.set(cwd, status)
       return { branchStatus: next }
+    }),
+
+  setSessionMode: (sessionId, mode) =>
+    set((state) => {
+      const session = state.sessions.get(sessionId)
+      if (!session) return state
+      const next = new Map(state.sessions)
+      next.set(sessionId, { ...session, mode })
+      return { sessions: next }
+    }),
+
+  setPendingPlanApproval: (sessionId, approval) =>
+    set((state) => {
+      const next = new Map(state.pendingPlanApprovals)
+      next.set(sessionId, approval)
+      return { pendingPlanApprovals: next }
+    }),
+
+  clearPendingPlanApproval: (sessionId) =>
+    set((state) => {
+      const next = new Map(state.pendingPlanApprovals)
+      next.delete(sessionId)
+      return { pendingPlanApprovals: next }
     }),
 }))
 

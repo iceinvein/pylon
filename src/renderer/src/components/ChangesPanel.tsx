@@ -391,7 +391,7 @@ export function ChangesPanel() {
                         type="button"
                         onClick={handleMergeCleanup}
                         disabled={mergeLoading || discardLoading}
-                        className="flex flex-1 items-center justify-center gap-1.5 rounded bg-emerald-600 px-3 py-1.5 font-medium text-white text-xs transition-colors hover:bg-emerald-500 disabled:opacity-50"
+                        className="flex flex-1 items-center justify-center gap-1.5 rounded bg-success px-3 py-1.5 font-medium text-base-bg text-xs transition-colors hover:bg-success/80 disabled:opacity-50"
                       >
                         {mergeLoading ? (
                           <Loader2 size={13} className="animate-spin" />
@@ -407,7 +407,7 @@ export function ChangesPanel() {
                             type="button"
                             onClick={handleDiscardCleanup}
                             disabled={discardLoading}
-                            className="rounded bg-error px-2 py-1.5 font-medium text-white text-xs transition-colors hover:bg-error disabled:opacity-50"
+                            className="rounded bg-error px-2 py-1.5 font-medium text-base-bg text-xs transition-colors hover:bg-error disabled:opacity-50"
                           >
                             {discardLoading ? (
                               <Loader2 size={11} className="animate-spin" />

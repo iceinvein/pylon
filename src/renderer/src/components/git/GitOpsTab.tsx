@@ -68,7 +68,7 @@ function CommandEntryCard({
             <button
               type="button"
               onClick={onConfirm}
-              className="flex items-center gap-1 rounded bg-emerald-600 px-2.5 py-1 text-[10px] text-white hover:bg-emerald-500"
+              className="flex items-center gap-1 rounded bg-success px-2.5 py-1 text-[10px] text-base-bg hover:bg-success/80"
             >
               <Play size={9} /> Confirm
             </button>

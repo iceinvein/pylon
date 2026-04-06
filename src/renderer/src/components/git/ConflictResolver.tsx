@@ -90,7 +90,7 @@ export function ConflictResolver({ conflicts, onApply, onCancel }: ConflictResol
           type="button"
           onClick={handleApply}
           disabled={accepted.size === 0}
-          className="w-full rounded bg-emerald-600 px-3 py-1.5 font-medium text-white text-xs transition-colors hover:bg-emerald-500 disabled:opacity-50"
+          className="w-full rounded bg-success px-3 py-1.5 font-medium text-base-bg text-xs transition-colors hover:bg-success/80 disabled:opacity-50"
         >
           Apply {accepted.size} resolution{accepted.size !== 1 ? 's' : ''}
         </button>

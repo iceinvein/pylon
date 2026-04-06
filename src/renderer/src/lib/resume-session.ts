@@ -65,6 +65,7 @@ export async function resumeStoredSession(session: StoredSession): Promise<Resum
     },
     createdAt: session.created_at,
     updatedAt: session.updated_at,
+    mode: 'normal',
   }
   store.setSession(sessionState)
 

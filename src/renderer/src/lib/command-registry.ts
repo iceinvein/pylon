@@ -1,6 +1,7 @@
 import type { LucideIcon } from 'lucide-react'
 import {
   Archive,
+  ClipboardList,
   DollarSign,
   Eraser,
   FolderOpen,
@@ -76,6 +77,22 @@ export const COMMANDS: SlashCommand[] = [
     execute: async (ctx) => {
       if (!ctx.sessionId) return
       await window.api.sendMessage(ctx.sessionId, '/compact', [])
+    },
+  },
+  {
+    id: 'toggle-plan-mode',
+    label: 'Toggle Plan Mode',
+    description: 'Switch between plan mode and normal mode',
+    icon: ClipboardList,
+    section: 'session',
+    requiresSession: true,
+    keywords: ['plan', 'planning', 'read-only'],
+    execute: async (ctx) => {
+      if (!ctx.sessionId) return
+      const session = useSessionStore.getState().sessions.get(ctx.sessionId)
+      if (!session) return
+      const nextMode = session.mode === 'plan' ? 'normal' : 'plan'
+      window.api.setSessionMode(ctx.sessionId, nextMode)
     },
   },
   {

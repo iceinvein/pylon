@@ -234,7 +234,7 @@ export function DiffPane({
             <button
               type="button"
               onClick={goPrev}
-              className="px-1.5 py-1 text-base-text transition-colors hover:bg-base-border hover:text-white"
+              className="px-1.5 py-1 text-base-text transition-colors hover:bg-base-border hover:text-base-text"
               title="Previous finding (Shift+F)"
             >
               <ChevronUp size={13} strokeWidth={2.5} />
@@ -245,7 +245,7 @@ export function DiffPane({
             >
               {activeFindingIdx >= 0 ? (
                 <>
-                  <span className="text-white">{activeFindingIdx + 1}</span>
+                  <span className="text-base-text">{activeFindingIdx + 1}</span>
                   <span className="text-base-text-muted"> / </span>
                   <span>{fileFindings.length}</span>
                 </>
@@ -261,7 +261,7 @@ export function DiffPane({
             <button
               type="button"
               onClick={goNext}
-              className="px-1.5 py-1 text-base-text transition-colors hover:bg-base-border hover:text-white"
+              className="px-1.5 py-1 text-base-text transition-colors hover:bg-base-border hover:text-base-text"
               title="Next finding (F)"
             >
               <ChevronDown size={13} strokeWidth={2.5} />

@@ -1,12 +1,13 @@
 import { GitCompareArrows, GitPullRequestArrow, Info, Workflow } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type {
   Attachment,
   EffortLevel,
   ImageAttachment,
   IpcAttachment,
   PermissionMode,
+  SessionMode,
 } from '../../../shared/types'
 import { ChangesPanel } from '../components/ChangesPanel'
 import { FlowPanel } from '../components/flow/FlowPanel'
@@ -37,9 +38,25 @@ export function SessionView({ sessionId, isActive }: SessionViewProps) {
   const [pendingModel, setPendingModel] = useState(session?.model || 'claude-opus-4-6')
   const [effort, setEffort] = useState<EffortLevel>('high')
   const [permissionMode, setPermissionMode] = useState<PermissionMode>('default')
+  const sessionMode = useSessionStore(
+    (s) => (sessionId ? (s.sessions.get(sessionId)?.mode ?? 'normal') : 'normal') as SessionMode,
+  )
+
+  // Provider models for plan mode support detection
+  type ProviderModelEntry = { id: string; label: string; provider: string }
+  const [providerModels, setProviderModels] = useState<ProviderModelEntry[]>([])
+  useEffect(() => {
+    window.api.getProviderModels().then((models) => {
+      if (models && models.length > 0) {
+        setProviderModels(models.map((m) => ({ id: m.id, label: m.label, provider: m.provider })))
+      }
+    })
+  }, [])
 
   const cwd = session?.cwd ?? ''
   const currentModel = session?.model || pendingModel
+  const currentProvider = providerModels.find((m) => m.id === currentModel)?.provider ?? 'claude'
+  const providerSupportsPlanMode = currentProvider === 'claude'
   const isRunning =
     session?.status === 'running' || session?.status === 'starting' || session?.status === 'waiting'
 
@@ -196,6 +213,10 @@ export function SessionView({ sessionId, isActive }: SessionViewProps) {
     direction: 'left',
   })
 
+  // Keep a ref to sessionMode to avoid stale closure in keyboard handler
+  const sessionModeRef = useRef(sessionMode)
+  sessionModeRef.current = sessionMode
+
   // Cmd+Shift keyboard shortcuts for right-side panels
   useEffect(() => {
     if (!isActive || !sessionId) return
@@ -210,11 +231,17 @@ export function SessionView({ sessionId, isActive }: SessionViewProps) {
       } else if (e.key === 'i' || e.key === 'I') {
         e.preventDefault()
         setShowInfo((v) => !v)
+      } else if (e.key === 'l' || e.key === 'L') {
+        e.preventDefault()
+        if (providerSupportsPlanMode) {
+          const nextMode = sessionModeRef.current === 'plan' ? 'normal' : 'plan'
+          window.api.setSessionMode(sessionId, nextMode)
+        }
       }
     }
     window.addEventListener('keydown', handlePanelKeys)
     return () => window.removeEventListener('keydown', handlePanelKeys)
-  }, [isActive, sessionId])
+  }, [isActive, sessionId, providerSupportsPlanMode])
 
   return (
     <>
@@ -298,6 +325,11 @@ export function SessionView({ sessionId, isActive }: SessionViewProps) {
               onSend={handleSend}
               onStop={handleStop}
               behindCount={branchStatus?.behind}
+              mode={sessionMode}
+              onModeChange={(newMode) => {
+                window.api.setSessionMode(sessionId, newMode)
+              }}
+              providerSupportsPlanMode={providerSupportsPlanMode}
             />
           </div>
         </div>

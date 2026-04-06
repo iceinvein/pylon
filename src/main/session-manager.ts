@@ -11,6 +11,7 @@ import type {
   PermissionMode,
   PermissionResponse,
   QuestionResponse,
+  SessionMode,
 } from '../shared/types'
 import { getDb } from './db'
 import { diffService } from './diff-service'
@@ -86,6 +87,14 @@ type ActiveSession = {
   /** Latest context input tokens from the most recent message_start event.
    *  Includes uncached + cache_read + cache_creation tokens. */
   lastContextInputTokens: number
+  mode: SessionMode
+  prePlanPermissionMode: PermissionMode | null
+  pendingPlanApprovals: Map<
+    string,
+    {
+      resolve: (result: { approved: boolean }) => void
+    }
+  >
 }
 
 type IpcAttachment =
@@ -283,6 +292,9 @@ export class SessionManager {
       pendingPermissions: new Map(),
       pendingQuestions: new Map(),
       lastContextInputTokens: 0,
+      mode: 'normal',
+      prePlanPermissionMode: null,
+      pendingPlanApprovals: new Map(),
     })
 
     return id
@@ -317,6 +329,7 @@ export class SessionManager {
         onPermissionRequest: (toolName, input, suggestions) =>
           this.requestPermission(sessionId, toolName, input, suggestions),
         onQuestionRequest: (input) => this.requestQuestion(sessionId, input),
+        onPlanApprovalRequest: (input) => this.requestPlanApproval(sessionId, input),
       })
       session.agentSession = agentSession
 
@@ -503,6 +516,20 @@ export class SessionManager {
     }
   }
 
+  resolvePlanApproval(response: { requestId: string; approved: boolean }): void {
+    for (const [sessionId, session] of this.sessions) {
+      const pending = session.pendingPlanApprovals.get(response.requestId)
+      if (pending) {
+        pending.resolve({ approved: response.approved })
+        session.pendingPlanApprovals.delete(response.requestId)
+        // Exit plan mode regardless of approval result
+        this.setMode(sessionId, 'normal')
+        this.updateStatus(sessionId, 'running')
+        return
+      }
+    }
+  }
+
   resumeSession(sessionId: string): boolean {
     if (this.sessions.has(sessionId)) return true
 
@@ -549,6 +576,9 @@ export class SessionManager {
       pendingPermissions: new Map(),
       pendingQuestions: new Map(),
       lastContextInputTokens: 0,
+      mode: 'normal',
+      prePlanPermissionMode: null,
+      pendingPlanApprovals: new Map(),
     })
 
     // Backfill title for old sessions that never got one
@@ -607,6 +637,33 @@ export class SessionManager {
     const session = this.sessions.get(sessionId)
     if (!session) return
     session.effort = effort
+  }
+
+  setMode(sessionId: string, mode: SessionMode): void {
+    const session = this.sessions.get(sessionId)
+    if (!session) return
+
+    // Validate provider supports plan mode
+    if (mode === 'plan') {
+      const provider = getProvider(session.provider)
+      if (!provider.capabilities.planMode) return
+    }
+
+    if (mode === 'plan') {
+      // Entering plan mode: save current permission mode
+      session.prePlanPermissionMode = session.permissionMode
+      session.permissionMode = 'plan'
+      session.mode = 'plan'
+    } else {
+      // Exiting plan mode: restore previous permission mode
+      if (session.prePlanPermissionMode) {
+        session.permissionMode = session.prePlanPermissionMode
+        session.prePlanPermissionMode = null
+      }
+      session.mode = 'normal'
+    }
+
+    this.send(IPC.SESSION_STATUS, { sessionId, mode: session.mode })
   }
 
   /** Returns the SDK-reported context window for a model, or undefined if not yet seen. */
@@ -841,6 +898,26 @@ export class SessionManager {
 
     return new Promise((resolve) => {
       session.pendingPermissions.set(requestId, { resolve })
+    })
+  }
+
+  private async requestPlanApproval(
+    sessionId: string,
+    input: Record<string, unknown>,
+  ): Promise<{ approved: boolean }> {
+    const session = this.sessions.get(sessionId)
+    if (!session) return { approved: false }
+
+    const requestId = randomUUID()
+    const allowedPrompts = Array.isArray(input.allowedPrompts)
+      ? (input.allowedPrompts as Array<{ tool: string; prompt: string }>)
+      : undefined
+
+    this.send(IPC.SESSION_PLAN_APPROVAL, { requestId, sessionId, allowedPrompts })
+    this.updateStatus(sessionId, 'waiting')
+
+    return new Promise((resolve) => {
+      session.pendingPlanApprovals.set(requestId, { resolve })
     })
   }
 

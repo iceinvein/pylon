@@ -155,10 +155,10 @@ export function ReviewPanel() {
             <div className="flex items-center justify-between border-base-border-subtle border-b px-6 py-4">
               <div>
                 <div className="flex items-center gap-2.5 font-semibold text-base text-base-text">
-                  <ClipboardList size={18} className="text-violet-400" />
+                  <ClipboardList size={18} className="text-special-text" />
                   Review Plan
                 </div>
-                <div className="mt-1 text-[12px] text-base-text-muted">
+                <div className="mt-1 text-base-text-muted text-xs">
                   {relativePath} · {flatSections.length} section
                   {flatSections.length !== 1 ? 's' : ''}
                 </div>

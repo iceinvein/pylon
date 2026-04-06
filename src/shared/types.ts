@@ -127,7 +127,7 @@ export type QuestionResponse = {
 /**
  * Permission/approval mode union across all providers.
  *
- * Claude modes:   'default' (ask each tool) | 'auto-approve' (skip permission prompts)
+ * Claude modes:   'default' (ask each tool) | 'auto-approve' (skip permission prompts) | 'plan' (read-only planning, then approve before execution)
  * Codex modes:    'never' | 'on-request' | 'on-failure' | 'untrusted'
  *
  * The renderer shows the appropriate subset based on the selected model's provider.
@@ -135,12 +135,21 @@ export type QuestionResponse = {
 export type PermissionMode =
   | 'default'
   | 'auto-approve'
+  | 'plan'
   | 'never'
   | 'on-request'
   | 'on-failure'
   | 'untrusted'
 
 export type EffortLevel = 'low' | 'medium' | 'high' | 'max'
+
+export type SessionMode = 'normal' | 'plan'
+
+export type PendingPlanApproval = {
+  requestId: string
+  sessionId: string
+  allowedPrompts?: Array<{ tool: string; prompt: string }>
+}
 
 export type AppSettings = {
   defaultModel: string

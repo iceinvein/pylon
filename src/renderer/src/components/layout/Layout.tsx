@@ -90,14 +90,14 @@ export function Layout({ children }: LayoutProps) {
       {/* Skip to main content */}
       <a
         href="#main-content"
-        className="sr-only z-100 rounded-md bg-accent px-4 py-2 font-medium text-sm text-white focus:not-sr-only focus:fixed focus:top-14 focus:left-14"
+        className="sr-only z-100 rounded-md bg-accent px-4 py-2 font-medium text-base-bg text-sm focus:not-sr-only focus:fixed focus:top-14 focus:left-14"
       >
         Skip to content
       </a>
 
       {/* Titlebar: drag region + logo + mode switcher */}
       <div
-        className="fixed top-0 right-0 left-0 z-50 flex h-12 items-center gap-3 border-b border-base-border-subtle bg-base-bg px-4"
+        className="fixed top-0 right-0 left-0 z-50 flex h-12 items-center gap-3 border-base-border-subtle border-b bg-base-bg px-4"
         style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
       >
         {/* macOS traffic lights spacer */}
