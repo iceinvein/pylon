@@ -10,7 +10,29 @@ permissions:
   contents: write
 
 jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Lint
+        run: bun run lint
+
+      - name: Typecheck
+        run: bun run typecheck
+
+      - name: Test
+        run: bun test
+
   build-macos:
+    needs: check
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v5
@@ -22,25 +44,50 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      - name: Sync version from tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: npm version "${GITHUB_REF_NAME#v}" --no-git-tag-version --allow-same-version
+
       - name: Build app
         run: bun run build
 
-      - name: Import code signing certificate
-        if: env.CSC_LINK != ''
+      - name: Detect signing capabilities
+        id: signing
         env:
           CSC_LINK: ${{ secrets.CSC_LINK }}
-        run: echo "Code signing certificate detected"
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          if [ -n "$CSC_LINK" ]; then
+            echo "can_sign=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "can_sign=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::CSC_LINK not set — DMG will not be code-signed"
+          fi
+          if [ -n "$APPLE_ID" ] && [ -n "$APPLE_APP_SPECIFIC_PASSWORD" ] && [ -n "$APPLE_TEAM_ID" ]; then
+            echo "can_notarize=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "can_notarize=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Apple credentials incomplete — DMG will not be notarized"
+          fi
 
       - name: Build DMG
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_LINK: ${{ secrets.CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
-          CSC_IDENTITY_AUTO_DISCOVERY: ${{ secrets.CSC_LINK != '' }}
+          CSC_IDENTITY_AUTO_DISCOVERY: ${{ steps.signing.outputs.can_sign }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        run: bunx electron-builder --mac dmg --publish never
+          CAN_NOTARIZE: ${{ steps.signing.outputs.can_notarize }}
+        run: |
+          EXTRA_ARGS=""
+          if [ "$CAN_NOTARIZE" != "true" ]; then
+            EXTRA_ARGS="-c.mac.notarize=false"
+          fi
+          bunx electron-builder --mac dmg --universal --publish never $EXTRA_ARGS
 
       - name: Upload DMG artifact
         uses: actions/upload-artifact@v6
