@@ -18,7 +18,7 @@
     "build:dmg": "bun scripts/build-dmg.ts --mac dmg --universal"
   },
   "dependencies": {
-    "@anthropic-ai/claude-agent-sdk": "^0.2.81",
+    "@anthropic-ai/claude-agent-sdk": "^0.2.101",
     "@electron-toolkit/preload": "^3.0.2",
     "@electron-toolkit/utils": "^4.0.0",
     "@fontsource-variable/jetbrains-mono": "^5.2.8",
@@ -30,10 +30,10 @@
     "diff": "^8.0.4",
     "lucide-react": "^0.575.0",
     "motion": "^12.38.0",
-    "react": "^19.2.4",
-    "react-dom": "^19.2.4",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
     "react-markdown": "^10.1.0",
-    "recharts": "^3.8.0",
+    "recharts": "^3.8.1",
     "rehype-raw": "^7.0.0",
     "rehype-sanitize": "^6.0.0",
     "remark-gfm": "^4.0.1",
@@ -45,21 +45,21 @@
     "zustand": "^5.0.12"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.8",
+    "@biomejs/biome": "^2.4.11",
     "@electron-toolkit/tsconfig": "^2.0.0",
     "@laststance/tailwind-suggest-canonical-classes": "^0.1.1",
     "@tailwindcss/typography": "^0.5.19",
     "@types/better-sqlite3": "^7.6.13",
     "@types/d3-force": "^3.0.10",
     "@types/diff": "^8.0.0",
-    "@types/node": "^22.19.15",
+    "@types/node": "^22.19.17",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.2.0",
-    "electron": "^39.8.3",
+    "electron": "^39.8.7",
     "electron-builder": "^26.8.1",
     "electron-vite": "^5.0.0",
     "typescript": "^5.9.3",
-    "vite": "^7.3.1"
+    "vite": "^7.3.2"
   }
 }
