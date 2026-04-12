@@ -16,7 +16,8 @@
     "lint": "tailwind-suggest-canonical-classes \"src/**/*.{tsx,jsx,ts,html}\" --css src/renderer/src/styles/globals.css --check && biome check src/",
     "lint:fix": "tailwind-suggest-canonical-classes \"src/**/*.{tsx,jsx,ts,html}\" --css src/renderer/src/styles/globals.css && biome check --write src/",
     "format": "biome format --write src/",
-    "build:dmg": "bun scripts/build-dmg.ts --mac dmg --universal"
+    "build:dmg": "bun scripts/build-dmg.ts --mac dmg --universal",
+    "release": "bun scripts/release.ts"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.2.101",
