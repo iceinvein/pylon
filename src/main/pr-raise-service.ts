@@ -108,12 +108,11 @@ export class PrRaiseService {
     // Detect repo full name
     let repoFullName = ''
     try {
-      const { stdout } = await execFileAsync(
-        'gh',
+      const { execGh } = await import('./gh-cli')
+      repoFullName = await execGh(
         ['repo', 'view', '--json', 'nameWithOwner', '-q', '.nameWithOwner'],
-        { cwd },
+        cwd,
       )
-      repoFullName = stdout.trim()
     } catch {
       const { parseGitHubRemote } = await import('./gh-cli')
       try {
@@ -128,12 +127,12 @@ export class PrRaiseService {
     // Detect default base branch
     let baseBranch = 'main'
     try {
-      const { stdout } = await execFileAsync(
-        'gh',
-        ['repo', 'view', '--json', 'defaultBranchRef', '-q', '.defaultBranchRef.name'],
-        { cwd },
-      )
-      baseBranch = stdout.trim() || 'main'
+      const { execGh } = await import('./gh-cli')
+      baseBranch =
+        (await execGh(
+          ['repo', 'view', '--json', 'defaultBranchRef', '-q', '.defaultBranchRef.name'],
+          cwd,
+        )) || 'main'
     } catch {
       try {
         await execFileAsync('git', ['rev-parse', '--verify', 'origin/main'], { cwd })
@@ -309,12 +308,11 @@ Rules:
       // Detect repo full name
       let repoFullName = ''
       try {
-        const { stdout } = await execFileAsync(
-          'gh',
+        const { execGh } = await import('./gh-cli')
+        repoFullName = await execGh(
           ['repo', 'view', '--json', 'nameWithOwner', '-q', '.nameWithOwner'],
-          { cwd },
+          cwd,
         )
-        repoFullName = stdout.trim()
       } catch {
         const { parseGitHubRemote } = await import('./gh-cli')
         const { stdout } = await execFileAsync('git', ['remote', 'get-url', remote], { cwd })

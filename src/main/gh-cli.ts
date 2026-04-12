@@ -7,6 +7,7 @@ import { promisify } from 'node:util'
 import type { GhCliStatus, GhPrDetail, GhPullRequest, GhRepo, ReviewFinding } from '../shared/types'
 import { getDb } from './db'
 import { assembleDiffFromPatches, parseFilesFromDiff } from './gh-cli-parse'
+import { augmentExecutablePath, findKnownGhBinary } from './gh-cli-path'
 
 export { parseFilesFromDiff } from './gh-cli-parse'
 
@@ -14,16 +15,51 @@ const execFileAsync = promisify(execFile)
 
 let ghBinaryPath: string | null = null
 
-function getGhPath(): string {
+function getConfiguredGhPath(): string | null {
   const db = getDb()
   const row = db.prepare("SELECT value FROM settings WHERE key = 'ghBinaryPath'").get() as
     | { value: string }
     | undefined
-  return row?.value || ghBinaryPath || 'gh'
+  return row?.value || ghBinaryPath
 }
 
-async function execGh(args: string[]): Promise<string> {
-  const { stdout } = await execFileAsync(getGhPath(), args, {
+function getGhEnv(): NodeJS.ProcessEnv {
+  return {
+    ...process.env,
+    PATH: augmentExecutablePath(process.env.PATH),
+  }
+}
+
+export async function resolveGhPath(): Promise<string | null> {
+  const configuredPath = getConfiguredGhPath()
+  if (configuredPath) {
+    return configuredPath
+  }
+
+  const knownPath = findKnownGhBinary()
+  if (knownPath) {
+    ghBinaryPath = knownPath
+    return knownPath
+  }
+
+  const { stdout: whichOut } = await execFileAsync('/usr/bin/which', ['gh'], {
+    env: getGhEnv(),
+  }).catch(() => ({ stdout: '' }))
+  const detectedPath = whichOut.trim()
+
+  if (detectedPath) {
+    ghBinaryPath = detectedPath
+    return detectedPath
+  }
+
+  return null
+}
+
+export async function execGh(args: string[], cwd?: string): Promise<string> {
+  const ghPath = (await resolveGhPath()) ?? 'gh'
+  const { stdout } = await execFileAsync(ghPath, args, {
+    cwd,
+    env: getGhEnv(),
     timeout: 30_000,
     maxBuffer: 10 * 1024 * 1024,
   })
@@ -32,12 +68,8 @@ async function execGh(args: string[]): Promise<string> {
 
 export async function checkGhStatus(): Promise<GhCliStatus> {
   try {
-    const { stdout: whichOut } = await execFileAsync('/usr/bin/which', ['gh']).catch(() => ({
-      stdout: '',
-    }))
-    const detectedPath = whichOut.trim()
-
-    if (!detectedPath && !ghBinaryPath) {
+    const detectedPath = await resolveGhPath()
+    if (!detectedPath) {
       return {
         available: false,
         authenticated: false,
@@ -47,22 +79,21 @@ export async function checkGhStatus(): Promise<GhCliStatus> {
       }
     }
 
-    ghBinaryPath = detectedPath || ghBinaryPath
-
     const authOut = await execGh(['auth', 'status', '--hostname', 'github.com'])
     const usernameMatch =
       authOut.match(/Logged in to github\.com.*account\s+(\S+)/i) ||
       authOut.match(/Logged in to github\.com.*as\s+(\S+)/i)
     const username = usernameMatch?.[1] ?? null
 
-    return { available: true, authenticated: true, binaryPath: getGhPath(), username, error: null }
+    return { available: true, authenticated: true, binaryPath: detectedPath, username, error: null }
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error)
     if (msg.includes('not logged')) {
+      const detectedPath = await resolveGhPath()
       return {
         available: true,
         authenticated: false,
-        binaryPath: getGhPath(),
+        binaryPath: detectedPath,
         username: null,
         error: 'Not authenticated. Run: gh auth login',
       }
@@ -286,8 +317,7 @@ export async function postReview(
   await writeFile(tmpPath, payload)
 
   try {
-    await execFileAsync(
-      getGhPath(),
+    await execGh(
       [
         'api',
         `repos/${owner}/${repo}/pulls/${prNumber}/reviews`,
@@ -296,7 +326,7 @@ export async function postReview(
         '--input',
         tmpPath,
       ],
-      { timeout: 30_000 },
+      undefined,
     )
   } finally {
     await unlink(tmpPath).catch(() => {})
