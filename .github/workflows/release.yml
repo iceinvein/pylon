@@ -111,4 +111,4 @@ jobs:
         with:
           files: artifacts/*.dmg
           generate_release_notes: true
-          draft: true
+          draft: false
