@@ -88,7 +88,7 @@ export function createReportFindingTool(ctx: ToolContext) {
         findingsCount: updatedCount,
       })
 
-      return { content: [{ type: 'text', text: `Finding reported: ${title}` }] }
+      return { content: [{ type: 'text' as const, text: `Finding reported: ${title}` }] }
     },
   }
 }
@@ -165,7 +165,7 @@ export function createSavePlaywrightTestTool(ctx: ToolContext) {
         testsGenerated: updatedCount,
       })
 
-      return { content: [{ type: 'text', text: `Test saved: ${relativePath}` }] }
+      return { content: [{ type: 'text' as const, text: `Test saved: ${relativePath}` }] }
     },
   }
 }
@@ -221,7 +221,7 @@ export function createReportGoalsTool(ctx: GoalToolContext) {
       })
 
       return {
-        content: [{ type: 'text', text: `Reported ${goals.length} testing goals` }],
+        content: [{ type: 'text' as const, text: `Reported ${goals.length} testing goals` }],
       }
     },
   }
