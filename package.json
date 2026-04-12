@@ -4,6 +4,7 @@
   "description": "Pylon desktop app",
   "main": "./out/main/index.js",
   "author": "iceinvein",
+  "license": "MIT",
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
