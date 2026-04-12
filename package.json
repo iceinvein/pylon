@@ -24,6 +24,8 @@
     "@electron-toolkit/preload": "^3.0.2",
     "@electron-toolkit/utils": "^4.0.0",
     "@fontsource-variable/jetbrains-mono": "^5.2.8",
+    "@fontsource-variable/space-grotesk": "^5.2.10",
+    "@fontsource/instrument-serif": "^5.2.8",
     "@openai/codex-sdk": "^0.116.0",
     "@tailwindcss/vite": "^4.2.2",
     "ansi-to-html": "^0.7.2",
