@@ -82,7 +82,6 @@ export default function App() {
   }, [activeSession?.title])
 
   // Restore persisted active session on startup
-  // biome-ignore lint/correctness/useExhaustiveDependencies: one-time startup restore
   useEffect(() => {
     let cancelled = false
 

@@ -1,11 +1,7 @@
 import { existsSync } from 'node:fs'
 import { delimiter, dirname } from 'node:path'
 
-const COMMON_GH_BINARIES = [
-  '/opt/homebrew/bin/gh',
-  '/usr/local/bin/gh',
-  '/usr/bin/gh',
-]
+const COMMON_GH_BINARIES = ['/opt/homebrew/bin/gh', '/usr/local/bin/gh', '/usr/bin/gh']
 
 const COMMON_GH_DIRS = Array.from(new Set(COMMON_GH_BINARIES.map((binary) => dirname(binary))))
 

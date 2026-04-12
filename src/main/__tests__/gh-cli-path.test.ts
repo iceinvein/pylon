@@ -3,7 +3,9 @@ import { augmentExecutablePath, findKnownGhBinary } from '../gh-cli-path'
 
 describe('gh-cli-path', () => {
   test('prepends common Homebrew directories to PATH', () => {
-    expect(augmentExecutablePath('/usr/bin:/bin')).toBe('/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin')
+    expect(augmentExecutablePath('/usr/bin:/bin')).toBe(
+      '/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin',
+    )
   })
 
   test('keeps existing entries without duplicates', () => {
