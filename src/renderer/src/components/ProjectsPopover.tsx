@@ -11,11 +11,13 @@ type Project = {
 type ProjectsPopoverProps = {
   open: boolean
   onClose: () => void
-  onSelectProject: (path: string) => void
-  onBrowse: () => void
+  onSelectProject?: (path: string) => void
+  onBrowse?: () => void
+  onProjectsChanged?: () => void | Promise<void>
   anchorRef: React.RefObject<HTMLButtonElement | null>
   /** Where to place the popover relative to the anchor. Default: 'right' */
   position?: 'right' | 'below'
+  mode?: 'select' | 'manage'
 }
 
 export function ProjectsPopover({
@@ -23,11 +25,14 @@ export function ProjectsPopover({
   onClose,
   onSelectProject,
   onBrowse,
+  onProjectsChanged,
   anchorRef,
   position = 'right',
+  mode = 'select',
 }: ProjectsPopoverProps) {
   const [projects, setProjects] = useState<Project[]>([])
   const popoverRef = useRef<HTMLDivElement>(null)
+  const isManageOnly = mode === 'manage'
 
   const refreshProjects = useCallback(() => {
     window.api
@@ -45,12 +50,14 @@ export function ProjectsPopover({
     if (!path) return
     await window.api.addProject(path)
     refreshProjects()
+    await onProjectsChanged?.()
   }
 
   async function handleRemoveProject(e: React.MouseEvent, projectPath: string) {
     e.stopPropagation()
     await window.api.removeProject(projectPath)
     refreshProjects()
+    await onProjectsChanged?.()
   }
 
   useEffect(() => {
@@ -122,25 +129,35 @@ export function ProjectsPopover({
             ) : (
               projects.map((project) => (
                 <div key={project.path} className="group relative">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onSelectProject(project.path)
-                      onClose()
-                    }}
-                    className="flex w-full items-start gap-2.5 px-3 py-2 text-left transition-colors hover:bg-base-raised/60"
+                  <div
+                    className={`flex w-full items-start gap-2.5 px-3 py-2 text-left ${
+                      isManageOnly ? '' : 'transition-colors hover:bg-base-raised/60'
+                    }`}
                   >
                     <Folder size={13} className="mt-0.5 shrink-0 text-base-text-faint" />
                     <div className="min-w-0 flex-1">
-                      <p className="truncate font-medium text-base-text text-xs">
-                        {project.path.split('/').pop()}
-                      </p>
+                      {isManageOnly ? (
+                        <p className="truncate font-medium text-base-text text-xs">
+                          {project.path.split('/').pop()}
+                        </p>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onSelectProject?.(project.path)
+                            onClose()
+                          }}
+                          className="truncate font-medium text-base-text text-xs"
+                        >
+                          {project.path.split('/').pop()}
+                        </button>
+                      )}
                       <p className="truncate text-base-text-faint text-xs">{project.path}</p>
                       <p className="text-[10px] text-base-text-faint">
                         {timeAgo(project.lastUsed)}
                       </p>
                     </div>
-                  </button>
+                  </div>
                   <button
                     type="button"
                     onClick={(e) => handleRemoveProject(e, project.path)}
@@ -155,17 +172,19 @@ export function ProjectsPopover({
           </div>
 
           <div className="border-base-border-subtle border-t px-1.5 pt-1.5">
-            <button
-              type="button"
-              onClick={() => {
-                onBrowse()
-                onClose()
-              }}
-              className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left text-base-text-secondary text-xs transition-colors hover:bg-base-raised/60 hover:text-base-text"
-            >
-              <FolderOpen size={13} />
-              Open Folder...
-            </button>
+            {!isManageOnly && onBrowse && (
+              <button
+                type="button"
+                onClick={() => {
+                  onBrowse()
+                  onClose()
+                }}
+                className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left text-base-text-secondary text-xs transition-colors hover:bg-base-raised/60 hover:text-base-text"
+              >
+                <FolderOpen size={13} />
+                Open Folder...
+              </button>
+            )}
             <button
               type="button"
               onClick={addProjectOnly}

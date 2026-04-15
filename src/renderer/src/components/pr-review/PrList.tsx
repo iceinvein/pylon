@@ -1,9 +1,14 @@
-import { Check, ChevronDown, Loader2, Search } from 'lucide-react'
+import { Check, ChevronDown, Loader2, Search, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { GhPullRequest } from '../../../../shared/types'
 import { usePrReviewStore } from '../../store/pr-review-store'
 import { PrCard } from './PrCard'
+
+type ProjectFolder = {
+  path: string
+  lastUsed: number
+}
 
 export function PrList() {
   const {
@@ -21,11 +26,25 @@ export function PrList() {
 
   const [search, setSearch] = useState('')
   const [repoMenuOpen, setRepoMenuOpen] = useState(false)
+  const [projects, setProjects] = useState<ProjectFolder[]>([])
   const repoMenuRef = useRef<HTMLDivElement>(null)
+
+  const refreshProjects = useCallback(async () => {
+    try {
+      const nextProjects = await window.api.listProjects()
+      setProjects(nextProjects)
+    } catch {
+      setProjects([])
+    }
+  }, [])
 
   useEffect(() => {
     loadRepos()
   }, [loadRepos])
+
+  useEffect(() => {
+    if (repoMenuOpen) refreshProjects()
+  }, [repoMenuOpen, refreshProjects])
 
   useEffect(() => {
     if (repos.length > 0) {
@@ -85,11 +104,27 @@ export function PrList() {
   const selectedLabel = selectedRepo
     ? (repos.find((r) => r.fullName === selectedRepo)?.fullName ?? selectedRepo)
     : 'All repos'
+  const repoByProjectPath = useMemo(
+    () => new Map(repos.map((repo) => [repo.projectPath, repo])),
+    [repos],
+  )
+
+  async function handleAddProject() {
+    const path = await window.api.openFolder()
+    if (!path) return
+    await window.api.addProject(path)
+    await Promise.all([refreshProjects(), loadRepos()])
+  }
+
+  async function handleRemoveProject(e: React.MouseEvent, projectPath: string) {
+    e.stopPropagation()
+    await window.api.removeProject(projectPath)
+    await Promise.all([refreshProjects(), loadRepos()])
+  }
 
   return (
     <div className="flex h-full flex-col border-base-border-subtle border-r">
       <div className="border-base-border-subtle border-b p-3">
-        {/* Repo filter dropdown */}
         <div ref={repoMenuRef} className="relative">
           <button
             type="button"
@@ -109,46 +144,83 @@ export function PrList() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -4 }}
                 transition={{ duration: 0.12 }}
-                className="absolute top-full right-0 left-0 z-50 mt-1 max-h-60 overflow-y-auto rounded-lg border border-base-border bg-base-surface py-1 shadow-xl"
+                className="absolute top-full right-0 left-0 z-50 mt-1 overflow-hidden rounded-lg border border-base-border bg-base-surface shadow-xl"
               >
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedRepo(null)
-                    setRepoMenuOpen(false)
-                  }}
-                  className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-xs transition-colors hover:bg-base-raised"
-                >
-                  <span className={`h-3 w-3 shrink-0 ${!selectedRepo ? '' : 'opacity-0'}`}>
-                    {!selectedRepo && <Check size={12} className="text-base-text" />}
-                  </span>
-                  <span className={!selectedRepo ? 'text-base-text' : 'text-base-text-secondary'}>
-                    All repos
-                  </span>
-                </button>
-                {repos.map((r) => {
-                  const isSelected = selectedRepo === r.fullName
-                  return (
-                    <button
-                      type="button"
-                      key={r.fullName}
-                      onClick={() => {
-                        setSelectedRepo(r.fullName)
-                        setRepoMenuOpen(false)
-                      }}
-                      className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-xs transition-colors hover:bg-base-raised"
-                    >
-                      <span className={`h-3 w-3 shrink-0 ${isSelected ? '' : 'opacity-0'}`}>
-                        {isSelected && <Check size={12} className="text-base-text" />}
-                      </span>
-                      <span
-                        className={`truncate ${isSelected ? 'text-base-text' : 'text-base-text-secondary'}`}
+                <div className="max-h-72 overflow-y-auto py-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedRepo(null)
+                      setRepoMenuOpen(false)
+                    }}
+                    className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-xs transition-colors hover:bg-base-raised"
+                  >
+                    <span className={`h-3 w-3 shrink-0 ${!selectedRepo ? '' : 'opacity-0'}`}>
+                      {!selectedRepo && <Check size={12} className="text-base-text" />}
+                    </span>
+                    <span className={!selectedRepo ? 'text-base-text' : 'text-base-text-secondary'}>
+                      All repos
+                    </span>
+                  </button>
+                  {projects.map((project) => {
+                    const repo = repoByProjectPath.get(project.path)
+                    const isSelected = repo ? selectedRepo === repo.fullName : false
+                    return (
+                      <div
+                        key={project.path}
+                        className="group flex items-start gap-2 px-2.5 py-1.5 transition-colors hover:bg-base-raised"
                       >
-                        {r.fullName}
-                      </span>
-                    </button>
-                  )
-                })}
+                        <button
+                          type="button"
+                          disabled={!repo}
+                          onClick={() => {
+                            if (!repo) return
+                            setSelectedRepo(repo.fullName)
+                            setRepoMenuOpen(false)
+                          }}
+                          className="flex min-w-0 flex-1 items-start gap-2 text-left text-xs disabled:cursor-default"
+                        >
+                          <span
+                            className={`mt-0.5 h-3 w-3 shrink-0 ${isSelected ? '' : 'opacity-0'}`}
+                          >
+                            {isSelected && <Check size={12} className="text-base-text" />}
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span
+                              className={`block truncate ${
+                                repo
+                                  ? isSelected
+                                    ? 'text-base-text'
+                                    : 'text-base-text-secondary'
+                                  : 'text-base-text-faint'
+                              }`}
+                            >
+                              {repo?.fullName ?? project.path.split('/').pop()}
+                            </span>
+                            <span className="block truncate text-[10px] text-base-text-faint">
+                              {project.path}
+                            </span>
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => handleRemoveProject(e, project.path)}
+                          title="Remove project folder"
+                          className="rounded p-0.5 text-base-text-faint opacity-0 transition-all hover:bg-base-raised hover:text-base-text group-hover:opacity-100"
+                        >
+                          <X size={11} />
+                        </button>
+                      </div>
+                    )
+                  })}
+                  <button
+                    type="button"
+                    onClick={handleAddProject}
+                    className="mt-1 flex w-full items-center px-2.5 py-1.5 text-left text-[10px] text-base-text-secondary transition-colors hover:bg-base-raised hover:text-base-text"
+                  >
+                    Add project folder...
+                  </button>
+                </div>
               </motion.div>
             )}
           </AnimatePresence>

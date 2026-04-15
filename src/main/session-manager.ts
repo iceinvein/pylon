@@ -739,8 +739,8 @@ export class SessionManager {
   getProjectFolders(): Array<{ path: string; lastUsed: number }> {
     const db = getDb()
     const worktreeBase = join(homedir(), '.pylon', 'worktrees')
-    // Merge bookmarked projects with session-derived projects.
-    // For paths that appear in both, take the most recent timestamp.
+    // Merge manually-managed projects with session-derived projects.
+    // Hidden rows act as tombstones so users can suppress stale session-derived repos.
     const rows = db
       .prepare(`
       SELECT path, MAX(last_used) as last_used FROM (
@@ -749,12 +749,16 @@ export class SessionManager {
           MAX(updated_at) as last_used
         FROM sessions
         WHERE COALESCE(original_cwd, cwd) NOT LIKE ? || '%'
+          AND COALESCE(original_cwd, cwd) NOT IN (
+            SELECT path FROM projects WHERE hidden = 1
+          )
         GROUP BY COALESCE(original_cwd, cwd)
 
         UNION ALL
 
         SELECT path, last_opened_at as last_used
         FROM projects
+        WHERE hidden = 0
       )
       GROUP BY path
       ORDER BY last_used DESC
@@ -769,14 +773,24 @@ export class SessionManager {
     const db = getDb()
     const now = Date.now()
     db.prepare(`
-      INSERT INTO projects (path, added_at, last_opened_at) VALUES (?, ?, ?)
-      ON CONFLICT(path) DO UPDATE SET last_opened_at = excluded.last_opened_at
+      INSERT INTO projects (path, added_at, last_opened_at, hidden) VALUES (?, ?, ?, 0)
+      ON CONFLICT(path) DO UPDATE SET
+        last_opened_at = excluded.last_opened_at,
+        hidden = 0
     `).run(projectPath, now, now)
   }
 
   removeProject(projectPath: string): void {
     const db = getDb()
-    db.prepare('DELETE FROM projects WHERE path = ?').run(projectPath)
+    const existing = db.prepare('SELECT added_at FROM projects WHERE path = ?').get(projectPath) as
+      | { added_at: number }
+      | undefined
+    const now = Date.now()
+
+    db.prepare(`
+      INSERT INTO projects (path, added_at, last_opened_at, hidden) VALUES (?, ?, ?, 1)
+      ON CONFLICT(path) DO UPDATE SET hidden = 1
+    `).run(projectPath, existing?.added_at ?? now, now)
   }
 
   getStoredSessions(): unknown[] {

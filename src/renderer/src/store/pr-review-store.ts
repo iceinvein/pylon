@@ -200,7 +200,28 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
     set({ reposLoading: true })
     try {
       const repos = await window.api.listGhRepos()
-      set({ repos, reposLoading: false })
+      const selectedRepo = get().selectedRepo
+      const shouldResetSelection =
+        selectedRepo !== null && !repos.some((repo) => repo.fullName === selectedRepo)
+
+      set({
+        repos,
+        reposLoading: false,
+        ...(shouldResetSelection
+          ? {
+              selectedRepo: null,
+              selectedPr: null,
+              prDetail: null,
+              prDetailError: null,
+              activeReview: null,
+              activeFindings: [],
+              reviewStreamingText: '',
+              reviewError: null,
+              reviews: [],
+              agentProgress: [],
+            }
+          : {}),
+      })
     } catch (err) {
       logger.error('loadRepos failed:', err)
       set({ reposLoading: false })

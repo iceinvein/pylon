@@ -159,7 +159,8 @@ function initTestDb() {
     CREATE TABLE projects (
       path TEXT PRIMARY KEY,
       added_at INTEGER NOT NULL,
-      last_opened_at INTEGER NOT NULL
+      last_opened_at INTEGER NOT NULL,
+      hidden INTEGER NOT NULL DEFAULT 0
     );
   `)
 }
@@ -487,7 +488,7 @@ describe('SessionManager', () => {
       expect(folders.map((f) => f.path).sort()).toEqual(['/tmp/project-a', '/tmp/project-b'])
     })
 
-    test('includes bookmarked projects without sessions', async () => {
+    test('includes manually added projects without sessions', async () => {
       const sm = new SessionManager()
       sm.addProject('/tmp/bookmarked-only')
 
@@ -496,7 +497,7 @@ describe('SessionManager', () => {
       expect(folders[0].path).toBe('/tmp/bookmarked-only')
     })
 
-    test('merges bookmarked and session-derived projects', async () => {
+    test('merges manual and session-derived projects', async () => {
       const sm = new SessionManager()
       await sm.createSession('/tmp/project-a')
       sm.addProject('/tmp/project-b')
@@ -526,7 +527,7 @@ describe('SessionManager', () => {
       expect(folders.filter((f) => f.path === '/tmp/project')).toHaveLength(1)
     })
 
-    test('removeProject removes a bookmarked project', () => {
+    test('removeProject removes a manually added project', () => {
       const sm = new SessionManager()
       sm.addProject('/tmp/to-remove')
       sm.removeProject('/tmp/to-remove')
@@ -535,14 +536,17 @@ describe('SessionManager', () => {
       expect(folders.some((f) => f.path === '/tmp/to-remove')).toBe(false)
     })
 
-    test('removeProject does not remove session-derived projects', async () => {
+    test('removeProject hides session-derived projects until manually re-added', async () => {
       const sm = new SessionManager()
       await sm.createSession('/tmp/session-project')
-      sm.removeProject('/tmp/session-project') // only removes from projects table
+      sm.removeProject('/tmp/session-project')
 
       const folders = sm.getProjectFolders()
-      // Still visible from sessions
-      expect(folders.some((f) => f.path === '/tmp/session-project')).toBe(true)
+      expect(folders.some((f) => f.path === '/tmp/session-project')).toBe(false)
+
+      sm.addProject('/tmp/session-project')
+      const restored = sm.getProjectFolders()
+      expect(restored.some((f) => f.path === '/tmp/session-project')).toBe(true)
     })
   })
 

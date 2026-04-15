@@ -132,6 +132,11 @@ const migrations: Array<{ version: number; description: string; sql: string }> =
     description: 'Add merged_from to pr_review_findings',
     sql: 'ALTER TABLE pr_review_findings ADD COLUMN merged_from TEXT',
   },
+  {
+    version: 15,
+    description: 'Add hidden flag to projects for manual project list overrides',
+    sql: 'ALTER TABLE projects ADD COLUMN hidden INTEGER NOT NULL DEFAULT 0',
+  },
 ]
 
 /**
@@ -190,6 +195,18 @@ function detectAppliedMigrations(database: Database.Database): Set<number> {
       ),
     )
     if (explorCols.has('batch_id')) applied.add(10)
+  } catch {
+    /* table doesn't exist yet */
+  }
+
+  // Check projects columns
+  try {
+    const projectCols = new Set(
+      (database.prepare('PRAGMA table_info(projects)').all() as { name: string }[]).map(
+        (c) => c.name,
+      ),
+    )
+    if (projectCols.has('hidden')) applied.add(15)
   } catch {
     /* table doesn't exist yet */
   }
