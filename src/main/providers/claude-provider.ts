@@ -21,6 +21,7 @@ import { app } from 'electron'
 import { log } from '../../shared/logger'
 import { resolveContextWindow, resolveMaxOutputTokens } from '../../shared/model-context'
 import type { Attachment } from '../../shared/types'
+import { getClaudeCodeSdkRuntimeOptions } from '../claude-code-executable'
 import type {
   AgentProvider,
   AgentSession,
@@ -90,7 +91,11 @@ export class ClaudeProvider implements AgentProvider {
     try {
       const q = query({
         prompt: '',
-        options: { maxTurns: 0, abortController: ac },
+        options: {
+          maxTurns: 0,
+          abortController: ac,
+          ...getClaudeCodeSdkRuntimeOptions(),
+        },
       })
       const modelInfos = await q.supportedModels()
       ac.abort()
@@ -201,6 +206,7 @@ class ClaudeSession implements AgentSession {
       abortController: new AbortController(),
       tools: [],
       permissionMode: 'acceptEdits' as const,
+      ...getClaudeCodeSdkRuntimeOptions(),
     }
 
     const q = query({ prompt, options })
@@ -489,6 +495,7 @@ class ClaudeSession implements AgentSession {
       permissionMode: config.permissionMode === 'plan' ? ('plan' as const) : undefined,
       betas: config.betas as SdkOptions['betas'],
       canUseTool,
+      ...getClaudeCodeSdkRuntimeOptions(),
     }
   }
 

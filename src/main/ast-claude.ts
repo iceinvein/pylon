@@ -8,6 +8,7 @@
 import { readFileSync } from 'node:fs'
 import { log } from '../shared/logger'
 import type { ArchAnalysis, RepoGraph } from '../shared/types'
+import { resolveClaudeCodeExecutablePath } from './claude-code-executable'
 
 const logger = log.child('ast-claude')
 
@@ -203,29 +204,5 @@ export function createCliQueryFn(claudePath: string): QueryFn {
  * Checks common locations and the system PATH.
  */
 export function resolveClaudePath(): string | null {
-  const { execFileSync } = require('node:child_process')
-
-  // Known locations
-  const candidates = [
-    '/Applications/cmux.app/Contents/Resources/bin/claude',
-    '/usr/local/bin/claude',
-  ]
-
-  const { existsSync } = require('node:fs')
-  for (const candidate of candidates) {
-    if (existsSync(candidate)) {
-      return candidate
-    }
-  }
-
-  // Try which
-  try {
-    const result = execFileSync('which', ['claude'], { encoding: 'utf-8', timeout: 5000 })
-    const p = result.trim()
-    if (p) return p
-  } catch {
-    // not found
-  }
-
-  return null
+  return resolveClaudeCodeExecutablePath()
 }

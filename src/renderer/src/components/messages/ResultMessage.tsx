@@ -1,6 +1,8 @@
 import { CheckCircle, XCircle } from 'lucide-react'
 import { motion } from 'motion/react'
+import { isClaudeSetupError } from '../../lib/setup-errors'
 import { formatCost, formatTokens } from '../../lib/utils'
+import { ClaudeCodeSetupCard } from '../setup/ClaudeCodeSetupCard'
 
 type ResultMessageProps = {
   isError: boolean
@@ -37,6 +39,8 @@ export function ResultMessage({
   errorMessage,
 }: ResultMessageProps) {
   if (isError) {
+    const isSetupError = isClaudeSetupError(errorMessage)
+
     return (
       <motion.div
         className="px-6 pt-2 pb-2 pl-15"
@@ -51,17 +55,21 @@ export function ResultMessage({
               'linear-gradient(to right, transparent, color-mix(in srgb, var(--color-error) 20%, transparent), transparent)',
           }}
         />
-        <div className="flex items-center gap-2">
-          <span className="rounded-full bg-error/15 px-2 py-0.5 text-error text-xs">
-            <XCircle size={10} className="mr-1 inline-block align-[-1px]" />
-            Error
-          </span>
-          {errorMessage && (
-            <span className="min-w-0 flex-1 truncate text-base-text-muted text-xs">
-              {errorMessage}
+        {isSetupError ? (
+          <ClaudeCodeSetupCard errorMessage={errorMessage} compact />
+        ) : (
+          <div className="flex items-center gap-2">
+            <span className="rounded-full bg-error/15 px-2 py-0.5 text-error text-xs">
+              <XCircle size={10} className="mr-1 inline-block align-[-1px]" />
+              Error
             </span>
-          )}
-        </div>
+            {errorMessage && (
+              <span className="min-w-0 flex-1 truncate text-base-text-muted text-xs">
+                {errorMessage}
+              </span>
+            )}
+          </div>
+        )}
       </motion.div>
     )
   }

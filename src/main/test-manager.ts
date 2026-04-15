@@ -16,6 +16,7 @@ import type {
   TestExploration,
   TestFinding,
 } from '../shared/types'
+import { getClaudeCodeSdkRuntimeOptions } from './claude-code-executable'
 import { getDb } from './db'
 import { resolveE2eOutputPath } from './e2e-path-resolver'
 import { checkPortInUse, scanProject as runProjectScan } from './project-scanner'
@@ -146,6 +147,7 @@ class TestManager {
             permissionMode: 'bypassPermissions',
             allowDangerouslySkipPermissions: true,
             abortController,
+            ...getClaudeCodeSdkRuntimeOptions(),
             mcpServers: {
               'pylon-goal-analysis': toolsServer,
             },
@@ -511,6 +513,7 @@ class TestManager {
           permissionMode: 'bypassPermissions',
           allowDangerouslySkipPermissions: true,
           abortController,
+          ...getClaudeCodeSdkRuntimeOptions(),
           mcpServers: {
             playwright: {
               command: 'bunx',

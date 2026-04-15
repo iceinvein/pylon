@@ -94,6 +94,7 @@ type PrReviewStore = {
   activeReview: PrReview | null
   activeFindings: ReviewFinding[]
   reviewStreamingText: string
+  reviewError: string | null
   selectedFindingIds: Set<string>
   postingFindingIds: Set<string>
   postingBatch: 'selected' | 'all' | null
@@ -166,6 +167,7 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
   activeReview: null,
   activeFindings: [],
   reviewStreamingText: '',
+  reviewError: null,
   selectedFindingIds: new Set(),
   postingFindingIds: new Set(),
   postingBatch: null,
@@ -214,6 +216,7 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
       activeReview: null,
       activeFindings: [],
       reviewStreamingText: '',
+      reviewError: null,
       reviews: [],
       agentProgress: [],
     })
@@ -267,6 +270,7 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
       activeReview: null,
       activeFindings: [],
       reviewStreamingText: '',
+      reviewError: null,
       selectedFindingIds: new Set(),
       agentProgress: [],
       _selectPrSeq: seq,
@@ -318,6 +322,7 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
         activeReview: review,
         activeFindings: [],
         reviewStreamingText: '',
+        reviewError: null,
         selectedFindingIds: new Set(),
         agentProgress: [],
         // Add to reviews list so it shows in history
@@ -335,6 +340,7 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
         activeReview:
           s.activeReview?.id === reviewId ? { ...s.activeReview, status: 'error' } : s.activeReview,
         reviewStreamingText: '',
+        reviewError: 'Review stopped by user',
         agentProgress: [],
         reviews: s.reviews.map((r) => (r.id === reviewId ? { ...r, status: 'error' as const } : r)),
       }))
@@ -362,6 +368,7 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
         activeReview: review,
         activeFindings: findings,
         reviewStreamingText: rawOutput,
+        reviewError: null,
         selectedFindingIds: new Set(),
         agentProgress: [],
       })
@@ -378,6 +385,7 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
         activeReview: s.activeReview?.id === reviewId ? null : s.activeReview,
         activeFindings: s.activeReview?.id === reviewId ? [] : s.activeFindings,
         reviewStreamingText: s.activeReview?.id === reviewId ? '' : s.reviewStreamingText,
+        reviewError: s.activeReview?.id === reviewId ? null : s.reviewError,
       }))
     } catch (err) {
       logger.error('deleteReview failed:', err)
@@ -556,6 +564,10 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
         updates.reviewStreamingText = data.streamingText
       }
 
+      if (data.error !== undefined) {
+        updates.reviewError = data.error
+      }
+
       // Update agent progress if present
       if (data.agentProgress) {
         updates.agentProgress = data.agentProgress
@@ -583,6 +595,7 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
         }
         updates.activeFindings = findings
         updates.agentProgress = data.agentProgress ?? []
+        updates.reviewError = null
         updates.findingsViewMode = 'files'
         updates.severityFilter = new Set(['critical', 'warning', 'suggestion', 'nitpick'])
         updates.navigateToFindingId = null
