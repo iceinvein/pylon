@@ -49,10 +49,10 @@ const SEVERITY_STYLES: Record<
   },
   warning: {
     icon: AlertTriangle,
-    border: 'border-[var(--color-accent)]/40',
+    border: 'border-[var(--color-warning)]/35',
     text: 'text-[var(--color-warning)]',
     label: 'Warning',
-    bg: 'bg-[var(--color-accent-hover)]/5',
+    bg: 'bg-[var(--color-warning)]/6',
     postedBorder: 'border-[var(--color-success)]/30',
   },
   suggestion: {

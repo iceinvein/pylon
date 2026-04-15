@@ -94,7 +94,7 @@ function countDirFindings(findings: ReviewFinding[], node: DirNode): number {
 
 const SEVERITY_COLORS: Record<string, string> = {
   critical: 'bg-[var(--color-error)] text-base-text',
-  warning: 'bg-[var(--color-accent-hover)]/80 text-base-text',
+  warning: 'bg-[var(--color-warning)] text-base-text',
   suggestion: 'bg-[var(--color-info)]/80 text-base-text',
   nitpick: 'bg-[var(--color-base-text-faint)] text-base-text',
 }

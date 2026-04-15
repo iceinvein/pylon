@@ -49,7 +49,7 @@ const SEVERITY_CONFIG: Record<
     icon: AlertTriangle,
     border: 'border-l-[var(--color-warning)]',
     text: 'text-[var(--color-warning)]',
-    bg: 'bg-[var(--color-accent-hover)]/5',
+    bg: 'bg-[var(--color-warning)]/6',
     label: 'Warning',
     postedBorder: 'border-l-[var(--color-success)]',
   },

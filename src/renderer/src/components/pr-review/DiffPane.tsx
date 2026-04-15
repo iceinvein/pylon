@@ -28,7 +28,7 @@ type DiffMode = 'unified' | 'split'
 
 const SEVERITY_TICK_COLORS: Record<string, string> = {
   critical: 'bg-[var(--color-error)]',
-  warning: 'bg-[var(--color-accent-hover)]',
+  warning: 'bg-[var(--color-warning)]',
   suggestion: 'bg-[var(--color-info)]',
   nitpick: 'bg-[var(--color-base-text-muted)]',
 }

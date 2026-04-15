@@ -88,7 +88,7 @@ const SEVERITY_CONFIG: Record<string, { icon: typeof AlertCircle; color: string;
   warning: {
     icon: AlertTriangle,
     color: 'text-[var(--color-warning)]',
-    bg: 'bg-[var(--color-accent-hover)]/10',
+    bg: 'bg-[var(--color-warning)]/12',
   },
   suggestion: {
     icon: Lightbulb,

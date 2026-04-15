@@ -20,9 +20,9 @@ const SEVERITY_PILLS = [
     key: 'warning',
     label: 'Warning',
     activeClass:
-      'bg-[var(--color-accent-hover)]/20 text-[var(--color-warning)] border-[var(--color-accent)]/30',
+      'bg-[var(--color-warning)]/15 text-[var(--color-warning)] border-[var(--color-warning)]/30',
     inactiveClass:
-      'text-[var(--color-warning)]/50 border-[var(--color-base-border)] hover:border-[var(--color-accent)]/30 hover:text-[var(--color-warning)]',
+      'text-[var(--color-warning)]/50 border-[var(--color-base-border)] hover:border-[var(--color-warning)]/30 hover:text-[var(--color-warning)]',
   },
   {
     key: 'suggestion',
