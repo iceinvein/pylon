@@ -7,6 +7,7 @@
  */
 export const KNOWN_CONTEXT_WINDOWS: Record<string, number> = {
   // Claude
+  'claude-opus-4-7': 1_000_000,
   'claude-opus-4-6': 1_000_000,
   'claude-opus-4-20250514': 1_000_000,
   'claude-sonnet-4-6': 200_000,
@@ -28,6 +29,7 @@ export const KNOWN_CONTEXT_WINDOWS: Record<string, number> = {
  */
 export const KNOWN_MAX_OUTPUT_TOKENS: Record<string, number> = {
   // Claude — 128K max output on all current models
+  'claude-opus-4-7': 128_000,
   'claude-opus-4-6': 128_000,
   'claude-opus-4-20250514': 128_000,
   'claude-sonnet-4-6': 64_000,

@@ -35,7 +35,7 @@ type SessionViewProps = {
 export function SessionView({ sessionId, isActive }: SessionViewProps) {
   const updateSession = useSessionStore((s) => s.updateSession)
   const session = useSessionStore((s) => s.sessions.get(sessionId))
-  const [pendingModel, setPendingModel] = useState(session?.model || 'claude-opus-4-6')
+  const [pendingModel, setPendingModel] = useState(session?.model || 'claude-opus-4-7')
   const [effort, setEffort] = useState<EffortLevel>('high')
   const [permissionMode, setPermissionMode] = useState<PermissionMode>('default')
   const sessionMode = useSessionStore(
@@ -144,7 +144,7 @@ export function SessionView({ sessionId, isActive }: SessionViewProps) {
     async (model: string) => {
       setPendingModel(model)
       // 'max' effort is only available on Opus — downgrade to 'high' when switching away
-      if (model !== 'claude-opus-4-6' && effort === 'max') {
+      if (model !== 'claude-opus-4-7' && model !== 'claude-opus-4-6' && effort === 'max') {
         setEffort('high')
         if (sessionId) {
           await window.api.setEffort(sessionId, 'high')

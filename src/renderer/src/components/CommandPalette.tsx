@@ -36,7 +36,7 @@ export function CommandPalette() {
   const context: CommandContext = {
     sessionId,
     activeSessionId: activeSessionId ?? null,
-    model: session?.model ?? 'claude-opus-4-6',
+    model: session?.model ?? 'claude-opus-4-7',
     permissionMode: 'default',
   }
 

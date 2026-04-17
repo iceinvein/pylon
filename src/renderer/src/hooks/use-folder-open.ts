@@ -16,7 +16,7 @@ export function useFolderOpen() {
 
     // Get default model from settings
     const settings = await window.api.getSettings()
-    const model = (settings as { defaultModel: string }).defaultModel || 'claude-opus-4-6'
+    const model = (settings as { defaultModel: string }).defaultModel || 'claude-opus-4-7'
 
     // Create the session
     const sessionId = await window.api.createSession(cwd, model, useWorktree)

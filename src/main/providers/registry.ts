@@ -58,14 +58,23 @@ export function getProviderForModel(modelId: string): AgentProvider | undefined 
 }
 
 /**
- * Get all models — returns discovered models from cache if available,
- * otherwise falls back to static catalogs.
+ * Get all models — returns discovered (cached) models merged with the static
+ * catalog. Static entries take precedence on ID collisions and ensure newly
+ * added models show up immediately, even before a background cache refresh.
  */
 export function getAllModels(): ProviderModel[] {
-  if (cachedModels && cachedModels.length > 0) {
-    return cachedModels
+  const staticModels = [...providers.values()].flatMap((p) => p.models)
+  if (!cachedModels || cachedModels.length === 0) {
+    return staticModels
   }
-  return [...providers.values()].flatMap((p) => p.models)
+  return mergeModels(cachedModels, staticModels)
+}
+
+/** Merge two lists — `overrides` wins on ID collision, preserving order of `base` first. */
+function mergeModels(base: ProviderModel[], overrides: ProviderModel[]): ProviderModel[] {
+  const overrideIds = new Set(overrides.map((m) => m.id))
+  const kept = base.filter((m) => !overrideIds.has(m.id))
+  return [...overrides, ...kept]
 }
 
 /** Get all registered provider IDs */

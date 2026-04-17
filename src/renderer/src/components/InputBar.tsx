@@ -65,6 +65,12 @@ type ProviderModelEntry = {
 
 const FALLBACK_MODELS: ProviderModelEntry[] = [
   {
+    id: 'claude-opus-4-7',
+    label: 'Opus 4.7',
+    provider: 'claude',
+    supportsEffort: ['low', 'medium', 'high', 'max'],
+  },
+  {
     id: 'claude-opus-4-6',
     label: 'Opus 4.6',
     provider: 'claude',

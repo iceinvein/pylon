@@ -195,7 +195,7 @@ describe('SessionManager', () => {
       expect(row).toBeTruthy()
       expect(row.cwd).toBe('/tmp/project')
       expect(row.status).toBe('empty')
-      expect(row.model).toBe('claude-opus-4-6')
+      expect(row.model).toBe('claude-opus-4-7')
       expect(row.source).toBe('user')
     })
 

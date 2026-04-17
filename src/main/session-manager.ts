@@ -240,7 +240,7 @@ export class SessionManager {
   ): Promise<string> {
     const id = randomUUID()
     const now = Date.now()
-    const sessionModel = model || 'claude-opus-4-6'
+    const sessionModel = model || 'claude-opus-4-7'
     const provider = getProviderForModel(sessionModel)
     const providerId: ProviderId = provider?.id ?? 'claude'
 

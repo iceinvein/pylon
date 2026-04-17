@@ -88,6 +88,7 @@ type ProviderModelEntry = {
 }
 
 const FALLBACK_MODELS: ProviderModelEntry[] = [
+  { id: 'claude-opus-4-7', label: 'Opus 4.7', provider: 'claude' },
   { id: 'claude-opus-4-6', label: 'Opus 4.6', provider: 'claude' },
   { id: 'claude-sonnet-4-6', label: 'Sonnet 4.6', provider: 'claude' },
   { id: 'claude-haiku-4-5', label: 'Haiku 4.5', provider: 'claude' },

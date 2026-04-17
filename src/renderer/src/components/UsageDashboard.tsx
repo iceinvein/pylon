@@ -36,12 +36,14 @@ const CHART_COLORS = {
 } as const
 
 const MODEL_COLORS: Record<string, string> = {
-  'claude-opus-4-6': '#d4a854',
+  'claude-opus-4-7': '#d4a854',
+  'claude-opus-4-6': '#b68f46',
   'claude-sonnet-4-6': '#6898d4',
   'claude-haiku-4-5': '#68b27e',
 }
 
 const MODEL_LABELS: Record<string, string> = {
+  'claude-opus-4-7': 'Opus 4.7',
   'claude-opus-4-6': 'Opus 4.6',
   'claude-sonnet-4-6': 'Sonnet 4.6',
   'claude-haiku-4-5': 'Haiku 4.5',

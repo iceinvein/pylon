@@ -37,6 +37,13 @@ const logger = log.child('claude-provider')
 
 const CLAUDE_MODELS: ProviderModel[] = [
   {
+    id: 'claude-opus-4-7',
+    label: 'Opus 4.7',
+    provider: 'claude',
+    contextWindow: 1_000_000,
+    supportsEffort: ['low', 'medium', 'high', 'max'],
+  },
+  {
     id: 'claude-opus-4-6',
     label: 'Opus 4.6',
     provider: 'claude',
@@ -130,8 +137,8 @@ export class ClaudeProvider implements AgentProvider {
  * the gap so discovery doesn't break the dropdown or selection logic.
  */
 const SDK_ID_MAP: Record<string, string> = {
-  default: 'claude-opus-4-6',
-  opus: 'claude-opus-4-6',
+  default: 'claude-opus-4-7',
+  opus: 'claude-opus-4-7',
   sonnet: 'claude-sonnet-4-6',
   haiku: 'claude-haiku-4-5',
 }

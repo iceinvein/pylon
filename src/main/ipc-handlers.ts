@@ -21,7 +21,7 @@ import { worktreeRecipeService } from './worktree-recipe-service'
 const logger = log.child('ipc')
 
 const DEFAULT_SETTINGS: AppSettings = {
-  defaultModel: 'claude-opus-4-6',
+  defaultModel: 'claude-opus-4-7',
   defaultPermissionMode: 'default',
   theme: 'dark',
 }
