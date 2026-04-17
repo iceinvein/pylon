@@ -20,7 +20,7 @@ import {
 import { app } from 'electron'
 import { log } from '../../shared/logger'
 import { resolveContextWindow, resolveMaxOutputTokens } from '../../shared/model-context'
-import type { Attachment } from '../../shared/types'
+import type { Attachment, EffortLevel } from '../../shared/types'
 import { getClaudeCodeSdkRuntimeOptions } from '../claude-code-executable'
 import type {
   AgentProvider,
@@ -167,7 +167,9 @@ function mapModelInfo(info: ModelInfo): ProviderModel {
     label: staticMatch?.label || info.displayName || canonicalId,
     provider: 'claude',
     contextWindow: staticMatch?.contextWindow ?? 200_000,
-    supportsEffort: info.supportedEffortLevels ??
+    supportsEffort: info.supportedEffortLevels?.filter(
+      (e): e is EffortLevel => e === 'low' || e === 'medium' || e === 'high' || e === 'max',
+    ) ??
       staticMatch?.supportsEffort ?? ['low', 'medium', 'high'],
   }
 }

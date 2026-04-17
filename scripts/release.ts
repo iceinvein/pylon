@@ -101,7 +101,8 @@ console.log('Generating release notes...')
 const notes = generateReleaseNotes(tag)
 
 writeVersion(next)
-execFileSync('git', ['add', 'package.json'], { stdio: 'inherit' })
+execFileSync('bun', ['install'], { stdio: 'inherit' })
+execFileSync('git', ['add', 'package.json', 'bun.lock'], { stdio: 'inherit' })
 
 const commitMsg = `chore: release ${tag}`
 execFileSync('git', ['commit', '-m', commitMsg], { stdio: 'inherit' })
