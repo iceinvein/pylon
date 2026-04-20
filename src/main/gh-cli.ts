@@ -272,6 +272,114 @@ export async function postComment(
   await execGh(['pr', 'comment', String(prNumber), '--repo', repoFullName, '--body', body])
 }
 
+const SEVERITY_RANK: Record<ReviewFinding['severity'], number> = {
+  critical: 0,
+  warning: 1,
+  suggestion: 2,
+  nitpick: 3,
+}
+
+const SEVERITY_ICON: Record<ReviewFinding['severity'], string> = {
+  critical: '🔴',
+  warning: '🟡',
+  suggestion: '🔵',
+  nitpick: '⚪',
+}
+
+const SEVERITY_LABEL: Record<ReviewFinding['severity'], string> = {
+  critical: 'Critical',
+  warning: 'Warning',
+  suggestion: 'Suggestion',
+  nitpick: 'Nitpick',
+}
+
+const plural = (n: number, singular: string, plural?: string): string =>
+  `${n} ${n === 1 ? singular : (plural ?? `${singular}s`)}`
+
+export function buildReviewBody(findings: ReviewFinding[], commitId: string): string {
+  const inlineFindings = findings.filter((f) => f.file && f.line !== null)
+  const generalFindings = findings.filter((f) => !f.file || f.line === null)
+
+  const counts: Record<ReviewFinding['severity'], number> = {
+    critical: 0,
+    warning: 0,
+    suggestion: 0,
+    nitpick: 0,
+  }
+  for (const f of findings) counts[f.severity]++
+
+  const fileCount = new Set(inlineFindings.map((f) => f.file)).size
+  const shortSha = commitId ? commitId.slice(0, 7) : ''
+
+  let verdict: string
+  if (counts.critical > 0) {
+    verdict = `⚠️ **${plural(counts.critical, 'blocking issue')}**`
+  } else if (counts.warning > 0) {
+    verdict = `⚠️ **${plural(counts.warning, 'item')} to review**`
+  } else if (findings.length > 0) {
+    verdict = `💡 **${plural(findings.length, 'suggestion')}**`
+  } else {
+    verdict = '✅ **No issues found.**'
+  }
+
+  const scope = findings.length > 0 && fileCount > 0 ? ` across ${plural(fileCount, 'file')}.` : ''
+  const sha = shortSha ? ` Reviewed at \`${shortSha}\`.` : ''
+  const header = `${verdict}${scope}${sha}`.replace(/\s+$/, '')
+
+  const lines: string[] = ['## Pylon Review', '', header]
+
+  const topFindings = [...findings]
+    .filter((f) => f.severity === 'critical' || f.severity === 'warning')
+    .sort((a, b) => SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity])
+    .slice(0, 3)
+
+  if (topFindings.length > 0) {
+    lines.push('', '### Top findings', '')
+    for (const f of topFindings) {
+      const loc = f.file ? ` · \`${f.file}${f.line ? `:${f.line}` : ''}\`` : ''
+      lines.push(`- ${SEVERITY_ICON[f.severity]} **${f.title}**${loc}`)
+    }
+  }
+
+  if (findings.length > 0) {
+    lines.push(
+      '',
+      '<details>',
+      `<summary><b>Severity breakdown</b> (${plural(findings.length, 'finding')})</summary>`,
+      '',
+      '| Severity | Count |',
+      '|---|---|',
+    )
+    for (const sev of ['critical', 'warning', 'suggestion', 'nitpick'] as const) {
+      if (counts[sev] > 0) {
+        lines.push(`| ${SEVERITY_ICON[sev]} ${SEVERITY_LABEL[sev]} | ${counts[sev]} |`)
+      }
+    }
+    lines.push('', '</details>')
+  }
+
+  if (generalFindings.length > 0) {
+    lines.push(
+      '',
+      '<details>',
+      `<summary><b>General notes</b> (${generalFindings.length})</summary>`,
+      '',
+    )
+    for (const f of generalFindings) {
+      lines.push(`**${f.title}.** ${f.description}`, '')
+    }
+    lines.push('</details>')
+  }
+
+  const footer =
+    inlineFindings.length > 0
+      ? '*Reviewed by Pylon. Resolve or reply on inline threads to address findings.*'
+      : '*Reviewed by Pylon.*'
+  lines.push('', '---', footer)
+
+  return lines.join('\n')
+}
+
 export async function postReview(
   repoFullName: string,
   prNumber: number,
@@ -279,25 +387,7 @@ export async function postReview(
   commitId: string,
 ): Promise<void> {
   const inlineFindings = findings.filter((f) => f.file && f.line !== null)
-  const generalFindings = findings.filter((f) => !f.file || f.line === null)
-
-  let reviewBody = '## PR Review Summary\n\n'
-  if (generalFindings.length > 0) {
-    for (const f of generalFindings) {
-      const icon =
-        f.severity === 'critical'
-          ? '🔴'
-          : f.severity === 'warning'
-            ? '🟡'
-            : f.severity === 'suggestion'
-              ? '🔵'
-              : '⚪'
-      reviewBody += `${icon} **${f.title}**\n${f.description}\n\n`
-    }
-  } else {
-    reviewBody += `${inlineFindings.length} inline comment(s) posted.\n`
-  }
-  reviewBody += '\n---\n*Reviewed by Pylon*'
+  const reviewBody = buildReviewBody(findings, commitId)
 
   const comments = inlineFindings.map((f) => ({
     path: f.file,
