@@ -68,7 +68,7 @@ const FALLBACK_MODELS: ProviderModelEntry[] = [
     id: 'claude-opus-4-7',
     label: 'Opus 4.7',
     provider: 'claude',
-    supportsEffort: ['low', 'medium', 'high', 'max'],
+    supportsEffort: ['low', 'medium', 'high', 'xhigh', 'max'],
   },
   {
     id: 'claude-opus-4-6',
@@ -120,6 +120,7 @@ const CLAUDE_EFFORT_LEVELS: EffortLevelEntry[] = [
   { id: 'low', label: 'Low', description: 'Quick answers, minimal thinking' },
   { id: 'medium', label: 'Medium', description: 'Balanced depth and speed' },
   { id: 'high', label: 'High', description: 'Thorough analysis, more thinking' },
+  { id: 'xhigh', label: 'xHigh', description: 'Best for coding and agentic work' },
   { id: 'max', label: 'Max', description: 'Maximum depth, full context' },
 ]
 

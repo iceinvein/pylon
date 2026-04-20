@@ -143,8 +143,12 @@ export function SessionView({ sessionId, isActive }: SessionViewProps) {
   const handleModelChange = useCallback(
     async (model: string) => {
       setPendingModel(model)
-      // 'max' effort is only available on Opus — downgrade to 'high' when switching away
-      if (model !== 'claude-opus-4-7' && model !== 'claude-opus-4-6' && effort === 'max') {
+      // 'xhigh' (Opus 4.7 only) and 'max' (Opus tier) are not universally supported;
+      // downgrade to 'high' when switching to a non-Opus model, or off Opus 4.7 while on xhigh.
+      const isOpus = model === 'claude-opus-4-7' || model === 'claude-opus-4-6'
+      const isOpus47 = model === 'claude-opus-4-7'
+      const needsDowngrade = (!isOpus && effort === 'max') || (!isOpus47 && effort === 'xhigh')
+      if (needsDowngrade) {
         setEffort('high')
         if (sessionId) {
           await window.api.setEffort(sessionId, 'high')

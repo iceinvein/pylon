@@ -141,7 +141,7 @@ export type PermissionMode =
   | 'on-failure'
   | 'untrusted'
 
-export type EffortLevel = 'low' | 'medium' | 'high' | 'max'
+export type EffortLevel = 'low' | 'medium' | 'high' | 'xhigh' | 'max'
 
 export type SessionMode = 'normal' | 'plan'
 

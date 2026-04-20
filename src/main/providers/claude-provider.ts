@@ -41,7 +41,7 @@ const CLAUDE_MODELS: ProviderModel[] = [
     label: 'Opus 4.7',
     provider: 'claude',
     contextWindow: 1_000_000,
-    supportsEffort: ['low', 'medium', 'high', 'max'],
+    supportsEffort: ['low', 'medium', 'high', 'xhigh', 'max'],
   },
   {
     id: 'claude-opus-4-6',
@@ -168,7 +168,8 @@ function mapModelInfo(info: ModelInfo): ProviderModel {
     provider: 'claude',
     contextWindow: staticMatch?.contextWindow ?? 200_000,
     supportsEffort: info.supportedEffortLevels?.filter(
-      (e): e is EffortLevel => e === 'low' || e === 'medium' || e === 'high' || e === 'max',
+      (e): e is EffortLevel =>
+        e === 'low' || e === 'medium' || e === 'high' || e === 'xhigh' || e === 'max',
     ) ??
       staticMatch?.supportsEffort ?? ['low', 'medium', 'high'],
   }

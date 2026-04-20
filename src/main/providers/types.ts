@@ -256,19 +256,20 @@ export type AgentSession = {
 // This is where the mapping lives — each provider translates from our
 // normalized EffortLevel to its native equivalent.
 //
-// Claude:  low | medium | high | max
+// Claude:  low | medium | high | xhigh | max  (xhigh is Opus 4.7+ only)
 // Codex:   minimal | low | medium | high | xhigh
 //
 /**
  * Maps a Pylon EffortLevel to the provider's native effort string.
  *
  * Uses direct mapping (Option A): Claude effort levels pass through as-is,
- * Codex maps max→xhigh. Codex's "minimal" is unreachable from Pylon's
- * 4-level UI — acceptable since it's a niche "skip reasoning" mode.
+ * Codex maps max→xhigh (Codex has no "max" above xhigh). Codex's "minimal"
+ * is unreachable from Pylon's UI; acceptable since it's a niche "skip
+ * reasoning" mode.
  */
 const EFFORT_MAP: Record<ProviderId, Record<EffortLevel, string>> = {
-  claude: { low: 'low', medium: 'medium', high: 'high', max: 'max' },
-  codex: { low: 'low', medium: 'medium', high: 'high', max: 'xhigh' },
+  claude: { low: 'low', medium: 'medium', high: 'high', xhigh: 'xhigh', max: 'max' },
+  codex: { low: 'low', medium: 'medium', high: 'high', xhigh: 'xhigh', max: 'xhigh' },
 }
 
 export function mapEffortToNative(provider: ProviderId, effort: EffortLevel): string {
