@@ -66,6 +66,7 @@ export function SessionView({ sessionId, isActive }: SessionViewProps) {
       if (info) {
         setPendingModel(info.model)
         setPermissionMode(info.permissionMode as PermissionMode)
+        setEffort(info.effort as EffortLevel)
       }
     })
   }, [sessionId])

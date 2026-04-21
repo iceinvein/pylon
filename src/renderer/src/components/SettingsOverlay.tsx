@@ -16,6 +16,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { lazy, Suspense, useEffect, useState } from 'react'
 import type {
   AppSettings,
+  EffortLevel,
   GhCliStatus,
   InstalledPlugin,
   PermissionMode,
@@ -85,17 +86,77 @@ type ProviderModelEntry = {
   id: string
   label: string
   provider: string
+  supportsEffort: EffortLevel[]
 }
 
 const FALLBACK_MODELS: ProviderModelEntry[] = [
-  { id: 'claude-opus-4-7', label: 'Opus 4.7', provider: 'claude' },
-  { id: 'claude-opus-4-6', label: 'Opus 4.6', provider: 'claude' },
-  { id: 'claude-sonnet-4-6', label: 'Sonnet 4.6', provider: 'claude' },
-  { id: 'claude-haiku-4-5', label: 'Haiku 4.5', provider: 'claude' },
-  { id: 'gpt-5.4', label: 'GPT-5.4', provider: 'codex' },
-  { id: 'gpt-5.4-mini', label: 'GPT-5.4 Mini', provider: 'codex' },
-  { id: 'gpt-5.3-codex', label: 'GPT-5.3 Codex', provider: 'codex' },
-  { id: 'gpt-5.3-codex-spark', label: 'GPT-5.3 Codex Spark', provider: 'codex' },
+  {
+    id: 'claude-opus-4-7',
+    label: 'Opus 4.7',
+    provider: 'claude',
+    supportsEffort: ['low', 'medium', 'high', 'xhigh', 'max'],
+  },
+  {
+    id: 'claude-opus-4-6',
+    label: 'Opus 4.6',
+    provider: 'claude',
+    supportsEffort: ['low', 'medium', 'high', 'max'],
+  },
+  {
+    id: 'claude-sonnet-4-6',
+    label: 'Sonnet 4.6',
+    provider: 'claude',
+    supportsEffort: ['low', 'medium', 'high'],
+  },
+  {
+    id: 'claude-haiku-4-5',
+    label: 'Haiku 4.5',
+    provider: 'claude',
+    supportsEffort: ['low', 'medium', 'high'],
+  },
+  {
+    id: 'gpt-5.4',
+    label: 'GPT-5.4',
+    provider: 'codex',
+    supportsEffort: ['low', 'medium', 'high', 'max'],
+  },
+  {
+    id: 'gpt-5.4-mini',
+    label: 'GPT-5.4 Mini',
+    provider: 'codex',
+    supportsEffort: ['low', 'medium', 'high', 'max'],
+  },
+  {
+    id: 'gpt-5.3-codex',
+    label: 'GPT-5.3 Codex',
+    provider: 'codex',
+    supportsEffort: ['low', 'medium', 'high', 'max'],
+  },
+  {
+    id: 'gpt-5.3-codex-spark',
+    label: 'GPT-5.3 Codex Spark',
+    provider: 'codex',
+    supportsEffort: ['low', 'medium', 'high', 'max'],
+  },
+]
+
+// ── Effort-level definitions (mirror InputBar) ───
+
+type EffortLevelEntry = { id: EffortLevel; label: string; description: string }
+
+const CLAUDE_EFFORT_LEVELS: EffortLevelEntry[] = [
+  { id: 'low', label: 'Low', description: 'Quick answers, minimal thinking' },
+  { id: 'medium', label: 'Medium', description: 'Balanced depth and speed' },
+  { id: 'high', label: 'High', description: 'Thorough analysis, more thinking' },
+  { id: 'xhigh', label: 'xHigh', description: 'Best for coding and agentic work' },
+  { id: 'max', label: 'Max', description: 'Maximum depth, full context' },
+]
+
+const CODEX_EFFORT_LEVELS: EffortLevelEntry[] = [
+  { id: 'low', label: 'Low', description: 'Minimal reasoning' },
+  { id: 'medium', label: 'Medium', description: 'Standard reasoning' },
+  { id: 'high', label: 'High', description: 'Deep reasoning' },
+  { id: 'max', label: 'xHigh', description: 'Maximum reasoning effort' },
 ]
 
 const TABS = [
@@ -239,10 +300,15 @@ function GeneralTab({
   onUpdateSetting: <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => void
 }) {
   // Derive provider from the selected default model
-  const defaultProvider =
-    providerModels.find((m) => m.id === settings.defaultModel)?.provider ?? 'claude'
+  const defaultProviderModel = providerModels.find((m) => m.id === settings.defaultModel)
+  const defaultProvider = defaultProviderModel?.provider ?? 'claude'
   const permissionModes =
     defaultProvider === 'codex' ? CODEX_PERMISSION_MODES : CLAUDE_PERMISSION_MODES
+
+  // Effort levels supported by the selected default model (mirrors InputBar)
+  const supportedEffort = defaultProviderModel?.supportsEffort ?? ['low', 'medium', 'high']
+  const effortLevels = defaultProvider === 'codex' ? CODEX_EFFORT_LEVELS : CLAUDE_EFFORT_LEVELS
+  const effortItems = effortLevels.filter((e) => supportedEffort.includes(e.id))
 
   // Group models by provider for visual separation
   const claudeModels = providerModels.filter((m) => m.provider === 'claude')
@@ -250,11 +316,17 @@ function GeneralTab({
 
   function handleModelChange(modelId: string) {
     onUpdateSetting('defaultModel', modelId)
+    const newModel = providerModels.find((m) => m.id === modelId)
+    const newProvider = newModel?.provider
     // When switching providers, reset permission mode to the new provider's default
-    const newProvider = providerModels.find((m) => m.id === modelId)?.provider
     if (newProvider && newProvider !== defaultProvider) {
       const newDefault: PermissionMode = newProvider === 'codex' ? 'on-failure' : 'default'
       onUpdateSetting('defaultPermissionMode', newDefault)
+    }
+    // Downgrade default effort if unsupported by the new model
+    const newSupported = newModel?.supportsEffort ?? ['low', 'medium', 'high']
+    if (!newSupported.includes(settings.defaultEffort)) {
+      onUpdateSetting('defaultEffort', 'high')
     }
   }
 
@@ -318,6 +390,44 @@ function GeneralTab({
               </div>
             </div>
           )}
+        </div>
+      </section>
+
+      {/* Default Effort */}
+      <section>
+        <span className="block font-medium text-base-text text-sm">Default Effort</span>
+        <p className="mt-0.5 text-base-text-muted text-xs">
+          Applied to new sessions. Change per-session from the input bar. Options mirror those
+          supported by the selected default model.
+        </p>
+        <div className="mt-3 space-y-2">
+          {effortItems.map((e) => {
+            const isSelected = settings.defaultEffort === e.id
+            return (
+              <button
+                type="button"
+                key={e.id}
+                onClick={() => onUpdateSetting('defaultEffort', e.id)}
+                className={`flex w-full items-center gap-3 rounded-lg border px-4 py-3 text-left transition-colors ${
+                  isSelected
+                    ? 'border-base-text/40 bg-base-raised text-base-text'
+                    : 'border-base-border/50 text-base-text-secondary hover:border-base-border hover:text-base-text'
+                }`}
+              >
+                <div className="flex-1">
+                  <div className="font-medium text-sm">{e.label}</div>
+                  <div
+                    className={`text-xs ${isSelected ? 'text-base-text-secondary' : 'text-base-text-muted'}`}
+                  >
+                    {e.description}
+                  </div>
+                </div>
+                <span
+                  className={`h-2 w-2 rounded-full ${isSelected ? 'bg-base-text' : 'bg-transparent'}`}
+                />
+              </button>
+            )
+          })}
         </div>
       </section>
 
@@ -430,7 +540,14 @@ export function SettingsOverlay() {
     window.api.getSettings().then((s) => setSettings(s as AppSettings))
     window.api.getProviderModels().then((models) => {
       if (models && models.length > 0) {
-        setProviderModels(models.map((m) => ({ id: m.id, label: m.label, provider: m.provider })))
+        setProviderModels(
+          models.map((m) => ({
+            id: m.id,
+            label: m.label,
+            provider: m.provider,
+            supportsEffort: (m.supportsEffort ?? ['low', 'medium', 'high']) as EffortLevel[],
+          })),
+        )
       }
     })
   }, [settingsOpen])

@@ -6,6 +6,7 @@ import { IPC } from '../shared/ipc-channels'
 import { log } from '../shared/logger'
 import type {
   AppSettings,
+  EffortLevel,
   InstalledPlugin,
   IpcAttachment,
   PermissionMode,
@@ -23,6 +24,7 @@ const logger = log.child('ipc')
 const DEFAULT_SETTINGS: AppSettings = {
   defaultModel: 'claude-opus-4-7',
   defaultPermissionMode: 'default',
+  defaultEffort: 'high',
   theme: 'dark',
 }
 
@@ -40,6 +42,7 @@ function getSettings(): AppSettings {
     defaultModel: stored.defaultModel ?? DEFAULT_SETTINGS.defaultModel,
     defaultPermissionMode:
       (stored.defaultPermissionMode as PermissionMode) ?? DEFAULT_SETTINGS.defaultPermissionMode,
+    defaultEffort: (stored.defaultEffort as EffortLevel) ?? DEFAULT_SETTINGS.defaultEffort,
     theme: 'dark',
   }
 }

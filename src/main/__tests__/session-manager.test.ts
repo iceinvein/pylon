@@ -233,7 +233,11 @@ describe('SessionManager', () => {
       const id = await sm.createSession('/tmp/project', 'claude-sonnet-4-6')
 
       const info = sm.getSessionInfo(id)
-      expect(info).toEqual({ model: 'claude-sonnet-4-6', permissionMode: 'default' })
+      expect(info).toEqual({
+        model: 'claude-sonnet-4-6',
+        permissionMode: 'default',
+        effort: 'high',
+      })
     })
 
     test('returns null for unknown session', () => {

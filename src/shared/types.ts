@@ -154,6 +154,7 @@ export type PendingPlanApproval = {
 export type AppSettings = {
   defaultModel: string
   defaultPermissionMode: PermissionMode
+  defaultEffort: EffortLevel
   theme: 'dark'
 }
 

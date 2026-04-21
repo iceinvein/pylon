@@ -29,7 +29,9 @@ type Api = {
   setSessionMode: (sessionId: string, mode: string) => Promise<boolean>
   respondToPlanApproval: (requestId: string, approved: boolean) => Promise<boolean>
   onPlanApproval: (callback: (data: unknown) => void) => () => void
-  getSessionInfo: (sessionId: string) => Promise<{ model: string; permissionMode: string } | null>
+  getSessionInfo: (
+    sessionId: string,
+  ) => Promise<{ model: string; permissionMode: string; effort: string } | null>
   getProviderModels: () => Promise<
     Array<{
       id: string
@@ -127,7 +129,11 @@ type Api = {
     reviewId: string,
     findings: import('../shared/types').ReviewFinding[],
   ) => Promise<boolean>
-  postGhComment: (repo: string, number: number, body: string) => Promise<boolean>
+  postGhComment: (
+    repo: string,
+    number: number,
+    bodyOrFinding: string | import('../shared/types').ReviewFinding,
+  ) => Promise<boolean>
   postGhReview: (
     repo: string,
     number: number,

@@ -260,8 +260,17 @@ export class SessionManager {
     }
 
     const db = getDb()
+    const settingRow = db
+      .prepare("SELECT value FROM settings WHERE key = 'defaultPermissionMode'")
+      .get() as { value: string } | undefined
+    const initialPermissionMode: PermissionMode = (settingRow?.value as PermissionMode) || 'default'
+    const effortRow = db.prepare("SELECT value FROM settings WHERE key = 'defaultEffort'").get() as
+      | { value: string }
+      | undefined
+    const initialEffort: EffortLevel = (effortRow?.value as EffortLevel) || 'high'
+
     db.prepare(
-      'INSERT INTO sessions (id, cwd, status, model, title, created_at, updated_at, worktree_path, original_cwd, worktree_branch, original_branch, source, provider) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO sessions (id, cwd, status, model, title, created_at, updated_at, worktree_path, original_cwd, worktree_branch, original_branch, source, provider, permission_mode) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
     ).run(
       id,
       sessionCwd,
@@ -276,6 +285,7 @@ export class SessionManager {
       originalBranch,
       source,
       providerId,
+      initialPermissionMode,
     )
 
     this.sessions.set(id, {
@@ -285,8 +295,8 @@ export class SessionManager {
       cwd: sessionCwd,
       gitBaselineHash: null,
       model: sessionModel,
-      permissionMode: 'default',
-      effort: 'high',
+      permissionMode: initialPermissionMode,
+      effort: initialEffort,
       agentSession: null,
       abortController: new AbortController(),
       pendingPermissions: new Map(),
@@ -562,6 +572,11 @@ export class SessionManager {
     const provider = getProviderForModel(row.model)
     const providerId: ProviderId = provider?.id ?? 'claude'
 
+    const effortRow = db.prepare("SELECT value FROM settings WHERE key = 'defaultEffort'").get() as
+      | { value: string }
+      | undefined
+    const initialEffort: EffortLevel = (effortRow?.value as EffortLevel) || 'high'
+
     this.sessions.set(sessionId, {
       id: row.id,
       provider: providerId,
@@ -570,7 +585,7 @@ export class SessionManager {
       gitBaselineHash: row.git_baseline_hash,
       model: row.model,
       permissionMode: (row.permission_mode as PermissionMode) || 'default',
-      effort: 'high',
+      effort: initialEffort,
       agentSession: null,
       abortController: new AbortController(),
       pendingPermissions: new Map(),
@@ -676,10 +691,16 @@ export class SessionManager {
     return this.modelMaxOutputTokens.get(model)
   }
 
-  getSessionInfo(sessionId: string): { model: string; permissionMode: PermissionMode } | null {
+  getSessionInfo(
+    sessionId: string,
+  ): { model: string; permissionMode: PermissionMode; effort: EffortLevel } | null {
     const session = this.sessions.get(sessionId)
     if (!session) return null
-    return { model: session.model, permissionMode: session.permissionMode }
+    return {
+      model: session.model,
+      permissionMode: session.permissionMode,
+      effort: session.effort,
+    }
   }
 
   async sendGitAiQuery(sessionId: string, prompt: string, systemPrompt: string): Promise<string> {
