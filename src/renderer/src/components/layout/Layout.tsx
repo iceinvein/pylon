@@ -1,4 +1,5 @@
 // src/renderer/src/components/layout/Layout.tsx
+import { Settings } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { GitBranchStatus } from '../../../../shared/types'
@@ -7,6 +8,7 @@ import { useSessionStore } from '../../store/session-store'
 import { useUiStore } from '../../store/ui-store'
 import { GitPanel } from '../git/GitPanel'
 import { StatusBar } from '../StatusBar'
+import { Tooltip } from '../Tooltip'
 import { ModeSwitcher } from './ModeSwitcher'
 import { SessionSidebar } from './SessionSidebar'
 
@@ -21,6 +23,7 @@ type LayoutProps = {
 export function Layout({ children }: LayoutProps) {
   const activeMode = useUiStore((s) => s.activeMode)
   const activeSessionId = useUiStore((s) => s.activeSessionId)
+  const setSettingsOpen = useUiStore((s) => s.setSettingsOpen)
 
   // Derive cwd from active session for StatusBar + git watching
   const sessions = useSessionStore((s) => s.sessions)
@@ -110,6 +113,17 @@ export function Layout({ children }: LayoutProps) {
         />
         <ModeSwitcher />
         <div className="flex-1" />
+        <Tooltip content="Settings" shortcut="⌘," side="left">
+          <button
+            type="button"
+            onClick={() => setSettingsOpen(true)}
+            aria-label="Open settings"
+            className="flex h-7 w-7 items-center justify-center rounded-md text-base-text-muted transition-colors hover:bg-base-raised hover:text-base-text"
+            style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+          >
+            <Settings size={14} />
+          </button>
+        </Tooltip>
       </div>
 
       {/* Sidebar — only shown in sessions mode; other modes have their own internal layout */}
