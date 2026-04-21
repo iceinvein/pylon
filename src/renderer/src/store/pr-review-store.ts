@@ -446,16 +446,7 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
   postFinding: async (finding, repo, prNumber) => {
     set((s) => ({ postingFindingIds: new Set(s.postingFindingIds).add(finding.id) }))
     try {
-      const icon =
-        finding.severity === 'critical'
-          ? '🔴'
-          : finding.severity === 'warning'
-            ? '🟡'
-            : finding.severity === 'suggestion'
-              ? '🔵'
-              : '⚪'
-      const body = `### ${icon} ${finding.severity.charAt(0).toUpperCase() + finding.severity.slice(1)}: ${finding.title}\n\n${finding.file ? `**File:** \`${finding.file}${finding.line ? `:${finding.line}` : ''}\`\n\n` : ''}${finding.description}\n\n---\n*Reviewed by Pylon*`
-      await window.api.postGhComment(repo, prNumber, body)
+      await window.api.postGhComment(repo, prNumber, finding)
       set((s) => {
         const next = new Set(s.postingFindingIds)
         next.delete(finding.id)

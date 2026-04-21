@@ -116,9 +116,15 @@ export function registerPrReviewIpcHandlers(): void {
 
   ipcMain.handle(
     IPC.GH_POST_COMMENT,
-    async (_e, args: { repo: string; number: number; body: string }) => {
-      const { postComment } = await import('./gh-cli')
-      await postComment(args.repo, args.number, args.body)
+    async (_e, args: { repo: string; number: number; body?: string; finding?: ReviewFinding }) => {
+      const { postComment, postFindingComment } = await import('./gh-cli')
+      if (args.finding) {
+        await postFindingComment(args.repo, args.number, args.finding)
+      } else if (args.body) {
+        await postComment(args.repo, args.number, args.body)
+      } else {
+        throw new Error('Missing comment body or finding')
+      }
       return true
     },
   )

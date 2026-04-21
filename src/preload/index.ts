@@ -160,8 +160,13 @@ const api = {
   deleteGhReview: (reviewId: string) => ipcRenderer.invoke(IPC.GH_DELETE_REVIEW, { reviewId }),
   saveGhFindings: (reviewId: string, findings: unknown[]) =>
     ipcRenderer.invoke(IPC.GH_SAVE_FINDINGS, { reviewId, findings }),
-  postGhComment: (repo: string, number: number, body: string) =>
-    ipcRenderer.invoke(IPC.GH_POST_COMMENT, { repo, number, body }),
+  postGhComment: (repo: string, number: number, bodyOrFinding: string | unknown) =>
+    ipcRenderer.invoke(
+      IPC.GH_POST_COMMENT,
+      typeof bodyOrFinding === 'string'
+        ? { repo, number, body: bodyOrFinding }
+        : { repo, number, finding: bodyOrFinding },
+    ),
   postGhReview: (repo: string, number: number, findings: unknown[], commitId: string) =>
     ipcRenderer.invoke(IPC.GH_POST_REVIEW, { repo, number, findings, commitId }),
   getAgentPrompts: () => ipcRenderer.invoke(IPC.GH_GET_AGENT_PROMPTS),

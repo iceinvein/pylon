@@ -1,10 +1,18 @@
 import { execFile } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import { existsSync } from 'node:fs'
 import { unlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
-import type { GhCliStatus, GhPrDetail, GhPullRequest, GhRepo, ReviewFinding } from '../shared/types'
+import type {
+  GhCliStatus,
+  GhPrDetail,
+  GhPullRequest,
+  GhRepo,
+  ReviewFinding,
+  ReviewFocus,
+} from '../shared/types'
 import { getDb } from './db'
 import { assembleDiffFromPatches, parseFilesFromDiff } from './gh-cli-parse'
 import { augmentExecutablePath, findKnownGhBinary } from './gh-cli-path'
@@ -272,6 +280,14 @@ export async function postComment(
   await execGh(['pr', 'comment', String(prNumber), '--repo', repoFullName, '--body', body])
 }
 
+export async function postFindingComment(
+  repoFullName: string,
+  prNumber: number,
+  finding: ReviewFinding,
+): Promise<void> {
+  await postComment(repoFullName, prNumber, buildConversationCommentBody(finding))
+}
+
 const SEVERITY_RANK: Record<ReviewFinding['severity'], number> = {
   critical: 0,
   warning: 1,
@@ -293,11 +309,57 @@ const SEVERITY_LABEL: Record<ReviewFinding['severity'], string> = {
   nitpick: 'Nitpick',
 }
 
+const NEXT_STEP: Record<ReviewFinding['severity'], string> = {
+  critical: 'Address this before merging, or reply with the context that makes this path safe.',
+  warning: 'Verify this path and update the code if the behavior can occur.',
+  suggestion: 'Consider folding this in if it matches the direction of the change.',
+  nitpick: 'Tidy this when convenient if you touch this area again.',
+}
+
+const FOCUS_LABEL: Record<ReviewFocus, string> = {
+  security: 'Security',
+  bugs: 'Bugs',
+  performance: 'Performance',
+  style: 'Style',
+  architecture: 'Architecture',
+  ux: 'UX',
+}
+
+type ReviewComment = {
+  path: string
+  line: number
+  side: 'RIGHT'
+  body: string
+}
+
+export type PreparedReviewPost = {
+  body: string
+  comments: ReviewComment[]
+  inlineFindings: ReviewFinding[]
+  summaryFindings: ReviewFinding[]
+}
+
 const plural = (n: number, singular: string, plural?: string): string =>
   `${n} ${n === 1 ? singular : (plural ?? `${singular}s`)}`
 
-export function buildReviewBody(findings: ReviewFinding[], commitId: string): string {
-  const inlineFindings = findings.filter((f) => f.file && f.line !== null)
+function formatLocation(finding: ReviewFinding): string {
+  if (!finding.file) return ''
+  return `\`${finding.file}${finding.line ? `:${finding.line}` : ''}\``
+}
+
+function formatFocus(finding: ReviewFinding): string {
+  if (!finding.domain) return ''
+  return FOCUS_LABEL[finding.domain] ?? finding.domain
+}
+
+export function buildReviewBody(
+  findings: ReviewFinding[],
+  commitId: string,
+  options: { inlineFindings?: ReviewFinding[]; summaryFindings?: ReviewFinding[] } = {},
+): string {
+  const inlineFindings = options.inlineFindings ?? findings.filter((f) => f.file && f.line !== null)
+  const summaryFindings =
+    options.summaryFindings ?? findings.filter((f) => !f.file || f.line === null)
   const generalFindings = findings.filter((f) => !f.file || f.line === null)
 
   const counts: Record<ReviewFinding['severity'], number> = {
@@ -328,16 +390,33 @@ export function buildReviewBody(findings: ReviewFinding[], commitId: string): st
 
   const lines: string[] = ['## Pylon Review', '', header]
 
+  if (findings.length > 0) {
+    const summaryCount = summaryFindings.length
+    const inlineText =
+      inlineFindings.length > 0
+        ? `Posted ${plural(inlineFindings.length, 'inline thread')}.`
+        : 'No inline threads were posted.'
+    const summaryText =
+      summaryCount > 0
+        ? ` ${plural(summaryCount, 'finding')} ${summaryCount === 1 ? 'is' : 'are'} listed in this summary.`
+        : ''
+    lines.push('', `${inlineText}${summaryText}`)
+  }
+
   const topFindings = [...findings]
     .filter((f) => f.severity === 'critical' || f.severity === 'warning')
     .sort((a, b) => SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity])
     .slice(0, 3)
 
   if (topFindings.length > 0) {
-    lines.push('', '### Top findings', '')
+    lines.push('', '### Needs Attention', '')
     for (const f of topFindings) {
-      const loc = f.file ? ` · \`${f.file}${f.line ? `:${f.line}` : ''}\`` : ''
-      lines.push(`- ${SEVERITY_ICON[f.severity]} **${f.title}**${loc}`)
+      const loc = formatLocation(f)
+      const focus = formatFocus(f)
+      const meta = [loc, focus].filter(Boolean).join(' · ')
+      lines.push(
+        `- ${SEVERITY_ICON[f.severity]} **${SEVERITY_LABEL[f.severity]}: ${f.title}**${meta ? ` · ${meta}` : ''}`,
+      )
     }
   }
 
@@ -366,18 +445,184 @@ export function buildReviewBody(findings: ReviewFinding[], commitId: string): st
       '',
     )
     for (const f of generalFindings) {
-      lines.push(`**${f.title}.** ${f.description}`, '')
+      const focus = formatFocus(f)
+      lines.push(
+        `#### ${SEVERITY_LABEL[f.severity]}: ${f.title}`,
+        '',
+        f.description,
+        focus ? `_Focus: ${focus}_` : '',
+        '',
+      )
+    }
+    lines.push('</details>')
+  }
+
+  const unanchoredFindings = summaryFindings.filter((f) => f.file && f.line !== null)
+  if (unanchoredFindings.length > 0) {
+    lines.push(
+      '',
+      '<details>',
+      `<summary><b>Findings listed in summary</b> (${unanchoredFindings.length})</summary>`,
+      '',
+    )
+    for (const f of unanchoredFindings) {
+      const loc = formatLocation(f)
+      const focus = formatFocus(f)
+      lines.push(
+        `#### ${SEVERITY_LABEL[f.severity]}: ${f.title}${loc ? ` ${loc}` : ''}`,
+        '',
+        f.description,
+        focus ? `_Focus: ${focus}_` : '',
+        '',
+      )
     }
     lines.push('</details>')
   }
 
   const footer =
     inlineFindings.length > 0
-      ? '*Reviewed by Pylon. Resolve or reply on inline threads to address findings.*'
-      : '*Reviewed by Pylon.*'
+      ? '*Generated by Pylon. Inline threads contain anchored findings; summary-only items are listed above.*'
+      : '*Generated by Pylon. Please verify findings before merging.*'
   lines.push('', '---', footer)
 
   return lines.join('\n')
+}
+
+function normalizeFindingForHash(finding: ReviewFinding): string {
+  return JSON.stringify({
+    file: finding.file || '',
+    line: finding.line ?? null,
+    severity: finding.severity,
+    title: finding.title.trim(),
+    description: finding.description.trim(),
+  })
+}
+
+export function getFindingMarker(finding: ReviewFinding): string {
+  const hash = createHash('sha256')
+    .update(normalizeFindingForHash(finding))
+    .digest('hex')
+    .slice(0, 16)
+  const id = finding.id.replace(/[^a-zA-Z0-9_-]/g, '')
+  return `<!-- pylon:finding id=${id} hash=${hash} -->`
+}
+
+function buildInlineCommentBody(finding: ReviewFinding): string {
+  const label = SEVERITY_LABEL[finding.severity]
+  const focus = formatFocus(finding)
+  return [
+    `**${label}: ${finding.title}**`,
+    '',
+    finding.description,
+    '',
+    `**Next step:** ${NEXT_STEP[finding.severity]}`,
+    focus ? `_Focus: ${focus}_` : '',
+    '',
+    getFindingMarker(finding),
+  ]
+    .filter((part) => part !== '')
+    .join('\n')
+}
+
+export function buildConversationCommentBody(finding: ReviewFinding): string {
+  const label = SEVERITY_LABEL[finding.severity]
+  const location = formatLocation(finding)
+  const focus = formatFocus(finding)
+  const metadata = [
+    location ? `**Location:** ${location}` : '',
+    focus ? `**Focus:** ${focus}` : '',
+  ].filter(Boolean)
+
+  return [
+    '## Pylon Finding',
+    '',
+    `**${label}: ${finding.title}**`,
+    '',
+    ...metadata,
+    metadata.length > 0 ? '' : '',
+    finding.description,
+    '',
+    `**Next step:** ${NEXT_STEP[finding.severity]}`,
+    '',
+    getFindingMarker(finding),
+  ]
+    .filter((part) => part !== '')
+    .join('\n')
+}
+
+function parseReviewableRightLines(diff: string): Map<string, Set<number>> {
+  const result = new Map<string, Set<number>>()
+  const chunks = diff.split(/^(?=diff --git )/m)
+
+  for (const chunk of chunks) {
+    if (!chunk.startsWith('diff --git ')) continue
+
+    const headerMatch = chunk.match(/^diff --git a\/(.+?) b\/(.+)/)
+    const plusMatch = chunk.match(/^\+\+\+ b\/(.+)$/m)
+    const filePath = plusMatch?.[1] ?? headerMatch?.[2]
+    if (!filePath || filePath === '/dev/null') continue
+
+    const lines = result.get(filePath) ?? new Set<number>()
+    let newLine: number | null = null
+
+    for (const line of chunk.split('\n')) {
+      const hunk = line.match(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/)
+      if (hunk) {
+        newLine = Number(hunk[1])
+        continue
+      }
+      if (newLine === null) continue
+      if (line.startsWith('diff --git ') || line.startsWith('---') || line.startsWith('+++')) {
+        continue
+      }
+      if (line === '') continue
+      if (line.startsWith('\\')) continue
+      if (line.startsWith('-')) continue
+
+      lines.add(newLine)
+      newLine++
+    }
+
+    if (lines.size > 0) result.set(filePath, lines)
+  }
+
+  return result
+}
+
+export function prepareReviewPost(
+  findings: ReviewFinding[],
+  commitId: string,
+  diff: string,
+): PreparedReviewPost {
+  const reviewableLines = parseReviewableRightLines(diff)
+  const inlineFindings: ReviewFinding[] = []
+  const summaryFindings: ReviewFinding[] = []
+
+  for (const finding of findings) {
+    if (!finding.file || finding.line === null) {
+      summaryFindings.push(finding)
+      continue
+    }
+
+    const fileLines = reviewableLines.get(finding.file)
+    if (fileLines?.has(finding.line)) {
+      inlineFindings.push(finding)
+    } else {
+      summaryFindings.push(finding)
+    }
+  }
+
+  return {
+    body: buildReviewBody(findings, commitId, { inlineFindings, summaryFindings }),
+    comments: inlineFindings.map((f) => ({
+      path: f.file,
+      line: f.line as number,
+      side: 'RIGHT' as const,
+      body: buildInlineCommentBody(f),
+    })),
+    inlineFindings,
+    summaryFindings,
+  }
 }
 
 export async function postReview(
@@ -386,20 +631,14 @@ export async function postReview(
   findings: ReviewFinding[],
   commitId: string,
 ): Promise<void> {
-  const inlineFindings = findings.filter((f) => f.file && f.line !== null)
-  const reviewBody = buildReviewBody(findings, commitId)
-
-  const comments = inlineFindings.map((f) => ({
-    path: f.file,
-    line: f.line,
-    body: `**${f.severity.toUpperCase()}:** ${f.title}\n\n${f.description}`,
-  }))
+  const detail = await getPrDetail(repoFullName, prNumber).catch(() => null)
+  const prepared = prepareReviewPost(findings, commitId, detail?.diff ?? '')
 
   const payload = JSON.stringify({
-    body: reviewBody,
+    body: prepared.body,
     event: 'COMMENT',
     ...(commitId ? { commit_id: commitId } : {}),
-    comments,
+    comments: prepared.comments,
   })
 
   const [owner, repo] = repoFullName.split('/')
