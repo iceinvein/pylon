@@ -1,7 +1,7 @@
 import { Check, ChevronDown, Loader2, Search, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { GhPullRequest } from '../../../../shared/types'
+import type { GhPrStateFilter, GhPullRequest } from '../../../../shared/types'
 import { usePrReviewStore } from '../../store/pr-review-store'
 import { PrCard } from './PrCard'
 
@@ -10,12 +10,21 @@ type ProjectFolder = {
   lastUsed: number
 }
 
+const PR_STATE_OPTIONS: Array<{ value: GhPrStateFilter; label: string; emptyLabel: string }> = [
+  { value: 'open', label: 'Open', emptyLabel: 'open PRs' },
+  { value: 'closed', label: 'Closed', emptyLabel: 'closed PRs' },
+  { value: 'merged', label: 'Merged', emptyLabel: 'merged PRs' },
+  { value: 'all', label: 'All', emptyLabel: 'PRs' },
+]
+
 export function PrList() {
   const {
     repos,
     reposLoading,
     selectedRepo,
     setSelectedRepo,
+    prStateFilter,
+    setPrStateFilter,
     prs,
     prsLoading,
     selectedPr,
@@ -71,14 +80,16 @@ export function PrList() {
     }
   }, [repoMenuOpen])
 
-  const filteredPrs = search
-    ? prs.filter(
-        (pr) =>
-          pr.title.toLowerCase().includes(search.toLowerCase()) ||
-          String(pr.number).includes(search) ||
-          pr.repo.fullName.toLowerCase().includes(search.toLowerCase()),
-      )
-    : prs
+  const filteredPrs = useMemo(() => {
+    const query = search.trim().toLowerCase()
+    if (!query) return prs
+    return prs.filter(
+      (pr) =>
+        pr.title.toLowerCase().includes(query) ||
+        String(pr.number).includes(query) ||
+        pr.repo.fullName.toLowerCase().includes(query),
+    )
+  }, [prs, search])
 
   const showingAllRepos = !selectedRepo
 
@@ -104,6 +115,11 @@ export function PrList() {
   const selectedLabel = selectedRepo
     ? (repos.find((r) => r.fullName === selectedRepo)?.fullName ?? selectedRepo)
     : 'All repos'
+  const selectedStateOption =
+    PR_STATE_OPTIONS.find((option) => option.value === prStateFilter) ?? PR_STATE_OPTIONS[0]
+  const emptyPrsMessage = search.trim()
+    ? `No ${selectedStateOption.emptyLabel} match your filter.`
+    : `No ${selectedStateOption.emptyLabel} found.`
   const repoByProjectPath = useMemo(
     () => new Map(repos.map((repo) => [repo.projectPath, repo])),
     [repos],
@@ -226,6 +242,27 @@ export function PrList() {
           </AnimatePresence>
         </div>
 
+        <div className="mt-2 grid grid-cols-4 rounded-md bg-base-raised p-0.5 ring-1 ring-base-border">
+          {PR_STATE_OPTIONS.map((option) => {
+            const selected = option.value === prStateFilter
+            return (
+              <button
+                key={option.value}
+                type="button"
+                aria-pressed={selected}
+                onClick={() => setPrStateFilter(option.value)}
+                className={`rounded px-1.5 py-1 font-medium text-[11px] transition-colors ${
+                  selected
+                    ? 'bg-base-bg text-base-text shadow-sm'
+                    : 'text-base-text-muted hover:text-base-text'
+                }`}
+              >
+                {option.label}
+              </button>
+            )
+          })}
+        </div>
+
         <div className="relative mt-2">
           <Search
             size={13}
@@ -250,7 +287,7 @@ export function PrList() {
           <div className="py-8 text-center text-base-text-muted text-xs">
             {repos.length === 0
               ? 'No GitHub projects found. Add a project first.'
-              : 'No open PRs found.'}
+              : emptyPrsMessage}
           </div>
         ) : groupedPrs ? (
           <div className="space-y-3">

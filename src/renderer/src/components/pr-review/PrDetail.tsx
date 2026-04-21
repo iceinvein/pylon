@@ -247,6 +247,13 @@ export function PrDetail() {
   const isDone = activeReview?.status === 'done'
   const isError = activeReview?.status === 'error'
   const PrIcon = pr.isDraft ? GitPullRequestDraft : GitPullRequest
+  const prIconClass = pr.isDraft
+    ? 'text-base-text-muted'
+    : pr.state === 'closed'
+      ? 'text-error'
+      : pr.state === 'merged'
+        ? 'text-info'
+        : 'text-emerald-500'
 
   const handlePostFinding = (finding: (typeof activeFindings)[number]) => {
     if (!selectedPr) return
@@ -267,10 +274,7 @@ export function PrDetail() {
       {/* PR Header with review button */}
       <div className="border-base-border-subtle border-b bg-base-bg/50 px-5 py-3">
         <div className="flex items-start gap-3">
-          <PrIcon
-            size={18}
-            className={`mt-0.5 shrink-0 ${pr.isDraft ? 'text-base-text-muted' : 'text-emerald-500'}`}
-          />
+          <PrIcon size={18} className={`mt-0.5 shrink-0 ${prIconClass}`} />
           <div className="min-w-0 flex-1">
             <div className="mb-0.5 truncate font-mono text-base-text-muted text-xs">
               {pr.repo.fullName}
@@ -278,6 +282,11 @@ export function PrDetail() {
             <div className="flex items-baseline gap-2">
               <h2 className="font-semibold text-base-text text-sm">{pr.title}</h2>
               <span className="shrink-0 text-base-text-faint text-xs">#{pr.number}</span>
+              {pr.state !== 'open' && (
+                <span className="shrink-0 rounded bg-base-border px-1.5 py-0.5 text-[10px] text-base-text-secondary capitalize">
+                  {pr.state}
+                </span>
+              )}
             </div>
             <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-base-text-muted text-xs">
               <span className="flex items-center gap-1">

@@ -8,6 +8,7 @@ import { promisify } from 'node:util'
 import type {
   GhCliStatus,
   GhPrDetail,
+  GhPrStateFilter,
   GhPullRequest,
   GhRepo,
   ReviewFinding,
@@ -163,7 +164,10 @@ export async function discoverRepos(projectPaths: string[]): Promise<GhRepo[]> {
   })
 }
 
-export async function listPrs(repoFullName: string, state = 'open'): Promise<GhPullRequest[]> {
+export async function listPrs(
+  repoFullName: string,
+  state: GhPrStateFilter = 'open',
+): Promise<GhPullRequest[]> {
   const json = await execGh([
     'pr',
     'list',

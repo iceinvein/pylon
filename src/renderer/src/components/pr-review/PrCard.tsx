@@ -19,7 +19,16 @@ function timeAgo(dateStr: string): string {
   return `${days}d ago`
 }
 
+function getStateMeta(pr: GhPullRequest): { iconClass: string; badge: string | null } {
+  if (pr.isDraft) return { iconClass: 'text-base-text-muted', badge: 'Draft' }
+  if (pr.state === 'closed') return { iconClass: 'text-error', badge: 'Closed' }
+  if (pr.state === 'merged') return { iconClass: 'text-info', badge: 'Merged' }
+  return { iconClass: 'text-success', badge: null }
+}
+
 export function PrCard({ pr, selected, showRepo, onClick }: PrCardProps) {
+  const stateMeta = getStateMeta(pr)
+
   return (
     <button
       type="button"
@@ -34,7 +43,7 @@ export function PrCard({ pr, selected, showRepo, onClick }: PrCardProps) {
         {pr.isDraft ? (
           <GitPullRequestDraft size={14} className="mt-0.5 shrink-0 text-base-text-muted" />
         ) : (
-          <GitPrIcon size={14} className="mt-0.5 shrink-0 text-success" />
+          <GitPrIcon size={14} className={`mt-0.5 shrink-0 ${stateMeta.iconClass}`} />
         )}
         <div className="min-w-0 flex-1">
           <div className="truncate text-base-text text-sm">{pr.title}</div>
@@ -51,9 +60,9 @@ export function PrCard({ pr, selected, showRepo, onClick }: PrCardProps) {
           <div className="mt-1 flex items-center gap-2 text-xs">
             <span className="text-success">+{pr.additions}</span>
             <span className="text-error">-{pr.deletions}</span>
-            {pr.isDraft && (
+            {stateMeta.badge && (
               <span className="rounded bg-base-border px-1.5 py-0.5 text-[10px] text-base-text-secondary">
-                Draft
+                {stateMeta.badge}
               </span>
             )}
           </div>

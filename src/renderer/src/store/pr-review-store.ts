@@ -3,6 +3,7 @@ import { log } from '../../../shared/logger'
 import type {
   GhCliStatus,
   GhPrDetail,
+  GhPrStateFilter,
   GhPullRequest,
   GhRepo,
   PrReview,
@@ -84,6 +85,7 @@ type PrReviewStore = {
   repos: GhRepo[]
   reposLoading: boolean
   selectedRepo: string | null
+  prStateFilter: GhPrStateFilter
   prs: GhPullRequest[]
   prsLoading: boolean
   selectedPr: GhPullRequest | null
@@ -118,7 +120,8 @@ type PrReviewStore = {
   setGhPath: (path: string) => Promise<void>
   loadRepos: () => Promise<void>
   setSelectedRepo: (repo: string | null) => void
-  loadPrs: (repo?: string) => Promise<void>
+  setPrStateFilter: (state: GhPrStateFilter) => void
+  loadPrs: (repo?: string, state?: GhPrStateFilter) => Promise<void>
   selectPr: (pr: GhPullRequest | null) => Promise<void>
   loadPrReviews: (repo: string, prNumber: number) => Promise<void>
   startReview: (repo: GhRepo, pr: GhPullRequest, focus: ReviewFocus[]) => Promise<void>
@@ -143,7 +146,7 @@ type PrReviewStore = {
   }) => void
   setUnseenCount: (count: number) => void
   markPrSeen: (repo: string, prNumber: number) => Promise<void>
-  loadCachedPrs: (repo?: string) => Promise<void>
+  loadCachedPrs: (repo?: string, seq?: number) => Promise<void>
   forcePoll: () => Promise<void>
   setFindingsViewMode: (mode: 'files' | 'all-issues') => void
   toggleSeverityFilter: (severity: string) => void
@@ -157,6 +160,7 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
   repos: [],
   reposLoading: false,
   selectedRepo: null,
+  prStateFilter: 'open',
   prs: [],
   prsLoading: false,
   selectedPr: null,
@@ -244,16 +248,41 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
     get().loadPrs(repo ?? undefined)
   },
 
-  loadPrs: async (repo) => {
+  setPrStateFilter: (state) => {
+    if (get().prStateFilter === state) return
+    set({
+      prStateFilter: state,
+      prs: [],
+      selectedPr: null,
+      prDetail: null,
+      prDetailError: null,
+      activeReview: null,
+      activeFindings: [],
+      reviewStreamingText: '',
+      reviewError: null,
+      reviews: [],
+      agentProgress: [],
+    })
+    get().loadPrs(get().selectedRepo ?? undefined, state)
+  },
+
+  loadPrs: async (repo, requestedState) => {
+    const state = requestedState ?? get().prStateFilter
     const seq = get()._loadPrsSeq + 1
-    set({ prsLoading: true, _loadPrsSeq: seq })
-    // Hydrate from cache instantly while we fetch fresh data
-    get().loadCachedPrs(repo)
-    // Trigger a background poll to refresh the cache simultaneously
-    get().forcePoll()
+    set({
+      prsLoading: true,
+      _loadPrsSeq: seq,
+      ...(state === 'open' ? {} : { prs: [] }),
+    })
+    if (state === 'open') {
+      // Hydrate from cache instantly while we fetch fresh data.
+      get().loadCachedPrs(repo, seq)
+      // Trigger a background poll to refresh the cache simultaneously.
+      get().forcePoll()
+    }
     try {
       if (repo) {
-        const prs = await window.api.listGhPrs(repo)
+        const prs = await window.api.listGhPrs(repo, state)
         const repos = get().repos
         const repoInfo = repos.find((r) => r.fullName === repo)
         const prsWithRepo = prs.map((pr) => ({ ...pr, repo: repoInfo ?? pr.repo }))
@@ -261,15 +290,15 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
         set({ prs: prsWithRepo, prsLoading: false })
       } else {
         const repos = get().repos
-        const allPrs: GhPullRequest[] = []
-        for (const r of repos) {
-          try {
-            const prs = await window.api.listGhPrs(r.fullName)
-            allPrs.push(...prs.map((pr) => ({ ...pr, repo: r })))
-          } catch {
-            // skip repos that fail
-          }
-        }
+        const results = await Promise.allSettled(
+          repos.map(async (r) => {
+            const prs = await window.api.listGhPrs(r.fullName, state)
+            return prs.map((pr) => ({ ...pr, repo: r }))
+          }),
+        )
+        const allPrs: GhPullRequest[] = results.flatMap((result) =>
+          result.status === 'fulfilled' ? result.value : [],
+        )
         if (get()._loadPrsSeq !== seq) return
         allPrs.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
         set({ prs: allPrs, prsLoading: false })
@@ -518,9 +547,11 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
     }
   },
 
-  loadCachedPrs: async (repo) => {
+  loadCachedPrs: async (repo, seq) => {
     try {
       const cached = await window.api.getCachedPrs(repo)
+      if (seq !== undefined && get()._loadPrsSeq !== seq) return
+      if (get().prStateFilter !== 'open') return
       if (cached.length > 0) {
         set({ prs: cached, prsLoading: false })
       }

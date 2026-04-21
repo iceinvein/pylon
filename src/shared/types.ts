@@ -319,6 +319,8 @@ export type GhRepo = {
   projectPath: string
 }
 
+export type GhPrStateFilter = 'open' | 'closed' | 'merged' | 'all'
+
 export type GhPullRequest = {
   number: number
   title: string

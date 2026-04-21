@@ -1,8 +1,13 @@
 import { ipcMain } from 'electron'
 import { IPC } from '../shared/ipc-channels'
-import type { ReviewFinding, ReviewFocus } from '../shared/types'
+import type { GhPrStateFilter, ReviewFinding, ReviewFocus } from '../shared/types'
 import { prPollingService } from './pr-polling-service'
 import { sessionManager } from './session-manager'
+
+function normalizePrStateFilter(state?: string): GhPrStateFilter {
+  if (state === 'closed' || state === 'merged' || state === 'all') return state
+  return 'open'
+}
 
 export function registerPrReviewIpcHandlers(): void {
   // ── PR Review ──
@@ -27,7 +32,7 @@ export function registerPrReviewIpcHandlers(): void {
 
   ipcMain.handle(IPC.GH_LIST_PRS, async (_e, args: { repo: string; state?: string }) => {
     const { listPrs } = await import('./gh-cli')
-    return listPrs(args.repo, args.state)
+    return listPrs(args.repo, normalizePrStateFilter(args.state))
   })
 
   ipcMain.handle(IPC.GH_PR_DETAIL, async (_e, args: { repo: string; number: number }) => {

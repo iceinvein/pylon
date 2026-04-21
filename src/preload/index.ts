@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { IPC } from '../shared/ipc-channels'
-import type { IpcAttachment } from '../shared/types'
+import type { GhPrStateFilter, IpcAttachment } from '../shared/types'
 
 const api = {
   createSession: (cwd: string, model?: string, useWorktree?: boolean) =>
@@ -143,7 +143,8 @@ const api = {
   checkGhStatus: () => ipcRenderer.invoke(IPC.GH_CHECK_STATUS),
   setGhPath: (path: string) => ipcRenderer.invoke(IPC.GH_SET_PATH, { path }),
   listGhRepos: () => ipcRenderer.invoke(IPC.GH_LIST_REPOS),
-  listGhPrs: (repo: string, state?: string) => ipcRenderer.invoke(IPC.GH_LIST_PRS, { repo, state }),
+  listGhPrs: (repo: string, state?: GhPrStateFilter) =>
+    ipcRenderer.invoke(IPC.GH_LIST_PRS, { repo, state }),
   getGhPrDetail: (repo: string, number: number) =>
     ipcRenderer.invoke(IPC.GH_PR_DETAIL, { repo, number }),
   startGhReview: (args: {

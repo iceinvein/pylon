@@ -107,7 +107,10 @@ type Api = {
   checkGhStatus: () => Promise<import('../shared/types').GhCliStatus>
   setGhPath: (path: string) => Promise<import('../shared/types').GhCliStatus>
   listGhRepos: () => Promise<import('../shared/types').GhRepo[]>
-  listGhPrs: (repo: string, state?: string) => Promise<import('../shared/types').GhPullRequest[]>
+  listGhPrs: (
+    repo: string,
+    state?: import('../shared/types').GhPrStateFilter,
+  ) => Promise<import('../shared/types').GhPullRequest[]>
   getGhPrDetail: (repo: string, number: number) => Promise<import('../shared/types').GhPrDetail>
   startGhReview: (args: {
     repo: import('../shared/types').GhRepo
