@@ -579,6 +579,25 @@ describe('SessionManager', () => {
     })
   })
 
+  describe('mcpServers plumbing', () => {
+    test('createSession stores mcpServers and passes them to provider.createSession', async () => {
+      const sm = new SessionManager()
+      const mcpServers = { 'code-intelligence': { command: 'echo', args: ['hi'] } }
+
+      // Clear prior call records so we can isolate this test's call
+      mockCreateSession.mockClear()
+
+      const id = await sm.createSession('/tmp/project', undefined, false, 'test', { mcpServers })
+      await sm.sendMessage(id, 'hello').catch(() => {})
+
+      // mockCreateSession is what provider.createSession delegates to;
+      // inspect the config argument passed to it
+      expect(mockCreateSession).toHaveBeenCalled()
+      const callArgs = mockCreateSession.mock.calls[0]?.[0] as Record<string, unknown> | undefined
+      expect(callArgs?.mcpServers).toEqual(mcpServers)
+    })
+  })
+
   describe('delegation to extracted services', () => {
     test('checkRepoStatus delegates to gitWorktreeService', async () => {
       const sm = new SessionManager()
