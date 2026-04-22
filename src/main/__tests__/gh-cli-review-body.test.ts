@@ -5,7 +5,7 @@ import {
   buildReviewBody,
   getFindingMarker,
   prepareReviewPost,
-} from '../gh-cli'
+} from '../gh-cli-review'
 
 const f = (overrides: Partial<ReviewFinding>): ReviewFinding => ({
   id: overrides.id ?? 'id',
