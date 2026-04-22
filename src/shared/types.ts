@@ -700,3 +700,7 @@ export type SetupCompleteEvent = {
     error?: string
   }>
 }
+
+// ── PR Context Code Intelligence ──────────────────
+
+export type PrContextSymbolKind = 'function' | 'class' | 'type' | 'method' | 'variable' | 'other'

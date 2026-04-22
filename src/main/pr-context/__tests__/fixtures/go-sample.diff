@@ -1,0 +1,15 @@
+diff --git a/pkg.go b/pkg.go
+index 0000000..1111111 100644
+--- a/pkg.go
++++ b/pkg.go
+@@ -1,5 +1,7 @@
+ package pkg
+
+-func Changed(x int) int {
+-	return x + 1
++func Changed(x int) int {
++	if x < 0 {
++		return 0
++	}
++	return x * 2
+ }

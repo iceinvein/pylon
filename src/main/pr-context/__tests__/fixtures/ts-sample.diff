@@ -1,0 +1,15 @@
+diff --git a/src/foo.ts b/src/foo.ts
+index 0000000..1111111 100644
+--- a/src/foo.ts
++++ b/src/foo.ts
+@@ -1,6 +1,9 @@
+ export function untouched(): number {
+   return 1
+ }
+-export function changed(x: number): number {
+-  return x + 1
++export function changed(x: number): number {
++  if (x < 0) return 0
++  return x * 2
+ }
++export type NewThing = { count: number }
