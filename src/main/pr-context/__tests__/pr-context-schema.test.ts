@@ -9,6 +9,12 @@ async function loadSchema(): Promise<JsonSchema> {
   return JSON.parse(await readFile(path, 'utf8')) as JsonSchema
 }
 
+/**
+ * Minimal top-level validator. Checks root required fields and root property
+ * type tags only. Does NOT recurse into nested required constraints. Intended
+ * as a smoke test that the schema file loads and has a structurally valid
+ * shape, not as a full JSON-schema validator.
+ */
 function validate(schema: JsonSchema, value: unknown): { ok: boolean; errors: string[] } {
   const errors: string[] = []
   const required = (schema.required as string[] | undefined) ?? []
