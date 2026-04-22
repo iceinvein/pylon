@@ -449,12 +449,12 @@ export function buildReviewBody(
       '',
     )
     for (const f of generalFindings) {
-      const focus = formatFocus(f)
+      const footer = buildFindingFooter(f)
       lines.push(
-        `#### ${SEVERITY_LABEL[f.severity]}: ${f.title}`,
+        `#### ${SEVERITY_ICON[f.severity]} ${SEVERITY_LABEL[f.severity]}: ${f.title}`,
         '',
         f.description,
-        focus ? `_Focus: ${focus}_` : '',
+        footer || '',
         '',
       )
     }
@@ -471,12 +471,12 @@ export function buildReviewBody(
     )
     for (const f of unanchoredFindings) {
       const loc = formatLocation(f)
-      const focus = formatFocus(f)
+      const footer = buildFindingFooter(f)
       lines.push(
-        `#### ${SEVERITY_LABEL[f.severity]}: ${f.title}${loc ? ` ${loc}` : ''}`,
+        `#### ${SEVERITY_ICON[f.severity]} ${SEVERITY_LABEL[f.severity]}: ${f.title}${loc ? ` ${loc}` : ''}`,
         '',
         f.description,
-        focus ? `_Focus: ${focus}_` : '',
+        footer || '',
         '',
       )
     }
@@ -511,46 +511,56 @@ export function getFindingMarker(finding: ReviewFinding): string {
   return `<!-- pylon:finding id=${id} hash=${hash} -->`
 }
 
-function buildInlineCommentBody(finding: ReviewFinding): string {
-  const label = SEVERITY_LABEL[finding.severity]
+function buildFindingFooter(finding: ReviewFinding): string {
   const focus = formatFocus(finding)
+  if (!focus) return ''
+  return `<sub>Focus · ${focus}</sub>`
+}
+
+function buildInlineCommentBody(finding: ReviewFinding): string {
+  const icon = SEVERITY_ICON[finding.severity]
+  const label = SEVERITY_LABEL[finding.severity]
+  const footer = buildFindingFooter(finding)
   return [
-    `**${label}: ${finding.title}**`,
+    `### ${icon} ${label}: ${finding.title}`,
     '',
     finding.description,
     '',
-    `**Next step:** ${NEXT_STEP[finding.severity]}`,
-    focus ? `_Focus: ${focus}_` : '',
+    `> **Next step:** ${NEXT_STEP[finding.severity]}`,
+    footer ? '' : null,
+    footer || null,
     '',
     getFindingMarker(finding),
   ]
-    .filter((part) => part !== '')
+    .filter((part): part is string => typeof part === 'string')
     .join('\n')
 }
 
 export function buildConversationCommentBody(finding: ReviewFinding): string {
+  const icon = SEVERITY_ICON[finding.severity]
   const label = SEVERITY_LABEL[finding.severity]
   const location = formatLocation(finding)
   const focus = formatFocus(finding)
-  const metadata = [
-    location ? `**Location:** ${location}` : '',
-    focus ? `**Focus:** ${focus}` : '',
+  const metaParts = [
+    location ? `Location · ${location}` : '',
+    focus ? `Focus · ${focus}` : '',
   ].filter(Boolean)
+  const metaLine = metaParts.length > 0 ? `<sub>${metaParts.join(' · ')}</sub>` : ''
 
   return [
     '## Pylon Finding',
     '',
-    `**${label}: ${finding.title}**`,
+    `### ${icon} ${label}: ${finding.title}`,
+    metaLine ? '' : null,
+    metaLine || null,
     '',
-    ...metadata,
-    metadata.length > 0 ? '' : '',
     finding.description,
     '',
-    `**Next step:** ${NEXT_STEP[finding.severity]}`,
+    `> **Next step:** ${NEXT_STEP[finding.severity]}`,
     '',
     getFindingMarker(finding),
   ]
-    .filter((part) => part !== '')
+    .filter((part): part is string => typeof part === 'string')
     .join('\n')
 }
 

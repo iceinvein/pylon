@@ -78,7 +78,7 @@ describe('buildReviewBody', () => {
     ]
     const body = buildReviewBody(findings, '')
     expect(body).toContain('<summary><b>General notes</b> (1)</summary>')
-    expect(body).toContain('#### Suggestion: Convention drift')
+    expect(body).toContain('#### 🔵 Suggestion: Convention drift')
     expect(body).toContain('Description')
   })
 
@@ -162,8 +162,9 @@ diff --git a/src/renamed.ts b/src/renamed.ts
         body: expect.stringContaining('<!-- pylon:finding id=inline-2 hash='),
       },
     ])
-    expect(prepared.comments[1].body).toContain('**Next step:** Address this before merging')
-    expect(prepared.comments[1].body).toContain('_Focus: Security_')
+    expect(prepared.comments[1].body).toContain('### 🔴 Critical: Enabled by default')
+    expect(prepared.comments[1].body).toContain('> **Next step:** Address this before merging')
+    expect(prepared.comments[1].body).toContain('<sub>Focus · Security</sub>')
   })
 
   test('keeps unanchorable findings in the review summary', () => {
@@ -220,11 +221,10 @@ describe('buildConversationCommentBody', () => {
     )
 
     expect(body).toContain('## Pylon Finding')
-    expect(body).toContain('**Warning: Missing empty state**')
-    expect(body).toContain('**Location:** `src/app.ts:12`')
-    expect(body).toContain('**Focus:** UX')
+    expect(body).toContain('### 🟡 Warning: Missing empty state')
+    expect(body).toContain('<sub>Location · `src/app.ts:12` · Focus · UX</sub>')
     expect(body).toContain(
-      '**Next step:** Verify this path and update the code if the behavior can occur.',
+      '> **Next step:** Verify this path and update the code if the behavior can occur.',
     )
     expect(body).toContain('<!-- pylon:finding id=finding-1 hash=')
   })
