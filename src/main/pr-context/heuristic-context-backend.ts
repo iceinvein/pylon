@@ -34,10 +34,14 @@ export class HeuristicContextBackend implements PrContextBackend {
         const decls = extractDeclarations(source, df.path)
         const changed = intersectRangesWithTouchedLines(decls, df.touchedRanges)
         const sourceLines = source.split('\n')
+        const tests = changed.length > 0 ? await findCoLocatedTests(worktreePath, df.path) : []
         for (const decl of changed) {
-          const sliceEnd = Math.min(sourceLines.length, decl.range.start + MAX_DEFINITION_LINES - 1)
-          const definition = sourceLines.slice(decl.range.start - 1, sliceEnd).join('\n')
-          const tests = await findCoLocatedTests(worktreePath, df.path)
+          const rangeStart = Math.max(1, decl.range.start)
+          const sliceEnd = Math.min(
+            sourceLines.length,
+            Math.min(decl.range.end, rangeStart + MAX_DEFINITION_LINES - 1),
+          )
+          const definition = sourceLines.slice(rangeStart - 1, sliceEnd).join('\n')
           symbols.push({
             name: decl.name,
             kind: decl.kind,

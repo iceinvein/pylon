@@ -66,6 +66,64 @@ describe('HeuristicContextBackend', () => {
     }
   })
 
+  test('build populates tests identically across multiple changed symbols in one file', async () => {
+    const sourceAfter = [
+      'export function alpha(x: number): number {',
+      '  return x + 1',
+      '}',
+      '',
+      'export function beta(y: number): number {',
+      '  return y * 2',
+      '}',
+      '',
+    ].join('\n')
+    const worktree = await stageWorktree({
+      'src/multi.ts': sourceAfter,
+      'src/multi.test.ts': `test('x', () => {})\n`,
+    })
+    try {
+      const backend = new HeuristicContextBackend()
+      const diff = [
+        'diff --git a/src/multi.ts b/src/multi.ts',
+        'index 0..1 100644',
+        '--- a/src/multi.ts',
+        '+++ b/src/multi.ts',
+        '@@ -1,7 +1,7 @@',
+        '-export function alpha(x: number): number {',
+        '-  return x',
+        '+export function alpha(x: number): number {',
+        '+  return x + 1',
+        ' }',
+        '',
+        '-export function beta(y: number): number {',
+        '-  return y',
+        '+export function beta(y: number): number {',
+        '+  return y * 2',
+        ' }',
+        '',
+      ].join('\n')
+
+      const bundle = await backend.build({
+        diff,
+        worktreePath: worktree,
+        pr: { number: 1, headBranch: 'f', baseBranch: 'm', title: 't' },
+        signal: new AbortController().signal,
+        perCallTimeoutMs: 5000,
+      })
+
+      const file = bundle.files.find((f) => f.path === 'src/multi.ts')
+      expect(file).toBeDefined()
+      const alpha = file?.symbols.find((s) => s.name === 'alpha')
+      const beta = file?.symbols.find((s) => s.name === 'beta')
+      expect(alpha).toBeDefined()
+      expect(beta).toBeDefined()
+      expect(alpha?.tests).toEqual(beta?.tests)
+      expect(alpha?.tests.map((t) => t.file)).toContain('src/multi.test.ts')
+    } finally {
+      await rm(worktree, { recursive: true, force: true })
+    }
+  })
+
   test('skips file with unsupported extension but still includes entry', async () => {
     const worktree = await stageWorktree({ 'x.xyz': 'whatever' })
     try {
