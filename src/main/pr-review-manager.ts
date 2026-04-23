@@ -10,7 +10,6 @@ import { IPC } from '../shared/ipc-channels'
 import { log } from '../shared/logger'
 import type {
   GhRepo,
-  PrContextBundle,
   PrContextUpdate,
   PrReview,
   ReviewFinding,
@@ -537,13 +536,14 @@ class PrReviewManager {
           notes: ['context builder disabled via settings'],
         }
         this.send(IPC.GH_REVIEW_CONTEXT_UPDATE, payload)
-        return { sessionCwd, bundle: null as PrContextBundle | null }
+        return { sessionCwd }
       }
 
-      this.send(IPC.GH_REVIEW_CONTEXT_UPDATE, {
+      const buildingPayload: PrContextUpdate = {
         reviewId,
         phase: 'building',
-      } as PrContextUpdate)
+      }
+      this.send(IPC.GH_REVIEW_CONTEXT_UPDATE, buildingPayload)
 
       try {
         const result = await builder.build({
@@ -560,28 +560,40 @@ class PrReviewManager {
           signal: contextAbort.signal,
         })
         const bundle = result.bundle
-        this.send(IPC.GH_REVIEW_CONTEXT_UPDATE, {
+        const donePayload: PrContextUpdate = {
           reviewId,
           phase: bundle.mode === 'mcp' ? 'done' : 'fallback',
           mode: bundle.mode,
           notes: bundle.notes,
-        } as PrContextUpdate)
-        return { sessionCwd, bundle }
+        }
+        this.send(IPC.GH_REVIEW_CONTEXT_UPDATE, donePayload)
+        return { sessionCwd }
       } catch (err) {
         logger.warn('Context builder failed, agents will proceed without bundle:', err)
-        this.send(IPC.GH_REVIEW_CONTEXT_UPDATE, {
+        const errorPayload: PrContextUpdate = {
           reviewId,
           phase: 'error',
           error: String(err),
-        } as PrContextUpdate)
-        return { sessionCwd, bundle: null as PrContextBundle | null }
+        }
+        this.send(IPC.GH_REVIEW_CONTEXT_UPDATE, errorPayload)
+        return { sessionCwd }
       }
     })()
 
     const { sessionCwd } = await contextPromise
 
+    const mcpConfig = this.resolveCodeIntelligenceMcpConfig()
     const agentPromises = focusAreas.map((focus) =>
-      this.runAgentSession(reviewId, sessionCwd, detail, chunks, skippedFiles, focus, active),
+      this.runAgentSession(
+        reviewId,
+        sessionCwd,
+        detail,
+        chunks,
+        skippedFiles,
+        focus,
+        active,
+        mcpConfig,
+      ),
     )
 
     let results: PromiseSettledResult<ReviewFinding[]>[]
@@ -665,8 +677,8 @@ class PrReviewManager {
     skippedFiles: string[],
     focus: ReviewFocus,
     active: ActiveReviewSession,
+    mcpConfig: { command: string; args?: string[]; env?: Record<string, string> } | null,
   ): Promise<ReviewFinding[]> {
-    const mcpConfig = this.resolveCodeIntelligenceMcpConfig()
     const sessionId = await sessionManager.createSession(
       cwd,
       undefined,
@@ -744,7 +756,23 @@ ${detail.body || '(no description)'}
 
 ## Changed Files
 ${detail.files.map((f) => `- ${f.path} (+${f.additions} -${f.deletions})`).join('\n')}
-${skippedNote}${chunkHeader}
+${skippedNote}
+## Pre-computed Code Context
+
+Before analysing the diff, run this tool call first:
+
+\`\`\`
+Read .pylon/pr-context.json
+\`\`\`
+
+That file contains:
+- Every symbol changed by this PR with its full definition
+- References (callers) of each changed symbol across the codebase, capped at 20 per symbol with \`referencesTotal\` reporting the real count
+- Tests that cover each changed symbol
+- A \`notes\` array with caveats (timeouts, truncations, heuristic-mode warnings)
+
+If the file is missing or errors, proceed with diff-only review. If a symbol has \`referencesTruncated: true\`, you may call \`find_references\` via code-intelligence MCP for the full list.
+${chunkHeader}
 ## Diff
 \`\`\`diff
 ${chunk.diff}
@@ -763,22 +791,6 @@ Output your findings as a JSON array inside a fenced code block tagged \`review-
   { "file": "src/main.ts", "line": 42, "severity": "warning", "title": "Potential null dereference", "description": "The variable could be null when..." }
 ]
 \`\`\`
-
-## Pre-computed Code Context
-
-Before analysing the diff, run this tool call first:
-
-\`\`\`
-Read .pylon/pr-context.json
-\`\`\`
-
-That file contains:
-- Every symbol changed by this PR with its full definition
-- References (callers) of each changed symbol across the codebase, capped at 20 per symbol with \`referencesTotal\` reporting the real count
-- Tests that cover each changed symbol
-- A \`notes\` array with caveats (timeouts, truncations, heuristic-mode warnings)
-
-If the file is missing or errors, proceed with diff-only review. If a symbol has \`referencesTruncated: true\`, you may call \`find_references\` via code-intelligence MCP for the full list.
 
 ## Tools: Code Intelligence (for deeper drilling)
 Use these when the pre-computed bundle does not cover something:
