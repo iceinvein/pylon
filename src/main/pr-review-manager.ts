@@ -8,10 +8,20 @@ import { promisify } from 'node:util'
 import type { BrowserWindow } from 'electron'
 import { IPC } from '../shared/ipc-channels'
 import { log } from '../shared/logger'
-import type { GhRepo, PrReview, ReviewFinding, ReviewFocus, ReviewStatus } from '../shared/types'
+import type {
+  GhRepo,
+  PrContextBundle,
+  PrContextUpdate,
+  PrReview,
+  ReviewFinding,
+  ReviewFocus,
+  ReviewStatus,
+} from '../shared/types'
 import { getDb } from './db'
 import { type ChunkResult, chunkDiff, getTokenBudget } from './diff-chunker'
 import { getPrDetail } from './gh-cli'
+import { HeuristicContextBackend } from './pr-context/heuristic-context-backend'
+import { PrContextBuilder } from './pr-context/pr-context-builder'
 import { sessionManager } from './session-manager'
 
 const execFileAsync = promisify(execFile)
@@ -331,6 +341,7 @@ type ActiveReviewSession = {
   repoFullName: string
   prNumber: number
   agents: Map<ReviewFocus, AgentSession>
+  contextAbort?: AbortController
 }
 
 class PrReviewManager {
@@ -493,19 +504,81 @@ class PrReviewManager {
       return
     }
 
-    // Create a worktree checked out to the PR's head branch so agents
-    // explore the actual PR code, not whatever branch is checked out locally
-    let sessionCwd = repo.projectPath
-    try {
-      sessionCwd = await this.createPrWorktree(
-        repo.projectPath,
-        prNumber,
-        detail.headBranch,
+    const contextAbort = new AbortController()
+    active.contextAbort = contextAbort
+    const heuristicBackend = new HeuristicContextBackend()
+    const builder = new PrContextBuilder({
+      mcp: heuristicBackend,
+      heuristic: heuristicBackend,
+    })
+
+    const contextPromise = (async () => {
+      let sessionCwd = repo.projectPath
+      try {
+        sessionCwd = await this.createPrWorktree(
+          repo.projectPath,
+          prNumber,
+          detail.headBranch,
+          reviewId,
+        )
+      } catch (err) {
+        logger.warn('Failed to create PR worktree, falling back to project path:', err)
+      }
+
+      const db = getDb()
+      const enabledRow = db
+        .prepare("SELECT value FROM settings WHERE key = 'prReview.contextBuilder.enabled'")
+        .get() as { value: string } | undefined
+      if (enabledRow?.value === 'false') {
+        const payload: PrContextUpdate = {
+          reviewId,
+          phase: 'done',
+          mode: 'degraded',
+          notes: ['context builder disabled via settings'],
+        }
+        this.send(IPC.GH_REVIEW_CONTEXT_UPDATE, payload)
+        return { sessionCwd, bundle: null as PrContextBundle | null }
+      }
+
+      this.send(IPC.GH_REVIEW_CONTEXT_UPDATE, {
         reviewId,
-      )
-    } catch (err) {
-      logger.warn('Failed to create PR worktree, falling back to project path:', err)
-    }
+        phase: 'building',
+      } as PrContextUpdate)
+
+      try {
+        const result = await builder.build({
+          diff: detail.diff,
+          worktreePath: sessionCwd,
+          pr: {
+            number: prNumber,
+            headBranch: detail.headBranch,
+            baseBranch: detail.baseBranch,
+            title: detail.title,
+          },
+          totalTimeoutMs: 20_000,
+          perCallTimeoutMs: 8_000,
+          signal: contextAbort.signal,
+        })
+        const bundle = result.bundle
+        this.send(IPC.GH_REVIEW_CONTEXT_UPDATE, {
+          reviewId,
+          phase: bundle.mode === 'mcp' ? 'done' : 'fallback',
+          mode: bundle.mode,
+          notes: bundle.notes,
+        } as PrContextUpdate)
+        return { sessionCwd, bundle }
+      } catch (err) {
+        logger.warn('Context builder failed, agents will proceed without bundle:', err)
+        this.send(IPC.GH_REVIEW_CONTEXT_UPDATE, {
+          reviewId,
+          phase: 'error',
+          error: String(err),
+        } as PrContextUpdate)
+        return { sessionCwd, bundle: null as PrContextBundle | null }
+      }
+    })()
+
+    const { sessionCwd } = await contextPromise
 
     const agentPromises = focusAreas.map((focus) =>
       this.runAgentSession(reviewId, sessionCwd, detail, chunks, skippedFiles, focus, active),
@@ -593,7 +666,14 @@ class PrReviewManager {
     focus: ReviewFocus,
     active: ActiveReviewSession,
   ): Promise<ReviewFinding[]> {
-    const sessionId = await sessionManager.createSession(cwd, undefined, undefined, 'pr-review')
+    const mcpConfig = this.resolveCodeIntelligenceMcpConfig()
+    const sessionId = await sessionManager.createSession(
+      cwd,
+      undefined,
+      undefined,
+      'pr-review',
+      mcpConfig ? { mcpServers: { 'code-intelligence': mcpConfig } } : undefined,
+    )
     sessionManager.setPermissionMode(sessionId, 'auto-approve')
 
     const agentSession: AgentSession = {
@@ -684,15 +764,29 @@ Output your findings as a JSON array inside a fenced code block tagged \`review-
 ]
 \`\`\`
 
-## Tools — Code Intelligence (use first!)
-Before analyzing the diff, use code-intelligence MCP tools to build context around the changed code:
-- \`search_code\` — find related symbols, patterns, or usages across the codebase
-- \`get_definition\` — jump to a symbol's definition to understand its contract
-- \`find_references\` — find all call sites of changed functions to assess blast radius
-- \`get_call_hierarchy\` — understand upstream/downstream call chains
-- \`trace_data_flow\` — follow data through the system to spot issues the diff alone won't reveal
+## Pre-computed Code Context
 
-Use these tools to understand the surrounding code before making judgments. This ensures your findings account for the full context, not just the diff in isolation.
+Before analysing the diff, run this tool call first:
+
+\`\`\`
+Read .pylon/pr-context.json
+\`\`\`
+
+That file contains:
+- Every symbol changed by this PR with its full definition
+- References (callers) of each changed symbol across the codebase, capped at 20 per symbol with \`referencesTotal\` reporting the real count
+- Tests that cover each changed symbol
+- A \`notes\` array with caveats (timeouts, truncations, heuristic-mode warnings)
+
+If the file is missing or errors, proceed with diff-only review. If a symbol has \`referencesTruncated: true\`, you may call \`find_references\` via code-intelligence MCP for the full list.
+
+## Tools: Code Intelligence (for deeper drilling)
+Use these when the pre-computed bundle does not cover something:
+- \`search_code\` for symbols or patterns not in the bundle
+- \`get_definition\` for transitively referenced symbols
+- \`find_references\` when you need the full caller list beyond the 20-item cap
+- \`get_call_hierarchy\` for upstream/downstream call chains
+- \`trace_data_flow\` when tracking data across the system
 
 After your analysis, output ONLY the review-findings block.`
         } else {
@@ -1338,6 +1432,7 @@ ${JSON.stringify(input)}`,
   stopReview(reviewId: string): void {
     const active = this.activeReviews.get(reviewId)
     if (!active) return
+    active.contextAbort?.abort()
     for (const agent of active.agents.values()) {
       sessionManager.stopSession(agent.sessionId)
     }
@@ -1347,6 +1442,29 @@ ${JSON.stringify(input)}`,
       logger.warn('Failed to clean up PR worktree on stop:', err)
     })
     this.send(IPC.GH_REVIEW_UPDATE, { reviewId, status: 'error', error: 'Review stopped by user' })
+  }
+
+  private resolveCodeIntelligenceMcpConfig(): {
+    command: string
+    args?: string[]
+    env?: Record<string, string>
+  } | null {
+    const db = getDb()
+    const row = db
+      .prepare("SELECT value FROM settings WHERE key = 'prReview.mcp.codeIntelligence'")
+      .get() as { value: string } | undefined
+    if (!row?.value) return null
+    try {
+      const parsed = JSON.parse(row.value) as {
+        command?: string
+        args?: string[]
+        env?: Record<string, string>
+      }
+      if (!parsed.command) return null
+      return { command: parsed.command, args: parsed.args, env: parsed.env }
+    } catch {
+      return null
+    }
   }
 
   // ── Persistence queries ──

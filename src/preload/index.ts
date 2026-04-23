@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { IPC } from '../shared/ipc-channels'
-import type { GhPrStateFilter, IpcAttachment } from '../shared/types'
+import type { GhPrStateFilter, IpcAttachment, PrContextUpdate } from '../shared/types'
 
 const api = {
   createSession: (cwd: string, model?: string, useWorktree?: boolean) =>
@@ -176,6 +176,11 @@ const api = {
     const handler = (_event: unknown, data: unknown) => callback(data)
     ipcRenderer.on(IPC.GH_REVIEW_UPDATE, handler)
     return () => ipcRenderer.removeListener(IPC.GH_REVIEW_UPDATE, handler)
+  },
+  onReviewContextUpdate: (cb: (update: PrContextUpdate) => void) => {
+    const handler = (_event: unknown, payload: unknown) => cb(payload as PrContextUpdate)
+    ipcRenderer.on(IPC.GH_REVIEW_CONTEXT_UPDATE, handler)
+    return () => ipcRenderer.removeListener(IPC.GH_REVIEW_CONTEXT_UPDATE, handler)
   },
 
   // PR Polling
