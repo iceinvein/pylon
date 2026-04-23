@@ -12,7 +12,6 @@ export type McpStdioConfig = {
 
 export class CodeIntelligenceMcpClient {
   private client: Client | null = null
-  private transport: StdioClientTransport | null = null
   private connected = false
 
   constructor(private readonly config: McpStdioConfig) {}
@@ -28,16 +27,24 @@ export class CodeIntelligenceMcpClient {
 
     const client = new Client({ name: 'pylon-pr-context', version: '1.0.0' }, { capabilities: {} })
 
-    const connectPromise = (async () => {
-      await transport.start()
-      await client.connect(transport)
-    })()
-
-    await withTimeout(connectPromise, timeoutMs, 'MCP connect timed out')
-
-    this.transport = transport
+    // Assign client before awaiting so failure paths can reach it for cleanup.
     this.client = client
-    this.connected = true
+
+    try {
+      // client.connect() calls transport.start() internally; do NOT call transport.start() manually.
+      await withTimeout(client.connect(transport), timeoutMs, 'MCP connect timed out')
+      this.connected = true
+    } catch (err) {
+      // Clean up the subprocess even if connect timed out or start failed.
+      // client.close() will close the transport internally.
+      try {
+        await transport.close()
+      } catch (closeErr) {
+        logger.warn('Error closing MCP transport after failed connect:', closeErr)
+      }
+      this.client = null
+      throw err
+    }
   }
 
   async callTool(
@@ -52,36 +59,35 @@ export class CodeIntelligenceMcpClient {
     const invocation = this.client.callTool({ name, arguments: args })
     const result = await withTimeout(invocation, timeoutMs, `MCP tool ${name} timed out`)
 
-    if ('content' in result) {
-      return result.content ?? null
+    if (
+      result &&
+      typeof result === 'object' &&
+      (result as { isError?: boolean }).isError === true
+    ) {
+      const content = (result as { content?: unknown }).content
+      throw new Error(
+        `MCP tool ${name} reported an error: ${
+          typeof content === 'string' ? content : JSON.stringify(content)
+        }`,
+      )
     }
 
-    if ('toolResult' in result) {
-      return result.toolResult ?? null
+    if (result && typeof result === 'object') {
+      if ('content' in result) return (result as { content: unknown }).content
+      if ('toolResult' in result) return (result as { toolResult: unknown }).toolResult
     }
 
-    return null
+    logger.warn(`Unexpected MCP tool result shape for ${name}`, result)
+    throw new Error(`MCP tool ${name} returned an unexpected result shape`)
   }
 
   async close(): Promise<void> {
     try {
-      if (this.client) {
-        await this.client.close()
-      }
+      if (this.client) await this.client.close()
     } catch (err) {
       logger.warn('Error closing MCP client:', err)
     }
-
-    try {
-      if (this.transport) {
-        await this.transport.close()
-      }
-    } catch (err) {
-      logger.warn('Error closing MCP transport:', err)
-    }
-
     this.client = null
-    this.transport = null
     this.connected = false
   }
 }
