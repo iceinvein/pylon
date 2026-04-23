@@ -30,9 +30,7 @@ export function parseDiff(diff: string): DiffFile[] {
       if (length > 0) {
         current.touchedRanges.push({ start, end: start + length - 1 })
       }
-      continue
     }
-    if (!current) continue
   }
 
   return mergeTouchedRanges(result)
@@ -62,25 +60,28 @@ type LangRule = {
 
 const LANG_RULES: Record<string, LangRule[]> = {
   ts: [
-    { pattern: /^\s*(?:export\s+)?(?:async\s+)?function\s+([A-Za-z_$][\w$]*)/gm, kind: 'function' },
-    { pattern: /^\s*(?:export\s+)?class\s+([A-Za-z_$][\w$]*)/gm, kind: 'class' },
-    { pattern: /^\s*(?:export\s+)?type\s+([A-Za-z_$][\w$]*)/gm, kind: 'type' },
-    { pattern: /^\s*(?:export\s+)?interface\s+([A-Za-z_$][\w$]*)/gm, kind: 'type' },
-    { pattern: /^\s*(?:export\s+)?const\s+([A-Za-z_$][\w$]*)\s*=/gm, kind: 'variable' },
+    {
+      pattern: /^[^\S\n]*(?:export\s+)?(?:async\s+)?function\s+([A-Za-z_$][\w$]*)/gm,
+      kind: 'function',
+    },
+    { pattern: /^[^\S\n]*(?:export\s+)?class\s+([A-Za-z_$][\w$]*)/gm, kind: 'class' },
+    { pattern: /^[^\S\n]*(?:export\s+)?type\s+([A-Za-z_$][\w$]*)/gm, kind: 'type' },
+    { pattern: /^[^\S\n]*(?:export\s+)?interface\s+([A-Za-z_$][\w$]*)/gm, kind: 'type' },
+    { pattern: /^[^\S\n]*(?:export\s+)?const\s+([A-Za-z_$][\w$]*)\s*=/gm, kind: 'variable' },
   ],
   py: [
-    { pattern: /^\s*def\s+([A-Za-z_][\w]*)/gm, kind: 'function' },
-    { pattern: /^\s*class\s+([A-Za-z_][\w]*)/gm, kind: 'class' },
+    { pattern: /^[^\S\n]*def\s+([A-Za-z_][\w]*)/gm, kind: 'function' },
+    { pattern: /^[^\S\n]*class\s+([A-Za-z_][\w]*)/gm, kind: 'class' },
   ],
   go: [
-    { pattern: /^\s*func\s+(?:\([^)]*\)\s+)?([A-Za-z_][\w]*)/gm, kind: 'function' },
-    { pattern: /^\s*type\s+([A-Za-z_][\w]*)\s+(?:struct|interface)/gm, kind: 'type' },
+    { pattern: /^[^\S\n]*func\s+(?:\([^)]*\)\s+)?([A-Za-z_][\w]*)/gm, kind: 'function' },
+    { pattern: /^[^\S\n]*type\s+([A-Za-z_][\w]*)\s+(?:struct|interface)/gm, kind: 'type' },
   ],
   rs: [
-    { pattern: /^\s*(?:pub\s+)?(?:async\s+)?fn\s+([A-Za-z_][\w]*)/gm, kind: 'function' },
-    { pattern: /^\s*(?:pub\s+)?struct\s+([A-Za-z_][\w]*)/gm, kind: 'type' },
-    { pattern: /^\s*(?:pub\s+)?enum\s+([A-Za-z_][\w]*)/gm, kind: 'type' },
-    { pattern: /^\s*(?:pub\s+)?trait\s+([A-Za-z_][\w]*)/gm, kind: 'type' },
+    { pattern: /^[^\S\n]*(?:pub\s+)?(?:async\s+)?fn\s+([A-Za-z_][\w]*)/gm, kind: 'function' },
+    { pattern: /^[^\S\n]*(?:pub\s+)?struct\s+([A-Za-z_][\w]*)/gm, kind: 'type' },
+    { pattern: /^[^\S\n]*(?:pub\s+)?enum\s+([A-Za-z_][\w]*)/gm, kind: 'type' },
+    { pattern: /^[^\S\n]*(?:pub\s+)?trait\s+([A-Za-z_][\w]*)/gm, kind: 'type' },
   ],
 }
 
@@ -120,6 +121,9 @@ export function extractDeclarations(source: string, path: string): Declaration[]
   return results
 }
 
+// Brace-balance end detection is a v1 simplification: braces inside strings,
+// regex literals, or comments can cause early termination. Acceptable for the
+// current use case (rough range bounds for declaration-overlap checks).
 function computeEndLine(lines: string[], startLine: number, lang: string): number {
   if (lang === 'py') {
     const header = lines[startLine - 1] ?? ''
