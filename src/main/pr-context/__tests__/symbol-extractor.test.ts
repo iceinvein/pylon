@@ -48,17 +48,18 @@ describe('parseDiff', () => {
       'index 0..1 100644',
       '--- a/c.ts',
       '+++ b/c.ts',
-      '@@ -1,1 +1,2 @@',
+      '@@ -1,1 +1,3 @@',
       '+a',
-      ' b',
+      '+b',
+      ' c',
       '@@ -3,1 +4,2 @@',
-      '+c',
-      ' d',
+      '+d',
+      ' e',
       '',
     ].join('\n')
     const files = parseDiff(diff)
     expect(files).toHaveLength(1)
-    expect(files[0].touchedRanges.length).toBeGreaterThanOrEqual(1)
+    expect(files[0].touchedRanges).toEqual([{ start: 1, end: 5 }])
   })
 })
 
