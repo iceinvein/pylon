@@ -118,6 +118,75 @@ describe('PrContextBuilder', () => {
     }
   })
 
+  test('aborts when parent signal is already aborted before build starts', async () => {
+    const slow: PrContextBackend = {
+      mode: 'heuristic',
+      async detectAvailability() {
+        return true
+      },
+      build(input) {
+        return new Promise<PrContextBundle>((resolve, reject) => {
+          const t = setTimeout(() => resolve(makeBundle()), 5_000)
+          input.signal.addEventListener('abort', () => {
+            clearTimeout(t)
+            reject(new Error('aborted'))
+          })
+        })
+      },
+    }
+    const mcp = new StubBackend(false, 'mcp', makeBundle())
+    const builder = new PrContextBuilder({ mcp, heuristic: slow })
+    const worktreePath = await stageWorktree()
+    const parent = new AbortController()
+    parent.abort()
+    try {
+      const result = await builder.build({
+        diff: '',
+        worktreePath,
+        pr: { number: 1, headBranch: 'f', baseBranch: 'm', title: 't' },
+        totalTimeoutMs: 20_000,
+        perCallTimeoutMs: 8_000,
+        signal: parent.signal,
+      })
+      expect(result.bundle.mode).toBe('degraded')
+      expect(result.bundle.notes.some((n) => n.includes('timed out'))).toBe(true)
+    } finally {
+      await rm(worktreePath, { recursive: true, force: true })
+    }
+  })
+
+  test('records non-timeout backend error in note', async () => {
+    const crashing: PrContextBackend = {
+      mode: 'heuristic',
+      async detectAvailability() {
+        return true
+      },
+      async build() {
+        throw new Error('backend exploded')
+      },
+    }
+    const mcp = new StubBackend(false, 'mcp', makeBundle())
+    const builder = new PrContextBuilder({ mcp, heuristic: crashing })
+    const worktreePath = await stageWorktree()
+    try {
+      const result = await builder.build({
+        diff: '',
+        worktreePath,
+        pr: { number: 1, headBranch: 'f', baseBranch: 'm', title: 't' },
+        totalTimeoutMs: 20_000,
+        perCallTimeoutMs: 8_000,
+        signal: new AbortController().signal,
+      })
+      expect(result.bundle.mode).toBe('degraded')
+      const noteText = result.bundle.notes.join(' ')
+      expect(noteText).toContain('failed')
+      expect(noteText).toContain('backend exploded')
+      expect(noteText).not.toContain('timed out')
+    } finally {
+      await rm(worktreePath, { recursive: true, force: true })
+    }
+  })
+
   test('trims bundle to budget when JSON exceeds max size', async () => {
     const fat = makeBundle()
     const bigSnippet = 'x'.repeat(30_000)

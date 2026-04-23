@@ -42,7 +42,11 @@ export class PrContextBuilder {
 
     const ac = new AbortController()
     const onParentAbort = () => ac.abort()
-    input.signal.addEventListener('abort', onParentAbort)
+    if (input.signal.aborted) {
+      ac.abort()
+    } else {
+      input.signal.addEventListener('abort', onParentAbort)
+    }
     const timer = setTimeout(() => ac.abort(), input.totalTimeoutMs)
 
     const backendInput: BuildInput = {
@@ -55,15 +59,20 @@ export class PrContextBuilder {
 
     let bundle: PrContextBundle
     try {
+      if (ac.signal.aborted) throw ac.signal.reason ?? new Error('aborted')
       bundle = await backend.build(backendInput)
-    } catch {
+    } catch (err) {
+      const timedOut = ac.signal.aborted
+      const note = timedOut
+        ? `context build timed out after ${input.totalTimeoutMs}ms`
+        : `context build failed: ${err instanceof Error ? err.message : String(err)}`
       bundle = {
         version: 1,
         generatedAt: Date.now(),
         mode: 'degraded',
         pr: input.pr,
         files: [],
-        notes: [`context build timed out after ${input.totalTimeoutMs}ms`],
+        notes: [note],
       }
     } finally {
       clearTimeout(timer)
@@ -92,11 +101,13 @@ function trimToBudget(bundle: PrContextBundle, maxBytes: number): PrContextBundl
     if (ranked.length === 0) break
     ranked.sort((a, b) => a.score - b.score)
     const lowest = ranked[0]
-    const newFiles = current.files.map((file, fi) =>
-      fi === lowest.fileIdx
-        ? { ...file, symbols: file.symbols.filter((_, si) => si !== lowest.symIdx) }
-        : file,
-    )
+    const newFiles = current.files
+      .map((file, fi) =>
+        fi === lowest.fileIdx
+          ? { ...file, symbols: file.symbols.filter((_, si) => si !== lowest.symIdx) }
+          : file,
+      )
+      .filter((file) => file.symbols.length > 0)
     const notes = current.notes.includes('bundle trimmed to fit budget')
       ? current.notes
       : [...current.notes, 'bundle trimmed to fit budget']
