@@ -18,4 +18,12 @@ export function usePrReviewBridge() {
     })
     return unsub
   }, [])
+
+  // Subscribe to context build phase/mode updates
+  useEffect(() => {
+    const unsub = window.api.onReviewContextUpdate((update) => {
+      usePrReviewStore.getState().setContextUpdate(update)
+    })
+    return unsub
+  }, [])
 }

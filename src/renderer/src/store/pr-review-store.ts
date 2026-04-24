@@ -6,6 +6,8 @@ import type {
   GhPrStateFilter,
   GhPullRequest,
   GhRepo,
+  PrContextMode,
+  PrContextUpdate,
   PrReview,
   ReviewFinding,
   ReviewFocus,
@@ -116,6 +118,12 @@ type PrReviewStore = {
   severityFilter: Set<string>
   navigateToFindingId: string | null
 
+  // Context build tracking (per active review)
+  contextPhase?: 'building' | 'done' | 'fallback' | 'error'
+  contextMode?: PrContextMode
+  contextNotes?: string[]
+  contextError?: string
+
   checkGhStatus: () => Promise<void>
   setGhPath: (path: string) => Promise<void>
   loadRepos: () => Promise<void>
@@ -152,6 +160,7 @@ type PrReviewStore = {
   toggleSeverityFilter: (severity: string) => void
   navigateToFinding: (findingId: string) => void
   clearNavigateToFinding: () => void
+  setContextUpdate: (update: PrContextUpdate) => void
 }
 
 export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
@@ -375,6 +384,10 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
         reviewError: null,
         selectedFindingIds: new Set(),
         agentProgress: [],
+        contextPhase: undefined,
+        contextMode: undefined,
+        contextNotes: undefined,
+        contextError: undefined,
         // Add to reviews list so it shows in history
         reviews: [review, ...s.reviews],
       }))
@@ -588,6 +601,19 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
   },
 
   clearNavigateToFinding: () => set({ navigateToFindingId: null }),
+
+  setContextUpdate: (update) => {
+    set((s) => {
+      // Only apply if the update matches the active review
+      if (s.activeReview?.id !== update.reviewId) return s
+      return {
+        contextPhase: update.phase,
+        ...(update.mode !== undefined && { contextMode: update.mode }),
+        ...(update.notes !== undefined && { contextNotes: update.notes }),
+        ...(update.error !== undefined && { contextError: update.error }),
+      }
+    })
+  },
 
   handleReviewUpdate: (data) => {
     set((s) => {
