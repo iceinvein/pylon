@@ -73,6 +73,14 @@ export type ProviderSessionConfig = {
   resumeSessionId?: string
   /** Betas/experimental flags to enable */
   betas?: string[]
+  /** MCP servers to attach to this session (e.g. code-intelligence). Claude-specific. */
+  mcpServers?: Record<string, McpServerStdioConfig>
+}
+
+export type McpServerStdioConfig = {
+  command: string
+  args?: string[]
+  env?: Record<string, string>
 }
 
 // ── Normalized Event Stream ──────────────────────

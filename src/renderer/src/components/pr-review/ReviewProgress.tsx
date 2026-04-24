@@ -234,6 +234,9 @@ function extractStreamFindings(text: string): { findings: StreamFinding[]; pream
 export function ReviewProgress({ reviewId: _reviewId, onStop, isLive = true }: Props) {
   const streamingText = usePrReviewStore((s) => s.reviewStreamingText)
   const agentProgress = usePrReviewStore((s) => s.agentProgress)
+  const contextPhase = usePrReviewStore((s) => s.contextPhase)
+  const contextMode = usePrReviewStore((s) => s.contextMode)
+  const contextNotes = usePrReviewStore((s) => s.contextNotes)
   const [expanded, setExpanded] = useState(isLive)
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -273,6 +276,17 @@ export function ReviewProgress({ reviewId: _reviewId, onStop, isLive = true }: P
         {findingCount > 0 && (
           <span className="rounded-full bg-base-raised px-2 py-0.5 text-[10px] text-base-text-secondary tabular-nums">
             {findingCount} finding{findingCount !== 1 ? 's' : ''}
+          </span>
+        )}
+        {contextPhase === 'building' && (
+          <span className="text-[10px] text-base-text-muted">Building code context...</span>
+        )}
+        {contextMode && (
+          <span
+            className="rounded-sm border border-base-border-subtle px-1.5 py-0.5 font-mono text-[10px] text-base-text-muted uppercase"
+            title={contextNotes?.join('\n')}
+          >
+            ctx: {contextMode}
           </span>
         )}
         <div className="flex-1" />

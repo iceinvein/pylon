@@ -10,6 +10,7 @@ import {
   Play,
   RotateCw,
   User,
+  X,
 } from 'lucide-react'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
@@ -137,6 +138,8 @@ function ReviewErrorState({ error, onRetry }: { error: string | null; onRetry: (
   )
 }
 
+const BANNER_STORAGE_KEY = 'pylon.prReview.dismissedMcpBanner'
+
 export function PrDetail() {
   const {
     selectedPr,
@@ -155,11 +158,37 @@ export function PrDetail() {
     toggleFinding,
     postFinding,
     selectPr,
+    contextMode,
   } = usePrReviewStore()
   const [showReviewModal, setShowReviewModal] = useState(false)
+  // Default to true so nothing flashes before we load the persisted value
+  const [dismissedBanner, setDismissedBanner] = useState(true)
   const [selectedFile, setSelectedFile] = useState<string | null>(null)
   const [treeWidth, setTreeWidth] = useState(220)
   const resizing = useRef(false)
+
+  // Load persisted banner dismissed state
+  useEffect(() => {
+    window.api
+      .getSettings()
+      .then((s) => {
+        const raw = (s as Record<string, unknown>)[BANNER_STORAGE_KEY]
+        // If not set yet, default to not dismissed (show banner)
+        setDismissedBanner(raw === 'true')
+      })
+      .catch(() => {
+        // Fallback to localStorage if settings API fails
+        setDismissedBanner(localStorage.getItem(BANNER_STORAGE_KEY) === 'true')
+      })
+  }, [])
+
+  async function persistDismissedBanner() {
+    try {
+      await window.api.updateSettings(BANNER_STORAGE_KEY, 'true')
+    } catch {
+      localStorage.setItem(BANNER_STORAGE_KEY, 'true')
+    }
+  }
 
   // Reset file selection when review or PR changes
   useEffect(() => {
@@ -359,6 +388,27 @@ export function PrDetail() {
               <div className="px-5 py-2">
                 <ReviewHistory />
               </div>
+              {contextMode === 'heuristic' && !dismissedBanner && (
+                <div className="mx-5 mb-3 rounded border border-base-border-subtle bg-base-surface/40 px-3 py-2 text-xs">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-base-text-secondary">
+                      Code-intelligence MCP not configured. Reviews are running in heuristic mode
+                      (symbols and tests only, references unavailable).
+                    </span>
+                    <button
+                      type="button"
+                      aria-label="Dismiss banner"
+                      className="shrink-0 text-base-text-muted transition-colors hover:text-base-text"
+                      onClick={async () => {
+                        await persistDismissedBanner()
+                        setDismissedBanner(true)
+                      }}
+                    >
+                      <X size={13} />
+                    </button>
+                  </div>
+                </div>
+              )}
               <div className="min-h-0 flex-1 px-5 pb-4">
                 <ReviewProgress
                   reviewId={activeReview.id}

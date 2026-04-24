@@ -1,0 +1,93 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PrContextBundle",
+  "type": "object",
+  "required": ["version", "generatedAt", "mode", "pr", "files", "notes"],
+  "properties": {
+    "version": { "type": "number", "const": 1 },
+    "generatedAt": { "type": "number" },
+    "mode": { "type": "string", "enum": ["mcp", "heuristic", "degraded"] },
+    "pr": {
+      "type": "object",
+      "required": ["number", "headBranch", "baseBranch", "title"],
+      "properties": {
+        "number": { "type": "number" },
+        "headBranch": { "type": "string" },
+        "baseBranch": { "type": "string" },
+        "title": { "type": "string" }
+      }
+    },
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "symbols"],
+        "properties": {
+          "path": { "type": "string" },
+          "moduleSummary": { "type": "string" },
+          "symbols": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "name",
+                "kind",
+                "range",
+                "references",
+                "referencesTotal",
+                "referencesTruncated",
+                "tests"
+              ],
+              "properties": {
+                "name": { "type": "string" },
+                "kind": {
+                  "type": "string",
+                  "enum": ["function", "class", "type", "method", "variable", "other"]
+                },
+                "range": {
+                  "type": "object",
+                  "required": ["start", "end"],
+                  "properties": {
+                    "start": { "type": "number" },
+                    "end": { "type": "number" }
+                  }
+                },
+                "definition": { "type": "string" },
+                "references": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["file", "line"],
+                    "properties": {
+                      "file": { "type": "string" },
+                      "line": { "type": "number" },
+                      "snippet": { "type": "string" }
+                    }
+                  }
+                },
+                "referencesTotal": { "type": "number" },
+                "referencesTruncated": { "type": "boolean" },
+                "tests": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["file"],
+                    "properties": {
+                      "file": { "type": "string" },
+                      "name": { "type": "string" }
+                    }
+                  }
+                },
+                "error": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "notes": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}

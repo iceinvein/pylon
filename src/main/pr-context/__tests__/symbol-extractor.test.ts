@@ -15,7 +15,51 @@ describe('parseDiff', () => {
     const files = parseDiff(diff)
     expect(files).toHaveLength(1)
     expect(files[0].path).toBe('src/foo.ts')
-    expect(files[0].touchedRanges.length).toBeGreaterThan(0)
+    expect(files[0].touchedRanges).toEqual([{ start: 1, end: 9 }])
+  })
+
+  test('parses multi-file diff into multiple entries', () => {
+    const diff = [
+      'diff --git a/a.ts b/a.ts',
+      'index 0..1 100644',
+      '--- a/a.ts',
+      '+++ b/a.ts',
+      '@@ -1,1 +1,2 @@',
+      ' x',
+      '+y',
+      'diff --git a/b.ts b/b.ts',
+      'index 0..1 100644',
+      '--- a/b.ts',
+      '+++ b/b.ts',
+      '@@ -3,1 +3,2 @@',
+      ' q',
+      '+r',
+      '',
+    ].join('\n')
+    const files = parseDiff(diff)
+    expect(files.map((f) => f.path)).toEqual(['a.ts', 'b.ts'])
+    expect(files[0].touchedRanges).toEqual([{ start: 1, end: 2 }])
+    expect(files[1].touchedRanges).toEqual([{ start: 3, end: 4 }])
+  })
+
+  test('merges adjacent hunks within a file', () => {
+    const diff = [
+      'diff --git a/c.ts b/c.ts',
+      'index 0..1 100644',
+      '--- a/c.ts',
+      '+++ b/c.ts',
+      '@@ -1,1 +1,3 @@',
+      '+a',
+      '+b',
+      ' c',
+      '@@ -3,1 +4,2 @@',
+      '+d',
+      ' e',
+      '',
+    ].join('\n')
+    const files = parseDiff(diff)
+    expect(files).toHaveLength(1)
+    expect(files[0].touchedRanges).toEqual([{ start: 1, end: 5 }])
   })
 })
 
@@ -46,6 +90,14 @@ describe('extractDeclarations', () => {
 
   test('returns empty for unknown extension', () => {
     expect(extractDeclarations('whatever', 'x.xyz')).toEqual([])
+  })
+
+  test('extractDeclarations startLine ignores preceding blank lines', () => {
+    const source = 'export function first() {}\n\nexport function second() {}\n'
+    const decls = extractDeclarations(source, 'x.ts')
+    const second = decls.find((d) => d.name === 'second')
+    expect(second).toBeDefined()
+    expect(second?.range.start).toBe(3)
   })
 })
 

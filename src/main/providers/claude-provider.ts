@@ -493,7 +493,7 @@ class ClaudeSession implements AgentSession {
       return { behavior: 'deny' as const, message: result.message ?? 'User denied' }
     }
 
-    return {
+    const base: SdkOptions & Record<string, unknown> = {
       cwd: config.cwd,
       model: config.model,
       abortController: config.abortController,
@@ -507,6 +507,12 @@ class ClaudeSession implements AgentSession {
       canUseTool,
       ...getClaudeCodeSdkRuntimeOptions(),
     }
+
+    if (config.mcpServers && Object.keys(config.mcpServers).length > 0) {
+      base.mcpServers = config.mcpServers
+    }
+
+    return base
   }
 
   // ── Private: Attachment Processing ───────────

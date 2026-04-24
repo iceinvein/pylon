@@ -6,6 +6,8 @@ import type {
   GhPrStateFilter,
   GhPullRequest,
   GhRepo,
+  PrContextMode,
+  PrContextUpdate,
   PrReview,
   ReviewFinding,
   ReviewFindingRisk,
@@ -171,6 +173,12 @@ type PrReviewStore = {
   severityFilter: Set<ReviewFindingSeverity>
   navigateToFindingId: string | null
 
+  // Context build tracking (per active review)
+  contextPhase?: 'building' | 'done' | 'fallback' | 'error'
+  contextMode?: PrContextMode
+  contextNotes?: string[]
+  contextError?: string
+
   checkGhStatus: () => Promise<void>
   setGhPath: (path: string) => Promise<void>
   loadRepos: () => Promise<void>
@@ -207,6 +215,7 @@ type PrReviewStore = {
   toggleSeverityFilter: (severity: ReviewFindingSeverity) => void
   navigateToFinding: (findingId: string) => void
   clearNavigateToFinding: () => void
+  setContextUpdate: (update: PrContextUpdate) => void
 }
 
 export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
@@ -299,6 +308,10 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
       reviewError: null,
       reviews: [],
       agentProgress: [],
+      contextPhase: undefined,
+      contextMode: undefined,
+      contextNotes: undefined,
+      contextError: undefined,
     })
     get().loadPrs(repo ?? undefined)
   },
@@ -317,6 +330,10 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
       reviewError: null,
       reviews: [],
       agentProgress: [],
+      contextPhase: undefined,
+      contextMode: undefined,
+      contextNotes: undefined,
+      contextError: undefined,
     })
     get().loadPrs(get().selectedRepo ?? undefined, state)
   },
@@ -379,6 +396,10 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
       selectedFindingIds: new Set(),
       agentProgress: [],
       _selectPrSeq: seq,
+      contextPhase: undefined,
+      contextMode: undefined,
+      contextNotes: undefined,
+      contextError: undefined,
     })
     if (!pr) return
     // Mark PR as seen for badge tracking
@@ -430,6 +451,10 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
         reviewError: null,
         selectedFindingIds: new Set(),
         agentProgress: [],
+        contextPhase: undefined,
+        contextMode: undefined,
+        contextNotes: undefined,
+        contextError: undefined,
         // Add to reviews list so it shows in history
         reviews: [review, ...s.reviews],
       }))
@@ -447,6 +472,10 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
         reviewStreamingText: '',
         reviewError: 'Review stopped by user',
         agentProgress: [],
+        contextPhase: undefined,
+        contextMode: undefined,
+        contextNotes: undefined,
+        contextError: undefined,
         reviews: s.reviews.map((r) => (r.id === reviewId ? { ...r, status: 'error' as const } : r)),
       }))
     } catch (err) {
@@ -476,6 +505,10 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
         reviewError: null,
         selectedFindingIds: new Set(),
         agentProgress: [],
+        contextPhase: undefined,
+        contextMode: undefined,
+        contextNotes: undefined,
+        contextError: undefined,
       })
     } catch (err) {
       logger.error('loadReview failed:', err)
@@ -643,6 +676,19 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
   },
 
   clearNavigateToFinding: () => set({ navigateToFindingId: null }),
+
+  setContextUpdate: (update) => {
+    set((s) => {
+      // Only apply if the update matches the active review
+      if (s.activeReview?.id !== update.reviewId) return s
+      return {
+        contextPhase: update.phase,
+        ...(update.mode !== undefined && { contextMode: update.mode }),
+        ...(update.notes !== undefined && { contextNotes: update.notes }),
+        ...(update.error !== undefined && { contextError: update.error }),
+      }
+    })
+  },
 
   handleReviewUpdate: (data) => {
     set((s) => {

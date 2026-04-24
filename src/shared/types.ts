@@ -718,6 +718,57 @@ export type SetupCompleteEvent = {
   }>
 }
 
-// ── PR Context Code Intelligence ──────────────────
+export type PrContextMode = 'mcp' | 'heuristic' | 'degraded'
 
 export type PrContextSymbolKind = 'function' | 'class' | 'type' | 'method' | 'variable' | 'other'
+
+export type PrContextReference = {
+  file: string
+  line: number
+  snippet?: string
+}
+
+export type PrContextTest = {
+  file: string
+  name?: string
+}
+
+export type PrContextSymbol = {
+  name: string
+  kind: PrContextSymbolKind
+  range: { start: number; end: number }
+  definition?: string
+  references: PrContextReference[]
+  referencesTotal: number
+  referencesTruncated: boolean
+  tests: PrContextTest[]
+  error?: string
+}
+
+export type PrContextFile = {
+  path: string
+  moduleSummary?: string
+  symbols: PrContextSymbol[]
+}
+
+export type PrContextBundle = {
+  version: 1
+  generatedAt: number
+  mode: PrContextMode
+  pr: {
+    number: number
+    headBranch: string
+    baseBranch: string
+    title: string
+  }
+  files: PrContextFile[]
+  notes: string[]
+}
+
+export type PrContextUpdate = {
+  reviewId: string
+  phase: 'building' | 'done' | 'fallback' | 'error'
+  mode?: PrContextMode
+  notes?: string[]
+  error?: string
+}

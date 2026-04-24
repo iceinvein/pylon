@@ -502,6 +502,8 @@ export function SettingsOverlay() {
     freedBytes: number
   } | null>(null)
   const [cleaning, setCleaning] = useState(false)
+  const [contextBuilderEnabled, setContextBuilderEnabled] = useState(true)
+  const [mcpCodeIntelligence, setMcpCodeIntelligence] = useState('')
 
   async function loadPlugins() {
     setPluginsLoading(true)
@@ -554,7 +556,15 @@ export function SettingsOverlay() {
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: recheckGh is stable intent
   useEffect(() => {
-    if (settingsOpen && activeTab === 'integrations') recheckGh()
+    if (settingsOpen && activeTab === 'integrations') {
+      recheckGh()
+      window.api.getSettings().then((s) => {
+        const raw = s as Record<string, unknown>
+        const enabled = raw['prReview.contextBuilder.enabled']
+        setContextBuilderEnabled(enabled !== 'false')
+        setMcpCodeIntelligence((raw['prReview.mcp.codeIntelligence'] as string | undefined) ?? '')
+      })
+    }
   }, [settingsOpen, activeTab])
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: loadPlugins is stable intent
@@ -796,6 +806,66 @@ export function SettingsOverlay() {
 
                 {activeTab === 'integrations' && (
                   <div className="mt-8 space-y-8">
+                    <section>
+                      <span className="block font-medium text-base-text text-sm">
+                        PR Review: Code Context
+                      </span>
+                      <p className="mt-0.5 text-base-text-muted text-xs">
+                        Configure code-intelligence context building for PR reviews.
+                      </p>
+
+                      <div className="mt-3 space-y-4 rounded-lg border border-base-border-subtle bg-base-surface/50 p-4">
+                        {/* Toggle: enable context builder */}
+                        <div className="flex items-center justify-between gap-4">
+                          <div>
+                            <div className="text-base-text text-sm">
+                              Enable code context builder
+                            </div>
+                            <div className="mt-0.5 text-base-text-muted text-xs">
+                              Builds symbol and reference context before each review.
+                            </div>
+                          </div>
+                          <PluginToggle
+                            enabled={contextBuilderEnabled}
+                            onToggle={async (enabled) => {
+                              setContextBuilderEnabled(enabled)
+                              await window.api.updateSettings(
+                                'prReview.contextBuilder.enabled',
+                                enabled ? 'true' : 'false',
+                              )
+                            }}
+                          />
+                        </div>
+
+                        {/* Textarea: MCP command JSON */}
+                        <div>
+                          <label
+                            htmlFor="mcp-code-intelligence"
+                            className="block text-base-text text-sm"
+                          >
+                            Code-intelligence MCP command (JSON)
+                          </label>
+                          <p className="mt-0.5 text-base-text-muted text-xs">
+                            Leave blank to use heuristic mode (symbol and test scanning only).
+                          </p>
+                          <textarea
+                            id="mcp-code-intelligence"
+                            value={mcpCodeIntelligence}
+                            onChange={(e) => setMcpCodeIntelligence(e.target.value)}
+                            onBlur={async () => {
+                              await window.api.updateSettings(
+                                'prReview.mcp.codeIntelligence',
+                                mcpCodeIntelligence,
+                              )
+                            }}
+                            placeholder={`{ "command": "npx", "args": ["-y", "code-intelligence-mcp"] }`}
+                            rows={3}
+                            className="mt-2 w-full resize-y rounded-md bg-base-bg px-3 py-2 font-mono text-base-text text-xs placeholder-base-text-faint outline-none ring-1 ring-base-border-subtle focus:ring-base-border"
+                          />
+                        </div>
+                      </div>
+                    </section>
+
                     <section>
                       <span className="block font-medium text-base-text text-sm">
                         GitHub CLI (gh)

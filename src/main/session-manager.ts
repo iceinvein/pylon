@@ -24,6 +24,7 @@ import {
   type NormalizedEvent,
   type ProviderId,
 } from './providers'
+import type { McpServerStdioConfig } from './providers/types'
 import { worktreeRecipeService } from './worktree-recipe-service'
 
 const logger = log.child('session-manager')
@@ -95,6 +96,7 @@ type ActiveSession = {
       resolve: (result: { approved: boolean }) => void
     }
   >
+  mcpServers: Record<string, McpServerStdioConfig> | null
 }
 
 type IpcAttachment =
@@ -237,6 +239,7 @@ export class SessionManager {
     model?: string,
     useWorktree?: boolean,
     source: string = 'user',
+    options?: { mcpServers?: Record<string, McpServerStdioConfig> },
   ): Promise<string> {
     const id = randomUUID()
     const now = Date.now()
@@ -305,6 +308,7 @@ export class SessionManager {
       mode: 'normal',
       prePlanPermissionMode: null,
       pendingPlanApprovals: new Map(),
+      mcpServers: options?.mcpServers ?? null,
     })
 
     return id
@@ -329,6 +333,7 @@ export class SessionManager {
         permissionMode: session.permissionMode,
         abortController: session.abortController,
         betas: ['context-1m-2025-08-07'],
+        mcpServers: session.mcpServers ?? undefined,
         resumeSessionId: session.sdkSessionId ?? undefined,
         onBeforeToolUse: (toolName) => {
           // Capture git baseline on first file-modifying tool
@@ -594,6 +599,7 @@ export class SessionManager {
       mode: 'normal',
       prePlanPermissionMode: null,
       pendingPlanApprovals: new Map(),
+      mcpServers: null,
     })
 
     // Backfill title for old sessions that never got one

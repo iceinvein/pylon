@@ -87,6 +87,7 @@ export const IPC = {
   GH_DELETE_REVIEW: 'gh:delete-review',
   GH_SAVE_FINDINGS: 'gh:save-findings',
   GH_REVIEW_UPDATE: 'gh:review-update',
+  GH_REVIEW_CONTEXT_UPDATE: 'gh:review-context-update',
   GH_GET_AGENT_PROMPTS: 'gh:get-agent-prompts',
   GH_RESET_AGENT_PROMPT: 'gh:reset-agent-prompt',
   // PR Polling
