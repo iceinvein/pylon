@@ -59,7 +59,7 @@ function collapseTree(node: DirNode): DirNode {
   return { ...node, dirs: collapsedDirs }
 }
 
-const SEVERITY_ORDER = ['critical', 'warning', 'suggestion', 'nitpick'] as const
+const SEVERITY_ORDER = ['blocker', 'high', 'medium', 'low'] as const
 
 function findingCountsBySeverity(
   findings: ReviewFinding[],
@@ -93,10 +93,10 @@ function countDirFindings(findings: ReviewFinding[], node: DirNode): number {
 }
 
 const SEVERITY_COLORS: Record<string, string> = {
-  critical: 'bg-[var(--color-error)] text-base-text',
-  warning: 'bg-[var(--color-warning)] text-base-text',
-  suggestion: 'bg-[var(--color-info)]/80 text-base-text',
-  nitpick: 'bg-[var(--color-base-text-faint)] text-base-text',
+  blocker: 'bg-[var(--color-error)] text-base-text',
+  high: 'bg-[var(--color-risk-high)] text-base-text',
+  medium: 'bg-[var(--color-risk-medium)] text-base-text',
+  low: 'bg-[var(--color-base-text-faint)] text-base-text',
 }
 
 export function DiffFileTree({ files, findings, selectedFile, onSelectFile }: Props) {
@@ -221,7 +221,7 @@ function DirContent({
                   {severityCounts.map(({ severity, count }) => (
                     <span
                       key={severity}
-                      className={`rounded-full px-1.5 py-0.5 font-medium text-[10px] tabular-nums ${SEVERITY_COLORS[severity] || SEVERITY_COLORS.nitpick}`}
+                      className={`rounded-full px-1.5 py-0.5 font-medium text-[10px] tabular-nums ${SEVERITY_COLORS[severity] || SEVERITY_COLORS.low}`}
                     >
                       {count}
                     </span>

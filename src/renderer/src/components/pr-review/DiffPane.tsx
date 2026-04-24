@@ -27,10 +27,10 @@ type Props = {
 type DiffMode = 'unified' | 'split'
 
 const SEVERITY_TICK_COLORS: Record<string, string> = {
-  critical: 'bg-[var(--color-error)]',
-  warning: 'bg-[var(--color-warning)]',
-  suggestion: 'bg-[var(--color-info)]',
-  nitpick: 'bg-[var(--color-base-text-muted)]',
+  blocker: 'bg-[var(--color-error)]',
+  high: 'bg-[var(--color-risk-high)]',
+  medium: 'bg-[var(--color-risk-medium)]',
+  low: 'bg-[var(--color-base-text-muted)]',
 }
 
 export function DiffPane({
@@ -345,7 +345,7 @@ export function DiffPane({
             {tickPositions.map((tick, i) => (
               <div
                 key={i}
-                className={`absolute right-0.5 h-1.5 w-1.5 rounded-full ${SEVERITY_TICK_COLORS[tick.severity] || SEVERITY_TICK_COLORS.suggestion}`}
+                className={`absolute right-0.5 h-1.5 w-1.5 rounded-full ${SEVERITY_TICK_COLORS[tick.severity] || SEVERITY_TICK_COLORS.medium}`}
                 style={{ top: `${tick.top}%` }}
               />
             ))}

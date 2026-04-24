@@ -9,31 +9,32 @@ type Props = {
 
 const SEVERITY_PILLS = [
   {
-    key: 'critical',
-    label: 'Critical',
+    key: 'blocker',
+    label: 'Blocker',
     activeClass:
       'bg-[var(--color-error)]/20 text-[var(--color-error)] border-[var(--color-error)]/30',
     inactiveClass:
       'text-[var(--color-error)]/50 border-[var(--color-base-border)] hover:border-[var(--color-error)]/30 hover:text-[var(--color-error)]',
   },
   {
-    key: 'warning',
-    label: 'Warning',
+    key: 'high',
+    label: 'High',
     activeClass:
-      'bg-[var(--color-warning)]/15 text-[var(--color-warning)] border-[var(--color-warning)]/30',
+      'bg-[var(--color-risk-high)]/15 text-[var(--color-risk-high)] border-[var(--color-risk-high)]/30',
     inactiveClass:
-      'text-[var(--color-warning)]/50 border-[var(--color-base-border)] hover:border-[var(--color-warning)]/30 hover:text-[var(--color-warning)]',
+      'text-[var(--color-risk-high)]/50 border-[var(--color-base-border)] hover:border-[var(--color-risk-high)]/30 hover:text-[var(--color-risk-high)]',
   },
   {
-    key: 'suggestion',
-    label: 'Suggestion',
-    activeClass: 'bg-[var(--color-info)]/20 text-[var(--color-info)] border-[var(--color-info)]/30',
+    key: 'medium',
+    label: 'Medium',
+    activeClass:
+      'bg-[var(--color-risk-medium)]/20 text-[var(--color-risk-medium)] border-[var(--color-risk-medium)]/30',
     inactiveClass:
-      'text-[var(--color-info)]/50 border-[var(--color-base-border)] hover:border-[var(--color-info)]/30 hover:text-[var(--color-info)]',
+      'text-[var(--color-risk-medium)]/50 border-[var(--color-base-border)] hover:border-[var(--color-risk-medium)]/30 hover:text-[var(--color-risk-medium)]',
   },
   {
-    key: 'nitpick',
-    label: 'Nitpick',
+    key: 'low',
+    label: 'Low',
     activeClass:
       'bg-[var(--color-base-text-muted)]/20 text-[var(--color-base-text-secondary)] border-[var(--color-base-text-muted)]/30',
     inactiveClass:

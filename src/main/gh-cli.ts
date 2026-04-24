@@ -298,7 +298,6 @@ export async function postFindingComment(
 ): Promise<void> {
   await postComment(repoFullName, prNumber, buildConversationCommentBody(finding))
 }
-
 export async function postReview(
   repoFullName: string,
   prNumber: number,

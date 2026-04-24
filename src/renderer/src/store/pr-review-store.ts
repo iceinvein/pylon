@@ -8,30 +8,84 @@ import type {
   GhRepo,
   PrReview,
   ReviewFinding,
+  ReviewFindingRisk,
+  ReviewFindingSeverity,
   ReviewFocus,
 } from '../../../shared/types'
 
 const logger = log.child('pr-review-store')
 
-const SEVERITY_ALIASES: Record<string, ReviewFinding['severity']> = {
-  critical: 'critical',
-  high: 'critical',
-  error: 'critical',
-  warning: 'warning',
-  medium: 'warning',
-  warn: 'warning',
-  suggestion: 'suggestion',
-  low: 'suggestion',
-  info: 'nitpick',
-  nitpick: 'nitpick',
-  note: 'nitpick',
+const SEVERITY_ALIASES: Record<string, ReviewFindingSeverity> = {
+  blocker: 'blocker',
+  blocking: 'blocker',
+  critical: 'blocker',
+  'must-fix': 'blocker',
+  high: 'high',
+  error: 'high',
+  warning: 'high',
+  warn: 'high',
+  medium: 'medium',
+  suggestion: 'medium',
+  consider: 'medium',
+  low: 'low',
+  info: 'low',
+  nitpick: 'low',
+  note: 'low',
+  optional: 'low',
 }
 
-function normalizeSeverity(raw: unknown): ReviewFinding['severity'] {
+function normalizeSeverity(raw: unknown): ReviewFindingSeverity {
   const str = String(raw || '')
     .toLowerCase()
     .trim()
-  return SEVERITY_ALIASES[str] ?? 'suggestion'
+  return SEVERITY_ALIASES[str] ?? 'medium'
+}
+
+function riskFromSeverity(severity: ReviewFindingSeverity): ReviewFindingRisk {
+  switch (severity) {
+    case 'blocker':
+      return { impact: 'critical', likelihood: 'likely', confidence: 'high', action: 'must-fix' }
+    case 'high':
+      return { impact: 'high', likelihood: 'possible', confidence: 'medium', action: 'should-fix' }
+    case 'low':
+      return { impact: 'low', likelihood: 'unknown', confidence: 'medium', action: 'optional' }
+    default:
+      return { impact: 'medium', likelihood: 'possible', confidence: 'medium', action: 'consider' }
+  }
+}
+
+function normalizeRisk(raw: Record<string, unknown>): ReviewFindingRisk {
+  const source =
+    raw.risk && typeof raw.risk === 'object' ? (raw.risk as Record<string, unknown>) : raw
+  const fallback = riskFromSeverity(normalizeSeverity(raw.severity))
+  const impact = String(source.impact ?? fallback.impact)
+  const likelihood = String(source.likelihood ?? fallback.likelihood)
+  const confidence = String(source.confidence ?? fallback.confidence)
+  const action = String(source.action ?? fallback.action)
+  return {
+    impact:
+      impact === 'critical' || impact === 'high' || impact === 'medium' || impact === 'low'
+        ? impact
+        : fallback.impact,
+    likelihood:
+      likelihood === 'likely' ||
+      likelihood === 'possible' ||
+      likelihood === 'edge-case' ||
+      likelihood === 'unknown'
+        ? likelihood
+        : fallback.likelihood,
+    confidence:
+      confidence === 'high' || confidence === 'medium' || confidence === 'low'
+        ? confidence
+        : fallback.confidence,
+    action:
+      action === 'must-fix' ||
+      action === 'should-fix' ||
+      action === 'consider' ||
+      action === 'optional'
+        ? action
+        : fallback.action,
+  }
 }
 
 /** Parse findings from raw streaming text (client-side fallback when main process fails) */
@@ -69,6 +123,7 @@ function parseFindingsFromText(text: string): ReviewFinding[] {
       file: String(f.file || ''),
       line: f.line != null ? Number(f.line) : null,
       severity: normalizeSeverity(f.severity),
+      risk: normalizeRisk(f),
       title: String(f.title || ''),
       description: String(f.description || ''),
       domain: (f.domain as ReviewFocus) ?? null,
@@ -113,7 +168,7 @@ type PrReviewStore = {
   _selectPrSeq: number
   unseenCount: number
   findingsViewMode: 'files' | 'all-issues'
-  severityFilter: Set<string>
+  severityFilter: Set<ReviewFindingSeverity>
   navigateToFindingId: string | null
 
   checkGhStatus: () => Promise<void>
@@ -129,7 +184,7 @@ type PrReviewStore = {
   loadReview: (reviewId: string) => Promise<void>
   deleteReview: (reviewId: string) => Promise<void>
   toggleFinding: (findingId: string) => void
-  toggleSeveritySelection: (severity: string) => void
+  toggleSeveritySelection: (severity: ReviewFindingSeverity) => void
   selectAllFindings: () => void
   clearFindingSelection: () => void
   postFinding: (finding: ReviewFinding, repo: string, prNumber: number) => Promise<void>
@@ -149,7 +204,7 @@ type PrReviewStore = {
   loadCachedPrs: (repo?: string, seq?: number) => Promise<void>
   forcePoll: () => Promise<void>
   setFindingsViewMode: (mode: 'files' | 'all-issues') => void
-  toggleSeverityFilter: (severity: string) => void
+  toggleSeverityFilter: (severity: ReviewFindingSeverity) => void
   navigateToFinding: (findingId: string) => void
   clearNavigateToFinding: () => void
 }
@@ -181,7 +236,7 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
   _selectPrSeq: 0,
   unseenCount: 0,
   findingsViewMode: 'files',
-  severityFilter: new Set(['critical', 'warning', 'suggestion', 'nitpick']),
+  severityFilter: new Set(['blocker', 'high', 'medium', 'low']),
   navigateToFindingId: null,
 
   checkGhStatus: async () => {
@@ -640,7 +695,7 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
         updates.agentProgress = data.agentProgress ?? []
         updates.reviewError = null
         updates.findingsViewMode = 'files'
-        updates.severityFilter = new Set(['critical', 'warning', 'suggestion', 'nitpick'])
+        updates.severityFilter = new Set(['blocker', 'high', 'medium', 'low'])
         updates.navigateToFindingId = null
       }
 

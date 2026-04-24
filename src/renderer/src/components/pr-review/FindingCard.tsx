@@ -7,6 +7,7 @@ import {
   Loader2,
   Send,
 } from 'lucide-react'
+import { parseReviewFindingDescription } from '../../../../shared/review-finding-description'
 import type { ReviewFinding } from '../../../../shared/types'
 
 type Props = {
@@ -23,6 +24,7 @@ const DOMAIN_LABELS: Record<string, string> = {
   security: 'Security',
   bugs: 'Bugs',
   performance: 'Perf',
+  'code-smells': 'Smells',
   style: 'Style',
   architecture: 'Arch',
   ux: 'UX',
@@ -39,35 +41,35 @@ const SEVERITY_STYLES: Record<
     postedBorder: string
   }
 > = {
-  critical: {
+  blocker: {
     icon: AlertCircle,
     border: 'border-[var(--color-error)]/40',
     text: 'text-[var(--color-error)]',
-    label: 'Critical',
+    label: 'Blocker',
     bg: 'bg-[var(--color-error)]/5',
     postedBorder: 'border-[var(--color-success)]/30',
   },
-  warning: {
+  high: {
     icon: AlertTriangle,
-    border: 'border-[var(--color-warning)]/35',
-    text: 'text-[var(--color-warning)]',
-    label: 'Warning',
-    bg: 'bg-[var(--color-warning)]/6',
+    border: 'border-[var(--color-risk-high)]/35',
+    text: 'text-[var(--color-risk-high)]',
+    label: 'High',
+    bg: 'bg-[var(--color-risk-high)]/6',
     postedBorder: 'border-[var(--color-success)]/30',
   },
-  suggestion: {
+  medium: {
     icon: Lightbulb,
-    border: 'border-[var(--color-info)]/40',
-    text: 'text-[var(--color-info)]',
-    label: 'Suggestion',
-    bg: 'bg-[var(--color-info)]/5',
+    border: 'border-[var(--color-risk-medium)]/40',
+    text: 'text-[var(--color-risk-medium)]',
+    label: 'Medium',
+    bg: 'bg-[var(--color-risk-medium)]/5',
     postedBorder: 'border-[var(--color-success)]/30',
   },
-  nitpick: {
+  low: {
     icon: Info,
     border: 'border-[var(--color-base-border)]/40',
     text: 'text-[var(--color-base-text-muted)]',
-    label: 'Nitpick',
+    label: 'Low',
     bg: 'bg-[var(--color-base-text-muted)]/5',
     postedBorder: 'border-[var(--color-success)]/30',
   },
@@ -82,8 +84,9 @@ export function FindingCard({
   onNavigate,
   showFilePath,
 }: Props) {
-  const style = SEVERITY_STYLES[finding.severity] ?? SEVERITY_STYLES.suggestion
+  const style = SEVERITY_STYLES[finding.severity] ?? SEVERITY_STYLES.medium
   const Icon = style.icon
+  const descriptionSections = parseReviewFindingDescription(finding.description)
 
   const borderClass = finding.posted ? style.postedBorder : style.border
   const bgClass = finding.posted ? 'bg-[var(--color-success)]/5' : style.bg
@@ -152,11 +155,24 @@ export function FindingCard({
                   )}
                 </div>
               )}
+              <div className="mt-1 flex flex-wrap gap-1.5 pl-0 text-[10px] text-base-text-faint">
+                <span>Impact: {finding.risk.impact}</span>
+                <span>Likelihood: {finding.risk.likelihood}</span>
+                <span>Confidence: {finding.risk.confidence}</span>
+                <span>Action: {finding.risk.action}</span>
+              </div>
             </div>
           </div>
-          <p className="mt-2 pl-5 text-base-text-secondary text-xs leading-relaxed">
-            {finding.description}
-          </p>
+          <div className="mt-2 space-y-1.5 pl-5">
+            {descriptionSections.map((section) => (
+              <div key={`${finding.id}-${section.kind}-${section.label}`} className="space-y-0.5">
+                <p className="font-medium text-[10px] text-base-text-faint uppercase tracking-wider">
+                  {section.label}
+                </p>
+                <p className="text-base-text-secondary text-xs leading-relaxed">{section.body}</p>
+              </div>
+            ))}
+          </div>
           {finding.mergedFrom && finding.mergedFrom.length > 0 && (
             <p className="mt-1 pl-5 text-[10px] text-base-text-faint italic">
               Also flagged by: {finding.mergedFrom.map((m) => m.domain).join(', ')}

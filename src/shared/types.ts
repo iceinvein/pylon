@@ -344,11 +344,21 @@ export type GhPrDetail = GhPullRequest & {
   diff: string
 }
 
+export type ReviewFindingSeverity = 'blocker' | 'high' | 'medium' | 'low'
+
+export type ReviewFindingRisk = {
+  impact: 'critical' | 'high' | 'medium' | 'low'
+  likelihood: 'likely' | 'possible' | 'edge-case' | 'unknown'
+  confidence: 'high' | 'medium' | 'low'
+  action: 'must-fix' | 'should-fix' | 'consider' | 'optional'
+}
+
 export type ReviewFinding = {
   id: string
   file: string
   line: number | null
-  severity: 'critical' | 'warning' | 'suggestion' | 'nitpick'
+  severity: ReviewFindingSeverity
+  risk: ReviewFindingRisk
   title: string
   description: string
   domain: ReviewFocus | null
@@ -356,7 +366,14 @@ export type ReviewFinding = {
   mergedFrom?: { domain: string; title: string }[]
 }
 
-export type ReviewFocus = 'security' | 'bugs' | 'performance' | 'style' | 'architecture' | 'ux'
+export type ReviewFocus =
+  | 'security'
+  | 'bugs'
+  | 'performance'
+  | 'code-smells'
+  | 'style'
+  | 'architecture'
+  | 'ux'
 
 export type ReviewStatus = 'pending' | 'running' | 'done' | 'error'
 

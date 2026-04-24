@@ -80,22 +80,22 @@ type StreamFinding = {
 }
 
 const SEVERITY_CONFIG: Record<string, { icon: typeof AlertCircle; color: string; bg: string }> = {
-  critical: {
+  blocker: {
     icon: AlertCircle,
     color: 'text-[var(--color-error)]',
     bg: 'bg-[var(--color-error)]/10',
   },
-  warning: {
+  high: {
     icon: AlertTriangle,
-    color: 'text-[var(--color-warning)]',
-    bg: 'bg-[var(--color-warning)]/12',
+    color: 'text-[var(--color-risk-high)]',
+    bg: 'bg-[var(--color-risk-high)]/12',
   },
-  suggestion: {
+  medium: {
     icon: Lightbulb,
-    color: 'text-[var(--color-info)]',
-    bg: 'bg-[var(--color-info)]/10',
+    color: 'text-[var(--color-risk-medium)]',
+    bg: 'bg-[var(--color-risk-medium)]/10',
   },
-  nitpick: {
+  low: {
     icon: Info,
     color: 'text-[var(--color-base-text-secondary)]',
     bg: 'bg-[var(--color-base-text-muted)]/10',
@@ -106,6 +106,7 @@ const DOMAIN_LABELS: Record<string, string> = {
   security: 'Security',
   bugs: 'Bugs',
   performance: 'Perf',
+  'code-smells': 'Smells',
   style: 'Style',
   architecture: 'Arch',
   ux: 'UX',
@@ -123,7 +124,7 @@ function parseFindingsBlock(text: string): StreamFinding[] {
         findings.push({
           file: String(obj.file || ''),
           line: obj.line != null ? Number(obj.line) : null,
-          severity: String(obj.severity || 'suggestion'),
+          severity: String(obj.severity || 'medium'),
           title: String(obj.title || ''),
           description: String(obj.description || ''),
           domain: null,
@@ -174,7 +175,7 @@ function parseFindingsBlock(text: string): StreamFinding[] {
           findings.push({
             file: String(obj.file || ''),
             line: obj.line != null ? Number(obj.line) : null,
-            severity: String(obj.severity || 'suggestion'),
+            severity: String(obj.severity || 'medium'),
             title: String(obj.title || ''),
             description: String(obj.description || ''),
             domain: null,
@@ -313,7 +314,7 @@ export function ReviewProgress({ reviewId: _reviewId, onStop, isLive = true }: P
               {agent.status === 'running' && <Loader2 size={9} className="animate-spin" />}
               {agent.status === 'done' && <CheckCircle2 size={9} />}
               {agent.status === 'error' && <XCircle size={9} />}
-              <span className="capitalize">{agent.agentId}</span>
+              <span>{DOMAIN_LABELS[agent.agentId] ?? agent.agentId}</span>
               {agent.status === 'running' && agent.totalChunks != null && agent.totalChunks > 1 && (
                 <span className="tabular-nums opacity-70">
                   {agent.currentChunk}/{agent.totalChunks}
@@ -345,7 +346,7 @@ export function ReviewProgress({ reviewId: _reviewId, onStop, isLive = true }: P
               {findings.length > 0 && (
                 <div className="space-y-px">
                   {findings.map((f, i) => {
-                    const config = SEVERITY_CONFIG[f.severity] ?? SEVERITY_CONFIG.suggestion
+                    const config = SEVERITY_CONFIG[f.severity] ?? SEVERITY_CONFIG.medium
                     const Icon = config.icon
                     return (
                       <div key={i} className={`flex gap-3 px-4 py-3 ${config.bg}`}>

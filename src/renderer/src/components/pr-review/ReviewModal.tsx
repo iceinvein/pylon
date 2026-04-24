@@ -1,4 +1,4 @@
-import { Blocks, Bug, Gauge, Monitor, Paintbrush, Play, Shield, X } from 'lucide-react'
+import { Blocks, Bug, Code2, Gauge, Monitor, Paintbrush, Play, Shield, X } from 'lucide-react'
 import { useState } from 'react'
 import type { ReviewFocus } from '../../../../shared/types'
 
@@ -33,6 +33,12 @@ const FOCUS_OPTIONS: Array<{
     icon: Gauge,
   },
   {
+    id: 'code-smells',
+    label: 'Code Smells',
+    description: 'Duplication, brittle complexity, weak abstractions',
+    icon: Code2,
+  },
+  {
     id: 'style',
     label: 'Style',
     description: 'Naming, formatting, code organization',
@@ -57,6 +63,7 @@ export function ReviewModal({ onStart, onClose, isRerun }: Props) {
     'security',
     'bugs',
     'performance',
+    'code-smells',
     'style',
   ])
 
@@ -78,7 +85,7 @@ export function ReviewModal({ onStart, onClose, isRerun }: Props) {
 
       {/* Modal */}
       <div
-        className="relative w-full max-w-sm rounded-xl border border-base-border bg-base-surface shadow-2xl"
+        className="relative w-full max-w-md rounded-xl border border-base-border bg-base-surface shadow-2xl"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}
       >

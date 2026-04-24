@@ -7,6 +7,7 @@ import {
   Loader2,
   Send,
 } from 'lucide-react'
+import { parseReviewFindingDescription } from '../../../../shared/review-finding-description'
 import type { ReviewFinding } from '../../../../shared/types'
 import { usePrReviewStore } from '../../store/pr-review-store'
 
@@ -21,6 +22,7 @@ const DOMAIN_LABELS: Record<string, string> = {
   security: 'Security',
   bugs: 'Bugs',
   performance: 'Perf',
+  'code-smells': 'Smells',
   style: 'Style',
   architecture: 'Arch',
   ux: 'UX',
@@ -37,36 +39,36 @@ const SEVERITY_CONFIG: Record<
     postedBorder: string
   }
 > = {
-  critical: {
+  blocker: {
     icon: AlertCircle,
     border: 'border-l-[var(--color-error)]',
     text: 'text-[var(--color-error)]',
     bg: 'bg-[var(--color-error)]/5',
-    label: 'Critical',
+    label: 'Blocker',
     postedBorder: 'border-l-[var(--color-success)]',
   },
-  warning: {
+  high: {
     icon: AlertTriangle,
-    border: 'border-l-[var(--color-warning)]',
-    text: 'text-[var(--color-warning)]',
-    bg: 'bg-[var(--color-warning)]/6',
-    label: 'Warning',
+    border: 'border-l-[var(--color-risk-high)]',
+    text: 'text-[var(--color-risk-high)]',
+    bg: 'bg-[var(--color-risk-high)]/6',
+    label: 'High',
     postedBorder: 'border-l-[var(--color-success)]',
   },
-  suggestion: {
+  medium: {
     icon: Lightbulb,
-    border: 'border-l-[var(--color-info)]',
-    text: 'text-[var(--color-info)]',
-    bg: 'bg-[var(--color-info)]/5',
-    label: 'Suggestion',
+    border: 'border-l-[var(--color-risk-medium)]',
+    text: 'text-[var(--color-risk-medium)]',
+    bg: 'bg-[var(--color-risk-medium)]/5',
+    label: 'Medium',
     postedBorder: 'border-l-[var(--color-success)]',
   },
-  nitpick: {
+  low: {
     icon: Info,
     border: 'border-l-[var(--color-base-text-muted)]',
     text: 'text-[var(--color-base-text-muted)]',
     bg: 'bg-[var(--color-base-text-muted)]/5',
-    label: 'Nitpick',
+    label: 'Low',
     postedBorder: 'border-l-[var(--color-success)]',
   },
 }
@@ -74,8 +76,9 @@ const SEVERITY_CONFIG: Record<
 export function DiffFindingAnnotation({ finding, checked, onToggle, onPost }: Props) {
   const postingFindingIds = usePrReviewStore((s) => s.postingFindingIds)
   const isPosting = postingFindingIds.has(finding.id)
-  const config = SEVERITY_CONFIG[finding.severity] ?? SEVERITY_CONFIG.suggestion
+  const config = SEVERITY_CONFIG[finding.severity] ?? SEVERITY_CONFIG.medium
   const Icon = config.icon
+  const descriptionSections = parseReviewFindingDescription(finding.description)
 
   const borderClass = finding.posted ? config.postedBorder : config.border
   const bgClass = finding.posted ? 'bg-[var(--color-success)]/5' : config.bg
@@ -121,8 +124,19 @@ export function DiffFindingAnnotation({ finding, checked, onToggle, onPost }: Pr
               </span>
             )}
           </div>
-          <p className="mt-1 text-base-text-secondary text-xs leading-relaxed">
-            {finding.description}
+          <div className="mt-2 space-y-1.5">
+            {descriptionSections.map((section) => (
+              <div key={`${finding.id}-${section.kind}-${section.label}`} className="space-y-0.5">
+                <p className="font-medium text-[10px] text-base-text-faint uppercase tracking-wider">
+                  {section.label}
+                </p>
+                <p className="text-base-text-secondary text-xs leading-relaxed">{section.body}</p>
+              </div>
+            ))}
+          </div>
+          <p className="mt-1 text-[10px] text-base-text-faint">
+            Impact: {finding.risk.impact} · Likelihood: {finding.risk.likelihood} · Confidence:{' '}
+            {finding.risk.confidence} · Action: {finding.risk.action}
           </p>
         </div>
 

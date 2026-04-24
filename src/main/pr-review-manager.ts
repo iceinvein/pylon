@@ -8,7 +8,15 @@ import { promisify } from 'node:util'
 import type { BrowserWindow } from 'electron'
 import { IPC } from '../shared/ipc-channels'
 import { log } from '../shared/logger'
-import type { GhRepo, PrReview, ReviewFinding, ReviewFocus, ReviewStatus } from '../shared/types'
+import type {
+  GhRepo,
+  PrReview,
+  ReviewFinding,
+  ReviewFindingRisk,
+  ReviewFindingSeverity,
+  ReviewFocus,
+  ReviewStatus,
+} from '../shared/types'
 import { getDb } from './db'
 import { type ChunkResult, chunkDiff, getTokenBudget } from './diff-chunker'
 import { getPrDetail } from './gh-cli'
@@ -19,7 +27,7 @@ const execFileAsync = promisify(execFile)
 const logger = log.child('pr-review')
 const STREAM_THROTTLE_MS = 300
 
-const DEFAULT_AGENT_PROMPTS: Record<string, string> = {
+const DEFAULT_AGENT_PROMPTS: Record<ReviewFocus, string> = {
   security: [
     'You are a senior application security engineer reviewing this pull request.',
     '',
@@ -31,7 +39,7 @@ const DEFAULT_AGENT_PROMPTS: Record<string, string> = {
     '- SQL injection: string concatenation in queries, missing parameterized statements',
     '- Command injection: user input flowing into shell commands, execFile(), spawn()',
     '- Template injection: unsanitized data in template engines',
-    '- XSS: unescapedd output in HTML/JSX, unsafe innerHTML usage, React dangerouslySetInnerHTML',
+    '- XSS: unescaped output in HTML/JSX, unsafe innerHTML usage, React dangerouslySetInnerHTML',
     '- Path traversal: user-controlled file paths without canonicalization or allowlist',
     '- SSRF: user-controlled URLs passed to fetch/http requests without validation',
     '- Deserialization: untrusted data passed to JSON.parse in security-sensitive contexts',
@@ -70,11 +78,11 @@ const DEFAULT_AGENT_PROMPTS: Record<string, string> = {
     '3. Assess exploitability — can an attacker realistically trigger this?',
     "4. Evaluate impact — what's the blast radius if exploited?",
     '',
-    '**Severity guide:**',
-    '- critical: Remote code execution, auth bypass, data breach, privilege escalation',
-    '- warning: XSS, CSRF, injection with partial mitigation, secrets exposure',
-    "- suggestion: Defense-in-depth improvements, missing validation that's hard to exploit",
-    '- nitpick: Minor hardening opportunities, informational',
+    '**Risk guide:**',
+    '- blocker: Realistic path to remote code execution, auth bypass, data breach, or privilege escalation',
+    '- high: Exploitable vulnerability or secrets exposure that should be fixed before merge',
+    '- medium: Defense-in-depth concern or validation gap with limited or uncertain exploitability',
+    '- low: Minor hardening opportunity with low impact',
     '',
     'Report only credible concerns grounded in code shown. If a concern depends on context you can\'t see, note it as "needs verification" in the description. Do not invent vulnerabilities without evidence.',
   ].join('\n'),
@@ -127,6 +135,12 @@ const DEFAULT_AGENT_PROMPTS: Record<string, string> = {
     "3. What's the consequence — crash, data corruption, silent wrong behavior?",
     "4. Is there an existing guard I'm not seeing?",
     '',
+    '**Risk guide:**',
+    '- blocker: Data loss, data corruption, broken auth/session behavior, or consistently crashing a major workflow',
+    '- high: Reachable incorrect behavior, race, resource leak, or crash in a meaningful workflow',
+    '- medium: Edge-case bug or missing guard with limited blast radius',
+    '- low: Very small correctness cleanup with low user impact',
+    '',
     'Prioritize bugs that cause silent wrong behavior over those that crash (crashes are at least visible). Flag "needs verification" when you can\'t determine reachability from the diff alone.',
   ].join('\n'),
 
@@ -174,7 +188,68 @@ const DEFAULT_AGENT_PROMPTS: Record<string, string> = {
     "3. What's the measurable impact? (milliseconds vs. seconds)",
     '4. Is the optimization worth the complexity cost?',
     '',
+    '**Risk guide:**',
+    '- blocker: Change can make a major workflow unusable or cause unbounded production resource exhaustion',
+    '- high: Realistic scale causes visible latency, memory growth, redundant network/database load, or render jank',
+    '- medium: Likely worthwhile performance improvement on a warm path',
+    '- low: Tiny cleanup only when it removes clear waste without added complexity',
+    '',
     "Only flag issues that would have noticeable impact at realistic scale. Don't suggest micro-optimizations on cold paths.",
+  ].join('\n'),
+
+  'code-smells': [
+    'You are a senior engineer reviewing this pull request for code smells and maintainability risks.',
+    '',
+    '## What to look for',
+    '',
+    '**Duplication & parallel change**',
+    '- Copy-pasted logic that will drift across files, handlers, components, or tests',
+    '- Parallel conditionals or switch branches that should share a table, helper, or data model',
+    '- Same validation, parsing, mapping, or formatting rules reimplemented in multiple places',
+    '- Tests duplicating implementation details instead of describing behavior',
+    '',
+    '**Brittle complexity**',
+    '- Long functions with multiple responsibilities or several levels of branching',
+    '- Boolean flag parameters or mode strings that create hidden behavior matrices',
+    '- Deeply nested control flow where guard clauses or extracted steps would make failure paths clear',
+    '- Large expressions that encode domain logic without named concepts',
+    '- Accidental complexity added for a narrow case where simpler local code would be easier to maintain',
+    '',
+    '**Poor abstractions**',
+    '- Primitive obsession: repeated raw strings, numbers, or object shapes that should be typed or named',
+    '- Stringly typed state, event names, or IDs where an enum/union/constant already exists or is warranted',
+    '- Leaky abstractions that force callers to know storage, transport, UI, or framework details',
+    '- Abstractions that are too broad, too generic, or have only one real caller',
+    '- Data clumps: the same group of parameters passed through multiple functions',
+    '',
+    '**Coupling & side effects**',
+    '- Hidden mutation of shared data, module-level state, or objects owned by callers',
+    '- Temporal coupling: functions that only work if called in a specific undocumented order',
+    '- Action at a distance: changes in one branch unexpectedly affecting unrelated behavior',
+    '- Feature envy: code reaching into another module/component instead of asking through a clear interface',
+    '- Shotgun surgery: a small future change would require edits in many unrelated places',
+    '',
+    '**Testability & local reasoning**',
+    '- Code that is hard to unit test because I/O, time, randomness, or global state is embedded in logic',
+    '- Missing seams around expensive or external dependencies when the change adds non-trivial branching',
+    '- Invariants that are implied by comments or call order instead of represented in types or checks',
+    '- Error paths that are hard to exercise or reason about because responsibilities are tangled',
+    '',
+    '## How to reason',
+    '',
+    'For each potential smell:',
+    '1. Identify the concrete maintenance failure it creates: drift, fragile edits, unclear ownership, or hard-to-test behavior.',
+    '2. Confirm the smell is introduced or materially worsened by this PR, not merely pre-existing nearby code.',
+    '3. Suggest the smallest refactor that fits the surrounding codebase patterns.',
+    '4. Weigh the cost: do not ask for a new abstraction unless it reduces real duplication, coupling, or reasoning burden now.',
+    '',
+    '**Risk guide:**',
+    '- blocker: Smell creates a high-risk maintenance trap likely to cause defects across modules soon',
+    '- high: Meaningful maintainability issue that should be addressed before merge',
+    '- medium: Local refactor that would materially improve clarity or reduce future drift',
+    '- low: Minor cleanup only when the fix is trivial and directly tied to changed code',
+    '',
+    'Do not flag formatting, naming, or stylistic preference unless it is evidence of a deeper maintainability problem. Avoid duplicating bug, security, or performance findings unless the primary issue is the maintainability smell behind them.',
   ].join('\n'),
 
   style: [
@@ -190,16 +265,16 @@ const DEFAULT_AGENT_PROMPTS: Record<string, string> = {
     "- Boolean names that don't read as questions (e.g., data vs isLoaded)",
     '',
     '**Code organization**',
-    '- Functions doing too many things (should be split)',
+    '- Small readability problems in changed functions that obscure intent',
     '- Related logic scattered across distant parts of a file',
     '- Dead code: unused variables, unreachable branches, commented-out code',
     '- Unused imports or dependencies',
-    '- Copy-pasted code that should be extracted into a shared function',
+    '- Obvious local copy-paste that affects readability but does not create a broader maintenance hazard',
     '',
     '**Complexity**',
-    '- Deeply nested conditionals that could be flattened with early returns',
+    '- Local nesting that makes the changed code harder to scan',
     '- Complex expressions that should be broken into named intermediate variables',
-    '- Long parameter lists that suggest a missing abstraction',
+    '- Long parameter lists that hurt readability in this local call site',
     '- Magic numbers or strings without named constants',
     '',
     '**Consistency**',
@@ -212,6 +287,14 @@ const DEFAULT_AGENT_PROMPTS: Record<string, string> = {
     '- Type assertions (as) that could be replaced with type guards',
     '- Missing discriminated unions where a type field could narrow types',
     '- Overly complex generic types that hurt readability',
+    '',
+    '**Risk guide:**',
+    '- blocker: Do not use for style findings',
+    '- high: Readability issue likely to cause reviewer or maintainer misunderstanding',
+    '- medium: Clear local improvement to naming, expression structure, or consistency',
+    '- low: Trivial cleanup with no behavioral or design impact',
+    '',
+    'Boundary with other agents: do not report broader duplication, coupling, abstraction, or module design problems here. Leave those to Code Smells or Architecture.',
     '',
     'Only flag issues in changed code (not pre-existing style issues in surrounding context). Focus on readability impact, not personal preference.',
   ].join('\n'),
@@ -261,7 +344,15 @@ const DEFAULT_AGENT_PROMPTS: Record<string, string> = {
     '3. Would a new team member understand where to make changes?',
     '4. Is this over-engineered for the current requirements, or appropriately future-proofed?',
     '',
-    'Focus on design decisions that affect the long-term health of the codebase. Don\'t flag things that are "technically impure" but work well in practice.',
+    '**Risk guide:**',
+    '- blocker: Change introduces a serious boundary violation or contract break likely to cascade across subsystems',
+    '- high: Design issue that will make near-term feature work, integration, or migration materially harder',
+    '- medium: Local design adjustment that clarifies ownership, contracts, or state flow',
+    '- low: Avoid for architecture findings unless the design cleanup is nearly free',
+    '',
+    'Boundary with Code Smells: focus on module boundaries, public contracts, ownership, and system-level data flow. Leave local implementation smells such as duplicate branches, long functions, and primitive obsession to Code Smells.',
+    '',
+    'Focus on design decisions introduced or materially worsened by this PR that affect the long-term health of the codebase. Don\'t flag things that are "technically impure" but work well in practice.',
   ].join('\n'),
 
   ux: [
@@ -310,6 +401,12 @@ const DEFAULT_AGENT_PROMPTS: Record<string, string> = {
     "2. What's the worst case input/state? Test mentally with empty, huge, special-char data.",
     '3. Is the behavior predictable? Would a new user understand what happened?',
     '4. How frequently would real users hit this issue?',
+    '',
+    '**Risk guide:**',
+    '- blocker: Blocks a core workflow, causes irreversible user action without confirmation, or creates severe accessibility exclusion',
+    '- high: Common user path becomes confusing, inaccessible, or hard to recover from',
+    '- medium: Meaningful polish or resilience improvement for an edge state or secondary flow',
+    '- low: Minor wording or affordance cleanup only when it is directly tied to changed UI',
     '',
     "Focus on issues that would confuse or frustrate users. Don't flag minor aesthetic preferences.",
   ].join('\n'),
@@ -546,7 +643,7 @@ class PrReviewManager {
     // Persist findings
     const db = getDb()
     const insertFinding = db.prepare(
-      'INSERT INTO pr_review_findings (id, review_id, file, line, severity, title, description, domain, merged_from) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO pr_review_findings (id, review_id, file, line, severity, impact, likelihood, confidence, action, title, description, domain, merged_from) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
     )
     for (const f of deduped) {
       insertFinding.run(
@@ -555,6 +652,10 @@ class PrReviewManager {
         f.file,
         f.line,
         f.severity,
+        f.risk.impact,
+        f.risk.likelihood,
+        f.risk.confidence,
+        f.risk.action,
         f.title,
         f.description,
         f.domain,
@@ -662,6 +763,12 @@ ${specialistPrompt}
 ## PR Description
 ${detail.body || '(no description)'}
 
+## Review Scope
+- Report only issues introduced or materially worsened by this PR.
+- Use surrounding code to validate changed-code impact, not to review unrelated pre-existing code.
+- Prefer no finding over a speculative finding. If a concern depends on context you cannot verify, include "needs verification" in the description.
+- Avoid duplicate findings from other focus areas. Stay within your specialist role.
+
 ## Changed Files
 ${detail.files.map((f) => `- ${f.path} (+${f.additions} -${f.deletions})`).join('\n')}
 ${skippedNote}${chunkHeader}
@@ -674,30 +781,61 @@ ${chunk.diff}
 Output your findings as a JSON array inside a fenced code block tagged \`review-findings\`. Each finding should have:
 - \`file\`: the file path (string)
 - \`line\`: the line number in the new file, or null for general findings (number | null)
-- \`severity\`: one of "critical", "warning", "suggestion", "nitpick"
+- \`severity\`: immediate triage label, one of "blocker", "high", "medium", "low"
+- \`risk\`: structured risk details:
+  - \`impact\`: one of "critical", "high", "medium", "low"
+  - \`likelihood\`: one of "likely", "possible", "edge-case", "unknown"
+  - \`confidence\`: one of "high", "medium", "low"
+  - \`action\`: one of "must-fix", "should-fix", "consider", "optional"
 - \`title\`: short title (string)
-- \`description\`: detailed explanation (string)
+- \`description\`: 2-4 short labeled paragraphs using these exact labels when they fit:
+  - \`Observation: ...\`
+  - \`Why it matters: ...\`
+  - \`Suggested direction: ...\` (optional)
+  - \`Needs verification: ...\` (optional; only when uncertainty is real)
+  Keep each paragraph to one idea. Do not write one long wall-of-text paragraph.
 
 \`\`\`review-findings
 [
-  { "file": "src/main.ts", "line": 42, "severity": "warning", "title": "Potential null dereference", "description": "The variable could be null when..." }
+  {
+    "file": "src/main.ts",
+    "line": 42,
+    "severity": "high",
+    "risk": { "impact": "high", "likelihood": "possible", "confidence": "medium", "action": "should-fix" },
+    "title": "Potential null dereference",
+    "description": "Observation: The variable can still be null when this branch runs.\n\nWhy it matters: That turns a recoverable edge case into a runtime exception on a normal user path.\n\nSuggested direction: Guard the null case before dereferencing."
+  }
 ]
 \`\`\`
 
-## Tools — Code Intelligence (use first!)
-Before analyzing the diff, use code-intelligence MCP tools to build context around the changed code:
+## Risk Calibration
+- blocker: must-fix before merge; critical or high impact, realistically reachable, and medium/high confidence
+- high: should-fix before merge; meaningful impact or likely regression
+- medium: non-blocking but worth considering; limited impact, edge-case reachability, or moderate uncertainty
+- low: optional cleanup; minimal risk
+
+If confidence is low, do not use blocker unless impact would be severe and the changed code makes the path plausible. Severity should reflect merge risk, not the agent focus area.
+
+## Tools — Code Intelligence
+Use code-intelligence MCP tools when the diff alone is not enough to make a grounded judgment:
 - \`search_code\` — find related symbols, patterns, or usages across the codebase
 - \`get_definition\` — jump to a symbol's definition to understand its contract
 - \`find_references\` — find all call sites of changed functions to assess blast radius
 - \`get_call_hierarchy\` — understand upstream/downstream call chains
 - \`trace_data_flow\` — follow data through the system to spot issues the diff alone won't reveal
 
-Use these tools to understand the surrounding code before making judgments. This ensures your findings account for the full context, not just the diff in isolation.
+Use these tools before making claims about security data flow, bug reachability, public API contracts, or broad blast radius. For simple local findings, the diff may be sufficient.
 
 After your analysis, output ONLY the review-findings block.`
         } else {
           // Subsequent chunks: continuation prompt
           prompt = `Here are additional files to review (chunk ${i + 1} of ${chunks.length}). Continue applying your **${focus}** review criteria.
+
+Keep these invariants:
+- Report only issues introduced or materially worsened by this PR.
+- Stay within your specialist role and avoid duplicate findings from other focus areas.
+- Prefer no finding over a speculative finding.
+- Output only the \`review-findings\` fenced JSON block.
 
 ## Files in this chunk
 ${chunk.files.map((f) => `- ${f}`).join('\n')}
@@ -894,10 +1032,10 @@ Output findings in the same \`review-findings\` format.`
 
   private async deduplicateFindings(findings: ReviewFinding[]): Promise<ReviewFinding[]> {
     const SEVERITY_RANK: Record<string, number> = {
-      critical: 0,
-      warning: 1,
-      suggestion: 2,
-      nitpick: 3,
+      blocker: 0,
+      high: 1,
+      medium: 2,
+      low: 3,
     }
 
     // Phase 1: Group by file:line (domain-agnostic)
@@ -944,6 +1082,7 @@ Output findings in the same \`review-findings\` format.`
       index: i,
       domain: f.domain ?? 'unknown',
       severity: f.severity,
+      risk: f.risk,
       title: f.title,
       description: f.description.slice(0, 200),
     }))
@@ -1137,25 +1276,118 @@ ${JSON.stringify(input)}`,
     return []
   }
 
-  private static readonly SEVERITY_ALIASES: Record<string, ReviewFinding['severity']> = {
-    critical: 'critical',
-    high: 'critical',
-    error: 'critical',
-    warning: 'warning',
-    medium: 'warning',
-    warn: 'warning',
-    suggestion: 'suggestion',
-    low: 'suggestion',
-    info: 'nitpick',
-    nitpick: 'nitpick',
-    note: 'nitpick',
+  private static readonly SEVERITY_ALIASES: Record<string, ReviewFindingSeverity> = {
+    blocker: 'blocker',
+    blocking: 'blocker',
+    critical: 'blocker',
+    must: 'blocker',
+    'must-fix': 'blocker',
+    high: 'high',
+    warning: 'high',
+    warn: 'high',
+    error: 'high',
+    medium: 'medium',
+    suggestion: 'medium',
+    consider: 'medium',
+    low: 'low',
+    info: 'low',
+    nitpick: 'low',
+    note: 'low',
+    optional: 'low',
   }
 
-  private static normalizeSeverity(raw: unknown): ReviewFinding['severity'] {
+  private static normalizeSeverity(raw: unknown): ReviewFindingSeverity {
     const str = String(raw || '')
       .toLowerCase()
       .trim()
-    return PrReviewManager.SEVERITY_ALIASES[str] ?? 'suggestion'
+    return PrReviewManager.SEVERITY_ALIASES[str] ?? 'medium'
+  }
+
+  private static normalizeImpact(raw: unknown): ReviewFindingRisk['impact'] {
+    const value = String(raw || '')
+      .toLowerCase()
+      .trim()
+    if (value === 'critical' || value === 'high' || value === 'medium' || value === 'low') {
+      return value
+    }
+    return 'medium'
+  }
+
+  private static normalizeLikelihood(raw: unknown): ReviewFindingRisk['likelihood'] {
+    const value = String(raw || '')
+      .toLowerCase()
+      .trim()
+    if (
+      value === 'likely' ||
+      value === 'possible' ||
+      value === 'edge-case' ||
+      value === 'unknown'
+    ) {
+      return value
+    }
+    if (value === 'edge' || value === 'unlikely') return 'edge-case'
+    return 'possible'
+  }
+
+  private static normalizeConfidence(raw: unknown): ReviewFindingRisk['confidence'] {
+    const value = String(raw || '')
+      .toLowerCase()
+      .trim()
+    if (value === 'high' || value === 'medium' || value === 'low') return value
+    return 'medium'
+  }
+
+  private static normalizeAction(raw: unknown): ReviewFindingRisk['action'] {
+    const value = String(raw || '')
+      .toLowerCase()
+      .trim()
+    if (
+      value === 'must-fix' ||
+      value === 'should-fix' ||
+      value === 'consider' ||
+      value === 'optional'
+    ) {
+      return value
+    }
+    if (value === 'block' || value === 'fix') return 'must-fix'
+    if (value === 'should') return 'should-fix'
+    return 'consider'
+  }
+
+  private static riskFromSeverity(severity: ReviewFindingSeverity): ReviewFindingRisk {
+    switch (severity) {
+      case 'blocker':
+        return { impact: 'critical', likelihood: 'likely', confidence: 'high', action: 'must-fix' }
+      case 'high':
+        return {
+          impact: 'high',
+          likelihood: 'possible',
+          confidence: 'medium',
+          action: 'should-fix',
+        }
+      case 'low':
+        return { impact: 'low', likelihood: 'unknown', confidence: 'medium', action: 'optional' }
+      default:
+        return {
+          impact: 'medium',
+          likelihood: 'possible',
+          confidence: 'medium',
+          action: 'consider',
+        }
+    }
+  }
+
+  private static normalizeRisk(raw: Record<string, unknown>): ReviewFindingRisk {
+    const source =
+      raw.risk && typeof raw.risk === 'object' ? (raw.risk as Record<string, unknown>) : raw
+    const severity = PrReviewManager.normalizeSeverity(raw.severity)
+    const fallback = PrReviewManager.riskFromSeverity(severity)
+    return {
+      impact: PrReviewManager.normalizeImpact(source.impact ?? fallback.impact),
+      likelihood: PrReviewManager.normalizeLikelihood(source.likelihood ?? fallback.likelihood),
+      confidence: PrReviewManager.normalizeConfidence(source.confidence ?? fallback.confidence),
+      action: PrReviewManager.normalizeAction(source.action ?? fallback.action),
+    }
   }
 
   private tryParseArray(jsonStr: string): ReviewFinding[] | null {
@@ -1167,6 +1399,7 @@ ${JSON.stringify(input)}`,
         file: String(f.file || ''),
         line: f.line != null ? Number(f.line) : null,
         severity: PrReviewManager.normalizeSeverity(f.severity),
+        risk: PrReviewManager.normalizeRisk(f),
         title: String(f.title || ''),
         description: String(f.description || ''),
         domain: null,
@@ -1285,6 +1518,7 @@ ${JSON.stringify(input)}`,
             file: String(f.file || ''),
             line: f.line != null ? Number(f.line) : null,
             severity: PrReviewManager.normalizeSeverity(f.severity),
+            risk: PrReviewManager.normalizeRisk(f),
             title: String(f.title || ''),
             description: String(f.description || ''),
             domain: null,
@@ -1304,7 +1538,7 @@ ${JSON.stringify(input)}`,
     const row = db
       .prepare('SELECT value FROM settings WHERE key = ?')
       .get(`reviewAgent.${focus}`) as { value: string } | undefined
-    return row?.value || DEFAULT_AGENT_PROMPTS[focus] || DEFAULT_AGENT_PROMPTS.general
+    return row?.value || DEFAULT_AGENT_PROMPTS[focus]
   }
 
   getAgentPrompts(): Array<{ id: string; name: string; prompt: string; isCustom: boolean }> {
@@ -1313,6 +1547,7 @@ ${JSON.stringify(input)}`,
       security: 'Security',
       bugs: 'Bugs',
       performance: 'Performance',
+      'code-smells': 'Code Smells',
       style: 'Style',
       architecture: 'Architecture',
       ux: 'UX',
@@ -1389,7 +1624,7 @@ ${JSON.stringify(input)}`,
 
     const findings = db
       .prepare(
-        "SELECT * FROM pr_review_findings WHERE review_id = ? ORDER BY CASE severity WHEN 'critical' THEN 0 WHEN 'warning' THEN 1 WHEN 'suggestion' THEN 2 WHEN 'nitpick' THEN 3 END",
+        "SELECT * FROM pr_review_findings WHERE review_id = ? ORDER BY CASE severity WHEN 'blocker' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 WHEN 'low' THEN 3 END",
       )
       .all(reviewId) as Array<Record<string, unknown>>
 
@@ -1399,6 +1634,7 @@ ${JSON.stringify(input)}`,
       file: f.file as string,
       line: f.line as number | null,
       severity: PrReviewManager.normalizeSeverity(f.severity),
+      risk: PrReviewManager.normalizeRisk(f),
       title: f.title as string,
       description: f.description as string,
       domain: (f.domain as ReviewFocus) ?? null,
@@ -1422,7 +1658,7 @@ ${JSON.stringify(input)}`,
     // Clear existing findings for this review first
     db.prepare('DELETE FROM pr_review_findings WHERE review_id = ?').run(reviewId)
     const insert = db.prepare(
-      'INSERT INTO pr_review_findings (id, review_id, file, line, severity, title, description, domain, merged_from) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO pr_review_findings (id, review_id, file, line, severity, impact, likelihood, confidence, action, title, description, domain, merged_from) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
     )
     for (const f of findings) {
       insert.run(
@@ -1431,6 +1667,10 @@ ${JSON.stringify(input)}`,
         f.file,
         f.line,
         f.severity,
+        f.risk.impact,
+        f.risk.likelihood,
+        f.risk.confidence,
+        f.risk.action,
         f.title,
         f.description,
         f.domain,

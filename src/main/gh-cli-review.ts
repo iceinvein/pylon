@@ -1,38 +1,40 @@
 import { createHash } from 'node:crypto'
+import { formatReviewFindingDescriptionMarkdown } from '../shared/review-finding-description'
 import type { ReviewFinding, ReviewFocus } from '../shared/types'
 
 const SEVERITY_RANK: Record<ReviewFinding['severity'], number> = {
-  critical: 0,
-  warning: 1,
-  suggestion: 2,
-  nitpick: 3,
+  blocker: 0,
+  high: 1,
+  medium: 2,
+  low: 3,
 }
 
 const SEVERITY_ICON: Record<ReviewFinding['severity'], string> = {
-  critical: '🔴',
-  warning: '🟡',
-  suggestion: '🔵',
-  nitpick: '⚪',
+  blocker: '🔴',
+  high: '🟠',
+  medium: '🔵',
+  low: '⚪',
 }
 
 const SEVERITY_LABEL: Record<ReviewFinding['severity'], string> = {
-  critical: 'Critical',
-  warning: 'Warning',
-  suggestion: 'Suggestion',
-  nitpick: 'Nitpick',
+  blocker: 'Blocker',
+  high: 'High',
+  medium: 'Medium',
+  low: 'Low',
 }
 
-const NEXT_STEP: Record<ReviewFinding['severity'], string> = {
-  critical: 'Address this before merging, or reply with the context that makes this path safe.',
-  warning: 'Verify this path and update the code if the behavior can occur.',
-  suggestion: 'Consider folding this in if it matches the direction of the change.',
-  nitpick: 'Tidy this when convenient if you touch this area again.',
+const NEXT_STEP: Record<ReviewFinding['risk']['action'], string> = {
+  'must-fix': 'Address this before merging, or reply with the context that makes this path safe.',
+  'should-fix': 'Verify this path and update the code if the behavior can occur.',
+  consider: 'Consider folding this in if it matches the direction of the change.',
+  optional: 'Tidy this when convenient if you touch this area again.',
 }
 
 const FOCUS_LABEL: Record<ReviewFocus, string> = {
   security: 'Security',
   bugs: 'Bugs',
   performance: 'Performance',
+  'code-smells': 'Code Smells',
   style: 'Style',
   architecture: 'Architecture',
   ux: 'UX',
@@ -65,6 +67,15 @@ function formatFocus(finding: ReviewFinding): string {
   return FOCUS_LABEL[finding.domain] ?? finding.domain
 }
 
+function formatRisk(finding: ReviewFinding): string {
+  return [
+    `Impact: ${finding.risk.impact}`,
+    `Likelihood: ${finding.risk.likelihood}`,
+    `Confidence: ${finding.risk.confidence}`,
+    `Action: ${finding.risk.action}`,
+  ].join(' · ')
+}
+
 export function buildReviewBody(
   findings: ReviewFinding[],
   commitId: string,
@@ -76,10 +87,10 @@ export function buildReviewBody(
   const generalFindings = findings.filter((f) => !f.file || f.line === null)
 
   const counts: Record<ReviewFinding['severity'], number> = {
-    critical: 0,
-    warning: 0,
-    suggestion: 0,
-    nitpick: 0,
+    blocker: 0,
+    high: 0,
+    medium: 0,
+    low: 0,
   }
   for (const f of findings) counts[f.severity]++
 
@@ -87,12 +98,12 @@ export function buildReviewBody(
   const shortSha = commitId ? commitId.slice(0, 7) : ''
 
   let verdict: string
-  if (counts.critical > 0) {
-    verdict = `⚠️ **${plural(counts.critical, 'blocking issue')}**`
-  } else if (counts.warning > 0) {
-    verdict = `⚠️ **${plural(counts.warning, 'item')} to review**`
+  if (counts.blocker > 0) {
+    verdict = `⚠️ **${plural(counts.blocker, 'blocking issue')}**`
+  } else if (counts.high > 0) {
+    verdict = `⚠️ **${plural(counts.high, 'high-risk item')} to review**`
   } else if (findings.length > 0) {
-    verdict = `💡 **${plural(findings.length, 'suggestion')}**`
+    verdict = `💡 **${plural(findings.length, 'finding')}**`
   } else {
     verdict = '✅ **No issues found.**'
   }
@@ -117,7 +128,7 @@ export function buildReviewBody(
   }
 
   const topFindings = [...findings]
-    .filter((f) => f.severity === 'critical' || f.severity === 'warning')
+    .filter((f) => f.severity === 'blocker' || f.severity === 'high')
     .sort((a, b) => SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity])
     .slice(0, 3)
 
@@ -137,12 +148,12 @@ export function buildReviewBody(
     lines.push(
       '',
       '<details>',
-      `<summary><b>Severity breakdown</b> (${plural(findings.length, 'finding')})</summary>`,
+      `<summary><b>Risk breakdown</b> (${plural(findings.length, 'finding')})</summary>`,
       '',
       '| Severity | Count |',
       '|---|---|',
     )
-    for (const sev of ['critical', 'warning', 'suggestion', 'nitpick'] as const) {
+    for (const sev of ['blocker', 'high', 'medium', 'low'] as const) {
       if (counts[sev] > 0) {
         lines.push(`| ${SEVERITY_ICON[sev]} ${SEVERITY_LABEL[sev]} | ${counts[sev]} |`)
       }
@@ -162,7 +173,10 @@ export function buildReviewBody(
       lines.push(
         `#### ${SEVERITY_ICON[f.severity]} ${SEVERITY_LABEL[f.severity]}: ${f.title}`,
         '',
-        f.description,
+        formatReviewFindingDescriptionMarkdown(f.description),
+        '',
+        `> **Risk:** ${formatRisk(f)}`,
+        buildMergedFromLine(f) || '',
         footer || '',
         '',
       )
@@ -184,7 +198,10 @@ export function buildReviewBody(
       lines.push(
         `#### ${SEVERITY_ICON[f.severity]} ${SEVERITY_LABEL[f.severity]}: ${f.title}${loc ? ` ${loc}` : ''}`,
         '',
-        f.description,
+        formatReviewFindingDescriptionMarkdown(f.description),
+        '',
+        `> **Risk:** ${formatRisk(f)}`,
+        buildMergedFromLine(f) || '',
         footer || '',
         '',
       )
@@ -206,6 +223,7 @@ function normalizeFindingForHash(finding: ReviewFinding): string {
     file: finding.file || '',
     line: finding.line ?? null,
     severity: finding.severity,
+    risk: finding.risk,
     title: finding.title.trim(),
     description: finding.description.trim(),
   })
@@ -226,16 +244,24 @@ function buildFindingFooter(finding: ReviewFinding): string {
   return `<sub>Focus · ${focus}</sub>`
 }
 
+function buildMergedFromLine(finding: ReviewFinding): string | null {
+  if (!finding.mergedFrom || finding.mergedFrom.length === 0) return null
+  return `> **Also flagged by:** ${finding.mergedFrom.map((entry) => entry.domain).join(', ')}`
+}
+
 export function buildInlineCommentBody(finding: ReviewFinding): string {
   const icon = SEVERITY_ICON[finding.severity]
   const label = SEVERITY_LABEL[finding.severity]
   const footer = buildFindingFooter(finding)
+  const mergedFrom = buildMergedFromLine(finding)
   return [
     `### ${icon} ${label}: ${finding.title}`,
     '',
-    finding.description,
+    formatReviewFindingDescriptionMarkdown(finding.description),
     '',
-    `> **Next step:** ${NEXT_STEP[finding.severity]}`,
+    `> **Risk:** ${formatRisk(finding)}`,
+    mergedFrom || null,
+    `> **Next step:** ${NEXT_STEP[finding.risk.action]}`,
     footer ? '' : null,
     footer || null,
     '',
@@ -250,6 +276,7 @@ export function buildConversationCommentBody(finding: ReviewFinding): string {
   const label = SEVERITY_LABEL[finding.severity]
   const location = formatLocation(finding)
   const focus = formatFocus(finding)
+  const mergedFrom = buildMergedFromLine(finding)
   const metaParts = [
     location ? `Location · ${location}` : '',
     focus ? `Focus · ${focus}` : '',
@@ -263,9 +290,11 @@ export function buildConversationCommentBody(finding: ReviewFinding): string {
     metaLine ? '' : null,
     metaLine || null,
     '',
-    finding.description,
+    formatReviewFindingDescriptionMarkdown(finding.description),
     '',
-    `> **Next step:** ${NEXT_STEP[finding.severity]}`,
+    `> **Risk:** ${formatRisk(finding)}`,
+    mergedFrom || null,
+    `> **Next step:** ${NEXT_STEP[finding.risk.action]}`,
     '',
     getFindingMarker(finding),
   ]

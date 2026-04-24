@@ -8,10 +8,10 @@ type Props = {
 }
 
 const SEVERITY_ORDER: Record<string, number> = {
-  critical: 0,
-  warning: 1,
-  suggestion: 2,
-  nitpick: 3,
+  blocker: 0,
+  high: 1,
+  medium: 2,
+  low: 3,
 }
 
 export function FindingsList({ repoFullName, prNumber }: Props) {
@@ -32,9 +32,9 @@ export function FindingsList({ repoFullName, prNumber }: Props) {
     return (SEVERITY_ORDER[a.severity] ?? 2) - (SEVERITY_ORDER[b.severity] ?? 2)
   })
 
-  const criticalCount = activeFindings.filter((f) => f.severity === 'critical').length
-  const warningCount = activeFindings.filter((f) => f.severity === 'warning').length
-  const suggestionCount = activeFindings.filter((f) => f.severity === 'suggestion').length
+  const blockerCount = activeFindings.filter((f) => f.severity === 'blocker').length
+  const highCount = activeFindings.filter((f) => f.severity === 'high').length
+  const mediumCount = activeFindings.filter((f) => f.severity === 'medium').length
   const postedCount = activeFindings.filter((f) => f.posted).length
 
   return (
@@ -45,19 +45,19 @@ export function FindingsList({ repoFullName, prNumber }: Props) {
           {activeFindings.length} finding{activeFindings.length !== 1 ? 's' : ''}
         </span>
         <div className="flex items-center gap-1.5">
-          {criticalCount > 0 && (
+          {blockerCount > 0 && (
             <span className="rounded bg-error/10 px-1.5 py-0.5 font-medium text-[10px] text-error tabular-nums">
-              {criticalCount} critical
+              {blockerCount} blocker{blockerCount !== 1 ? 's' : ''}
             </span>
           )}
-          {warningCount > 0 && (
-            <span className="rounded bg-warning/10 px-1.5 py-0.5 font-medium text-[10px] text-warning tabular-nums">
-              {warningCount} warning{warningCount !== 1 ? 's' : ''}
+          {highCount > 0 && (
+            <span className="rounded bg-[var(--color-risk-high)]/10 px-1.5 py-0.5 font-medium text-[10px] text-[var(--color-risk-high)] tabular-nums">
+              {highCount} high
             </span>
           )}
-          {suggestionCount > 0 && (
-            <span className="rounded bg-info/10 px-1.5 py-0.5 font-medium text-[10px] text-info tabular-nums">
-              {suggestionCount} suggestion{suggestionCount !== 1 ? 's' : ''}
+          {mediumCount > 0 && (
+            <span className="rounded bg-[var(--color-risk-medium)]/10 px-1.5 py-0.5 font-medium text-[10px] text-[var(--color-risk-medium)] tabular-nums">
+              {mediumCount} medium
             </span>
           )}
         </div>

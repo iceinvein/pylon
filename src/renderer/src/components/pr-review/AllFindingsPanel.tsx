@@ -8,27 +8,27 @@ type Props = {
 }
 
 const SEVERITY_ORDER: Record<string, number> = {
-  critical: 0,
-  warning: 1,
-  suggestion: 2,
-  nitpick: 3,
+  blocker: 0,
+  high: 1,
+  medium: 2,
+  low: 3,
 }
 
 const SEVERITY_LABELS: Record<string, string> = {
-  critical: 'Critical',
-  warning: 'Warning',
-  suggestion: 'Suggestion',
-  nitpick: 'Nitpick',
+  blocker: 'Blocker',
+  high: 'High',
+  medium: 'Medium',
+  low: 'Low',
 }
 
 const SEVERITY_CHIP_ACTIVE: Record<string, string> = {
-  critical: 'bg-[var(--color-error)] text-base-text',
-  warning: 'bg-[var(--color-warning)] text-base-text',
-  suggestion: 'bg-[var(--color-info)] text-base-text',
-  nitpick: 'bg-[var(--color-base-text-faint)] text-base-text',
+  blocker: 'bg-[var(--color-error)] text-base-text',
+  high: 'bg-[var(--color-risk-high)] text-base-text',
+  medium: 'bg-[var(--color-risk-medium)] text-base-text',
+  low: 'bg-[var(--color-base-text-faint)] text-base-text',
 }
 
-const ALL_SEVERITIES = ['critical', 'warning', 'suggestion', 'nitpick'] as const
+const ALL_SEVERITIES = ['blocker', 'high', 'medium', 'low'] as const
 
 export function AllFindingsPanel({ repoFullName, prNumber }: Props) {
   const {

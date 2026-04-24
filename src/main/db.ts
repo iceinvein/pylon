@@ -137,6 +137,16 @@ const migrations: Array<{ version: number; description: string; sql: string }> =
     description: 'Add hidden flag to projects for manual project list overrides',
     sql: 'ALTER TABLE projects ADD COLUMN hidden INTEGER NOT NULL DEFAULT 0',
   },
+  {
+    version: 16,
+    description: 'Add structured risk fields to PR review findings',
+    sql: `
+      ALTER TABLE pr_review_findings ADD COLUMN impact TEXT NOT NULL DEFAULT 'medium';
+      ALTER TABLE pr_review_findings ADD COLUMN likelihood TEXT NOT NULL DEFAULT 'possible';
+      ALTER TABLE pr_review_findings ADD COLUMN confidence TEXT NOT NULL DEFAULT 'medium';
+      ALTER TABLE pr_review_findings ADD COLUMN action TEXT NOT NULL DEFAULT 'consider';
+    `,
+  },
 ]
 
 /**
@@ -183,6 +193,14 @@ function detectAppliedMigrations(database: Database.Database): Set<number> {
     )
     if (findingCols.has('domain')) applied.add(9)
     if (findingCols.has('merged_from')) applied.add(14)
+    if (
+      findingCols.has('impact') &&
+      findingCols.has('likelihood') &&
+      findingCols.has('confidence') &&
+      findingCols.has('action')
+    ) {
+      applied.add(16)
+    }
   } catch {
     /* table doesn't exist yet */
   }
@@ -325,6 +343,10 @@ export function initDatabase(): Database.Database {
       file TEXT,
       line INTEGER,
       severity TEXT NOT NULL,
+      impact TEXT NOT NULL DEFAULT 'medium',
+      likelihood TEXT NOT NULL DEFAULT 'possible',
+      confidence TEXT NOT NULL DEFAULT 'medium',
+      action TEXT NOT NULL DEFAULT 'consider',
       title TEXT NOT NULL,
       description TEXT NOT NULL,
       posted INTEGER NOT NULL DEFAULT 0,
