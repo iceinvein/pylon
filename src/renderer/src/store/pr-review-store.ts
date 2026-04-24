@@ -253,6 +253,10 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
       reviewError: null,
       reviews: [],
       agentProgress: [],
+      contextPhase: undefined,
+      contextMode: undefined,
+      contextNotes: undefined,
+      contextError: undefined,
     })
     get().loadPrs(repo ?? undefined)
   },
@@ -271,6 +275,10 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
       reviewError: null,
       reviews: [],
       agentProgress: [],
+      contextPhase: undefined,
+      contextMode: undefined,
+      contextNotes: undefined,
+      contextError: undefined,
     })
     get().loadPrs(get().selectedRepo ?? undefined, state)
   },
@@ -333,6 +341,10 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
       selectedFindingIds: new Set(),
       agentProgress: [],
       _selectPrSeq: seq,
+      contextPhase: undefined,
+      contextMode: undefined,
+      contextNotes: undefined,
+      contextError: undefined,
     })
     if (!pr) return
     // Mark PR as seen for badge tracking
@@ -405,6 +417,10 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
         reviewStreamingText: '',
         reviewError: 'Review stopped by user',
         agentProgress: [],
+        contextPhase: undefined,
+        contextMode: undefined,
+        contextNotes: undefined,
+        contextError: undefined,
         reviews: s.reviews.map((r) => (r.id === reviewId ? { ...r, status: 'error' as const } : r)),
       }))
     } catch (err) {
@@ -434,6 +450,10 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
         reviewError: null,
         selectedFindingIds: new Set(),
         agentProgress: [],
+        contextPhase: undefined,
+        contextMode: undefined,
+        contextNotes: undefined,
+        contextError: undefined,
       })
     } catch (err) {
       logger.error('loadReview failed:', err)

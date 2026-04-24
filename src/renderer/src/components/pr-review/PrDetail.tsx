@@ -397,6 +397,7 @@ export function PrDetail() {
                     </span>
                     <button
                       type="button"
+                      aria-label="Dismiss banner"
                       className="shrink-0 text-base-text-muted transition-colors hover:text-base-text"
                       onClick={async () => {
                         await persistDismissedBanner()
