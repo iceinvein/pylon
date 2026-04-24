@@ -8,6 +8,7 @@ import type {
   PrContextSymbolKind,
   PrContextTest,
 } from '../../shared/types'
+import { isTimeoutError } from './mcp-client'
 import type { BuildInput, PrContextBackend } from './pr-context-backend'
 import { extractDeclarations, intersectRangesWithTouchedLines, parseDiff } from './symbol-extractor'
 
@@ -51,7 +52,7 @@ function parseAddedLines(diff: string): Map<string, Set<number>> {
 const REFERENCE_CAP = 20
 const CONCURRENCY = 4
 
-export interface McpClientLike {
+export type McpClientLike = {
   connect(timeoutMs?: number): Promise<void>
   close(): Promise<void>
   callTool(name: string, args: Record<string, unknown>, timeoutMs?: number): Promise<unknown>
@@ -101,6 +102,7 @@ export class McpContextBackend implements PrContextBackend {
       await client.connect(3_000)
     } catch (err) {
       notes.push(`MCP connect failed: ${String(err)}`)
+      await client.close().catch(() => {})
       return {
         version: 1,
         generatedAt: Date.now(),
@@ -118,16 +120,17 @@ export class McpContextBackend implements PrContextBackend {
 
       for (const df of diffFiles) {
         if (input.signal.aborted) break
-        const rawSymbols = (await callSafe(
+        const rawSymbolsResult = await callSafe(
           client,
           'get_file_symbols',
           { path: df.path },
           input.perCallTimeoutMs,
-        )) as RawSymbol[] | null
-        if (!rawSymbols) {
+        )
+        if (!Array.isArray(rawSymbolsResult)) {
           files.push({ path: df.path, symbols: [] })
           continue
         }
+        const rawSymbols = rawSymbolsResult as RawSymbol[]
 
         const declsFromMcp = rawSymbols
           .filter((s) => s.range)
@@ -239,7 +242,7 @@ async function callSafe(
   try {
     return await client.callTool(name, args, timeoutMs)
   } catch (err) {
-    if (err instanceof Error && /timed out/i.test(err.message)) throw err
+    if (isTimeoutError(err)) throw err
     return null
   }
 }

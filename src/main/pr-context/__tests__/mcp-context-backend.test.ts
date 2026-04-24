@@ -99,7 +99,13 @@ describe('McpContextBackend', () => {
           if (name === 'get_file_symbols') {
             return [{ name: 'changed', kind: 'function', range: { start: 2, end: 4 } }]
           }
-          if (name === 'find_references') throw new Error('MCP tool find_references timed out')
+          if (name === 'find_references') {
+            const err = new Error('MCP tool find_references timed out') as Error & {
+              timedOut: true
+            }
+            err.timedOut = true
+            throw err
+          }
           return []
         },
       }),

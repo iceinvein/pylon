@@ -10,6 +10,10 @@ export type McpStdioConfig = {
   env?: Record<string, string>
 }
 
+export function isTimeoutError(err: unknown): boolean {
+  return Boolean(err && typeof err === 'object' && (err as { timedOut?: boolean }).timedOut)
+}
+
 export class CodeIntelligenceMcpClient {
   private client: Client | null = null
   private connected = false
@@ -94,7 +98,11 @@ export class CodeIntelligenceMcpClient {
 
 function withTimeout<T>(p: Promise<T>, ms: number, message: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
-    const t = setTimeout(() => reject(new Error(message)), ms)
+    const t = setTimeout(() => {
+      const err = new Error(message) as Error & { timedOut: true }
+      err.timedOut = true
+      reject(err)
+    }, ms)
     p.then(
       (v) => {
         clearTimeout(t)
