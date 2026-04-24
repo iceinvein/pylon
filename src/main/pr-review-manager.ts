@@ -20,6 +20,9 @@ import { getDb } from './db'
 import { type ChunkResult, chunkDiff, getTokenBudget } from './diff-chunker'
 import { getPrDetail } from './gh-cli'
 import { HeuristicContextBackend } from './pr-context/heuristic-context-backend'
+import { CodeIntelligenceMcpClient } from './pr-context/mcp-client'
+import { McpContextBackend } from './pr-context/mcp-context-backend'
+import type { PrContextBackend } from './pr-context/pr-context-backend'
 import { PrContextBuilder } from './pr-context/pr-context-builder'
 import { sessionManager } from './session-manager'
 
@@ -505,9 +508,22 @@ class PrReviewManager {
 
     const contextAbort = new AbortController()
     active.contextAbort = contextAbort
+    const mcpConfig = this.resolveCodeIntelligenceMcpConfig()
     const heuristicBackend = new HeuristicContextBackend()
+    const mcpBackend: PrContextBackend = mcpConfig
+      ? new McpContextBackend({
+          makeClient: () => {
+            const client = new CodeIntelligenceMcpClient(mcpConfig)
+            return {
+              connect: (timeoutMs?: number) => client.connect(timeoutMs ?? 3000),
+              callTool: (name, args, timeoutMs) => client.callTool(name, args, timeoutMs ?? 8000),
+              close: () => client.close(),
+            }
+          },
+        })
+      : heuristicBackend
     const builder = new PrContextBuilder({
-      mcp: heuristicBackend,
+      mcp: mcpBackend,
       heuristic: heuristicBackend,
     })
 
@@ -582,7 +598,6 @@ class PrReviewManager {
 
     const { sessionCwd } = await contextPromise
 
-    const mcpConfig = this.resolveCodeIntelligenceMcpConfig()
     const agentPromises = focusAreas.map((focus) =>
       this.runAgentSession(
         reviewId,
