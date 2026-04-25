@@ -296,7 +296,45 @@ export async function postFindingComment(
   prNumber: number,
   finding: ReviewFinding,
 ): Promise<void> {
-  await postComment(repoFullName, prNumber, buildConversationCommentBody(finding))
+  const commitId = await getHeadCommitSha(repoFullName, prNumber).catch(() => '')
+  const detail = await getPrDetail(repoFullName, prNumber).catch(() => null)
+  const prepared = prepareReviewPost([finding], commitId, detail?.diff ?? '')
+  const inlineComment = prepared.comments[0]
+
+  if (!inlineComment || !commitId) {
+    await postComment(repoFullName, prNumber, buildConversationCommentBody(finding))
+    return
+  }
+
+  const [owner, repo] = repoFullName.split('/')
+  const payload = JSON.stringify({
+    body: inlineComment.body,
+    commit_id: commitId,
+    path: inlineComment.path,
+    line: inlineComment.line,
+    side: inlineComment.side,
+    ...(inlineComment.start_line
+      ? { start_line: inlineComment.start_line, start_side: inlineComment.start_side }
+      : {}),
+  })
+  const tmpPath = join(tmpdir(), `pylon-inline-review-${Date.now()}.json`)
+  await writeFile(tmpPath, payload)
+
+  try {
+    await execGh(
+      [
+        'api',
+        `repos/${owner}/${repo}/pulls/${prNumber}/comments`,
+        '--method',
+        'POST',
+        '--input',
+        tmpPath,
+      ],
+      undefined,
+    )
+  } finally {
+    await unlink(tmpPath).catch(() => {})
+  }
 }
 export async function postReview(
   repoFullName: string,

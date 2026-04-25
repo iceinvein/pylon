@@ -90,6 +90,38 @@ function normalizeRisk(raw: Record<string, unknown>): ReviewFindingRisk {
   }
 }
 
+function normalizeSuggestion(raw: Record<string, unknown>): ReviewFinding['suggestion'] {
+  const source =
+    raw.suggestion && typeof raw.suggestion === 'object'
+      ? (raw.suggestion as Record<string, unknown>)
+      : raw
+
+  const body = String(
+    source.body ??
+      source.code ??
+      source.snippet ??
+      source.suggestedCode ??
+      source.suggestionBody ??
+      '',
+  ).trim()
+
+  const anchorLine = raw.line != null ? Number(raw.line) : null
+  const startLine = Number(
+    source.startLine ?? source.start_line ?? source.line ?? anchorLine ?? Number.NaN,
+  )
+  const endLine = Number(
+    source.endLine ?? source.end_line ?? source.line ?? anchorLine ?? startLine,
+  )
+
+  if (!body || !Number.isFinite(startLine) || !Number.isFinite(endLine)) return undefined
+
+  return {
+    body,
+    startLine: Math.max(1, Math.trunc(startLine)),
+    endLine: Math.max(Math.max(1, Math.trunc(startLine)), Math.trunc(endLine)),
+  }
+}
+
 /** Parse findings from raw streaming text (client-side fallback when main process fails) */
 function parseFindingsFromText(text: string): ReviewFinding[] {
   // Find the review-findings fence
@@ -130,6 +162,7 @@ function parseFindingsFromText(text: string): ReviewFinding[] {
       description: String(f.description || ''),
       domain: (f.domain as ReviewFocus) ?? null,
       posted: false,
+      suggestion: normalizeSuggestion(f),
     }))
   } catch {
     return []

@@ -147,6 +147,15 @@ const migrations: Array<{ version: number; description: string; sql: string }> =
       ALTER TABLE pr_review_findings ADD COLUMN action TEXT NOT NULL DEFAULT 'consider';
     `,
   },
+  {
+    version: 17,
+    description: 'Add suggestion fields to PR review findings',
+    sql: `
+      ALTER TABLE pr_review_findings ADD COLUMN suggestion_body TEXT;
+      ALTER TABLE pr_review_findings ADD COLUMN suggestion_start_line INTEGER;
+      ALTER TABLE pr_review_findings ADD COLUMN suggestion_end_line INTEGER;
+    `,
+  },
 ]
 
 /**
@@ -200,6 +209,13 @@ function detectAppliedMigrations(database: Database.Database): Set<number> {
       findingCols.has('action')
     ) {
       applied.add(16)
+    }
+    if (
+      findingCols.has('suggestion_body') &&
+      findingCols.has('suggestion_start_line') &&
+      findingCols.has('suggestion_end_line')
+    ) {
+      applied.add(17)
     }
   } catch {
     /* table doesn't exist yet */
@@ -349,6 +365,9 @@ export function initDatabase(): Database.Database {
       action TEXT NOT NULL DEFAULT 'consider',
       title TEXT NOT NULL,
       description TEXT NOT NULL,
+      suggestion_body TEXT,
+      suggestion_start_line INTEGER,
+      suggestion_end_line INTEGER,
       posted INTEGER NOT NULL DEFAULT 0,
       posted_at INTEGER,
       FOREIGN KEY (review_id) REFERENCES pr_reviews(id) ON DELETE CASCADE

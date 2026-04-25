@@ -353,6 +353,12 @@ export type ReviewFindingRisk = {
   action: 'must-fix' | 'should-fix' | 'consider' | 'optional'
 }
 
+export type ReviewFindingSuggestion = {
+  body: string
+  startLine: number
+  endLine: number
+}
+
 export type ReviewFinding = {
   id: string
   file: string
@@ -363,6 +369,7 @@ export type ReviewFinding = {
   description: string
   domain: ReviewFocus | null
   posted: boolean
+  suggestion?: ReviewFindingSuggestion
   mergedFrom?: { domain: string; title: string }[]
 }
 

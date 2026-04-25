@@ -172,6 +172,16 @@ export function FindingCard({
                 <p className="text-base-text-secondary text-xs leading-relaxed">{section.body}</p>
               </div>
             ))}
+            {finding.suggestion && (
+              <div className="space-y-0.5">
+                <p className="font-medium text-[10px] text-base-text-faint uppercase tracking-wider">
+                  Suggested Change
+                </p>
+                <pre className="overflow-x-auto rounded-md border border-base-border bg-base-raised/80 px-3 py-2 font-mono text-[11px] text-base-text-secondary leading-relaxed">
+                  <code>{finding.suggestion.body}</code>
+                </pre>
+              </div>
+            )}
           </div>
           {finding.mergedFrom && finding.mergedFrom.length > 0 && (
             <p className="mt-1 pl-5 text-[10px] text-base-text-faint italic">

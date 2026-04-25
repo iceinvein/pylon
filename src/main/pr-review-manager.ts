@@ -15,6 +15,7 @@ import type {
   ReviewFinding,
   ReviewFindingRisk,
   ReviewFindingSeverity,
+  ReviewFindingSuggestion,
   ReviewFocus,
   ReviewStatus,
 } from '../shared/types'
@@ -737,7 +738,7 @@ class PrReviewManager {
     // Persist findings
     const db = getDb()
     const insertFinding = db.prepare(
-      'INSERT INTO pr_review_findings (id, review_id, file, line, severity, impact, likelihood, confidence, action, title, description, domain, merged_from) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO pr_review_findings (id, review_id, file, line, severity, impact, likelihood, confidence, action, title, description, suggestion_body, suggestion_start_line, suggestion_end_line, domain, merged_from) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
     )
     for (const f of deduped) {
       insertFinding.run(
@@ -752,6 +753,9 @@ class PrReviewManager {
         f.risk.action,
         f.title,
         f.description,
+        f.suggestion?.body ?? null,
+        f.suggestion?.startLine ?? null,
+        f.suggestion?.endLine ?? null,
         f.domain,
         f.mergedFrom ? JSON.stringify(f.mergedFrom) : null,
       )
@@ -911,6 +915,11 @@ Output your findings as a JSON array inside a fenced code block tagged \`review-
   - \`Suggested direction: ...\` (optional)
   - \`Needs verification: ...\` (optional; only when uncertainty is real)
   Keep each paragraph to one idea. Do not write one long wall-of-text paragraph.
+- \`suggestion\`: optional exact replacement snippet when you can confidently propose code, shaped as:
+  - \`body\`: replacement code only, with no markdown fences
+  - \`startLine\`: first changed RIGHT-side line to replace
+  - \`endLine\`: last changed RIGHT-side line to replace
+  Omit \`suggestion\` if you are not confident, if the fix depends on unseen context, or if the replacement is not fully contained in changed lines.
 
 \`\`\`review-findings
 [
@@ -920,7 +929,12 @@ Output your findings as a JSON array inside a fenced code block tagged \`review-
     "severity": "high",
     "risk": { "impact": "high", "likelihood": "possible", "confidence": "medium", "action": "should-fix" },
     "title": "Potential null dereference",
-    "description": "Observation: The variable can still be null when this branch runs.\n\nWhy it matters: That turns a recoverable edge case into a runtime exception on a normal user path.\n\nSuggested direction: Guard the null case before dereferencing."
+    "description": "Observation: The variable can still be null when this branch runs.\n\nWhy it matters: That turns a recoverable edge case into a runtime exception on a normal user path.\n\nSuggested direction: Guard the null case before dereferencing.",
+    "suggestion": {
+      "body": "if (!value) return\nconsume(value)",
+      "startLine": 42,
+      "endLine": 43
+    }
   }
 ]
 \`\`\`
@@ -1284,6 +1298,8 @@ ${JSON.stringify(input)}`,
 
       result.push({
         ...primary,
+        suggestion:
+          primary.suggestion ?? others.find((other) => other.suggestion !== undefined)?.suggestion,
         description:
           primary.description +
           (mergedFrom.length > 0
@@ -1317,6 +1333,8 @@ ${JSON.stringify(input)}`,
     return [
       {
         ...primary,
+        suggestion:
+          primary.suggestion ?? others.find((other) => other.suggestion !== undefined)?.suggestion,
         description:
           primary.description +
           (mergedFrom.length > 0
@@ -1505,6 +1523,43 @@ ${JSON.stringify(input)}`,
     }
   }
 
+  private static normalizeSuggestion(
+    raw: Record<string, unknown>,
+  ): ReviewFindingSuggestion | undefined {
+    const source =
+      raw.suggestion && typeof raw.suggestion === 'object'
+        ? (raw.suggestion as Record<string, unknown>)
+        : raw
+
+    const body = String(
+      source.body ??
+        source.code ??
+        source.snippet ??
+        source.suggestedCode ??
+        source.suggestionBody ??
+        '',
+    ).trim()
+
+    const anchorLine = raw.line != null ? Number(raw.line) : null
+    const startLine = Number(
+      source.startLine ?? source.start_line ?? source.line ?? anchorLine ?? Number.NaN,
+    )
+    const endLine = Number(
+      source.endLine ?? source.end_line ?? source.line ?? anchorLine ?? startLine,
+    )
+
+    if (!body || !Number.isFinite(startLine) || !Number.isFinite(endLine)) return undefined
+
+    const normalizedStart = Math.max(1, Math.trunc(startLine))
+    const normalizedEnd = Math.max(normalizedStart, Math.trunc(endLine))
+
+    return {
+      body,
+      startLine: normalizedStart,
+      endLine: normalizedEnd,
+    }
+  }
+
   private tryParseArray(jsonStr: string): ReviewFinding[] | null {
     try {
       const raw = JSON.parse(jsonStr) as Array<Record<string, unknown>>
@@ -1519,6 +1574,7 @@ ${JSON.stringify(input)}`,
         description: String(f.description || ''),
         domain: null,
         posted: false,
+        suggestion: PrReviewManager.normalizeSuggestion(f),
       }))
     } catch {
       return null
@@ -1638,6 +1694,7 @@ ${JSON.stringify(input)}`,
             description: String(f.description || ''),
             domain: null,
             posted: false,
+            suggestion: PrReviewManager.normalizeSuggestion(f),
           })
         }
       } catch {
@@ -1778,6 +1835,16 @@ ${JSON.stringify(input)}`,
       description: f.description as string,
       domain: (f.domain as ReviewFocus) ?? null,
       posted: Boolean(f.posted),
+      suggestion:
+        typeof f.suggestion_body === 'string' &&
+        typeof f.suggestion_start_line === 'number' &&
+        typeof f.suggestion_end_line === 'number'
+          ? {
+              body: f.suggestion_body,
+              startLine: f.suggestion_start_line,
+              endLine: f.suggestion_end_line,
+            }
+          : undefined,
       mergedFrom: f.merged_from ? JSON.parse(f.merged_from as string) : undefined,
     }))
 
@@ -1797,7 +1864,7 @@ ${JSON.stringify(input)}`,
     // Clear existing findings for this review first
     db.prepare('DELETE FROM pr_review_findings WHERE review_id = ?').run(reviewId)
     const insert = db.prepare(
-      'INSERT INTO pr_review_findings (id, review_id, file, line, severity, impact, likelihood, confidence, action, title, description, domain, merged_from) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO pr_review_findings (id, review_id, file, line, severity, impact, likelihood, confidence, action, title, description, suggestion_body, suggestion_start_line, suggestion_end_line, domain, merged_from) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
     )
     for (const f of findings) {
       insert.run(
@@ -1812,6 +1879,9 @@ ${JSON.stringify(input)}`,
         f.risk.action,
         f.title,
         f.description,
+        f.suggestion?.body ?? null,
+        f.suggestion?.startLine ?? null,
+        f.suggestion?.endLine ?? null,
         f.domain,
         f.mergedFrom ? JSON.stringify(f.mergedFrom) : null,
       )

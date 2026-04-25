@@ -44,6 +44,8 @@ type ReviewComment = {
   path: string
   line: number
   side: 'RIGHT'
+  start_line?: number
+  start_side?: 'RIGHT'
   body: string
 }
 
@@ -226,6 +228,7 @@ function normalizeFindingForHash(finding: ReviewFinding): string {
     risk: finding.risk,
     title: finding.title.trim(),
     description: finding.description.trim(),
+    suggestion: finding.suggestion ?? null,
   })
 }
 
@@ -249,15 +252,27 @@ function buildMergedFromLine(finding: ReviewFinding): string | null {
   return `> **Also flagged by:** ${finding.mergedFrom.map((entry) => entry.domain).join(', ')}`
 }
 
-export function buildInlineCommentBody(finding: ReviewFinding): string {
+function buildSuggestionBlock(finding: ReviewFinding): string | null {
+  const body = finding.suggestion?.body.trim()
+  if (!body) return null
+  return ['```suggestion', body, '```'].join('\n')
+}
+
+export function buildInlineCommentBody(
+  finding: ReviewFinding,
+  options: { includeSuggestion?: boolean } = {},
+): string {
   const icon = SEVERITY_ICON[finding.severity]
   const label = SEVERITY_LABEL[finding.severity]
   const footer = buildFindingFooter(finding)
   const mergedFrom = buildMergedFromLine(finding)
+  const suggestion = options.includeSuggestion ? buildSuggestionBlock(finding) : null
   return [
     `### ${icon} ${label}: ${finding.title}`,
     '',
     formatReviewFindingDescriptionMarkdown(finding.description),
+    suggestion ? '' : null,
+    suggestion || null,
     '',
     `> **Risk:** ${formatRisk(finding)}`,
     mergedFrom || null,
@@ -277,6 +292,7 @@ export function buildConversationCommentBody(finding: ReviewFinding): string {
   const location = formatLocation(finding)
   const focus = formatFocus(finding)
   const mergedFrom = buildMergedFromLine(finding)
+  const suggestion = buildSuggestionBlock(finding)
   const metaParts = [
     location ? `Location · ${location}` : '',
     focus ? `Focus · ${focus}` : '',
@@ -291,6 +307,8 @@ export function buildConversationCommentBody(finding: ReviewFinding): string {
     metaLine || null,
     '',
     formatReviewFindingDescriptionMarkdown(finding.description),
+    suggestion ? '' : null,
+    suggestion || null,
     '',
     `> **Risk:** ${formatRisk(finding)}`,
     mergedFrom || null,
@@ -341,6 +359,35 @@ function parseReviewableRightLines(diff: string): Map<string, Set<number>> {
   return result
 }
 
+function getSuggestionRange(
+  finding: ReviewFinding,
+  reviewableLines: Map<string, Set<number>>,
+): { line: number; startLine?: number; supportsSuggestion: boolean } | null {
+  if (!finding.file || finding.line === null) return null
+
+  const fileLines = reviewableLines.get(finding.file)
+  if (!fileLines?.has(finding.line)) return null
+
+  const suggestion = finding.suggestion
+  if (!suggestion) {
+    return { line: finding.line, supportsSuggestion: false }
+  }
+
+  const startLine = suggestion.startLine
+  const endLine = suggestion.endLine
+  if (!Number.isInteger(startLine) || !Number.isInteger(endLine) || startLine > endLine) {
+    return { line: finding.line, supportsSuggestion: false }
+  }
+  for (let line = startLine; line <= endLine; line++) {
+    if (!fileLines.has(line)) {
+      return { line: finding.line, supportsSuggestion: false }
+    }
+  }
+  return endLine > startLine
+    ? { line: endLine, startLine, supportsSuggestion: true }
+    : { line: endLine, supportsSuggestion: true }
+}
+
 export function prepareReviewPost(
   findings: ReviewFinding[],
   commitId: string,
@@ -351,27 +398,26 @@ export function prepareReviewPost(
   const summaryFindings: ReviewFinding[] = []
 
   for (const finding of findings) {
-    if (!finding.file || finding.line === null) {
+    const range = getSuggestionRange(finding, reviewableLines)
+    if (!range) {
       summaryFindings.push(finding)
       continue
     }
-
-    const fileLines = reviewableLines.get(finding.file)
-    if (fileLines?.has(finding.line)) {
-      inlineFindings.push(finding)
-    } else {
-      summaryFindings.push(finding)
-    }
+    inlineFindings.push(finding)
   }
 
   return {
     body: buildReviewBody(findings, commitId, { inlineFindings, summaryFindings }),
-    comments: inlineFindings.map((f) => ({
-      path: f.file,
-      line: f.line as number,
-      side: 'RIGHT' as const,
-      body: buildInlineCommentBody(f),
-    })),
+    comments: inlineFindings.map((f) => {
+      const range = getSuggestionRange(f, reviewableLines)
+      return {
+        path: f.file,
+        line: range?.line ?? (f.line as number),
+        side: 'RIGHT' as const,
+        ...(range?.startLine ? { start_line: range.startLine, start_side: 'RIGHT' as const } : {}),
+        body: buildInlineCommentBody(f, { includeSuggestion: Boolean(range?.supportsSuggestion) }),
+      }
+    }),
     inlineFindings,
     summaryFindings,
   }

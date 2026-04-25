@@ -34,6 +34,7 @@ const f = (overrides: Partial<ReviewFinding>): ReviewFinding => ({
   description: overrides.description ?? 'Description',
   domain: overrides.domain ?? null,
   posted: overrides.posted ?? false,
+  suggestion: overrides.suggestion,
 })
 
 describe('buildReviewBody', () => {
@@ -277,6 +278,62 @@ diff --git a/src/renamed.ts b/src/renamed.ts
     )
     expect(prepared.comments[1].body).toContain('> **Next step:** Address this before merging')
     expect(prepared.comments[1].body).toContain('<sub>Focus · Security</sub>')
+  })
+
+  test('renders actionable suggestion blocks with multi-line anchors when available', () => {
+    const findings = [
+      f({
+        id: 'inline-suggestion',
+        file: 'src/app.ts',
+        line: 3,
+        severity: 'high',
+        title: 'Replace repeated work',
+        suggestion: {
+          body: 'const cached = compute()\nconst added = cached',
+          startLine: 3,
+          endLine: 4,
+        },
+      }),
+    ]
+
+    const prepared = prepareReviewPost(findings, 'abcdef123', diff)
+
+    expect(prepared.comments).toEqual([
+      {
+        path: 'src/app.ts',
+        line: 4,
+        start_line: 3,
+        start_side: 'RIGHT',
+        side: 'RIGHT',
+        body: expect.stringContaining(
+          '```suggestion\nconst cached = compute()\nconst added = cached\n```',
+        ),
+      },
+    ])
+  })
+
+  test('omits suggestion block when the requested range is not fully reviewable', () => {
+    const findings = [
+      f({
+        id: 'invalid-suggestion',
+        file: 'src/app.ts',
+        line: 3,
+        severity: 'high',
+        title: 'Bad anchor',
+        suggestion: {
+          body: 'const safe = true',
+          startLine: 3,
+          endLine: 99,
+        },
+      }),
+    ]
+
+    const prepared = prepareReviewPost(findings, 'abcdef123', diff)
+
+    expect(prepared.comments).toHaveLength(1)
+    expect(prepared.comments[0].line).toBe(3)
+    expect(prepared.comments[0]).not.toHaveProperty('start_line')
+    expect(prepared.comments[0].body).not.toContain('```suggestion')
   })
 
   test('keeps unanchorable findings in the review summary', () => {
