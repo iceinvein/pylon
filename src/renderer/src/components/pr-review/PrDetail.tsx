@@ -21,6 +21,7 @@ import type { ReviewFocus } from '../../../../shared/types'
 import { isClaudeSetupError } from '../../lib/setup-errors'
 import { usePrReviewStore } from '../../store/pr-review-store'
 import { ClaudeCodeSetupCard } from '../setup/ClaudeCodeSetupCard'
+import { ActiveIssuesPanel } from './ActiveIssuesPanel'
 import { AllFindingsPanel } from './AllFindingsPanel'
 import { DiffFileTree } from './DiffFileTree'
 import { DiffPane } from './DiffPane'
@@ -29,6 +30,7 @@ import { PrFilesChanged } from './PrFilesChanged'
 import { ReviewHistory } from './ReviewHistory'
 import { ReviewModal } from './ReviewModal'
 import { ReviewProgress } from './ReviewProgress'
+import { TimelinePanel } from './TimelinePanel'
 
 const COLLAPSED_HEIGHT = 96 // ~6 lines of text
 
@@ -146,9 +148,13 @@ export function PrDetail() {
     prDetail,
     prDetailLoading,
     prDetailError,
+    activeSeries,
     activeReview,
     activeFindings,
+    activeThreads,
+    activeTimeline,
     reviewError,
+    resultsMode,
     selectedFindingIds,
     findingsViewMode,
     navigateToFindingId,
@@ -157,6 +163,7 @@ export function PrDetail() {
     stopReview,
     toggleFinding,
     postFinding,
+    setResultsMode,
     selectPr,
     contextMode,
   } = usePrReviewStore()
@@ -436,48 +443,97 @@ export function PrDetail() {
       {isDone && prDetail && (
         <div className="flex min-h-0 flex-1 flex-col">
           {/* Review history bar */}
-          <div className="border-base-border-subtle border-b px-3 py-1.5">
-            <ReviewHistory />
+          <div className="border-base-border-subtle border-b">
+            <div className="px-3 py-1.5">
+              <ReviewHistory />
+            </div>
+            {(activeThreads.length > 0 || activeTimeline.length > 0 || activeSeries) && (
+              <div className="flex items-center gap-1 px-3 pb-2">
+                <button
+                  type="button"
+                  onClick={() => setResultsMode('latest-run')}
+                  className={`rounded-md px-2.5 py-1 text-xs transition-colors ${
+                    resultsMode === 'latest-run'
+                      ? 'bg-base-raised text-base-text'
+                      : 'text-base-text-muted hover:text-base-text'
+                  }`}
+                >
+                  Latest Run
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setResultsMode('active-issues')}
+                  className={`rounded-md px-2.5 py-1 text-xs transition-colors ${
+                    resultsMode === 'active-issues'
+                      ? 'bg-base-raised text-base-text'
+                      : 'text-base-text-muted hover:text-base-text'
+                  }`}
+                >
+                  Active Issues
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setResultsMode('timeline')}
+                  className={`rounded-md px-2.5 py-1 text-xs transition-colors ${
+                    resultsMode === 'timeline'
+                      ? 'bg-base-raised text-base-text'
+                      : 'text-base-text-muted hover:text-base-text'
+                  }`}
+                >
+                  Timeline
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Two-pane layout */}
-          <div className="flex min-h-0 flex-1">
-            <div className="shrink-0" style={{ width: treeWidth }}>
-              <DiffFileTree
-                files={prDetail.files}
-                findings={activeFindings}
-                selectedFile={selectedFile}
-                onSelectFile={setSelectedFile}
-              />
+          {resultsMode === 'active-issues' ? (
+            <div className="min-h-0 flex-1">
+              <ActiveIssuesPanel />
             </div>
-            {/* Resize handle */}
-            <div
-              onMouseDown={onResizeStart}
-              className="group relative w-0 shrink-0 cursor-col-resize"
-            >
-              <div className="absolute inset-y-0 -left-px w-0.75 transition-colors group-hover:bg-base-text-faint group-active:bg-base-text-muted" />
+          ) : resultsMode === 'timeline' ? (
+            <div className="min-h-0 flex-1">
+              <TimelinePanel />
             </div>
-            <div className="min-w-0 flex-1">
-              {findingsViewMode === 'all-issues' ? (
-                <AllFindingsPanel
-                  repoFullName={selectedPr.repo.fullName}
-                  prNumber={selectedPr.number}
-                />
-              ) : (
-                <DiffPane
-                  selectedFile={selectedFile}
+          ) : (
+            <div className="flex min-h-0 flex-1">
+              <div className="shrink-0" style={{ width: treeWidth }}>
+                <DiffFileTree
                   files={prDetail.files}
-                  fileDiffs={fileDiffs}
                   findings={activeFindings}
-                  selectedFindingIds={selectedFindingIds}
-                  onToggleFinding={toggleFinding}
-                  onPostFinding={handlePostFinding}
-                  navigateToFindingId={navigateToFindingId}
-                  onNavigated={clearNavigateToFinding}
+                  selectedFile={selectedFile}
+                  onSelectFile={setSelectedFile}
                 />
-              )}
+              </div>
+              {/* Resize handle */}
+              <div
+                onMouseDown={onResizeStart}
+                className="group relative w-0 shrink-0 cursor-col-resize"
+              >
+                <div className="absolute inset-y-0 -left-px w-0.75 transition-colors group-hover:bg-base-text-faint group-active:bg-base-text-muted" />
+              </div>
+              <div className="min-w-0 flex-1">
+                {findingsViewMode === 'all-issues' ? (
+                  <AllFindingsPanel
+                    repoFullName={selectedPr.repo.fullName}
+                    prNumber={selectedPr.number}
+                  />
+                ) : (
+                  <DiffPane
+                    selectedFile={selectedFile}
+                    files={prDetail.files}
+                    fileDiffs={fileDiffs}
+                    findings={activeFindings}
+                    selectedFindingIds={selectedFindingIds}
+                    onToggleFinding={toggleFinding}
+                    onPostFinding={handlePostFinding}
+                    navigateToFindingId={navigateToFindingId}
+                    onNavigated={clearNavigateToFinding}
+                  />
+                )}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       )}
 

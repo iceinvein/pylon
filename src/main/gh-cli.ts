@@ -215,7 +215,7 @@ export async function getPrDetail(repoFullName: string, prNumber: number): Promi
     '--repo',
     repoFullName,
     '--json',
-    'number,title,body,author,state,createdAt,updatedAt,headRefName,baseRefName,additions,deletions,reviewDecision,isDraft,url',
+    'number,title,body,author,state,createdAt,updatedAt,headRefName,baseRefName,headRefOid,baseRefOid,additions,deletions,reviewDecision,isDraft,url',
   ])
   const pr = JSON.parse(json) as Record<string, unknown>
 
@@ -279,6 +279,8 @@ export async function getPrDetail(repoFullName: string, prNumber: number): Promi
     url: pr.url as string,
     files,
     diff: diff ?? '',
+    headSha: (pr.headRefOid as string) ?? null,
+    baseSha: (pr.baseRefOid as string) ?? null,
     repo: { owner: '', repo: '', fullName: repoFullName, projectPath: '' },
   }
 }
@@ -291,19 +293,58 @@ export async function postComment(
   await execGh(['pr', 'comment', String(prNumber), '--repo', repoFullName, '--body', body])
 }
 
+export type PostedCommentResult = {
+  kind: 'inline' | 'conversation'
+  ghCommentId: number | null
+  ghCommentUrl: string | null
+  body: string
+}
+
+export type PostedReviewResult = {
+  ghReviewId: number | null
+  ghReviewUrl: string | null
+  reviewBody: string
+  inlineFindings: ReviewFinding[]
+  inlineCommentBodies: string[]
+}
+
+function safeParseJson<T = Record<string, unknown>>(raw: string): T | null {
+  if (!raw) return null
+  try {
+    return JSON.parse(raw) as T
+  } catch {
+    return null
+  }
+}
+
 export async function postFindingComment(
   repoFullName: string,
   prNumber: number,
   finding: ReviewFinding,
-): Promise<void> {
+): Promise<PostedCommentResult> {
   const commitId = await getHeadCommitSha(repoFullName, prNumber).catch(() => '')
   const detail = await getPrDetail(repoFullName, prNumber).catch(() => null)
   const prepared = prepareReviewPost([finding], commitId, detail?.diff ?? '')
   const inlineComment = prepared.comments[0]
 
   if (!inlineComment || !commitId) {
-    await postComment(repoFullName, prNumber, buildConversationCommentBody(finding))
-    return
+    const body = buildConversationCommentBody(finding)
+    const stdout = await execGh([
+      'pr',
+      'comment',
+      String(prNumber),
+      '--repo',
+      repoFullName,
+      '--body',
+      body,
+    ]).catch(() => '')
+    const urlMatch = stdout.match(/https?:\/\/\S+/)
+    return {
+      kind: 'conversation',
+      ghCommentId: null,
+      ghCommentUrl: urlMatch ? urlMatch[0] : null,
+      body,
+    }
   }
 
   const [owner, repo] = repoFullName.split('/')
@@ -321,27 +362,32 @@ export async function postFindingComment(
   await writeFile(tmpPath, payload)
 
   try {
-    await execGh(
-      [
-        'api',
-        `repos/${owner}/${repo}/pulls/${prNumber}/comments`,
-        '--method',
-        'POST',
-        '--input',
-        tmpPath,
-      ],
-      undefined,
-    )
+    const stdout = await execGh([
+      'api',
+      `repos/${owner}/${repo}/pulls/${prNumber}/comments`,
+      '--method',
+      'POST',
+      '--input',
+      tmpPath,
+    ])
+    const parsed = safeParseJson<{ id?: number; html_url?: string }>(stdout)
+    return {
+      kind: 'inline',
+      ghCommentId: typeof parsed?.id === 'number' ? parsed.id : null,
+      ghCommentUrl: typeof parsed?.html_url === 'string' ? parsed.html_url : null,
+      body: inlineComment.body,
+    }
   } finally {
     await unlink(tmpPath).catch(() => {})
   }
 }
+
 export async function postReview(
   repoFullName: string,
   prNumber: number,
   findings: ReviewFinding[],
   commitId: string,
-): Promise<void> {
+): Promise<PostedReviewResult> {
   const detail = await getPrDetail(repoFullName, prNumber).catch(() => null)
   const prepared = prepareReviewPost(findings, commitId, detail?.diff ?? '')
 
@@ -357,17 +403,62 @@ export async function postReview(
   await writeFile(tmpPath, payload)
 
   try {
-    await execGh(
-      [
-        'api',
-        `repos/${owner}/${repo}/pulls/${prNumber}/reviews`,
-        '--method',
-        'POST',
-        '--input',
-        tmpPath,
-      ],
-      undefined,
-    )
+    const stdout = await execGh([
+      'api',
+      `repos/${owner}/${repo}/pulls/${prNumber}/reviews`,
+      '--method',
+      'POST',
+      '--input',
+      tmpPath,
+    ])
+    const parsed = safeParseJson<{ id?: number; html_url?: string }>(stdout)
+    return {
+      ghReviewId: typeof parsed?.id === 'number' ? parsed.id : null,
+      ghReviewUrl: typeof parsed?.html_url === 'string' ? parsed.html_url : null,
+      reviewBody: prepared.body,
+      inlineFindings: prepared.inlineFindings,
+      inlineCommentBodies: prepared.comments.map((c) => c.body),
+    }
+  } finally {
+    await unlink(tmpPath).catch(() => {})
+  }
+}
+
+/**
+ * Append a note to an inline pull-request review comment. Fetches the current body,
+ * appends the note, then PATCHes the comment. Returns true on success.
+ * Used to mark a previously-posted finding as resolved when revalidation says so.
+ */
+export async function appendToPullRequestReviewComment(
+  repoFullName: string,
+  commentId: number,
+  appendNote: string,
+): Promise<boolean> {
+  const [owner, repo] = repoFullName.split('/')
+  let currentBody = ''
+  try {
+    const stdout = await execGh(['api', `repos/${owner}/${repo}/pulls/comments/${commentId}`])
+    const parsed = safeParseJson<{ body?: string }>(stdout)
+    currentBody = typeof parsed?.body === 'string' ? parsed.body : ''
+  } catch {
+    return false
+  }
+
+  const payload = JSON.stringify({ body: `${currentBody}${appendNote}` })
+  const tmpPath = join(tmpdir(), `pylon-edit-comment-${Date.now()}.json`)
+  await writeFile(tmpPath, payload)
+  try {
+    await execGh([
+      'api',
+      `repos/${owner}/${repo}/pulls/comments/${commentId}`,
+      '--method',
+      'PATCH',
+      '--input',
+      tmpPath,
+    ])
+    return true
+  } catch {
+    return false
   } finally {
     await unlink(tmpPath).catch(() => {})
   }

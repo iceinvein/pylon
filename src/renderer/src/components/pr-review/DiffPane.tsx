@@ -2,6 +2,7 @@ import { CheckCircle2, ChevronDown, ChevronUp, Columns2, Eye, Rows3 } from 'luci
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReviewFinding } from '../../../../shared/types'
 import { filePathMatches, parseUnifiedDiffToHunks } from '../../lib/diff-utils'
+import { isVisibleLatestRunFinding } from '../../lib/pr-review-findings'
 import { DiffView } from '../DiffView'
 import { DiffFindingAnnotation } from './DiffFindingAnnotation'
 import { SplitDiffView } from './SplitDiffView'
@@ -62,7 +63,11 @@ export function DiffPane({
 
   const fileFindings = useMemo(
     () =>
-      selectedFile ? findings.filter((f) => f.file && filePathMatches(f.file, selectedFile)) : [],
+      selectedFile
+        ? findings.filter(
+            (f) => isVisibleLatestRunFinding(f) && f.file && filePathMatches(f.file, selectedFile),
+          )
+        : [],
     [selectedFile, findings],
   )
 
@@ -170,7 +175,7 @@ export function DiffPane({
 
   // Overview mode — general findings (no file)
   if (selectedFile === null) {
-    const generalFindings = findings.filter((f) => !f.file)
+    const generalFindings = findings.filter((f) => isVisibleLatestRunFinding(f) && !f.file)
     return (
       <div className="flex h-full flex-col">
         <div className="flex items-center gap-2 border-base-border-subtle border-b bg-base-surface/30 px-4 py-2">

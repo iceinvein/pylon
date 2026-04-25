@@ -1,4 +1,5 @@
 import { CheckCircle2 } from 'lucide-react'
+import { isVisibleLatestRunFinding } from '../../lib/pr-review-findings'
 import { usePrReviewStore } from '../../store/pr-review-store'
 import { FindingCard } from './FindingCard'
 
@@ -43,7 +44,7 @@ export function AllFindingsPanel({ repoFullName, prNumber }: Props) {
   } = usePrReviewStore()
 
   const filtered = activeFindings
-    .filter((f) => severityFilter.has(f.severity))
+    .filter((f) => isVisibleLatestRunFinding(f) && severityFilter.has(f.severity))
     .sort((a, b) => {
       if (a.posted !== b.posted) return a.posted ? 1 : -1
       const sevDiff = (SEVERITY_ORDER[a.severity] ?? 2) - (SEVERITY_ORDER[b.severity] ?? 2)
@@ -52,7 +53,7 @@ export function AllFindingsPanel({ repoFullName, prNumber }: Props) {
     })
 
   const counts = new Map<string, number>()
-  for (const f of activeFindings) {
+  for (const f of activeFindings.filter((finding) => isVisibleLatestRunFinding(finding))) {
     counts.set(f.severity, (counts.get(f.severity) ?? 0) + 1)
   }
 

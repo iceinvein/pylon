@@ -1,4 +1,5 @@
 import { CheckCircle2 } from 'lucide-react'
+import { isVisibleLatestRunFinding } from '../../lib/pr-review-findings'
 import { usePrReviewStore } from '../../store/pr-review-store'
 import { FindingCard } from './FindingCard'
 
@@ -17,8 +18,9 @@ const SEVERITY_ORDER: Record<string, number> = {
 export function FindingsList({ repoFullName, prNumber }: Props) {
   const { activeFindings, selectedFindingIds, postingFindingIds, toggleFinding, postFinding } =
     usePrReviewStore()
+  const visibleFindings = activeFindings.filter((finding) => isVisibleLatestRunFinding(finding))
 
-  if (activeFindings.length === 0) {
+  if (visibleFindings.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center gap-2 py-16 text-base-text-faint">
         <CheckCircle2 size={24} strokeWidth={1.5} />
@@ -27,15 +29,15 @@ export function FindingsList({ repoFullName, prNumber }: Props) {
     )
   }
 
-  const sorted = [...activeFindings].sort((a, b) => {
+  const sorted = [...visibleFindings].sort((a, b) => {
     if (a.posted !== b.posted) return a.posted ? 1 : -1
     return (SEVERITY_ORDER[a.severity] ?? 2) - (SEVERITY_ORDER[b.severity] ?? 2)
   })
 
-  const blockerCount = activeFindings.filter((f) => f.severity === 'blocker').length
-  const highCount = activeFindings.filter((f) => f.severity === 'high').length
-  const mediumCount = activeFindings.filter((f) => f.severity === 'medium').length
-  const postedCount = activeFindings.filter((f) => f.posted).length
+  const blockerCount = visibleFindings.filter((f) => f.severity === 'blocker').length
+  const highCount = visibleFindings.filter((f) => f.severity === 'high').length
+  const mediumCount = visibleFindings.filter((f) => f.severity === 'medium').length
+  const postedCount = visibleFindings.filter((f) => f.posted).length
 
   return (
     <div>
@@ -51,12 +53,12 @@ export function FindingsList({ repoFullName, prNumber }: Props) {
             </span>
           )}
           {highCount > 0 && (
-            <span className="rounded bg-[var(--color-risk-high)]/10 px-1.5 py-0.5 font-medium text-[10px] text-[var(--color-risk-high)] tabular-nums">
+            <span className="rounded bg-risk-high/10 px-1.5 py-0.5 font-medium text-[10px] text-risk-high tabular-nums">
               {highCount} high
             </span>
           )}
           {mediumCount > 0 && (
-            <span className="rounded bg-[var(--color-risk-medium)]/10 px-1.5 py-0.5 font-medium text-[10px] text-[var(--color-risk-medium)] tabular-nums">
+            <span className="rounded bg-risk-medium/10 px-1.5 py-0.5 font-medium text-[10px] text-risk-medium tabular-nums">
               {mediumCount} medium
             </span>
           )}

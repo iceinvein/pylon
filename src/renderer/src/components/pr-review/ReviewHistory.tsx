@@ -43,6 +43,24 @@ function timeAgo(ts: number): string {
   return `${days}d ago`
 }
 
+function shortSha(sha: string | null | undefined): string | null {
+  return sha ? sha.slice(0, 7) : null
+}
+
+function summaryPills(summary: {
+  newCount: number
+  persistingCount: number
+  resolvedCount: number
+  staleCount: number
+}) {
+  return [
+    summary.newCount > 0 ? `${summary.newCount} new` : null,
+    summary.persistingCount > 0 ? `${summary.persistingCount} persisting` : null,
+    summary.resolvedCount > 0 ? `${summary.resolvedCount} resolved` : null,
+    summary.staleCount > 0 ? `${summary.staleCount} stale` : null,
+  ].filter((value): value is string => Boolean(value))
+}
+
 export function ReviewHistory() {
   const { reviews, activeReview, activeFindings, loadReview, deleteReview } = usePrReviewStore()
 
@@ -66,6 +84,7 @@ export function ReviewHistory() {
             isActive && r.status === 'done' ? activeFindings.length : r.findings.length
           const config = STATUS_CONFIG[r.status] ?? STATUS_CONFIG.pending
           const StatusIcon = config.icon
+          const pills = summaryPills(r.summary)
 
           return (
             <div
@@ -81,10 +100,30 @@ export function ReviewHistory() {
               >
                 <StatusIcon size={12} className={`shrink-0 ${config.color} ${config.iconClass}`} />
                 <span className="text-base-text-secondary text-xs">{timeAgo(r.createdAt)}</span>
+                <span className="rounded border border-base-border px-1 py-0.5 text-[10px] text-base-text-faint uppercase tracking-wide">
+                  {r.reviewMode}
+                </span>
                 <span className="truncate text-base-text-faint text-xs">{r.focus.join(', ')}</span>
+                {shortSha(r.snapshot.comparedFromSha) && shortSha(r.snapshot.comparedToSha) && (
+                  <span className="shrink-0 font-mono text-[10px] text-base-text-faint">
+                    {shortSha(r.snapshot.comparedFromSha)}-{shortSha(r.snapshot.comparedToSha)}
+                  </span>
+                )}
                 {r.costUsd > 0 && (
                   <span className="shrink-0 font-mono text-[10px] text-base-text-faint">
                     {formatCost(r.costUsd)}
+                  </span>
+                )}
+                {pills.length > 0 && (
+                  <span className="hidden items-center gap-1 md:flex">
+                    {pills.map((pill) => (
+                      <span
+                        key={`${r.id}-${pill}`}
+                        className="rounded border border-base-border px-1 py-0.5 text-[10px] text-base-text-faint"
+                      >
+                        {pill}
+                      </span>
+                    ))}
                   </span>
                 )}
                 <span className={`ml-auto shrink-0 font-medium text-xs ${config.color}`}>

@@ -153,11 +153,26 @@ const api = {
     prTitle: string
     prUrl: string
     focus: string[]
+    options?: {
+      mode?: 'auto' | 'full' | 'incremental'
+      baselineReviewId?: string
+      includeRevalidation?: boolean
+    }
   }) => ipcRenderer.invoke(IPC.GH_START_REVIEW, args),
   stopGhReview: (reviewId: string) => ipcRenderer.invoke(IPC.GH_STOP_REVIEW, { reviewId }),
   listGhReviews: (repo?: string, prNumber?: number) =>
     ipcRenderer.invoke(IPC.GH_LIST_REVIEWS, { repo, prNumber }),
   getGhReview: (reviewId: string) => ipcRenderer.invoke(IPC.GH_GET_REVIEW, { reviewId }),
+  getGhReviewSeries: (repo: string, prNumber: number) =>
+    ipcRenderer.invoke(IPC.GH_GET_REVIEW_SERIES, { repo, prNumber }),
+  getGhReviewThreads: (seriesId: string) =>
+    ipcRenderer.invoke(IPC.GH_GET_REVIEW_THREADS, { seriesId }),
+  getGhReviewTimeline: (seriesId: string) =>
+    ipcRenderer.invoke(IPC.GH_GET_REVIEW_TIMELINE, { seriesId }),
+  getGhFindingPosts: (args: { threadId?: string; findingId?: string; seriesId?: string }) =>
+    ipcRenderer.invoke(IPC.GH_GET_FINDING_POSTS, args),
+  getGhReviewRunFiles: (reviewId: string) =>
+    ipcRenderer.invoke(IPC.GH_GET_REVIEW_RUN_FILES, { reviewId }),
   deleteGhReview: (reviewId: string) => ipcRenderer.invoke(IPC.GH_DELETE_REVIEW, { reviewId }),
   saveGhFindings: (reviewId: string, findings: unknown[]) =>
     ipcRenderer.invoke(IPC.GH_SAVE_FINDINGS, { reviewId, findings }),

@@ -2,6 +2,7 @@ import {
   AlertCircle,
   AlertTriangle,
   CheckCircle2,
+  ExternalLink,
   Info,
   Lightbulb,
   Loader2,
@@ -9,6 +10,11 @@ import {
 } from 'lucide-react'
 import { parseReviewFindingDescription } from '../../../../shared/review-finding-description'
 import type { ReviewFinding } from '../../../../shared/types'
+import {
+  isPostableFinding,
+  REVIEW_FINDING_STATUS_LABELS,
+  REVIEW_FINDING_STATUS_STYLES,
+} from '../../lib/pr-review-findings'
 
 type Props = {
   finding: ReviewFinding
@@ -87,6 +93,7 @@ export function FindingCard({
   const style = SEVERITY_STYLES[finding.severity] ?? SEVERITY_STYLES.medium
   const Icon = style.icon
   const descriptionSections = parseReviewFindingDescription(finding.description)
+  const canPost = isPostableFinding(finding)
 
   const borderClass = finding.posted ? style.postedBorder : style.border
   const bgClass = finding.posted ? 'bg-[var(--color-success)]/5' : style.bg
@@ -107,6 +114,7 @@ export function FindingCard({
               type="checkbox"
               checked={checked}
               onChange={onToggle}
+              disabled={!canPost}
               className="h-3.5 w-3.5 rounded border-base-border bg-base-raised accent-accent"
             />
           )}
@@ -133,6 +141,29 @@ export function FindingCard({
                   <span className="rounded bg-base-raised px-1.5 py-0.5 font-medium text-[10px] text-base-text-muted uppercase tracking-wider">
                     {DOMAIN_LABELS[finding.domain] ?? finding.domain}
                   </span>
+                )}
+                <span
+                  className={`rounded-full px-1.5 py-0.5 font-medium text-[10px] uppercase tracking-wide ${
+                    REVIEW_FINDING_STATUS_STYLES[finding.statusInRun]
+                  }`}
+                >
+                  {REVIEW_FINDING_STATUS_LABELS[finding.statusInRun]}
+                </span>
+                {finding.carriedForward && (
+                  <span className="rounded border border-base-border px-1.5 py-0.5 font-medium text-[10px] text-base-text-faint uppercase tracking-wide">
+                    Carried Forward
+                  </span>
+                )}
+                {finding.postUrl && (
+                  <a
+                    href={finding.postUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 rounded border border-success/30 bg-success/10 px-1.5 py-0.5 font-medium text-[10px] text-success uppercase tracking-wide transition-colors hover:bg-success/20"
+                    title="View on GitHub"
+                  >
+                    <ExternalLink size={10} /> View on GitHub
+                  </a>
                 )}
               </div>
               {finding.file && (
@@ -191,7 +222,7 @@ export function FindingCard({
         </div>
 
         {/* Post action */}
-        {!finding.posted && !isPosting && (
+        {canPost && !isPosting && (
           <button
             type="button"
             onClick={onPost}

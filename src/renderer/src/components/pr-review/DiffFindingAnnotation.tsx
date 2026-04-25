@@ -9,6 +9,11 @@ import {
 } from 'lucide-react'
 import { parseReviewFindingDescription } from '../../../../shared/review-finding-description'
 import type { ReviewFinding } from '../../../../shared/types'
+import {
+  isPostableFinding,
+  REVIEW_FINDING_STATUS_LABELS,
+  REVIEW_FINDING_STATUS_STYLES,
+} from '../../lib/pr-review-findings'
 import { usePrReviewStore } from '../../store/pr-review-store'
 
 type Props = {
@@ -79,6 +84,7 @@ export function DiffFindingAnnotation({ finding, checked, onToggle, onPost }: Pr
   const config = SEVERITY_CONFIG[finding.severity] ?? SEVERITY_CONFIG.medium
   const Icon = config.icon
   const descriptionSections = parseReviewFindingDescription(finding.description)
+  const canPost = isPostableFinding(finding)
 
   const borderClass = finding.posted ? config.postedBorder : config.border
   const bgClass = finding.posted ? 'bg-[var(--color-success)]/5' : config.bg
@@ -99,6 +105,7 @@ export function DiffFindingAnnotation({ finding, checked, onToggle, onPost }: Pr
               type="checkbox"
               checked={checked}
               onChange={onToggle}
+              disabled={!canPost}
               className="h-3 w-3 rounded border-base-border bg-base-raised accent-accent"
             />
           )}
@@ -123,6 +130,13 @@ export function DiffFindingAnnotation({ finding, checked, onToggle, onPost }: Pr
                 {DOMAIN_LABELS[finding.domain] ?? finding.domain}
               </span>
             )}
+            <span
+              className={`rounded-full px-1 py-0.5 font-medium text-[10px] uppercase tracking-wide ${
+                REVIEW_FINDING_STATUS_STYLES[finding.statusInRun]
+              }`}
+            >
+              {REVIEW_FINDING_STATUS_LABELS[finding.statusInRun]}
+            </span>
           </div>
           <div className="mt-2 space-y-1.5">
             {descriptionSections.map((section) => (
@@ -150,7 +164,7 @@ export function DiffFindingAnnotation({ finding, checked, onToggle, onPost }: Pr
           </p>
         </div>
 
-        {!finding.posted && !isPosting && (
+        {canPost && !isPosting && (
           <button
             type="button"
             onClick={onPost}

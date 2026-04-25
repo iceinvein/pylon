@@ -342,9 +342,22 @@ export type GhPrDetail = GhPullRequest & {
   body: string
   files: Array<{ path: string; additions: number; deletions: number }>
   diff: string
+  headSha: string | null
+  baseSha: string | null
 }
 
 export type ReviewFindingSeverity = 'blocker' | 'high' | 'medium' | 'low'
+
+export type ReviewMode = 'full' | 'incremental'
+
+export type ReviewModePreference = 'auto' | 'full' | 'incremental'
+
+export type ReviewFindingStatusInRun =
+  | 'new'
+  | 'persisting'
+  | 'resolved'
+  | 'stale'
+  | 'needs_revalidation'
 
 export type ReviewFindingRisk = {
   impact: 'critical' | 'high' | 'medium' | 'low'
@@ -369,8 +382,40 @@ export type ReviewFinding = {
   description: string
   domain: ReviewFocus | null
   posted: boolean
+  postUrl: string | null
+  threadId: string | null
+  statusInRun: ReviewFindingStatusInRun
+  carriedForward: boolean
+  sourceReviewId: string | null
   suggestion?: ReviewFindingSuggestion
   mergedFrom?: { domain: string; title: string }[]
+}
+
+export type ReviewRunFile = {
+  filePath: string
+  status: string
+  oldPath: string | null
+  touched: boolean
+  patchHash: string | null
+}
+
+export type FindingPostKind = 'inline' | 'conversation' | 'review'
+
+export type FindingPost = {
+  id: string
+  seriesId: string | null
+  threadId: string | null
+  findingId: string
+  reviewId: string
+  repoFullName: string
+  prNumber: number
+  kind: FindingPostKind
+  ghCommentId: number | null
+  ghCommentUrl: string | null
+  ghReviewId: number | null
+  bodyHash: string
+  postedAt: number
+  resolvedAt: number | null
 }
 
 export type ReviewFocus =
@@ -384,13 +429,40 @@ export type ReviewFocus =
 
 export type ReviewStatus = 'pending' | 'running' | 'done' | 'error'
 
+export type ReviewSnapshot = {
+  baseSha: string | null
+  headSha: string | null
+  mergeBaseSha: string | null
+  comparedFromSha: string | null
+  comparedToSha: string | null
+}
+
+export type ReviewRunSummary = {
+  newCount: number
+  persistingCount: number
+  resolvedCount: number
+  staleCount: number
+}
+
+export type StartPrReviewOptions = {
+  mode?: ReviewModePreference
+  baselineReviewId?: string
+  includeRevalidation?: boolean
+}
+
 export type PrReview = {
   id: string
+  seriesId: string | null
+  parentReviewId: string | null
   prNumber: number
   repo: GhRepo
   prTitle: string
   prUrl: string
   status: ReviewStatus
+  reviewMode: ReviewMode
+  snapshot: ReviewSnapshot
+  summary: ReviewRunSummary
+  incrementalValid: boolean
   focus: ReviewFocus[]
   findings: ReviewFinding[]
   sessionId: string | null
@@ -398,6 +470,42 @@ export type PrReview = {
   completedAt: number | null
   createdAt: number
   costUsd: number
+}
+
+export type PrReviewSeries = {
+  id: string
+  repo: GhRepo
+  prNumber: number
+  latestReviewId: string | null
+  createdAt: number
+  updatedAt: number
+}
+
+export type ReviewThread = {
+  id: string
+  seriesId: string
+  fingerprint: string
+  domain: ReviewFocus | null
+  canonicalTitle: string
+  status: ReviewFindingStatusInRun
+  firstSeenReviewId: string
+  lastSeenReviewId: string
+  lastFile: string | null
+  lastLine: number | null
+  createdAt: number
+  updatedAt: number
+}
+
+export type ReviewTimelineEntry = {
+  reviewId: string
+  threadId: string
+  status: ReviewFindingStatusInRun
+  title: string
+  file: string | null
+  line: number | null
+  domain: ReviewFocus | null
+  carriedForward: boolean
+  createdAt: number
 }
 
 export type ReviewAgentConfig = {

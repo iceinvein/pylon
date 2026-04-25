@@ -9,11 +9,16 @@ import type {
   PrContextMode,
   PrContextUpdate,
   PrReview,
+  PrReviewSeries,
   ReviewFinding,
   ReviewFindingRisk,
   ReviewFindingSeverity,
   ReviewFocus,
+  ReviewRunFile,
+  ReviewThread,
+  ReviewTimelineEntry,
 } from '../../../shared/types'
+import { isPostableFinding } from '../lib/pr-review-findings'
 
 const logger = log.child('pr-review-store')
 
@@ -162,6 +167,11 @@ function parseFindingsFromText(text: string): ReviewFinding[] {
       description: String(f.description || ''),
       domain: (f.domain as ReviewFocus) ?? null,
       posted: false,
+      postUrl: null,
+      threadId: null,
+      statusInRun: 'new',
+      carriedForward: false,
+      sourceReviewId: null,
       suggestion: normalizeSuggestion(f),
     }))
   } catch {
@@ -182,6 +192,10 @@ type PrReviewStore = {
   prDetail: GhPrDetail | null
   prDetailLoading: boolean
   prDetailError: string | null
+  activeSeries: PrReviewSeries | null
+  activeThreads: ReviewThread[]
+  activeTimeline: ReviewTimelineEntry[]
+  activeRunFiles: ReviewRunFile[]
   reviews: PrReview[]
   activeReview: PrReview | null
   activeFindings: ReviewFinding[]
@@ -202,6 +216,7 @@ type PrReviewStore = {
   _loadPrsSeq: number
   _selectPrSeq: number
   unseenCount: number
+  resultsMode: 'latest-run' | 'active-issues' | 'timeline'
   findingsViewMode: 'files' | 'all-issues'
   severityFilter: Set<ReviewFindingSeverity>
   navigateToFindingId: string | null
@@ -220,6 +235,10 @@ type PrReviewStore = {
   loadPrs: (repo?: string, state?: GhPrStateFilter) => Promise<void>
   selectPr: (pr: GhPullRequest | null) => Promise<void>
   loadPrReviews: (repo: string, prNumber: number) => Promise<void>
+  loadReviewSeries: (repo: string, prNumber: number) => Promise<void>
+  loadReviewThreads: (seriesId: string) => Promise<void>
+  loadReviewTimeline: (seriesId: string) => Promise<void>
+  loadRunFiles: (reviewId: string) => Promise<void>
   startReview: (repo: GhRepo, pr: GhPullRequest, focus: ReviewFocus[]) => Promise<void>
   stopReview: (reviewId: string) => Promise<void>
   loadReview: (reviewId: string) => Promise<void>
@@ -238,12 +257,17 @@ type PrReviewStore = {
     streamingText?: string
     error?: string
     costUsd?: number
+    reviewMode?: PrReview['reviewMode']
+    snapshot?: PrReview['snapshot']
+    incrementalValid?: boolean
+    summary?: PrReview['summary']
     agentProgress?: PrReviewStore['agentProgress']
   }) => void
   setUnseenCount: (count: number) => void
   markPrSeen: (repo: string, prNumber: number) => Promise<void>
   loadCachedPrs: (repo?: string, seq?: number) => Promise<void>
   forcePoll: () => Promise<void>
+  setResultsMode: (mode: 'latest-run' | 'active-issues' | 'timeline') => void
   setFindingsViewMode: (mode: 'files' | 'all-issues') => void
   toggleSeverityFilter: (severity: ReviewFindingSeverity) => void
   navigateToFinding: (findingId: string) => void
@@ -264,6 +288,10 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
   prDetail: null,
   prDetailLoading: false,
   prDetailError: null,
+  activeSeries: null,
+  activeThreads: [],
+  activeTimeline: [],
+  activeRunFiles: [],
   reviews: [],
   activeReview: null,
   activeFindings: [],
@@ -277,6 +305,7 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
   _loadPrsSeq: 0,
   _selectPrSeq: 0,
   unseenCount: 0,
+  resultsMode: 'latest-run',
   findingsViewMode: 'files',
   severityFilter: new Set(['blocker', 'high', 'medium', 'low']),
   navigateToFindingId: null,
@@ -314,6 +343,9 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
               selectedPr: null,
               prDetail: null,
               prDetailError: null,
+              activeSeries: null,
+              activeThreads: [],
+              activeTimeline: [],
               activeReview: null,
               activeFindings: [],
               reviewStreamingText: '',
@@ -335,6 +367,10 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
       selectedPr: null,
       prDetail: null,
       prDetailError: null,
+      activeSeries: null,
+      activeThreads: [],
+      activeTimeline: [],
+      activeRunFiles: [],
       activeReview: null,
       activeFindings: [],
       reviewStreamingText: '',
@@ -357,6 +393,10 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
       selectedPr: null,
       prDetail: null,
       prDetailError: null,
+      activeSeries: null,
+      activeThreads: [],
+      activeTimeline: [],
+      activeRunFiles: [],
       activeReview: null,
       activeFindings: [],
       reviewStreamingText: '',
@@ -424,6 +464,10 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
       prDetailError: null,
       activeReview: null,
       activeFindings: [],
+      activeSeries: null,
+      activeThreads: [],
+      activeTimeline: [],
+      activeRunFiles: [],
       reviewStreamingText: '',
       reviewError: null,
       selectedFindingIds: new Set(),
@@ -452,6 +496,7 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
     }
     if (get()._selectPrSeq === seq) {
       get().loadPrReviews(pr.repo.fullName, pr.number)
+      get().loadReviewSeries(pr.repo.fullName, pr.number)
     }
   },
 
@@ -468,6 +513,48 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
     }
   },
 
+  loadReviewSeries: async (repo, prNumber) => {
+    try {
+      const series = await window.api.getGhReviewSeries(repo, prNumber)
+      set({ activeSeries: series })
+      if (series?.id) {
+        get().loadReviewThreads(series.id)
+        get().loadReviewTimeline(series.id)
+      } else {
+        set({ activeThreads: [], activeTimeline: [] })
+      }
+    } catch (err) {
+      logger.error('loadReviewSeries failed:', err)
+    }
+  },
+
+  loadReviewThreads: async (seriesId) => {
+    try {
+      const threads = await window.api.getGhReviewThreads(seriesId)
+      set({ activeThreads: threads })
+    } catch (err) {
+      logger.error('loadReviewThreads failed:', err)
+    }
+  },
+
+  loadReviewTimeline: async (seriesId) => {
+    try {
+      const timeline = await window.api.getGhReviewTimeline(seriesId)
+      set({ activeTimeline: timeline })
+    } catch (err) {
+      logger.error('loadReviewTimeline failed:', err)
+    }
+  },
+
+  loadRunFiles: async (reviewId) => {
+    try {
+      const files = await window.api.getGhReviewRunFiles(reviewId)
+      set({ activeRunFiles: files })
+    } catch (err) {
+      logger.error('loadRunFiles failed:', err)
+    }
+  },
+
   startReview: async (repo, pr, focus) => {
     try {
       const review = await window.api.startGhReview({
@@ -476,6 +563,7 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
         prTitle: pr.title,
         prUrl: pr.url,
         focus,
+        options: { mode: 'auto', includeRevalidation: true },
       })
       set((s) => ({
         activeReview: review,
@@ -488,6 +576,7 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
         contextMode: undefined,
         contextNotes: undefined,
         contextError: undefined,
+        resultsMode: 'latest-run',
         // Add to reviews list so it shows in history
         reviews: [review, ...s.reviews],
       }))
@@ -536,6 +625,7 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
         activeFindings: findings,
         reviewStreamingText: rawOutput,
         reviewError: null,
+        resultsMode: 'latest-run',
         selectedFindingIds: new Set(),
         agentProgress: [],
         contextPhase: undefined,
@@ -543,6 +633,7 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
         contextNotes: undefined,
         contextError: undefined,
       })
+      get().loadRunFiles(reviewId)
     } catch (err) {
       logger.error('loadReview failed:', err)
     }
@@ -565,6 +656,8 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
 
   toggleFinding: (findingId) => {
     set((s) => {
+      const finding = s.activeFindings.find((entry) => entry.id === findingId)
+      if (!finding || !isPostableFinding(finding)) return s
       const next = new Set(s.selectedFindingIds)
       if (next.has(findingId)) next.delete(findingId)
       else next.add(findingId)
@@ -574,7 +667,9 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
 
   toggleSeveritySelection: (severity) => {
     set((s) => {
-      const matching = s.activeFindings.filter((f) => f.severity === severity && !f.posted)
+      const matching = s.activeFindings.filter(
+        (f) => f.severity === severity && isPostableFinding(f),
+      )
       if (matching.length === 0) return s
       const allSelected = matching.every((f) => s.selectedFindingIds.has(f.id))
       const next = new Set(s.selectedFindingIds)
@@ -588,12 +683,17 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
 
   selectAllFindings: () => {
     const { activeFindings } = get()
-    set({ selectedFindingIds: new Set(activeFindings.filter((f) => !f.posted).map((f) => f.id)) })
+    set({
+      selectedFindingIds: new Set(
+        activeFindings.filter((f) => isPostableFinding(f)).map((f) => f.id),
+      ),
+    })
   },
 
   clearFindingSelection: () => set({ selectedFindingIds: new Set() }),
 
   postFinding: async (finding, repo, prNumber) => {
+    if (!isPostableFinding(finding)) return
     set((s) => ({ postingFindingIds: new Set(s.postingFindingIds).add(finding.id) }))
     try {
       await window.api.postGhComment(repo, prNumber, finding)
@@ -620,14 +720,16 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
 
   postSelectedAsReview: async (repo, prNumber) => {
     const { activeFindings, selectedFindingIds } = get()
-    const selected = activeFindings.filter((f) => selectedFindingIds.has(f.id) && !f.posted)
+    const selected = activeFindings.filter(
+      (f) => selectedFindingIds.has(f.id) && isPostableFinding(f),
+    )
     if (selected.length === 0) return
     set({ postingBatch: 'selected' })
     try {
       await window.api.postGhReview(repo, prNumber, selected, '')
       set((s) => ({
         activeFindings: s.activeFindings.map((f) =>
-          selectedFindingIds.has(f.id) ? { ...f, posted: true } : f,
+          selectedFindingIds.has(f.id) && isPostableFinding(f) ? { ...f, posted: true } : f,
         ),
         selectedFindingIds: new Set(),
         postingBatch: null,
@@ -641,16 +743,18 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
 
   postAllAsReview: async (repo, prNumber) => {
     const { activeFindings } = get()
-    const unposted = activeFindings.filter((f) => !f.posted)
-    if (unposted.length === 0) return
+    const eligible = activeFindings.filter((f) => isPostableFinding(f))
+    if (eligible.length === 0) return
     set({ postingBatch: 'all' })
     try {
-      await window.api.postGhReview(repo, prNumber, unposted, '')
+      await window.api.postGhReview(repo, prNumber, eligible, '')
       set((s) => ({
-        activeFindings: s.activeFindings.map((f) => ({ ...f, posted: true })),
+        activeFindings: s.activeFindings.map((f) =>
+          isPostableFinding(f) ? { ...f, posted: true } : f,
+        ),
         selectedFindingIds: new Set(),
         postingBatch: null,
-        lastPostResult: { count: unposted.length, timestamp: Date.now() },
+        lastPostResult: { count: eligible.length, timestamp: Date.now() },
       }))
     } catch (err) {
       logger.error('postAllAsReview failed:', err)
@@ -688,6 +792,8 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
       logger.error('forcePoll failed:', err)
     }
   },
+
+  setResultsMode: (mode) => set({ resultsMode: mode }),
 
   setFindingsViewMode: (mode) => set({ findingsViewMode: mode }),
 
@@ -731,6 +837,10 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
         ...s.activeReview,
         status: data.status as PrReview['status'],
         ...(data.costUsd !== undefined && { costUsd: data.costUsd }),
+        ...(data.reviewMode !== undefined && { reviewMode: data.reviewMode }),
+        ...(data.snapshot !== undefined && { snapshot: data.snapshot }),
+        ...(data.incrementalValid !== undefined && { incrementalValid: data.incrementalValid }),
+        ...(data.summary !== undefined && { summary: data.summary }),
       }
       const updates: Partial<PrReviewStore> = {
         activeReview: updatedReview,
@@ -786,6 +896,12 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
                 ...r,
                 status: data.status as PrReview['status'],
                 ...(data.costUsd !== undefined && { costUsd: data.costUsd }),
+                ...(data.reviewMode !== undefined && { reviewMode: data.reviewMode }),
+                ...(data.snapshot !== undefined && { snapshot: data.snapshot }),
+                ...(data.incrementalValid !== undefined && {
+                  incrementalValid: data.incrementalValid,
+                }),
+                ...(data.summary !== undefined && { summary: data.summary }),
               }
             : r,
         )
@@ -793,5 +909,12 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
 
       return updates
     })
+
+    if (data.status === 'done') {
+      const selectedPr = get().selectedPr
+      if (selectedPr) {
+        get().loadReviewSeries(selectedPr.repo.fullName, selectedPr.number)
+      }
+    }
   },
 }))

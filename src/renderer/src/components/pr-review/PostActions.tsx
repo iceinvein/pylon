@@ -1,5 +1,6 @@
 import { Check, CheckCheck, Loader2, Send } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { isPostableFinding } from '../../lib/pr-review-findings'
 import { usePrReviewStore } from '../../store/pr-review-store'
 
 type Props = {
@@ -66,12 +67,12 @@ export function PostActions({ repoFullName, prNumber }: Props) {
     return () => clearTimeout(timer)
   }, [lastPostResult?.timestamp, lastPostResult])
 
-  const unposted = activeFindings.filter((f) => !f.posted)
+  const postable = activeFindings.filter((f) => isPostableFinding(f))
   const selectedCount = [...selectedFindingIds].filter((id) =>
-    activeFindings.find((f) => f.id === id && !f.posted),
+    activeFindings.find((f) => f.id === id && isPostableFinding(f)),
   ).length
 
-  if (unposted.length === 0 && !successMsg) return null
+  if (postable.length === 0 && !successMsg) return null
 
   const isPosting = postingBatch !== null
 
@@ -85,7 +86,7 @@ export function PostActions({ repoFullName, prNumber }: Props) {
         </div>
       )}
 
-      {unposted.length > 0 && (
+      {postable.length > 0 && (
         <div className="flex items-center gap-3 px-5 py-3">
           <button
             type="button"
@@ -99,9 +100,9 @@ export function PostActions({ repoFullName, prNumber }: Props) {
           {/* Severity filter pills */}
           <div className="flex items-center gap-1.5">
             {SEVERITY_PILLS.map(({ key, label, activeClass, inactiveClass }) => {
-              const count = unposted.filter((f) => f.severity === key).length
+              const count = postable.filter((f) => f.severity === key).length
               if (count === 0) return null
-              const matching = unposted.filter((f) => f.severity === key)
+              const matching = postable.filter((f) => f.severity === key)
               const isActive = matching.every((f) => selectedFindingIds.has(f.id))
               return (
                 <button
@@ -144,7 +145,7 @@ export function PostActions({ repoFullName, prNumber }: Props) {
             ) : (
               <CheckCheck size={12} />
             )}
-            {postingBatch === 'all' ? 'Posting...' : `Post All (${unposted.length})`}
+            {postingBatch === 'all' ? 'Posting...' : `Post All (${postable.length})`}
           </button>
         </div>
       )}

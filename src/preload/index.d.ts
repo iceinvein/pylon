@@ -118,6 +118,7 @@ type Api = {
     prTitle: string
     prUrl: string
     focus: string[]
+    options?: import('../shared/types').StartPrReviewOptions
   }) => Promise<import('../shared/types').PrReview>
   stopGhReview: (reviewId: string) => Promise<boolean>
   listGhReviews: (repo?: string, prNumber?: number) => Promise<import('../shared/types').PrReview[]>
@@ -127,6 +128,20 @@ type Api = {
     | (import('../shared/types').PrReview & { findings: import('../shared/types').ReviewFinding[] })
     | null
   >
+  getGhReviewSeries: (
+    repo: string,
+    prNumber: number,
+  ) => Promise<import('../shared/types').PrReviewSeries | null>
+  getGhReviewThreads: (seriesId: string) => Promise<import('../shared/types').ReviewThread[]>
+  getGhReviewTimeline: (
+    seriesId: string,
+  ) => Promise<import('../shared/types').ReviewTimelineEntry[]>
+  getGhFindingPosts: (args: {
+    threadId?: string
+    findingId?: string
+    seriesId?: string
+  }) => Promise<import('../shared/types').FindingPost[]>
+  getGhReviewRunFiles: (reviewId: string) => Promise<import('../shared/types').ReviewRunFile[]>
   deleteGhReview: (reviewId: string) => Promise<boolean>
   saveGhFindings: (
     reviewId: string,

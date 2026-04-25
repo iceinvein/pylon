@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process'
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { existsSync } from 'node:fs'
 import { mkdir, rm } from 'node:fs/promises'
 import { homedir } from 'node:os'
@@ -9,15 +9,24 @@ import type { BrowserWindow } from 'electron'
 import { IPC } from '../shared/ipc-channels'
 import { log } from '../shared/logger'
 import type {
+  FindingPost,
+  FindingPostKind,
   GhRepo,
   PrContextUpdate,
   PrReview,
+  PrReviewSeries,
   ReviewFinding,
   ReviewFindingRisk,
   ReviewFindingSeverity,
   ReviewFindingSuggestion,
   ReviewFocus,
+  ReviewMode,
+  ReviewModePreference,
+  ReviewRunSummary,
   ReviewStatus,
+  ReviewThread,
+  ReviewTimelineEntry,
+  StartPrReviewOptions,
 } from '../shared/types'
 import { getDb } from './db'
 import { type ChunkResult, chunkDiff, getTokenBudget } from './diff-chunker'
@@ -27,6 +36,7 @@ import { CodeIntelligenceMcpClient } from './pr-context/mcp-client'
 import { McpContextBackend } from './pr-context/mcp-context-backend'
 import type { PrContextBackend } from './pr-context/pr-context-backend'
 import { PrContextBuilder } from './pr-context/pr-context-builder'
+import { resolveReviewScope } from './review-scope'
 import { sessionManager } from './session-manager'
 
 const execFileAsync = promisify(execFile)
@@ -438,6 +448,34 @@ type ActiveReviewSession = {
   contextAbort?: AbortController
 }
 
+type PreviousReviewBaseline = {
+  reviewId: string
+  headSha: string | null
+  baseSha: string | null
+}
+
+const EMPTY_REVIEW_SUMMARY: ReviewRunSummary = {
+  newCount: 0,
+  persistingCount: 0,
+  resolvedCount: 0,
+  staleCount: 0,
+}
+
+type ThreadAssignment = {
+  finding: ReviewFinding
+  fingerprint: string | null
+  matchedBy: string | null
+}
+
+type StoredReviewThread = {
+  id: string
+  fingerprint: string
+  firstSeenReviewId: string
+  lastSeenReviewId: string
+  status: ReviewThread['status']
+  lastFinding: ReviewFinding | null
+}
+
 class PrReviewManager {
   private activeReviews = new Map<string, ActiveReviewSession>()
   private prWorktrees = new Map<string, { path: string; repoPath: string }>()
@@ -467,6 +505,290 @@ class PrReviewManager {
     }
   }
 
+  private updateReviewSummary(reviewId: string, summary: ReviewRunSummary): void {
+    const db = getDb()
+    db.prepare('UPDATE pr_reviews SET summary_json = ? WHERE id = ?').run(
+      JSON.stringify(summary),
+      reviewId,
+    )
+  }
+
+  private updateReviewScopeMetadata(
+    reviewId: string,
+    scope: {
+      reviewMode: ReviewMode
+      comparedFromSha: string | null
+      comparedToSha: string | null
+      incrementalValid: boolean
+      scopeLabel: string
+    },
+  ): void {
+    const db = getDb()
+    db.prepare(
+      'UPDATE pr_reviews SET review_mode = ?, compared_from_sha = ?, compared_to_sha = ?, incremental_valid = ?, review_scope = ? WHERE id = ?',
+    ).run(
+      scope.reviewMode,
+      scope.comparedFromSha,
+      scope.comparedToSha,
+      scope.incrementalValid ? 1 : 0,
+      scope.scopeLabel,
+      reviewId,
+    )
+  }
+
+  private persistReviewRunFiles(reviewId: string, files: Array<{ path: string }>): void {
+    const db = getDb()
+    db.prepare('DELETE FROM pr_review_run_files WHERE review_id = ?').run(reviewId)
+    const insert = db.prepare(
+      'INSERT INTO pr_review_run_files (id, review_id, file_path, status, patch_hash, old_path, touched) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    )
+    for (const file of files) {
+      insert.run(randomUUID(), reviewId, file.path, 'modified', null, null, 1)
+    }
+  }
+
+  private ensureReviewSeries(repoFullName: string, prNumber: number): string {
+    const db = getDb()
+    const existing = db
+      .prepare('SELECT id FROM pr_review_series WHERE repo_full_name = ? AND pr_number = ?')
+      .get(repoFullName, prNumber) as { id: string } | undefined
+    if (existing?.id) {
+      db.prepare('UPDATE pr_review_series SET updated_at = ? WHERE id = ?').run(
+        Date.now(),
+        existing.id,
+      )
+      return existing.id
+    }
+
+    const id = randomUUID()
+    const now = Date.now()
+    db.prepare(
+      'INSERT INTO pr_review_series (id, repo_full_name, pr_number, latest_review_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+    ).run(id, repoFullName, prNumber, null, now, now)
+    return id
+  }
+
+  private getLatestSuccessfulReviewBaseline(
+    seriesId: string,
+    baselineReviewId?: string,
+  ): PreviousReviewBaseline | null {
+    const db = getDb()
+    const row = baselineReviewId
+      ? (db
+          .prepare(
+            'SELECT id, head_sha, base_sha FROM pr_reviews WHERE id = ? AND series_id = ? AND status = ?',
+          )
+          .get(baselineReviewId, seriesId, 'done') as Record<string, unknown> | undefined)
+      : (db
+          .prepare(
+            'SELECT id, head_sha, base_sha FROM pr_reviews WHERE series_id = ? AND status = ? ORDER BY created_at DESC LIMIT 1',
+          )
+          .get(seriesId, 'done') as Record<string, unknown> | undefined)
+
+    if (!row) return null
+    return {
+      reviewId: row.id as string,
+      headSha: (row.head_sha as string) ?? null,
+      baseSha: (row.base_sha as string) ?? null,
+    }
+  }
+
+  private static normalizeThreadText(value: string): string {
+    return value
+      .toLowerCase()
+      .replace(/[`"'()[\]{}:;,.!?/_-]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+  }
+
+  private buildFindingFingerprint(finding: ReviewFinding): string | null {
+    const file = (finding.file || '').trim().toLowerCase()
+    const title = PrReviewManager.normalizeThreadText(finding.title || '')
+    if (!file || !title) return null
+    const domain = finding.domain ?? 'unknown'
+    const lineBucket =
+      typeof finding.line === 'number' && Number.isFinite(finding.line)
+        ? Math.max(0, Math.floor(finding.line / 5))
+        : 'null'
+    return `${domain}|${file}|${lineBucket}|${title}`
+  }
+
+  private loadSeriesThreads(seriesId: string): Map<string, StoredReviewThread> {
+    const db = getDb()
+    const rows = db
+      .prepare(
+        'SELECT id, fingerprint, first_seen_review_id, last_seen_review_id, status FROM pr_review_threads WHERE series_id = ?',
+      )
+      .all(seriesId) as Array<Record<string, unknown>>
+
+    const findingStmt = db.prepare(
+      'SELECT * FROM pr_review_findings WHERE thread_id = ? AND review_id = ? ORDER BY rowid DESC LIMIT 1',
+    )
+
+    const result = new Map<string, StoredReviewThread>()
+    for (const row of rows) {
+      const lastSeenReviewId = row.last_seen_review_id as string
+      const findingRow = findingStmt.get(row.id, lastSeenReviewId) as
+        | Record<string, unknown>
+        | undefined
+      result.set(row.fingerprint as string, {
+        id: row.id as string,
+        fingerprint: row.fingerprint as string,
+        firstSeenReviewId: row.first_seen_review_id as string,
+        lastSeenReviewId,
+        status: row.status as ReviewThread['status'],
+        lastFinding: findingRow ? this.rowToFinding(findingRow) : null,
+      })
+    }
+    return result
+  }
+
+  private assignFindingThreads(reviewId: string, findings: ReviewFinding[]): ThreadAssignment[] {
+    const db = getDb()
+    const reviewRow = db.prepare('SELECT series_id FROM pr_reviews WHERE id = ?').get(reviewId) as
+      | { series_id: string | null }
+      | undefined
+    if (!reviewRow?.series_id) {
+      return findings.map((finding) => ({ finding, fingerprint: null, matchedBy: null }))
+    }
+
+    const now = Date.now()
+    const threadsByFingerprint = this.loadSeriesThreads(reviewRow.series_id)
+
+    const insertThread = db.prepare(
+      'INSERT INTO pr_review_threads (id, series_id, fingerprint, domain, canonical_title, status, first_seen_review_id, last_seen_review_id, last_file, last_line, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    )
+    const updateThread = db.prepare(
+      'UPDATE pr_review_threads SET status = ?, last_seen_review_id = ?, last_file = ?, last_line = ?, updated_at = ? WHERE id = ?',
+    )
+
+    return findings.map((finding) => {
+      const fingerprint = this.buildFindingFingerprint(finding)
+      if (!fingerprint) {
+        return { finding, fingerprint: null, matchedBy: null }
+      }
+
+      const existing = threadsByFingerprint.get(fingerprint)
+      if (existing) {
+        const statusInRun = existing.firstSeenReviewId === reviewId ? 'new' : 'persisting'
+        const sourceReviewId = statusInRun === 'persisting' ? existing.lastSeenReviewId : null
+        updateThread.run(
+          statusInRun,
+          reviewId,
+          finding.file || null,
+          finding.line ?? null,
+          now,
+          existing.id,
+        )
+        const nextThread: StoredReviewThread = {
+          ...existing,
+          lastSeenReviewId: reviewId,
+          status: statusInRun,
+        }
+        threadsByFingerprint.set(fingerprint, nextThread)
+        return {
+          finding: {
+            ...finding,
+            threadId: existing.id,
+            statusInRun,
+            carriedForward: false,
+            sourceReviewId,
+            posted: existing.lastFinding?.posted ?? false,
+          },
+          fingerprint,
+          matchedBy: 'fingerprint-exact',
+        }
+      }
+
+      const threadId = randomUUID()
+      insertThread.run(
+        threadId,
+        reviewRow.series_id,
+        fingerprint,
+        finding.domain,
+        finding.title,
+        'new',
+        reviewId,
+        reviewId,
+        finding.file || null,
+        finding.line ?? null,
+        now,
+        now,
+      )
+      threadsByFingerprint.set(fingerprint, {
+        id: threadId,
+        fingerprint,
+        firstSeenReviewId: reviewId,
+        lastSeenReviewId: reviewId,
+        status: 'new',
+        lastFinding: null,
+      })
+      return {
+        finding: {
+          ...finding,
+          threadId,
+          statusInRun: 'new',
+          carriedForward: false,
+          sourceReviewId: null,
+        },
+        fingerprint,
+        matchedBy: 'fingerprint-new',
+      }
+    })
+  }
+
+  private applyThreadLifecycle(
+    reviewId: string,
+    reviewMode: ReviewMode,
+    touchedFiles: Set<string>,
+    explicitAssignments: ThreadAssignment[],
+  ): ThreadAssignment[] {
+    const db = getDb()
+    const reviewRow = db.prepare('SELECT series_id FROM pr_reviews WHERE id = ?').get(reviewId) as
+      | { series_id: string | null }
+      | undefined
+    if (!reviewRow?.series_id) return explicitAssignments
+
+    const insertThread = db.prepare(
+      'UPDATE pr_review_threads SET status = ?, last_seen_review_id = ?, updated_at = ? WHERE id = ?',
+    )
+    const existingThreads = this.loadSeriesThreads(reviewRow.series_id)
+    const matchedThreadIds = new Set(
+      explicitAssignments
+        .map((entry) => entry.finding.threadId)
+        .filter((id): id is string => Boolean(id)),
+    )
+    const now = Date.now()
+    const synthetic: ThreadAssignment[] = []
+
+    for (const thread of existingThreads.values()) {
+      if (matchedThreadIds.has(thread.id)) continue
+      if (!thread.lastFinding) continue
+
+      const touched = thread.lastFinding.file ? touchedFiles.has(thread.lastFinding.file) : false
+      const nextStatus =
+        reviewMode === 'full' ? 'resolved' : touched ? 'needs_revalidation' : 'persisting'
+
+      insertThread.run(nextStatus, reviewId, now, thread.id)
+
+      synthetic.push({
+        finding: {
+          ...thread.lastFinding,
+          id: randomUUID(),
+          threadId: thread.id,
+          statusInRun: nextStatus,
+          carriedForward: true,
+          sourceReviewId: thread.lastSeenReviewId,
+          posted: thread.lastFinding.posted,
+        },
+        fingerprint: thread.fingerprint,
+        matchedBy: 'thread-lifecycle',
+      })
+    }
+
+    return [...explicitAssignments, ...synthetic]
+  }
+
   /** Sum cost across all agent sessions for a review */
   private sumAgentCosts(active: ActiveReviewSession): number {
     const db = getDb()
@@ -486,20 +808,44 @@ class PrReviewManager {
     prTitle: string,
     prUrl: string,
     focusAreas: ReviewFocus[],
+    options: StartPrReviewOptions = {},
   ): Promise<PrReview> {
     const reviewId = randomUUID()
     const now = Date.now()
+    const requestedMode: ReviewModePreference = options.mode ?? 'auto'
+    const detail = await getPrDetail(repo.fullName, prNumber)
 
     const db = getDb()
+    const seriesId = this.ensureReviewSeries(repo.fullName, prNumber)
+    const parentReview = this.getLatestSuccessfulReviewBaseline(seriesId, options.baselineReviewId)
+    const tentativeMode: ReviewMode =
+      requestedMode === 'full'
+        ? 'full'
+        : parentReview?.headSha && detail.headSha && parentReview.baseSha === detail.baseSha
+          ? 'incremental'
+          : 'full'
+
     db.prepare(
-      'INSERT INTO pr_reviews (id, repo_full_name, pr_number, pr_title, pr_url, focus, status, started_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO pr_reviews (id, series_id, parent_review_id, repo_full_name, pr_number, pr_title, pr_url, focus, review_mode, trigger, base_sha, head_sha, merge_base_sha, compared_from_sha, compared_to_sha, review_scope, summary_json, incremental_valid, status, started_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
     ).run(
       reviewId,
+      seriesId,
+      parentReview?.reviewId ?? null,
       repo.fullName,
       prNumber,
       prTitle,
       prUrl,
       JSON.stringify(focusAreas),
+      tentativeMode,
+      'manual',
+      detail.baseSha,
+      detail.headSha,
+      null,
+      tentativeMode === 'incremental' ? (parentReview?.headSha ?? null) : null,
+      detail.headSha,
+      tentativeMode === 'incremental' ? 'incremental-head-range' : 'full-pr',
+      JSON.stringify(EMPTY_REVIEW_SUMMARY),
+      tentativeMode === 'incremental' ? 1 : 0,
       'running',
       now,
       now,
@@ -514,11 +860,23 @@ class PrReviewManager {
 
     const review: PrReview = {
       id: reviewId,
+      seriesId,
+      parentReviewId: parentReview?.reviewId ?? null,
       prNumber,
       repo,
       prTitle,
       prUrl,
       status: 'running',
+      reviewMode: tentativeMode,
+      snapshot: {
+        baseSha: detail.baseSha,
+        headSha: detail.headSha,
+        mergeBaseSha: null,
+        comparedFromSha: tentativeMode === 'incremental' ? (parentReview?.headSha ?? null) : null,
+        comparedToSha: detail.headSha,
+      },
+      summary: EMPTY_REVIEW_SUMMARY,
+      incrementalValid: tentativeMode === 'incremental',
       focus: focusAreas,
       findings: [],
       sessionId: null,
@@ -536,7 +894,15 @@ class PrReviewManager {
       agentProgress: focusAreas.map((f) => ({ agentId: f, status: 'pending', findingsCount: 0 })),
     })
 
-    this.runParallelReview(reviewId, repo, prNumber, focusAreas).catch((err) => {
+    this.runParallelReview(
+      reviewId,
+      repo,
+      detail,
+      focusAreas,
+      requestedMode,
+      parentReview,
+      options.includeRevalidation !== false,
+    ).catch((err) => {
       logger.error('Review failed:', err)
       this.updateReviewStatus(reviewId, 'error', Date.now())
       this.send(IPC.GH_REVIEW_UPDATE, { reviewId, status: 'error', error: String(err) })
@@ -548,25 +914,56 @@ class PrReviewManager {
   private async runParallelReview(
     reviewId: string,
     repo: GhRepo,
-    prNumber: number,
+    detail: Awaited<ReturnType<typeof getPrDetail>>,
     focusAreas: ReviewFocus[],
+    requestedMode: ReviewModePreference,
+    parentReview: PreviousReviewBaseline | null,
+    includeRevalidation: boolean,
   ): Promise<void> {
     this.send(IPC.GH_REVIEW_UPDATE, {
       reviewId,
       status: 'running',
-      streamingText: 'Fetching PR diff...',
+      streamingText: 'Preparing review scope...',
       agentProgress: focusAreas.map((f) => ({ agentId: f, status: 'pending', findingsCount: 0 })),
     })
 
-    const detail = await getPrDetail(repo.fullName, prNumber)
+    const active = this.activeReviews.get(reviewId)
+    if (!active) return
+
+    let reviewCwd = repo.projectPath
+    try {
+      reviewCwd = await this.createPrWorktree(
+        repo.projectPath,
+        detail.number,
+        detail.headBranch,
+        reviewId,
+      )
+    } catch (err) {
+      logger.warn('Failed to create PR worktree, falling back to project path:', err)
+    }
+
+    const scope = await resolveReviewScope({
+      repoPath: reviewCwd,
+      current: detail,
+      previous: parentReview,
+      requestedMode,
+    })
+    this.updateReviewScopeMetadata(reviewId, scope)
+    this.persistReviewRunFiles(reviewId, scope.files)
+
+    const scopedDetail = {
+      ...detail,
+      diff: scope.diff,
+      files: scope.files,
+    }
 
     // Use SDK-reported context window if available, otherwise fall back to hardcoded limits
     const cachedContextWindow = sessionManager.getModelContextWindow('claude-sonnet-4-6')
     const tokenBudget = getTokenBudget(undefined, 0, cachedContextWindow)
     logger.info(
-      `Token budget: ${tokenBudget} tokens (context window: ${cachedContextWindow ?? 'default'}, diff length: ${detail.diff.length} chars, ~${Math.ceil(detail.diff.length / 3.3)} tokens)`,
+      `Token budget: ${tokenBudget} tokens (context window: ${cachedContextWindow ?? 'default'}, diff length: ${scopedDetail.diff.length} chars, ~${Math.ceil(scopedDetail.diff.length / 3.3)} tokens, mode: ${scope.reviewMode})`,
     )
-    const { chunks, skippedFiles } = chunkDiff(detail.diff, { tokenBudget })
+    const { chunks, skippedFiles } = chunkDiff(scopedDetail.diff, { tokenBudget })
 
     logger.info(
       `Skipped ${skippedFiles.length} files: ${skippedFiles.length > 0 ? skippedFiles.join(', ') : '(none)'}`,
@@ -577,17 +974,40 @@ class PrReviewManager {
       )
     }
 
-    const active = this.activeReviews.get(reviewId)
-    if (!active) return
-
     // Edge case: all files were skipped (e.g. only lock files changed)
     if (chunks.length === 0) {
+      this.updateReviewSummary(reviewId, EMPTY_REVIEW_SUMMARY)
       this.updateReviewStatus(reviewId, 'done', Date.now())
+      const db = getDb()
+      db.prepare(
+        'UPDATE pr_review_series SET latest_review_id = ?, updated_at = ? WHERE id = ?',
+      ).run(
+        reviewId,
+        Date.now(),
+        (
+          db.prepare('SELECT series_id FROM pr_reviews WHERE id = ?').get(reviewId) as
+            | {
+                series_id: string | null
+              }
+            | undefined
+        )?.series_id ?? null,
+      )
       this.send(IPC.GH_REVIEW_UPDATE, {
         reviewId,
         status: 'done',
         findings: [],
         streamingText: `All changed files were skipped (lockfiles, generated code, etc.):\n${skippedFiles.map((f) => `- ${f}`).join('\n')}`,
+        costUsd: 0,
+        reviewMode: scope.reviewMode,
+        snapshot: {
+          baseSha: detail.baseSha,
+          headSha: detail.headSha,
+          mergeBaseSha: null,
+          comparedFromSha: scope.comparedFromSha,
+          comparedToSha: scope.comparedToSha,
+        },
+        incrementalValid: scope.incrementalValid,
+        summary: EMPTY_REVIEW_SUMMARY,
         agentProgress: focusAreas.map((f) => ({
           agentId: f,
           status: 'done' as const,
@@ -620,18 +1040,6 @@ class PrReviewManager {
     })
 
     const contextPromise = (async () => {
-      let sessionCwd = repo.projectPath
-      try {
-        sessionCwd = await this.createPrWorktree(
-          repo.projectPath,
-          prNumber,
-          detail.headBranch,
-          reviewId,
-        )
-      } catch (err) {
-        logger.warn('Failed to create PR worktree, falling back to project path:', err)
-      }
-
       const db = getDb()
       const enabledRow = db
         .prepare("SELECT value FROM settings WHERE key = 'prReview.contextBuilder.enabled'")
@@ -644,7 +1052,7 @@ class PrReviewManager {
           notes: ['context builder disabled via settings'],
         }
         this.send(IPC.GH_REVIEW_CONTEXT_UPDATE, payload)
-        return { sessionCwd }
+        return { sessionCwd: reviewCwd }
       }
 
       const buildingPayload: PrContextUpdate = {
@@ -655,10 +1063,10 @@ class PrReviewManager {
 
       try {
         const result = await builder.build({
-          diff: detail.diff,
-          worktreePath: sessionCwd,
+          diff: scopedDetail.diff,
+          worktreePath: reviewCwd,
           pr: {
-            number: prNumber,
+            number: detail.number,
             headBranch: detail.headBranch,
             baseBranch: detail.baseBranch,
             title: detail.title,
@@ -675,7 +1083,7 @@ class PrReviewManager {
           notes: bundle.notes,
         }
         this.send(IPC.GH_REVIEW_CONTEXT_UPDATE, donePayload)
-        return { sessionCwd }
+        return { sessionCwd: reviewCwd }
       } catch (err) {
         logger.warn('Context builder failed, agents will proceed without bundle:', err)
         const errorPayload: PrContextUpdate = {
@@ -684,17 +1092,17 @@ class PrReviewManager {
           error: String(err),
         }
         this.send(IPC.GH_REVIEW_CONTEXT_UPDATE, errorPayload)
-        return { sessionCwd }
+        return { sessionCwd: reviewCwd }
       }
     })()
 
-    const { sessionCwd } = await contextPromise
+    await contextPromise
 
     const agentPromises = focusAreas.map((focus) =>
       this.runAgentSession(
         reviewId,
-        sessionCwd,
-        detail,
+        reviewCwd,
+        scopedDetail,
         chunks,
         skippedFiles,
         focus,
@@ -734,13 +1142,75 @@ class PrReviewManager {
     }
 
     const deduped = await this.deduplicateFindings(allFindings)
+    const explicitAssignments = this.assignFindingThreads(reviewId, deduped)
+
+    const touchedFiles = new Set(scope.files.map((file) => file.path))
+    const seriesIdForReview = (
+      getDb().prepare('SELECT series_id FROM pr_reviews WHERE id = ?').get(reviewId) as
+        | { series_id: string | null }
+        | undefined
+    )?.series_id
+
+    let revalidationAssignments: ThreadAssignment[] = []
+    if (
+      includeRevalidation &&
+      scope.reviewMode === 'incremental' &&
+      seriesIdForReview &&
+      touchedFiles.size > 0
+    ) {
+      try {
+        const { runRevalidationPass } = await import('./revalidation-worker')
+        const matchedThreadIds = new Set(
+          explicitAssignments
+            .map((entry) => entry.finding.threadId)
+            .filter((id): id is string => Boolean(id)),
+        )
+        const outcomes = await runRevalidationPass({
+          reviewId,
+          seriesId: seriesIdForReview,
+          repoCwd: reviewCwd,
+          touchedFiles,
+          runSession: (input) => this.runRevalidationSession(reviewId, input.cwd, input.prompt),
+        })
+        revalidationAssignments = outcomes
+          .filter((outcome) => !matchedThreadIds.has(outcome.threadId))
+          .map((outcome) => ({
+            finding: outcome.finding,
+            fingerprint: null,
+            matchedBy: `revalidation-${outcome.verdict}`,
+          }))
+
+        const threadStatusUpdate = getDb().prepare(
+          'UPDATE pr_review_threads SET status = ?, last_seen_review_id = ?, updated_at = ? WHERE id = ?',
+        )
+        for (const outcome of outcomes) {
+          if (matchedThreadIds.has(outcome.threadId)) continue
+          threadStatusUpdate.run(
+            outcome.finding.statusInRun,
+            reviewId,
+            Date.now(),
+            outcome.threadId,
+          )
+        }
+
+        // Auto-resolve any GitHub comments mapped to threads we marked resolved.
+        await this.resolveMappedCommentsForOutcomes(repo.fullName, outcomes)
+      } catch (err) {
+        logger.warn('Revalidation pass failed; continuing without revalidation outputs:', err)
+      }
+    }
+
+    const threadedFindings = this.applyThreadLifecycle(reviewId, scope.reviewMode, touchedFiles, [
+      ...explicitAssignments,
+      ...revalidationAssignments,
+    ])
 
     // Persist findings
     const db = getDb()
     const insertFinding = db.prepare(
-      'INSERT INTO pr_review_findings (id, review_id, file, line, severity, impact, likelihood, confidence, action, title, description, suggestion_body, suggestion_start_line, suggestion_end_line, domain, merged_from) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO pr_review_findings (id, review_id, file, line, severity, impact, likelihood, confidence, action, title, description, suggestion_body, suggestion_start_line, suggestion_end_line, thread_id, status_in_run, fingerprint, matched_by, anchor_json, source_review_id, carried_forward, domain, merged_from) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
     )
-    for (const f of deduped) {
+    for (const { finding: f, fingerprint, matchedBy } of threadedFindings) {
       insertFinding.run(
         f.id,
         reviewId,
@@ -756,6 +1226,13 @@ class PrReviewManager {
         f.suggestion?.body ?? null,
         f.suggestion?.startLine ?? null,
         f.suggestion?.endLine ?? null,
+        f.threadId,
+        f.statusInRun,
+        fingerprint,
+        matchedBy,
+        null,
+        f.sourceReviewId,
+        f.carriedForward ? 1 : 0,
         f.domain,
         f.mergedFrom ? JSON.stringify(f.mergedFrom) : null,
       )
@@ -763,13 +1240,48 @@ class PrReviewManager {
 
     // Sum cost from all agent sessions
     const totalCost = this.sumAgentCosts(active)
+    const summary: ReviewRunSummary = {
+      newCount: threadedFindings.filter((entry) => entry.finding.statusInRun === 'new').length,
+      persistingCount: threadedFindings.filter(
+        (entry) => entry.finding.statusInRun === 'persisting',
+      ).length,
+      resolvedCount: threadedFindings.filter((entry) => entry.finding.statusInRun === 'resolved')
+        .length,
+      staleCount: threadedFindings.filter((entry) => entry.finding.statusInRun === 'stale').length,
+    }
+    this.updateReviewSummary(reviewId, summary)
     this.updateReviewStatus(reviewId, 'done', Date.now(), totalCost)
+    const seriesRow = db.prepare('SELECT series_id FROM pr_reviews WHERE id = ?').get(reviewId) as
+      | { series_id: string | null }
+      | undefined
+    if (seriesRow?.series_id) {
+      db.prepare(
+        'UPDATE pr_review_series SET latest_review_id = ?, updated_at = ? WHERE id = ?',
+      ).run(reviewId, Date.now(), seriesRow.series_id)
+    }
+
+    const finalFindings = threadedFindings.map((entry) => entry.finding)
+    const postUrls = this.hydratePostUrls(finalFindings)
+    const findingsWithPostUrls = finalFindings.map((f) => ({
+      ...f,
+      postUrl: postUrls.get(f.id) ?? f.postUrl ?? null,
+    }))
 
     this.send(IPC.GH_REVIEW_UPDATE, {
       reviewId,
       status: 'done',
-      findings: deduped,
+      findings: findingsWithPostUrls,
       costUsd: totalCost,
+      reviewMode: scope.reviewMode,
+      snapshot: {
+        baseSha: detail.baseSha,
+        headSha: detail.headSha,
+        mergeBaseSha: null,
+        comparedFromSha: scope.comparedFromSha,
+        comparedToSha: scope.comparedToSha,
+      },
+      incrementalValid: scope.incrementalValid,
+      summary,
       agentProgress: focusAreas.map((f) => {
         const agent = active.agents.get(f)
         return {
@@ -781,6 +1293,33 @@ class PrReviewManager {
       }),
     })
     this.activeReviews.delete(reviewId)
+  }
+
+  private async runRevalidationSession(
+    _reviewId: string,
+    cwd: string,
+    prompt: string,
+  ): Promise<string> {
+    const sessionId = await sessionManager.createSession(cwd, undefined, undefined, 'pr-review')
+    sessionManager.setPermissionMode(sessionId, 'auto-approve')
+    let collected = ''
+    const unsub = sessionManager.onMessage(sessionId, (message: unknown) => {
+      const msg = message as Record<string, unknown>
+      if (msg.type === 'stream_event') {
+        const event = msg.event as Record<string, unknown> | undefined
+        const delta = event?.delta as Record<string, unknown> | undefined
+        if (delta?.type === 'text_delta' && typeof delta.text === 'string') {
+          collected += delta.text
+        }
+      }
+    })
+    try {
+      await sessionManager.sendMessage(sessionId, prompt)
+    } finally {
+      unsub()
+      sessionManager.stopSession(sessionId)
+    }
+    return collected
   }
 
   private async runAgentSession(
@@ -1574,6 +2113,11 @@ ${JSON.stringify(input)}`,
         description: String(f.description || ''),
         domain: null,
         posted: false,
+        postUrl: null,
+        threadId: null,
+        statusInRun: 'new',
+        carriedForward: false,
+        sourceReviewId: null,
         suggestion: PrReviewManager.normalizeSuggestion(f),
       }))
     } catch {
@@ -1694,6 +2238,11 @@ ${JSON.stringify(input)}`,
             description: String(f.description || ''),
             domain: null,
             posted: false,
+            postUrl: null,
+            threadId: null,
+            statusInRun: 'new',
+            carriedForward: false,
+            sourceReviewId: null,
             suggestion: PrReviewManager.normalizeSuggestion(f),
           })
         }
@@ -1825,33 +2374,82 @@ ${JSON.stringify(input)}`,
       .all(reviewId) as Array<Record<string, unknown>>
 
     const review = this.rowToReview(row)
-    review.findings = findings.map((f) => ({
-      id: f.id as string,
-      file: f.file as string,
-      line: f.line as number | null,
-      severity: PrReviewManager.normalizeSeverity(f.severity),
-      risk: PrReviewManager.normalizeRisk(f),
-      title: f.title as string,
-      description: f.description as string,
-      domain: (f.domain as ReviewFocus) ?? null,
-      posted: Boolean(f.posted),
-      suggestion:
-        typeof f.suggestion_body === 'string' &&
-        typeof f.suggestion_start_line === 'number' &&
-        typeof f.suggestion_end_line === 'number'
-          ? {
-              body: f.suggestion_body,
-              startLine: f.suggestion_start_line,
-              endLine: f.suggestion_end_line,
-            }
-          : undefined,
-      mergedFrom: f.merged_from ? JSON.parse(f.merged_from as string) : undefined,
+    review.findings = findings.map((f) => this.rowToFinding(f))
+    const postUrls = this.hydratePostUrls(review.findings)
+    review.findings = review.findings.map((f) => ({
+      ...f,
+      postUrl: postUrls.get(f.id) ?? null,
     }))
 
     return {
       ...review,
       rawOutput: (row.raw_output as string) ?? '',
     }
+  }
+
+  getReviewSeries(repoFullName: string, prNumber: number): PrReviewSeries | null {
+    const db = getDb()
+    const row = db
+      .prepare('SELECT * FROM pr_review_series WHERE repo_full_name = ? AND pr_number = ? LIMIT 1')
+      .get(repoFullName, prNumber) as Record<string, unknown> | undefined
+    if (!row) return null
+    const [owner = '', repo = ''] = repoFullName.split('/')
+    return {
+      id: row.id as string,
+      repo: { owner, repo, fullName: repoFullName, projectPath: '' },
+      prNumber: row.pr_number as number,
+      latestReviewId: (row.latest_review_id as string) ?? null,
+      createdAt: row.created_at as number,
+      updatedAt: row.updated_at as number,
+    }
+  }
+
+  getReviewThreads(seriesId: string): ReviewThread[] {
+    const db = getDb()
+    const rows = db
+      .prepare('SELECT * FROM pr_review_threads WHERE series_id = ? ORDER BY updated_at DESC')
+      .all(seriesId) as Array<Record<string, unknown>>
+    return rows.map((row) => ({
+      id: row.id as string,
+      seriesId: row.series_id as string,
+      fingerprint: row.fingerprint as string,
+      domain: (row.domain as ReviewFocus) ?? null,
+      canonicalTitle: row.canonical_title as string,
+      status: row.status as ReviewThread['status'],
+      firstSeenReviewId: row.first_seen_review_id as string,
+      lastSeenReviewId: row.last_seen_review_id as string,
+      lastFile: (row.last_file as string) ?? null,
+      lastLine: (row.last_line as number) ?? null,
+      createdAt: row.created_at as number,
+      updatedAt: row.updated_at as number,
+    }))
+  }
+
+  getReviewTimeline(seriesId: string): ReviewTimelineEntry[] {
+    const db = getDb()
+    const rows = db
+      .prepare(
+        `SELECT f.review_id, f.thread_id, f.status_in_run, f.title, f.file, f.line, f.domain, f.carried_forward, r.created_at
+         FROM pr_review_findings f
+         JOIN pr_reviews r ON r.id = f.review_id
+         WHERE r.series_id = ?
+         ORDER BY r.created_at DESC, f.rowid DESC`,
+      )
+      .all(seriesId) as Array<Record<string, unknown>>
+
+    return rows
+      .filter((row) => typeof row.thread_id === 'string' && row.thread_id.length > 0)
+      .map((row) => ({
+        reviewId: row.review_id as string,
+        threadId: row.thread_id as string,
+        status: row.status_in_run as ReviewTimelineEntry['status'],
+        title: (row.title as string) ?? '',
+        file: (row.file as string) ?? null,
+        line: (row.line as number) ?? null,
+        domain: (row.domain as ReviewFocus) ?? null,
+        carriedForward: Boolean(row.carried_forward),
+        createdAt: row.created_at as number,
+      }))
   }
 
   deleteReview(reviewId: string): void {
@@ -1863,10 +2461,11 @@ ${JSON.stringify(input)}`,
     const db = getDb()
     // Clear existing findings for this review first
     db.prepare('DELETE FROM pr_review_findings WHERE review_id = ?').run(reviewId)
+    const threadedFindings = this.assignFindingThreads(reviewId, findings)
     const insert = db.prepare(
-      'INSERT INTO pr_review_findings (id, review_id, file, line, severity, impact, likelihood, confidence, action, title, description, suggestion_body, suggestion_start_line, suggestion_end_line, domain, merged_from) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO pr_review_findings (id, review_id, file, line, severity, impact, likelihood, confidence, action, title, description, suggestion_body, suggestion_start_line, suggestion_end_line, thread_id, status_in_run, fingerprint, matched_by, anchor_json, source_review_id, carried_forward, domain, merged_from) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
     )
-    for (const f of findings) {
+    for (const { finding: f, fingerprint, matchedBy } of threadedFindings) {
       insert.run(
         f.id,
         reviewId,
@@ -1882,6 +2481,13 @@ ${JSON.stringify(input)}`,
         f.suggestion?.body ?? null,
         f.suggestion?.startLine ?? null,
         f.suggestion?.endLine ?? null,
+        f.threadId,
+        f.statusInRun,
+        fingerprint,
+        matchedBy,
+        null,
+        f.sourceReviewId,
+        f.carriedForward ? 1 : 0,
         f.domain,
         f.mergedFrom ? JSON.stringify(f.mergedFrom) : null,
       )
@@ -1896,16 +2502,289 @@ ${JSON.stringify(input)}`,
     )
   }
 
+  findReviewIdForFinding(findingId: string): string | null {
+    const db = getDb()
+    const row = db
+      .prepare('SELECT review_id FROM pr_review_findings WHERE id = ?')
+      .get(findingId) as { review_id: string | null } | undefined
+    return row?.review_id ?? null
+  }
+
+  recordFindingPost(input: {
+    findingId: string
+    reviewId: string
+    repoFullName: string
+    prNumber: number
+    kind: FindingPostKind
+    body: string
+    ghCommentId: number | null
+    ghCommentUrl: string | null
+    ghReviewId?: number | null
+  }): FindingPost {
+    const db = getDb()
+    const findingRow = db
+      .prepare('SELECT thread_id FROM pr_review_findings WHERE id = ?')
+      .get(input.findingId) as { thread_id: string | null } | undefined
+    const reviewRow = db
+      .prepare('SELECT series_id FROM pr_reviews WHERE id = ?')
+      .get(input.reviewId) as { series_id: string | null } | undefined
+    const id = randomUUID()
+    const bodyHash = createHash('sha256').update(input.body).digest('hex').slice(0, 32)
+    const postedAt = Date.now()
+    db.prepare(
+      'INSERT INTO pr_review_finding_posts (id, series_id, thread_id, finding_id, review_id, repo_full_name, pr_number, kind, gh_comment_id, gh_comment_url, gh_review_id, body_hash, posted_at, resolved_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)',
+    ).run(
+      id,
+      reviewRow?.series_id ?? null,
+      findingRow?.thread_id ?? null,
+      input.findingId,
+      input.reviewId,
+      input.repoFullName,
+      input.prNumber,
+      input.kind,
+      input.ghCommentId,
+      input.ghCommentUrl,
+      input.ghReviewId ?? null,
+      bodyHash,
+      postedAt,
+    )
+    return {
+      id,
+      seriesId: reviewRow?.series_id ?? null,
+      threadId: findingRow?.thread_id ?? null,
+      findingId: input.findingId,
+      reviewId: input.reviewId,
+      repoFullName: input.repoFullName,
+      prNumber: input.prNumber,
+      kind: input.kind,
+      ghCommentId: input.ghCommentId,
+      ghCommentUrl: input.ghCommentUrl,
+      ghReviewId: input.ghReviewId ?? null,
+      bodyHash,
+      postedAt,
+      resolvedAt: null,
+    }
+  }
+
+  getFindingPosts(args: {
+    threadId?: string
+    findingId?: string
+    seriesId?: string
+  }): FindingPost[] {
+    const db = getDb()
+    const where: string[] = []
+    const params: unknown[] = []
+    if (args.threadId) {
+      where.push('thread_id = ?')
+      params.push(args.threadId)
+    }
+    if (args.findingId) {
+      where.push('finding_id = ?')
+      params.push(args.findingId)
+    }
+    if (args.seriesId) {
+      where.push('series_id = ?')
+      params.push(args.seriesId)
+    }
+    if (where.length === 0) return []
+    const rows = db
+      .prepare(
+        `SELECT * FROM pr_review_finding_posts WHERE ${where.join(' AND ')} ORDER BY posted_at DESC`,
+      )
+      .all(...params) as Array<Record<string, unknown>>
+    return rows.map((row) => PrReviewManager.rowToFindingPost(row))
+  }
+
+  markFindingPostResolved(postId: string, resolvedAt: number = Date.now()): void {
+    const db = getDb()
+    db.prepare('UPDATE pr_review_finding_posts SET resolved_at = ? WHERE id = ?').run(
+      resolvedAt,
+      postId,
+    )
+  }
+
+  private async resolveMappedCommentsForOutcomes(
+    repoFullName: string,
+    outcomes: Array<{ threadId: string; finding: { statusInRun: string } }>,
+  ): Promise<void> {
+    const resolvedThreadIds = outcomes
+      .filter((o) => o.finding.statusInRun === 'resolved')
+      .map((o) => o.threadId)
+    if (resolvedThreadIds.length === 0) return
+    const db = getDb()
+    const placeholders = resolvedThreadIds.map(() => '?').join(',')
+    const rows = db
+      .prepare(
+        `SELECT id, gh_comment_id FROM pr_review_finding_posts
+         WHERE thread_id IN (${placeholders}) AND resolved_at IS NULL AND gh_comment_id IS NOT NULL AND kind = 'inline'`,
+      )
+      .all(...resolvedThreadIds) as Array<{ id: string; gh_comment_id: number }>
+    if (rows.length === 0) return
+    const { appendToPullRequestReviewComment } = await import('./gh-cli')
+    const now = Date.now()
+    const update = db.prepare('UPDATE pr_review_finding_posts SET resolved_at = ? WHERE id = ?')
+    for (const row of rows) {
+      const note =
+        '\n\n---\n_Resolved by Pylon revalidation. The prior issue no longer applies at this anchor._'
+      try {
+        const ok = await appendToPullRequestReviewComment(repoFullName, row.gh_comment_id, note)
+        if (ok) update.run(now, row.id)
+      } catch (err) {
+        logger.warn(`Failed to resolve GH comment ${row.gh_comment_id}:`, err)
+      }
+    }
+  }
+
+  getReviewRunFiles(reviewId: string): Array<{
+    filePath: string
+    status: string
+    oldPath: string | null
+    touched: boolean
+    patchHash: string | null
+  }> {
+    const db = getDb()
+    const rows = db
+      .prepare(
+        'SELECT file_path, status, old_path, touched, patch_hash FROM pr_review_run_files WHERE review_id = ? ORDER BY file_path',
+      )
+      .all(reviewId) as Array<Record<string, unknown>>
+    return rows.map((row) => ({
+      filePath: row.file_path as string,
+      status: (row.status as string) ?? 'modified',
+      oldPath: (row.old_path as string) ?? null,
+      touched: Boolean(row.touched ?? 1),
+      patchHash: (row.patch_hash as string) ?? null,
+    }))
+  }
+
+  private static rowToFindingPost(row: Record<string, unknown>): FindingPost {
+    return {
+      id: row.id as string,
+      seriesId: (row.series_id as string) ?? null,
+      threadId: (row.thread_id as string) ?? null,
+      findingId: row.finding_id as string,
+      reviewId: row.review_id as string,
+      repoFullName: row.repo_full_name as string,
+      prNumber: row.pr_number as number,
+      kind: row.kind as FindingPostKind,
+      ghCommentId: typeof row.gh_comment_id === 'number' ? row.gh_comment_id : null,
+      ghCommentUrl: typeof row.gh_comment_url === 'string' ? row.gh_comment_url : null,
+      ghReviewId: typeof row.gh_review_id === 'number' ? row.gh_review_id : null,
+      bodyHash: row.body_hash as string,
+      postedAt: row.posted_at as number,
+      resolvedAt: typeof row.resolved_at === 'number' ? row.resolved_at : null,
+    }
+  }
+
+  /**
+   * For each finding, find the most recent unresolved post URL keyed by thread_id
+   * (preferred) or finding_id. Returns a Map<findingId, postUrl>.
+   */
+  private hydratePostUrls(findings: ReviewFinding[]): Map<string, string> {
+    const db = getDb()
+    const threadIds = findings.map((f) => f.threadId).filter((id): id is string => Boolean(id))
+    const findingIds = findings.map((f) => f.id)
+    const result = new Map<string, string>()
+    if (threadIds.length === 0 && findingIds.length === 0) return result
+
+    const rows: Array<Record<string, unknown>> = []
+    if (threadIds.length > 0) {
+      const placeholders = threadIds.map(() => '?').join(',')
+      rows.push(
+        ...(db
+          .prepare(
+            `SELECT thread_id, finding_id, gh_comment_url FROM pr_review_finding_posts WHERE thread_id IN (${placeholders}) AND resolved_at IS NULL AND gh_comment_url IS NOT NULL ORDER BY posted_at DESC`,
+          )
+          .all(...threadIds) as Array<Record<string, unknown>>),
+      )
+    }
+    if (findingIds.length > 0) {
+      const placeholders = findingIds.map(() => '?').join(',')
+      rows.push(
+        ...(db
+          .prepare(
+            `SELECT thread_id, finding_id, gh_comment_url FROM pr_review_finding_posts WHERE finding_id IN (${placeholders}) AND resolved_at IS NULL AND gh_comment_url IS NOT NULL ORDER BY posted_at DESC`,
+          )
+          .all(...findingIds) as Array<Record<string, unknown>>),
+      )
+    }
+
+    const urlByThread = new Map<string, string>()
+    const urlByFinding = new Map<string, string>()
+    for (const row of rows) {
+      const url = row.gh_comment_url as string
+      const tid = (row.thread_id as string) ?? null
+      const fid = (row.finding_id as string) ?? null
+      if (tid && !urlByThread.has(tid)) urlByThread.set(tid, url)
+      if (fid && !urlByFinding.has(fid)) urlByFinding.set(fid, url)
+    }
+    for (const f of findings) {
+      const url = (f.threadId && urlByThread.get(f.threadId)) || urlByFinding.get(f.id) || null
+      if (url) result.set(f.id, url)
+    }
+    return result
+  }
+
+  private rowToFinding(f: Record<string, unknown>): ReviewFinding {
+    return {
+      id: f.id as string,
+      file: (f.file as string) ?? '',
+      line: f.line as number | null,
+      severity: PrReviewManager.normalizeSeverity(f.severity),
+      risk: PrReviewManager.normalizeRisk(f),
+      title: f.title as string,
+      description: f.description as string,
+      domain: (f.domain as ReviewFocus) ?? null,
+      posted: Boolean(f.posted),
+      postUrl: null,
+      threadId: (f.thread_id as string) ?? null,
+      statusInRun: (f.status_in_run as ReviewFinding['statusInRun']) ?? 'new',
+      carriedForward: Boolean(f.carried_forward),
+      sourceReviewId: (f.source_review_id as string) ?? null,
+      suggestion:
+        typeof f.suggestion_body === 'string' &&
+        typeof f.suggestion_start_line === 'number' &&
+        typeof f.suggestion_end_line === 'number'
+          ? {
+              body: f.suggestion_body,
+              startLine: f.suggestion_start_line,
+              endLine: f.suggestion_end_line,
+            }
+          : undefined,
+      mergedFrom: f.merged_from ? JSON.parse(f.merged_from as string) : undefined,
+    }
+  }
+
   private rowToReview(row: Record<string, unknown>): PrReview {
     const fullName = row.repo_full_name as string
     const [owner = '', repo = ''] = fullName.split('/')
+    let summary = EMPTY_REVIEW_SUMMARY
+    if (typeof row.summary_json === 'string') {
+      try {
+        summary = { ...EMPTY_REVIEW_SUMMARY, ...(JSON.parse(row.summary_json) as ReviewRunSummary) }
+      } catch {
+        summary = EMPTY_REVIEW_SUMMARY
+      }
+    }
     return {
       id: row.id as string,
+      seriesId: (row.series_id as string) ?? null,
+      parentReviewId: (row.parent_review_id as string) ?? null,
       prNumber: row.pr_number as number,
       repo: { owner, repo, fullName, projectPath: '' },
       prTitle: (row.pr_title as string) ?? '',
       prUrl: (row.pr_url as string) ?? '',
       status: row.status as ReviewStatus,
+      reviewMode: ((row.review_mode as ReviewMode) ?? 'full') as ReviewMode,
+      snapshot: {
+        baseSha: (row.base_sha as string) ?? null,
+        headSha: (row.head_sha as string) ?? null,
+        mergeBaseSha: (row.merge_base_sha as string) ?? null,
+        comparedFromSha: (row.compared_from_sha as string) ?? null,
+        comparedToSha: (row.compared_to_sha as string) ?? null,
+      },
+      summary,
+      incrementalValid: row.incremental_valid == null ? true : Boolean(row.incremental_valid),
       focus: JSON.parse((row.focus as string) || '[]'),
       findings: [],
       sessionId: row.session_id as string | null,

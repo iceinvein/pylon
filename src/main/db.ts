@@ -156,6 +156,106 @@ const migrations: Array<{ version: number; description: string; sql: string }> =
       ALTER TABLE pr_review_findings ADD COLUMN suggestion_end_line INTEGER;
     `,
   },
+  {
+    version: 18,
+    description: 'Add PR review memory schema for incremental reruns',
+    sql: `
+      CREATE TABLE IF NOT EXISTS pr_review_series (
+        id TEXT PRIMARY KEY,
+        repo_full_name TEXT NOT NULL,
+        pr_number INTEGER NOT NULL,
+        latest_review_id TEXT,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        UNIQUE(repo_full_name, pr_number)
+      );
+
+      ALTER TABLE pr_reviews ADD COLUMN series_id TEXT;
+      ALTER TABLE pr_reviews ADD COLUMN parent_review_id TEXT;
+      ALTER TABLE pr_reviews ADD COLUMN review_mode TEXT NOT NULL DEFAULT 'full';
+      ALTER TABLE pr_reviews ADD COLUMN trigger TEXT NOT NULL DEFAULT 'manual';
+      ALTER TABLE pr_reviews ADD COLUMN base_sha TEXT;
+      ALTER TABLE pr_reviews ADD COLUMN head_sha TEXT;
+      ALTER TABLE pr_reviews ADD COLUMN merge_base_sha TEXT;
+      ALTER TABLE pr_reviews ADD COLUMN compared_from_sha TEXT;
+      ALTER TABLE pr_reviews ADD COLUMN compared_to_sha TEXT;
+      ALTER TABLE pr_reviews ADD COLUMN review_scope TEXT NOT NULL DEFAULT 'full-pr';
+      ALTER TABLE pr_reviews ADD COLUMN summary_json TEXT NOT NULL DEFAULT '{"newCount":0,"persistingCount":0,"resolvedCount":0,"staleCount":0}';
+      ALTER TABLE pr_reviews ADD COLUMN incremental_valid INTEGER NOT NULL DEFAULT 1;
+
+      CREATE TABLE IF NOT EXISTS pr_review_run_files (
+        id TEXT PRIMARY KEY,
+        review_id TEXT NOT NULL,
+        file_path TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'modified',
+        patch_hash TEXT,
+        old_path TEXT,
+        touched INTEGER NOT NULL DEFAULT 1,
+        FOREIGN KEY (review_id) REFERENCES pr_reviews(id) ON DELETE CASCADE
+      );
+
+      CREATE TABLE IF NOT EXISTS pr_review_threads (
+        id TEXT PRIMARY KEY,
+        series_id TEXT NOT NULL,
+        fingerprint TEXT NOT NULL,
+        domain TEXT,
+        canonical_title TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'needs_revalidation',
+        first_seen_review_id TEXT NOT NULL,
+        last_seen_review_id TEXT NOT NULL,
+        last_file TEXT,
+        last_line INTEGER,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        FOREIGN KEY (series_id) REFERENCES pr_review_series(id) ON DELETE CASCADE
+      );
+
+      ALTER TABLE pr_review_findings ADD COLUMN thread_id TEXT;
+      ALTER TABLE pr_review_findings ADD COLUMN status_in_run TEXT NOT NULL DEFAULT 'new';
+      ALTER TABLE pr_review_findings ADD COLUMN fingerprint TEXT;
+      ALTER TABLE pr_review_findings ADD COLUMN matched_by TEXT;
+      ALTER TABLE pr_review_findings ADD COLUMN anchor_json TEXT;
+      ALTER TABLE pr_review_findings ADD COLUMN source_review_id TEXT;
+      ALTER TABLE pr_review_findings ADD COLUMN carried_forward INTEGER NOT NULL DEFAULT 0;
+
+      CREATE INDEX IF NOT EXISTS idx_pr_review_series_repo ON pr_review_series(repo_full_name, pr_number);
+      CREATE INDEX IF NOT EXISTS idx_pr_reviews_series ON pr_reviews(series_id, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_pr_review_run_files_review ON pr_review_run_files(review_id, file_path);
+      CREATE INDEX IF NOT EXISTS idx_pr_review_threads_series ON pr_review_threads(series_id, status);
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_pr_review_threads_fingerprint ON pr_review_threads(series_id, fingerprint);
+    `,
+  },
+  {
+    version: 19,
+    description: 'Add pr_review_finding_posts mapping table for posted GitHub comments',
+    sql: `
+      CREATE TABLE IF NOT EXISTS pr_review_finding_posts (
+        id TEXT PRIMARY KEY,
+        series_id TEXT,
+        thread_id TEXT,
+        finding_id TEXT NOT NULL,
+        review_id TEXT NOT NULL,
+        repo_full_name TEXT NOT NULL,
+        pr_number INTEGER NOT NULL,
+        kind TEXT NOT NULL,
+        gh_comment_id INTEGER,
+        gh_comment_url TEXT,
+        gh_review_id INTEGER,
+        body_hash TEXT NOT NULL,
+        posted_at INTEGER NOT NULL,
+        resolved_at INTEGER
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_pr_review_finding_posts_thread
+        ON pr_review_finding_posts(thread_id, posted_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_pr_review_finding_posts_series
+        ON pr_review_finding_posts(series_id);
+      CREATE INDEX IF NOT EXISTS idx_pr_review_finding_posts_review
+        ON pr_review_finding_posts(review_id);
+      CREATE INDEX IF NOT EXISTS idx_pr_review_finding_posts_finding
+        ON pr_review_finding_posts(finding_id);
+    `,
+  },
 ]
 
 /**
@@ -165,6 +265,16 @@ const migrations: Array<{ version: number; description: string; sql: string }> =
  */
 function detectAppliedMigrations(database: Database.Database): Set<number> {
   const applied = new Set<number>()
+  const tableExists = (table: string): boolean => {
+    try {
+      const row = database
+        .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?")
+        .get(table) as { name?: string } | undefined
+      return row?.name === table
+    } catch {
+      return false
+    }
+  }
 
   // Check sessions columns
   const sessionCols = new Set(
@@ -189,6 +299,22 @@ function detectAppliedMigrations(database: Database.Database): Set<number> {
       ),
     )
     if (prCols.has('raw_output') && prCols.has('cost_usd')) applied.add(8)
+    if (
+      prCols.has('series_id') &&
+      prCols.has('parent_review_id') &&
+      prCols.has('review_mode') &&
+      prCols.has('base_sha') &&
+      prCols.has('head_sha') &&
+      prCols.has('compared_from_sha') &&
+      prCols.has('compared_to_sha') &&
+      prCols.has('summary_json') &&
+      prCols.has('incremental_valid') &&
+      tableExists('pr_review_series') &&
+      tableExists('pr_review_run_files') &&
+      tableExists('pr_review_threads')
+    ) {
+      applied.add(18)
+    }
   } catch {
     /* table doesn't exist yet */
   }
@@ -217,9 +343,22 @@ function detectAppliedMigrations(database: Database.Database): Set<number> {
     ) {
       applied.add(17)
     }
+    if (
+      findingCols.has('thread_id') &&
+      findingCols.has('status_in_run') &&
+      findingCols.has('fingerprint') &&
+      findingCols.has('matched_by') &&
+      findingCols.has('anchor_json') &&
+      findingCols.has('source_review_id') &&
+      findingCols.has('carried_forward')
+    ) {
+      applied.add(18)
+    }
   } catch {
     /* table doesn't exist yet */
   }
+
+  if (tableExists('pr_review_finding_posts')) applied.add(19)
 
   // Check test_explorations columns
   try {
@@ -339,13 +478,35 @@ export function initDatabase(): Database.Database {
 
   // PR Review tables
   db.exec(`
+    CREATE TABLE IF NOT EXISTS pr_review_series (
+      id TEXT PRIMARY KEY,
+      repo_full_name TEXT NOT NULL,
+      pr_number INTEGER NOT NULL,
+      latest_review_id TEXT,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      UNIQUE(repo_full_name, pr_number)
+    );
+
     CREATE TABLE IF NOT EXISTS pr_reviews (
       id TEXT PRIMARY KEY,
+      series_id TEXT,
+      parent_review_id TEXT,
       repo_full_name TEXT NOT NULL,
       pr_number INTEGER NOT NULL,
       pr_title TEXT,
       pr_url TEXT,
       focus TEXT,
+      review_mode TEXT NOT NULL DEFAULT 'full',
+      trigger TEXT NOT NULL DEFAULT 'manual',
+      base_sha TEXT,
+      head_sha TEXT,
+      merge_base_sha TEXT,
+      compared_from_sha TEXT,
+      compared_to_sha TEXT,
+      review_scope TEXT NOT NULL DEFAULT 'full-pr',
+      summary_json TEXT NOT NULL DEFAULT '{"newCount":0,"persistingCount":0,"resolvedCount":0,"staleCount":0}',
+      incremental_valid INTEGER NOT NULL DEFAULT 1,
       status TEXT NOT NULL DEFAULT 'pending',
       session_id TEXT,
       started_at INTEGER,
@@ -368,13 +529,77 @@ export function initDatabase(): Database.Database {
       suggestion_body TEXT,
       suggestion_start_line INTEGER,
       suggestion_end_line INTEGER,
+      thread_id TEXT,
+      status_in_run TEXT NOT NULL DEFAULT 'new',
+      fingerprint TEXT,
+      matched_by TEXT,
+      anchor_json TEXT,
+      source_review_id TEXT,
+      carried_forward INTEGER NOT NULL DEFAULT 0,
       posted INTEGER NOT NULL DEFAULT 0,
       posted_at INTEGER,
       FOREIGN KEY (review_id) REFERENCES pr_reviews(id) ON DELETE CASCADE
     );
 
+    CREATE TABLE IF NOT EXISTS pr_review_run_files (
+      id TEXT PRIMARY KEY,
+      review_id TEXT NOT NULL,
+      file_path TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'modified',
+      patch_hash TEXT,
+      old_path TEXT,
+      touched INTEGER NOT NULL DEFAULT 1,
+      FOREIGN KEY (review_id) REFERENCES pr_reviews(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS pr_review_threads (
+      id TEXT PRIMARY KEY,
+      series_id TEXT NOT NULL,
+      fingerprint TEXT NOT NULL,
+      domain TEXT,
+      canonical_title TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'needs_revalidation',
+      first_seen_review_id TEXT NOT NULL,
+      last_seen_review_id TEXT NOT NULL,
+      last_file TEXT,
+      last_line INTEGER,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      FOREIGN KEY (series_id) REFERENCES pr_review_series(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS pr_review_finding_posts (
+      id TEXT PRIMARY KEY,
+      series_id TEXT,
+      thread_id TEXT,
+      finding_id TEXT NOT NULL,
+      review_id TEXT NOT NULL,
+      repo_full_name TEXT NOT NULL,
+      pr_number INTEGER NOT NULL,
+      kind TEXT NOT NULL,
+      gh_comment_id INTEGER,
+      gh_comment_url TEXT,
+      gh_review_id INTEGER,
+      body_hash TEXT NOT NULL,
+      posted_at INTEGER NOT NULL,
+      resolved_at INTEGER
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_pr_review_series_repo ON pr_review_series(repo_full_name, pr_number);
     CREATE INDEX IF NOT EXISTS idx_pr_reviews_repo ON pr_reviews(repo_full_name, pr_number);
+    CREATE INDEX IF NOT EXISTS idx_pr_reviews_series ON pr_reviews(series_id, created_at DESC);
     CREATE INDEX IF NOT EXISTS idx_pr_review_findings_review ON pr_review_findings(review_id);
+    CREATE INDEX IF NOT EXISTS idx_pr_review_run_files_review ON pr_review_run_files(review_id, file_path);
+    CREATE INDEX IF NOT EXISTS idx_pr_review_threads_series ON pr_review_threads(series_id, status);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_pr_review_threads_fingerprint ON pr_review_threads(series_id, fingerprint);
+    CREATE INDEX IF NOT EXISTS idx_pr_review_finding_posts_thread
+      ON pr_review_finding_posts(thread_id, posted_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_pr_review_finding_posts_series
+      ON pr_review_finding_posts(series_id);
+    CREATE INDEX IF NOT EXISTS idx_pr_review_finding_posts_review
+      ON pr_review_finding_posts(review_id);
+    CREATE INDEX IF NOT EXISTS idx_pr_review_finding_posts_finding
+      ON pr_review_finding_posts(finding_id);
   `)
 
   // PR Cache table
