@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process'
 import { createHash, randomUUID } from 'node:crypto'
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { mkdir, rm } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { basename, join } from 'node:path'
@@ -36,6 +36,7 @@ import { CodeIntelligenceMcpClient } from './pr-context/mcp-client'
 import { McpContextBackend } from './pr-context/mcp-context-backend'
 import type { PrContextBackend } from './pr-context/pr-context-backend'
 import { PrContextBuilder } from './pr-context/pr-context-builder'
+import { deduplicateFindings } from './pr-review-dedupe'
 import { resolveReviewScope } from './review-scope'
 import { sessionManager } from './session-manager'
 
@@ -474,6 +475,34 @@ type StoredReviewThread = {
   lastSeenReviewId: string
   status: ReviewThread['status']
   lastFinding: ReviewFinding | null
+}
+
+type McpStdioOverride = { command: string; args?: string[]; env?: Record<string, string> }
+
+function readDbMcpOverride(): McpStdioOverride | null {
+  const row = getDb()
+    .prepare("SELECT value FROM settings WHERE key = 'prReview.mcp.codeIntelligence'")
+    .get() as { value: string } | undefined
+  if (!row?.value) return null
+  try {
+    const parsed = JSON.parse(row.value) as Partial<McpStdioOverride>
+    return parsed.command ? { command: parsed.command, args: parsed.args, env: parsed.env } : null
+  } catch {
+    return null
+  }
+}
+
+function readMcpFromFile(path: string): McpStdioOverride | null {
+  if (!existsSync(path)) return null
+  try {
+    const json = JSON.parse(readFileSync(path, 'utf8')) as {
+      mcpServers?: Record<string, Partial<McpStdioOverride>>
+    }
+    const entry = json.mcpServers?.['code-intelligence']
+    return entry?.command ? { command: entry.command, args: entry.args, env: entry.env } : null
+  } catch {
+    return null
+  }
 }
 
 class PrReviewManager {
@@ -1020,7 +1049,7 @@ class PrReviewManager {
 
     const contextAbort = new AbortController()
     active.contextAbort = contextAbort
-    const mcpConfig = this.resolveCodeIntelligenceMcpConfig()
+    const mcpConfig = this.resolveCodeIntelligenceMcpConfig(reviewCwd, repo.projectPath)
     const heuristicBackend = new HeuristicContextBackend()
     const mcpBackend: PrContextBackend = mcpConfig
       ? new McpContextBackend({
@@ -1141,7 +1170,7 @@ class PrReviewManager {
       return
     }
 
-    const deduped = await this.deduplicateFindings(allFindings)
+    const deduped = deduplicateFindings(allFindings)
     const explicitAssignments = this.assignFindingThreads(reviewId, deduped)
 
     const touchedFiles = new Set(scope.files.map((file) => file.path))
@@ -1698,192 +1727,6 @@ Output findings in the same \`review-findings\` format.`
     })
   }
 
-  private async deduplicateFindings(findings: ReviewFinding[]): Promise<ReviewFinding[]> {
-    const SEVERITY_RANK: Record<string, number> = {
-      blocker: 0,
-      high: 1,
-      medium: 2,
-      low: 3,
-    }
-
-    // Phase 1: Group by file:line (domain-agnostic)
-    const groups = new Map<string, ReviewFinding[]>()
-    for (const f of findings) {
-      const key = `${f.file}:${f.line ?? 'null'}`
-      const group = groups.get(key)
-      if (group) group.push(f)
-      else groups.set(key, [f])
-    }
-
-    const result: ReviewFinding[] = []
-
-    for (const group of groups.values()) {
-      if (group.length === 1) {
-        result.push(group[0])
-        continue
-      }
-
-      // Phase 2: LLM merge for groups with 2+ findings
-      try {
-        const merged = await this.llmMergeGroup(group, SEVERITY_RANK)
-        result.push(...merged)
-      } catch (err) {
-        logger.warn('LLM dedupe failed, falling back to severity-based merge:', err)
-        result.push(...this.severityMergeGroup(group, SEVERITY_RANK))
-      }
-    }
-
-    return result
-  }
-
-  private async llmMergeGroup(
-    group: ReviewFinding[],
-    severityRank: Record<string, number>,
-  ): Promise<ReviewFinding[]> {
-    const apiKey = process.env.ANTHROPIC_API_KEY
-    if (!apiKey) {
-      logger.warn('No ANTHROPIC_API_KEY for dedupe, using severity merge fallback')
-      return this.severityMergeGroup(group, severityRank)
-    }
-
-    const input = group.map((f, i) => ({
-      index: i,
-      domain: f.domain ?? 'unknown',
-      severity: f.severity,
-      risk: f.risk,
-      title: f.title,
-      description: f.description.slice(0, 200),
-    }))
-
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 3000)
-
-    try {
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-          'content-type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 256,
-          messages: [
-            {
-              role: 'user',
-              content: `You are deduplicating code review findings on the same file and line.
-Given these findings, group the ones that describe the same underlying issue.
-Return ONLY valid JSON: {"groups":[[0,2],[1]]}
-where each inner array contains the indices of findings that should be merged.
-Keep findings that are genuinely different issues separate.
-
-Findings:
-${JSON.stringify(input)}`,
-            },
-          ],
-        }),
-        signal: controller.signal,
-      })
-
-      if (!response.ok) throw new Error(`API error: ${response.status}`)
-
-      const data = (await response.json()) as { content: { type: string; text: string }[] }
-      const text = data.content
-        .filter((b): b is { type: 'text'; text: string } => b.type === 'text')
-        .map((b) => b.text)
-        .join('')
-
-      const cleaned = text.replace(/^```json?\s*|\s*```$/g, '').trim()
-      const parsed = JSON.parse(cleaned) as { groups: number[][] }
-      if (!Array.isArray(parsed.groups)) throw new Error('Invalid response format')
-
-      return this.applyMergeGroups(group, parsed.groups, severityRank)
-    } finally {
-      clearTimeout(timeout)
-    }
-  }
-
-  private applyMergeGroups(
-    group: ReviewFinding[],
-    mergeGroups: number[][],
-    severityRank: Record<string, number>,
-  ): ReviewFinding[] {
-    const result: ReviewFinding[] = []
-    const used = new Set<number>()
-
-    for (const indices of mergeGroups) {
-      if (indices.length === 0) continue
-      const valid = indices.filter((i) => i >= 0 && i < group.length && !used.has(i))
-      if (valid.length === 0) continue
-
-      for (const i of valid) used.add(i)
-
-      if (valid.length === 1) {
-        result.push(group[valid[0]])
-        continue
-      }
-
-      // Sort by severity — keep highest as primary
-      valid.sort(
-        (a, b) => (severityRank[group[a].severity] ?? 99) - (severityRank[group[b].severity] ?? 99),
-      )
-      const primary = group[valid[0]]
-      const others = valid.slice(1).map((i) => group[i])
-
-      const mergedFrom = others
-        .filter((o) => o.domain !== primary.domain)
-        .map((o) => ({ domain: o.domain ?? 'unknown', title: o.title }))
-
-      result.push({
-        ...primary,
-        suggestion:
-          primary.suggestion ?? others.find((other) => other.suggestion !== undefined)?.suggestion,
-        description:
-          primary.description +
-          (mergedFrom.length > 0
-            ? `\n\n_Also flagged by: ${mergedFrom.map((m) => m.domain).join(', ')}_`
-            : ''),
-        mergedFrom: mergedFrom.length > 0 ? mergedFrom : undefined,
-      })
-    }
-
-    // Any findings not in merge groups pass through
-    for (let i = 0; i < group.length; i++) {
-      if (!used.has(i)) result.push(group[i])
-    }
-
-    return result
-  }
-
-  private severityMergeGroup(
-    group: ReviewFinding[],
-    severityRank: Record<string, number>,
-  ): ReviewFinding[] {
-    const sorted = [...group].sort(
-      (a, b) => (severityRank[a.severity] ?? 99) - (severityRank[b.severity] ?? 99),
-    )
-    const primary = sorted[0]
-    const others = sorted.slice(1)
-    const mergedFrom = others
-      .filter((o) => o.domain !== primary.domain)
-      .map((o) => ({ domain: o.domain ?? 'unknown', title: o.title }))
-
-    return [
-      {
-        ...primary,
-        suggestion:
-          primary.suggestion ?? others.find((other) => other.suggestion !== undefined)?.suggestion,
-        description:
-          primary.description +
-          (mergedFrom.length > 0
-            ? `\n\n_Also flagged by: ${mergedFrom.map((m) => m.domain).join(', ')}_`
-            : ''),
-        mergedFrom: mergedFrom.length > 0 ? mergedFrom : undefined,
-      },
-    ]
-  }
-
   private parseFindings(text: string): ReviewFinding[] {
     const allFindings: ReviewFinding[] = []
 
@@ -2306,27 +2149,29 @@ ${JSON.stringify(input)}`,
     this.send(IPC.GH_REVIEW_UPDATE, { reviewId, status: 'error', error: 'Review stopped by user' })
   }
 
-  private resolveCodeIntelligenceMcpConfig(): {
+  private resolveCodeIntelligenceMcpConfig(...candidateCwds: Array<string | undefined>): {
     command: string
     args?: string[]
     env?: Record<string, string>
   } | null {
-    const db = getDb()
-    const row = db
-      .prepare("SELECT value FROM settings WHERE key = 'prReview.mcp.codeIntelligence'")
-      .get() as { value: string } | undefined
-    if (!row?.value) return null
-    try {
-      const parsed = JSON.parse(row.value) as {
-        command?: string
-        args?: string[]
-        env?: Record<string, string>
-      }
-      if (!parsed.command) return null
-      return { command: parsed.command, args: parsed.args, env: parsed.env }
-    } catch {
-      return null
+    // 1. Explicit user override in DB takes precedence.
+    const fromDb = readDbMcpOverride()
+    if (fromDb) return fromDb
+
+    // 2. Project-committed .mcp.json in any candidate cwd (worktree or repo path).
+    for (const cwd of candidateCwds) {
+      if (!cwd) continue
+      const fromProject = readMcpFromFile(join(cwd, '.mcp.json'))
+      if (fromProject) return fromProject
     }
+
+    // 3. SDK user-scope: ~/.claude.json -> mcpServers["code-intelligence"].
+    //    The Agent SDK loads MCP servers from this file for regular sessions, so
+    //    PR reviews should reuse the same definition by default.
+    const fromUserScope = readMcpFromFile(join(homedir(), '.claude.json'))
+    if (fromUserScope) return fromUserScope
+
+    return null
   }
 
   // ── Persistence queries ──

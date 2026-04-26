@@ -159,7 +159,10 @@ export class PrRaiseService {
     }
   }
 
-  async generatePrDescription(sessionId: string): Promise<PrRaiseDescription> {
+  async generatePrDescription(
+    sessionId: string,
+    queryAi: (userPrompt: string, systemPrompt: string) => Promise<string>,
+  ): Promise<PrRaiseDescription> {
     const db = getDb()
 
     const messages = db
@@ -197,18 +200,7 @@ export class PrRaiseService {
     const diffPreview =
       info.diff.length > 8000 ? `${info.diff.slice(0, 8000)}\n... (diff truncated)` : info.diff
 
-    const prompt = `Generate a pull request title and description for the following changes.
-
-Session title: ${sessionTitle}
-
-Conversation context:
-${conversationSummary}
-
-Files changed (${info.stats.filesChanged} files, +${info.stats.insertions}/-${info.stats.deletions}):
-${fileList}
-
-Diff (may be truncated):
-${diffPreview}
+    const systemPrompt = `You generate pull request titles and descriptions.
 
 Respond with ONLY a JSON object in this exact format (no markdown fences):
 {"title": "feat: short descriptive title", "body": "## Summary\\n- bullet points\\n\\n## Test Plan\\n- [ ] verification steps"}
@@ -220,31 +212,26 @@ Rules:
 - Only include ## Breaking Changes section if there are breaking changes
 - Be specific about what changed and why`
 
+    const userPrompt = `Generate a pull request title and description for the following changes.
+
+Session title: ${sessionTitle}
+
+Conversation context:
+${conversationSummary}
+
+Files changed (${info.stats.filesChanged} files, +${info.stats.insertions}/-${info.stats.deletions}):
+${fileList}
+
+Diff (may be truncated):
+${diffPreview}`
+
     try {
-      const apiKey = process.env.ANTHROPIC_API_KEY
-      if (!apiKey) throw new Error('ANTHROPIC_API_KEY not set')
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-          'content-type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 1024,
-          messages: [{ role: 'user', content: prompt }],
-        }),
-      })
-      if (!response.ok) throw new Error(`Anthropic API error: ${response.status}`)
-      const data = (await response.json()) as { content: { type: string; text: string }[] }
-
-      const text = data.content
-        .filter((b): b is { type: 'text'; text: string } => b.type === 'text')
-        .map((b) => b.text)
-        .join('')
-
-      const parsed = JSON.parse(text) as { title?: string; body?: string }
+      const text = await queryAi(userPrompt, systemPrompt)
+      const cleaned = text
+        .replace(/^\s*```(?:json)?\s*/, '')
+        .replace(/\s*```\s*$/, '')
+        .trim()
+      const parsed = JSON.parse(cleaned) as { title?: string; body?: string }
       return { title: parsed.title ?? sessionTitle, body: parsed.body ?? '' }
     } catch (err) {
       logger.error('generatePrDescription failed:', err)

@@ -126,6 +126,23 @@ bun run typecheck        # Must pass with no errors
 bun test                 # Must pass with no failures
 ```
 
+## Anthropic API access
+
+All Claude calls go through the Agent SDK via `src/main/providers/claude-provider.ts`, which inherits the user's existing auth (Claude Code subscription, Claude Pro, Claude Max). Pylon does not own or read raw API keys.
+
+**Forbidden in `src/`:**
+- Reading `ANTHROPIC_API_KEY` from `process.env`
+- Calling `https://api.anthropic.com/v1/*` directly via `fetch`
+- The headers `x-api-key` and `anthropic-version`
+- Importing `@anthropic-ai/sdk` (the raw API client; the agent SDK is `@anthropic-ai/claude-agent-sdk`)
+
+**Use instead:**
+- For an active session, send a normal user message via `sessionManager.sendMessage(sessionId, ...)`.
+- For a one-shot text-only LLM call that should not appear in the chat UI, use `sessionManager.sendGitAiQuery(sessionId, prompt, systemPrompt)`. This runs through the session's provider with `auto-approve` permissions and returns the response text.
+- Do not introduce new direct-fetch paths even for "small" calls (title generation, dedupe, classification, etc.). They break for users without an API key set.
+
+The rule is enforced by `src/main/__tests__/no-direct-anthropic-api.test.ts`, which scans `src/` and fails the suite on any forbidden token. If you hit a use case that genuinely needs to bypass the SDK, raise it for discussion before adding an exception.
+
 ## Workflow
 
 Before making changes, use the `code-intelligence` MCP tools to understand the relevant code first. Useful starting points:

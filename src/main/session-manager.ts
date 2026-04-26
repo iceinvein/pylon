@@ -985,7 +985,10 @@ export class SessionManager {
   }
 
   generatePrDescription(sessionId: string) {
-    return prRaiseService.generatePrDescription(sessionId)
+    this.resumeSession(sessionId)
+    return prRaiseService.generatePrDescription(sessionId, (prompt, systemPrompt) =>
+      this.sendGitAiQuery(sessionId, prompt, systemPrompt),
+    )
   }
 
   raisePr(request: import('../shared/types').PrRaiseRequest) {
