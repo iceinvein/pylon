@@ -235,8 +235,6 @@ export function ReviewProgress({ reviewId: _reviewId, onStop, isLive = true }: P
   const streamingText = usePrReviewStore((s) => s.reviewStreamingText)
   const agentProgress = usePrReviewStore((s) => s.agentProgress)
   const contextPhase = usePrReviewStore((s) => s.contextPhase)
-  const contextMode = usePrReviewStore((s) => s.contextMode)
-  const contextNotes = usePrReviewStore((s) => s.contextNotes)
   const [expanded, setExpanded] = useState(isLive)
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -280,14 +278,6 @@ export function ReviewProgress({ reviewId: _reviewId, onStop, isLive = true }: P
         )}
         {contextPhase === 'building' && (
           <span className="text-[10px] text-base-text-muted">Building code context...</span>
-        )}
-        {contextMode && (
-          <span
-            className="rounded-sm border border-base-border-subtle px-1.5 py-0.5 font-mono text-[10px] text-base-text-muted uppercase"
-            title={contextNotes?.join('\n')}
-          >
-            ctx: {contextMode}
-          </span>
         )}
         <div className="flex-1" />
         {isLive && onStop && (
