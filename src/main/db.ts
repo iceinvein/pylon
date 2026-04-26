@@ -584,22 +584,6 @@ export function initDatabase(): Database.Database {
       posted_at INTEGER NOT NULL,
       resolved_at INTEGER
     );
-
-    CREATE INDEX IF NOT EXISTS idx_pr_review_series_repo ON pr_review_series(repo_full_name, pr_number);
-    CREATE INDEX IF NOT EXISTS idx_pr_reviews_repo ON pr_reviews(repo_full_name, pr_number);
-    CREATE INDEX IF NOT EXISTS idx_pr_reviews_series ON pr_reviews(series_id, created_at DESC);
-    CREATE INDEX IF NOT EXISTS idx_pr_review_findings_review ON pr_review_findings(review_id);
-    CREATE INDEX IF NOT EXISTS idx_pr_review_run_files_review ON pr_review_run_files(review_id, file_path);
-    CREATE INDEX IF NOT EXISTS idx_pr_review_threads_series ON pr_review_threads(series_id, status);
-    CREATE UNIQUE INDEX IF NOT EXISTS idx_pr_review_threads_fingerprint ON pr_review_threads(series_id, fingerprint);
-    CREATE INDEX IF NOT EXISTS idx_pr_review_finding_posts_thread
-      ON pr_review_finding_posts(thread_id, posted_at DESC);
-    CREATE INDEX IF NOT EXISTS idx_pr_review_finding_posts_series
-      ON pr_review_finding_posts(series_id);
-    CREATE INDEX IF NOT EXISTS idx_pr_review_finding_posts_review
-      ON pr_review_finding_posts(review_id);
-    CREATE INDEX IF NOT EXISTS idx_pr_review_finding_posts_finding
-      ON pr_review_finding_posts(finding_id);
   `)
 
   // PR Cache table
@@ -676,10 +660,33 @@ export function initDatabase(): Database.Database {
     CREATE INDEX IF NOT EXISTS idx_test_findings_exploration ON test_findings(exploration_id);
   `)
 
-  // Run versioned migrations
   runMigrations(db)
+  createPrReviewIndexes(db)
 
   return db
+}
+
+// Indexes that depend on columns added by migrations (e.g. pr_reviews.series_id
+// added in migration 18). Must run after runMigrations so legacy databases have
+// the columns available before they are indexed.
+function createPrReviewIndexes(database: Database.Database): void {
+  database.exec(`
+    CREATE INDEX IF NOT EXISTS idx_pr_review_series_repo ON pr_review_series(repo_full_name, pr_number);
+    CREATE INDEX IF NOT EXISTS idx_pr_reviews_repo ON pr_reviews(repo_full_name, pr_number);
+    CREATE INDEX IF NOT EXISTS idx_pr_reviews_series ON pr_reviews(series_id, created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_pr_review_findings_review ON pr_review_findings(review_id);
+    CREATE INDEX IF NOT EXISTS idx_pr_review_run_files_review ON pr_review_run_files(review_id, file_path);
+    CREATE INDEX IF NOT EXISTS idx_pr_review_threads_series ON pr_review_threads(series_id, status);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_pr_review_threads_fingerprint ON pr_review_threads(series_id, fingerprint);
+    CREATE INDEX IF NOT EXISTS idx_pr_review_finding_posts_thread
+      ON pr_review_finding_posts(thread_id, posted_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_pr_review_finding_posts_series
+      ON pr_review_finding_posts(series_id);
+    CREATE INDEX IF NOT EXISTS idx_pr_review_finding_posts_review
+      ON pr_review_finding_posts(review_id);
+    CREATE INDEX IF NOT EXISTS idx_pr_review_finding_posts_finding
+      ON pr_review_finding_posts(finding_id);
+  `)
 }
 
 export function getDb(): Database.Database {
