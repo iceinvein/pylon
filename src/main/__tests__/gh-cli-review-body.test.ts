@@ -70,7 +70,7 @@ describe('buildReviewBody', () => {
     expect(body).toContain('Risk breakdown')
     expect(body).toContain('| 🔴 Blocker | 2 |')
     expect(body).toContain('| 🟠 High | 1 |')
-    expect(body).toContain('| 🔵 Medium | 1 |')
+    expect(body).toContain('| 🟡 Medium | 1 |')
     expect(body).not.toContain('| ⚪ Low |')
   })
 
@@ -97,7 +97,7 @@ describe('buildReviewBody', () => {
     ]
     const body = buildReviewBody(findings, '')
     expect(body).toContain('<summary><b>General notes</b> (1)</summary>')
-    expect(body).toContain('#### 🔵 Medium: Convention drift')
+    expect(body).toContain('#### 🟡 Medium: Convention drift')
     expect(body).toContain('Description')
   })
 
@@ -276,8 +276,12 @@ diff --git a/src/renamed.ts b/src/renamed.ts
     expect(prepared.comments[0].body).toContain(
       '**Suggested direction:** Cache the derived value before the loop.',
     )
-    expect(prepared.comments[1].body).toContain('> **Next step:** Address this before merging')
-    expect(prepared.comments[1].body).toContain('<sub>Focus · Security</sub>')
+    expect(prepared.comments[1].body).not.toContain('Next step')
+    expect(prepared.comments[1].body).not.toContain('Action ·')
+    expect(prepared.comments[1].body).not.toContain('> **Risk:**')
+    expect(prepared.comments[1].body).toContain(
+      '<sub>Impact · critical · Likelihood · likely · Confidence · high · Focus · Security</sub>',
+    )
   })
 
   test('renders actionable suggestion blocks with multi-line anchors when available', () => {
@@ -391,10 +395,12 @@ describe('buildConversationCommentBody', () => {
 
     expect(body).toContain('## Pylon Finding')
     expect(body).toContain('### 🟠 High: Missing empty state')
-    expect(body).toContain('<sub>Location · `src/app.ts:12` · Focus · UX</sub>')
     expect(body).toContain(
-      '> **Next step:** Verify this path and update the code if the behavior can occur.',
+      '<sub>Location · `src/app.ts:12` · Focus · UX · Impact · high · Likelihood · possible · Confidence · medium</sub>',
     )
+    expect(body).not.toContain('Next step')
+    expect(body).not.toContain('Action ·')
+    expect(body).not.toContain('> **Risk:**')
     expect(body).toContain('<!-- pylon:finding id=finding-1 hash=')
   })
 })

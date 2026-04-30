@@ -12,7 +12,7 @@ const SEVERITY_RANK: Record<ReviewFinding['severity'], number> = {
 const SEVERITY_ICON: Record<ReviewFinding['severity'], string> = {
   blocker: '🔴',
   high: '🟠',
-  medium: '🔵',
+  medium: '🟡',
   low: '⚪',
 }
 
@@ -21,13 +21,6 @@ const SEVERITY_LABEL: Record<ReviewFinding['severity'], string> = {
   high: 'High',
   medium: 'Medium',
   low: 'Low',
-}
-
-const NEXT_STEP: Record<ReviewFinding['risk']['action'], string> = {
-  'must-fix': 'Address this before merging, or reply with the context that makes this path safe.',
-  'should-fix': 'Verify this path and update the code if the behavior can occur.',
-  consider: 'Consider folding this in if it matches the direction of the change.',
-  optional: 'Tidy this when convenient if you touch this area again.',
 }
 
 const FOCUS_LABEL: Record<ReviewFocus, string> = {
@@ -69,13 +62,20 @@ function formatFocus(finding: ReviewFinding): string {
   return FOCUS_LABEL[finding.domain] ?? finding.domain
 }
 
-function formatRisk(finding: ReviewFinding): string {
+function formatRiskParts(finding: ReviewFinding): string[] {
   return [
-    `Impact: ${finding.risk.impact}`,
-    `Likelihood: ${finding.risk.likelihood}`,
-    `Confidence: ${finding.risk.confidence}`,
-    `Action: ${finding.risk.action}`,
-  ].join(' · ')
+    `Impact · ${finding.risk.impact}`,
+    `Likelihood · ${finding.risk.likelihood}`,
+    `Confidence · ${finding.risk.confidence}`,
+  ]
+}
+
+function buildMetaLine(parts: Array<string | false | null | undefined>): string | null {
+  const filtered = parts.filter(
+    (part): part is string => typeof part === 'string' && part.length > 0,
+  )
+  if (filtered.length === 0) return null
+  return `<sub>${filtered.join(' · ')}</sub>`
 }
 
 export function buildReviewBody(
@@ -171,15 +171,15 @@ export function buildReviewBody(
       '',
     )
     for (const f of generalFindings) {
-      const footer = buildFindingFooter(f)
+      const focus = formatFocus(f)
+      const metaLine = buildMetaLine([...formatRiskParts(f), focus ? `Focus · ${focus}` : null])
+      const mergedFrom = buildMergedFromLine(f)
       lines.push(
         `#### ${SEVERITY_ICON[f.severity]} ${SEVERITY_LABEL[f.severity]}: ${f.title}`,
+        ...(metaLine ? [metaLine] : []),
         '',
         formatReviewFindingDescriptionMarkdown(f.description),
-        '',
-        `> **Risk:** ${formatRisk(f)}`,
-        buildMergedFromLine(f) || '',
-        footer || '',
+        ...(mergedFrom ? ['', mergedFrom] : []),
         '',
       )
     }
@@ -196,15 +196,15 @@ export function buildReviewBody(
     )
     for (const f of unanchoredFindings) {
       const loc = formatLocation(f)
-      const footer = buildFindingFooter(f)
+      const focus = formatFocus(f)
+      const metaLine = buildMetaLine([...formatRiskParts(f), focus ? `Focus · ${focus}` : null])
+      const mergedFrom = buildMergedFromLine(f)
       lines.push(
         `#### ${SEVERITY_ICON[f.severity]} ${SEVERITY_LABEL[f.severity]}: ${f.title}${loc ? ` ${loc}` : ''}`,
+        ...(metaLine ? [metaLine] : []),
         '',
         formatReviewFindingDescriptionMarkdown(f.description),
-        '',
-        `> **Risk:** ${formatRisk(f)}`,
-        buildMergedFromLine(f) || '',
-        footer || '',
+        ...(mergedFrom ? ['', mergedFrom] : []),
         '',
       )
     }
@@ -241,15 +241,9 @@ export function getFindingMarker(finding: ReviewFinding): string {
   return `<!-- pylon:finding id=${id} hash=${hash} -->`
 }
 
-function buildFindingFooter(finding: ReviewFinding): string {
-  const focus = formatFocus(finding)
-  if (!focus) return ''
-  return `<sub>Focus · ${focus}</sub>`
-}
-
 function buildMergedFromLine(finding: ReviewFinding): string | null {
   if (!finding.mergedFrom || finding.mergedFrom.length === 0) return null
-  return `> **Also flagged by:** ${finding.mergedFrom.map((entry) => entry.domain).join(', ')}`
+  return `<sub>Also flagged by · ${finding.mergedFrom.map((entry) => entry.domain).join(', ')}</sub>`
 }
 
 function buildSuggestionBlock(finding: ReviewFinding): string | null {
@@ -264,21 +258,20 @@ export function buildInlineCommentBody(
 ): string {
   const icon = SEVERITY_ICON[finding.severity]
   const label = SEVERITY_LABEL[finding.severity]
-  const footer = buildFindingFooter(finding)
+  const focus = formatFocus(finding)
+  const metaLine = buildMetaLine([...formatRiskParts(finding), focus ? `Focus · ${focus}` : null])
   const mergedFrom = buildMergedFromLine(finding)
   const suggestion = options.includeSuggestion ? buildSuggestionBlock(finding) : null
   return [
     `### ${icon} ${label}: ${finding.title}`,
+    metaLine ? '' : null,
+    metaLine,
     '',
     formatReviewFindingDescriptionMarkdown(finding.description),
     suggestion ? '' : null,
-    suggestion || null,
-    '',
-    `> **Risk:** ${formatRisk(finding)}`,
-    mergedFrom || null,
-    `> **Next step:** ${NEXT_STEP[finding.risk.action]}`,
-    footer ? '' : null,
-    footer || null,
+    suggestion,
+    mergedFrom ? '' : null,
+    mergedFrom,
     '',
     getFindingMarker(finding),
   ]
@@ -293,26 +286,24 @@ export function buildConversationCommentBody(finding: ReviewFinding): string {
   const focus = formatFocus(finding)
   const mergedFrom = buildMergedFromLine(finding)
   const suggestion = buildSuggestionBlock(finding)
-  const metaParts = [
-    location ? `Location · ${location}` : '',
-    focus ? `Focus · ${focus}` : '',
-  ].filter(Boolean)
-  const metaLine = metaParts.length > 0 ? `<sub>${metaParts.join(' · ')}</sub>` : ''
+  const metaLine = buildMetaLine([
+    location ? `Location · ${location}` : null,
+    focus ? `Focus · ${focus}` : null,
+    ...formatRiskParts(finding),
+  ])
 
   return [
     '## Pylon Finding',
     '',
     `### ${icon} ${label}: ${finding.title}`,
     metaLine ? '' : null,
-    metaLine || null,
+    metaLine,
     '',
     formatReviewFindingDescriptionMarkdown(finding.description),
     suggestion ? '' : null,
-    suggestion || null,
-    '',
-    `> **Risk:** ${formatRisk(finding)}`,
-    mergedFrom || null,
-    `> **Next step:** ${NEXT_STEP[finding.risk.action]}`,
+    suggestion,
+    mergedFrom ? '' : null,
+    mergedFrom,
     '',
     getFindingMarker(finding),
   ]
