@@ -42,10 +42,49 @@ test('classifyFile identifies config files as important', () => {
   expect(classifyFile('.env.example')).toBe('important')
 })
 
-test('classifyFile identifies test files as low priority', () => {
-  expect(classifyFile('src/main.test.ts')).toBe('low')
-  expect(classifyFile('__tests__/foo.ts')).toBe('low')
-  expect(classifyFile('src/foo.spec.js')).toBe('low')
+test('classifyFile skips test files by default to avoid review noise', () => {
+  expect(classifyFile('src/main.test.ts')).toBe('skip')
+  expect(classifyFile('__tests__/foo.ts')).toBe('skip')
+  expect(classifyFile('src/foo.spec.js')).toBe('skip')
+  expect(classifyFile('src/foo.cy.tsx')).toBe('skip')
+  expect(classifyFile('e2e/login-flow.ts')).toBe('skip')
+  expect(classifyFile('cypress/integration/foo.js')).toBe('skip')
+  expect(classifyFile('playwright/foo.ts')).toBe('skip')
+  expect(classifyFile('packages/desktop/__mocks__/fs.ts')).toBe('skip')
+  // Python
+  expect(classifyFile('test_utils.py')).toBe('skip')
+  expect(classifyFile('utils_test.py')).toBe('skip')
+  // Go
+  expect(classifyFile('handler_test.go')).toBe('skip')
+  // Rust
+  expect(classifyFile('tests/integration.rs')).toBe('skip')
+  // Ruby
+  expect(classifyFile('spec/models/user_spec.rb')).toBe('skip')
+  expect(classifyFile('test/models/user_test.rb')).toBe('skip')
+  // Java / Kotlin
+  expect(classifyFile('src/test/java/UserTest.java')).toBe('skip')
+  expect(classifyFile('UserServiceIT.java')).toBe('skip')
+  expect(classifyFile('UserTest.kt')).toBe('skip')
+  // C#
+  expect(classifyFile('UserTests.cs')).toBe('skip')
+  // Swift
+  expect(classifyFile('UserTests.swift')).toBe('skip')
+})
+
+test('classifyFile downgrades test files to low when reviewTestFiles is opted in', () => {
+  expect(classifyFile('src/main.test.ts', { reviewTestFiles: true })).toBe('low')
+  expect(classifyFile('__tests__/foo.ts', { reviewTestFiles: true })).toBe('low')
+  expect(classifyFile('e2e/login-flow.ts', { reviewTestFiles: true })).toBe('low')
+})
+
+test('classifyFile does not misclassify non-test files matching naming hints', () => {
+  // Latest.java, request.py, manifest.swift, etc. should remain critical / source-tier.
+  expect(classifyFile('src/Latest.java')).toBe('critical')
+  expect(classifyFile('src/manifest.swift')).toBe('critical')
+  expect(classifyFile('lib/protest.go')).toBe('critical')
+  // A directory called testdata in Go projects is not a test file directly.
+  // (Skipped because it lives under tests/, but classifyFile still works as expected.)
+  expect(classifyFile('docs/testing-guide.md')).toBe('skip') // .md is in skip list
 })
 
 test('classifyFile identifies generated/lock files as skip', () => {

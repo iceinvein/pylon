@@ -36,6 +36,12 @@ import { CodeIntelligenceMcpClient } from './pr-context/mcp-client'
 import { McpContextBackend } from './pr-context/mcp-context-backend'
 import type { PrContextBackend } from './pr-context/pr-context-backend'
 import { PrContextBuilder } from './pr-context/pr-context-builder'
+import {
+  applyCriticVerdicts,
+  buildCriticPrompt,
+  parseCriticVerdicts,
+  partitionForCritic,
+} from './pr-review-critic'
 import { deduplicateFindings } from './pr-review-dedupe'
 import { resolveReviewScope } from './review-scope'
 import { sessionManager } from './session-manager'
@@ -1171,7 +1177,8 @@ class PrReviewManager {
     }
 
     const deduped = deduplicateFindings(allFindings)
-    const explicitAssignments = this.assignFindingThreads(reviewId, deduped)
+    const filtered = await this.runCriticPass(reviewId, reviewCwd, deduped)
+    const explicitAssignments = this.assignFindingThreads(reviewId, filtered)
 
     const touchedFiles = new Set(scope.files.map((file) => file.path))
     const seriesIdForReview = (
@@ -1349,6 +1356,63 @@ class PrReviewManager {
       sessionManager.stopSession(sessionId)
     }
     return collected
+  }
+
+  /**
+   * Run a critic pass over deduped candidate findings. Implements the
+   * generator+critic pattern from the multi-pass self-consistency literature
+   * (SWR-Bench arXiv 2509.01494) at ~1.2x cost rather than 3x: high-prior
+   * findings (severity blocker/high + must-fix/should-fix + anchored) skip the
+   * critic, and the critic's prompt does not re-feed the diff. Falls back to
+   * the unfiltered list on any transient failure so we never silently drop
+   * findings on a parse error.
+   */
+  private async runCriticPass(
+    reviewId: string,
+    cwd: string,
+    findings: ReviewFinding[],
+  ): Promise<ReviewFinding[]> {
+    if (findings.length === 0) return findings
+    const partition = partitionForCritic(findings)
+    if (partition.candidates.length === 0) return findings
+
+    const { systemPrompt, userPrompt } = buildCriticPrompt(partition.candidates)
+    const candidateIds = new Set(partition.candidates.map((f) => f.id))
+
+    let collected = ''
+    try {
+      const sessionId = await sessionManager.createSession(cwd, undefined, undefined, 'pr-review')
+      sessionManager.setPermissionMode(sessionId, 'auto-approve')
+      const unsub = sessionManager.onMessage(sessionId, (message: unknown) => {
+        const msg = message as Record<string, unknown>
+        if (msg.type === 'stream_event') {
+          const event = msg.event as Record<string, unknown> | undefined
+          const delta = event?.delta as Record<string, unknown> | undefined
+          if (delta?.type === 'text_delta' && typeof delta.text === 'string') {
+            collected += delta.text
+          }
+        }
+      })
+      try {
+        collected = await sessionManager.sendGitAiQuery(sessionId, userPrompt, systemPrompt)
+      } finally {
+        unsub()
+        sessionManager.stopSession(sessionId)
+      }
+    } catch (err) {
+      logger.warn(
+        `Critic pass failed for review ${reviewId}, falling back to unfiltered findings: ${String(err)}`,
+      )
+      return findings
+    }
+
+    const verdicts = parseCriticVerdicts(collected, candidateIds)
+    const result = applyCriticVerdicts(partition, verdicts)
+    const dropped = findings.length - result.length
+    logger.info(
+      `Critic pass for review ${reviewId}: ${partition.autoKept.length} auto-kept, ${partition.candidates.length} reviewed, ${dropped} dropped`,
+    )
+    return result
   }
 
   private async runAgentSession(
@@ -1558,11 +1622,20 @@ Before emitting the JSON block, silently remove any finding that fails one of th
 ## Anti-examples (do NOT emit)
 These illustrate the kind of low-signal finding that creates triage burden without surfacing real risk. Do not produce findings shaped like these:
 - "Inline arrow function allocates a new closure on every render" (micro-optimization on cold path)
-- "Magic number used for layout — consider extracting a constant" (style preference)
+- "Magic number used for layout, consider extracting a constant" (style preference)
 - "Function name could be more descriptive" (style, not correctness)
-- "Potential issue if input is null, but the caller probably guards it — needs verification" (low confidence, speculation)
+- "Potential issue if input is null, but the caller probably guards it, needs verification" (low confidence, speculation)
 - "Pre-existing in both branches but worth flagging" (not introduced by PR)
 - "Could add a comment explaining why" (documentation preference, not a defect)
+
+Also do NOT flag any of these categories. They consistently waste reviewer attention without changing the merge decision:
+- **Theoretical risks requiring unlikely preconditions.** If the failure path needs a specific configuration, an unusual deployment, or a sequence of events that nothing in the diff makes plausible, drop it.
+- **Defense-in-depth on already-defended code.** If the changed code already validates input, checks a bound, or holds a lock, do not propose adding a redundant check "just in case." A real second-line defense requires a concrete first-line bypass.
+- **Style or formatting issues that the repo's linter would catch.** Unused imports, naming conventions, indentation, ordering of class members, missing semicolons. Assume Biome / ESLint / Prettier / equivalent already runs in CI.
+- **Findings on test files unless they affect test correctness.** A test that asserts the wrong thing, masks a regression, or leaks state is fair game. Test-file style, naming, or "could add another assertion" is not.
+- **Findings on generated files, lock files, vendored directories, minified assets, or files containing \`@generated\` markers.** These are produced by tooling and reviewing them as if they were hand-written is noise.
+- **Deprecation reminders for APIs that the PR is not introducing or modifying.**
+- **"Consider extracting this into a helper" when the duplication is two call sites.** Three or more before suggesting an abstraction.
 
 ## Tools: Code Intelligence (for deeper drilling)
 Use these when the pre-computed bundle does not cover something:

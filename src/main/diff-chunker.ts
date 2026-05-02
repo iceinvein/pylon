@@ -179,7 +179,39 @@ const SKIP_PATTERNS = [
   /\.avi$/,
 ]
 
-const TEST_PATTERNS = [/\.test\./, /\.spec\./, /(^|\/)__tests__\//]
+// Test files. Reviewed reluctantly: across 24 historical reviews, every finding
+// the agents produced on a test file was dismissed without action. Treat as skip
+// by default; classifyFile takes a flag for callers that want them reviewed.
+const TEST_PATTERNS = [
+  // JS / TS
+  /\.test\.[cm]?[tj]sx?$/,
+  /\.spec\.[cm]?[tj]sx?$/,
+  /\.cy\.[tj]sx?$/, // Cypress
+  /(^|\/)__tests__\//,
+  /(^|\/)__mocks__\//,
+  /(^|\/)e2e\//,
+  /(^|\/)cypress\//,
+  /(^|\/)playwright\//,
+  // Python
+  /(^|\/)test_[^/]+\.py$/,
+  /[^/]+_test\.py$/,
+  // Go
+  /_test\.go$/,
+  // Rust
+  /(^|\/)tests\/.*\.rs$/,
+  // Ruby
+  /_spec\.rb$/,
+  /_test\.rb$/,
+  // Java / Kotlin / Scala
+  /Test[s]?\.(java|kt|scala)$/,
+  /IT\.(java|kt)$/, // integration test convention
+  // C# / .NET
+  /Test[s]?\.cs$/,
+  // Swift
+  /Tests?\.swift$/,
+  // Generic test directories at any depth
+  /(^|\/)(tests?|spec)\//,
+]
 
 const SOURCE_EXTENSIONS = new Set([
   '.ts',
@@ -227,15 +259,23 @@ const IMPORTANT_FILENAMES = new Set([
   'docker-compose.yaml',
 ])
 
-export function classifyFile(path: string): FileTier {
+export type ClassifyOptions = {
+  // When true, test files are reviewed (tier=low). Default false: test files
+  // are skipped entirely, since historical data shows agents produce noise on
+  // them and humans never act on it.
+  reviewTestFiles?: boolean
+}
+
+export function classifyFile(path: string, options: ClassifyOptions = {}): FileTier {
   // Skip check first
   for (const pattern of SKIP_PATTERNS) {
     if (pattern.test(path)) return 'skip'
   }
 
-  // Test files → low (check before source so .test.ts doesn't become critical)
+  // Test files: skip by default, low priority if explicitly opted in. Check
+  // before source-extension classification so .test.ts doesn't become critical.
   for (const pattern of TEST_PATTERNS) {
-    if (pattern.test(path)) return 'low'
+    if (pattern.test(path)) return options.reviewTestFiles ? 'low' : 'skip'
   }
 
   const basename = path.split('/').pop() ?? path
