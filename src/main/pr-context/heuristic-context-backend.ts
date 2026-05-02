@@ -17,7 +17,7 @@ export class HeuristicContextBackend implements PrContextBackend {
     const diffFiles = parseDiff(diff)
     const files: PrContextFile[] = []
     const notes: string[] = [
-      'heuristic mode: reference data unavailable, call find_references or grep for specific symbols if needed',
+      'heuristic mode: reference data unavailable. For any symbol whose impact depends on its callers, call find_references via the code-intelligence MCP before forming a finding. Do not assume a symbol is unused without checking.',
     ]
 
     for (const df of diffFiles) {
