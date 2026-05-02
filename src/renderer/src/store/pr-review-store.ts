@@ -19,6 +19,7 @@ import type {
   ReviewTimelineEntry,
 } from '../../../shared/types'
 import { isPostableFinding } from '../lib/pr-review-findings'
+import { shouldShowFindingByDefault } from '../lib/pr-review-presentation'
 
 const logger = log.child('pr-review-store')
 
@@ -668,7 +669,7 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
   toggleSeveritySelection: (severity) => {
     set((s) => {
       const matching = s.activeFindings.filter(
-        (f) => f.severity === severity && isPostableFinding(f),
+        (f) => f.severity === severity && isPostableFinding(f) && shouldShowFindingByDefault(f),
       )
       if (matching.length === 0) return s
       const allSelected = matching.every((f) => s.selectedFindingIds.has(f.id))
@@ -685,7 +686,9 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
     const { activeFindings } = get()
     set({
       selectedFindingIds: new Set(
-        activeFindings.filter((f) => isPostableFinding(f)).map((f) => f.id),
+        activeFindings
+          .filter((f) => isPostableFinding(f) && shouldShowFindingByDefault(f))
+          .map((f) => f.id),
       ),
     })
   },
@@ -743,7 +746,9 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
 
   postAllAsReview: async (repo, prNumber) => {
     const { activeFindings } = get()
-    const eligible = activeFindings.filter((f) => isPostableFinding(f))
+    const eligible = activeFindings.filter(
+      (f) => isPostableFinding(f) && shouldShowFindingByDefault(f),
+    )
     if (eligible.length === 0) return
     set({ postingBatch: 'all' })
     try {

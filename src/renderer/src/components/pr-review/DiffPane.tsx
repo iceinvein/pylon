@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReviewFinding } from '../../../../shared/types'
 import { filePathMatches, parseUnifiedDiffToHunks } from '../../lib/diff-utils'
 import { isVisibleLatestRunFinding } from '../../lib/pr-review-findings'
+import { splitFindingsForReview } from '../../lib/pr-review-presentation'
 import { DiffView } from '../DiffView'
 import { DiffFindingAnnotation } from './DiffFindingAnnotation'
 import { SplitDiffView } from './SplitDiffView'
@@ -47,6 +48,7 @@ export function DiffPane({
 }: Props) {
   const [mode, setMode] = useState<DiffMode>('unified')
   const [activeFindingIdx, setActiveFindingIdx] = useState(-1)
+  const [showSuggestions, setShowSuggestions] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const [tickPositions, setTickPositions] = useState<{ top: number; severity: string }[]>([])
 
@@ -61,7 +63,7 @@ export function DiffPane({
     return undefined
   }, [selectedFile, fileDiffs])
 
-  const fileFindings = useMemo(
+  const allFileFindings = useMemo(
     () =>
       selectedFile
         ? findings.filter(
@@ -69,6 +71,18 @@ export function DiffPane({
           )
         : [],
     [selectedFile, findings],
+  )
+  const fileFindingGroups = useMemo(
+    () => splitFindingsForReview(allFileFindings),
+    [allFileFindings],
+  )
+  const fileFindings = useMemo(
+    () =>
+      (showSuggestions
+        ? [...fileFindingGroups.actionable, ...fileFindingGroups.suggestions]
+        : fileFindingGroups.actionable
+      ).map((entry) => entry.finding),
+    [fileFindingGroups, showSuggestions],
   )
 
   const hunks = useMemo(() => {
@@ -175,13 +189,29 @@ export function DiffPane({
 
   // Overview mode — general findings (no file)
   if (selectedFile === null) {
-    const generalFindings = findings.filter((f) => isVisibleLatestRunFinding(f) && !f.file)
+    const generalFindingGroups = splitFindingsForReview(
+      findings.filter((f) => isVisibleLatestRunFinding(f) && !f.file),
+    )
+    const generalFindings = showSuggestions
+      ? [...generalFindingGroups.actionable, ...generalFindingGroups.suggestions]
+      : generalFindingGroups.actionable
     return (
       <div className="flex h-full flex-col">
         <div className="flex items-center gap-2 border-base-border-subtle border-b bg-base-surface/30 px-4 py-2">
           <Eye size={12} className="text-base-text-muted" />
           <span className="font-medium text-base-text text-xs">Overview</span>
           <span className="text-base-text-faint text-xs">General findings</span>
+          {generalFindingGroups.suggestions.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowSuggestions((value) => !value)}
+              className="ml-auto rounded border border-base-border px-2 py-0.5 text-[10px] text-base-text-muted transition-colors hover:text-base-text"
+            >
+              {showSuggestions
+                ? 'Hide suggestions'
+                : `Show ${generalFindingGroups.suggestions.length} suggestions`}
+            </button>
+          )}
         </div>
         <div className="flex-1 overflow-y-auto p-4">
           {generalFindings.length === 0 ? (
@@ -192,7 +222,7 @@ export function DiffPane({
             </div>
           ) : (
             <div className="space-y-2">
-              {generalFindings.map((f) => (
+              {generalFindings.map(({ finding: f }) => (
                 <DiffFindingAnnotation
                   key={f.id}
                   finding={f}
@@ -232,6 +262,17 @@ export function DiffPane({
             <span className="text-emerald-500">+{file.additions}</span>{' '}
             <span className="text-error">-{file.deletions}</span>
           </span>
+        )}
+        {fileFindingGroups.suggestions.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setShowSuggestions((value) => !value)}
+            className="shrink-0 rounded border border-base-border px-2 py-1 text-[10px] text-base-text-muted transition-colors hover:text-base-text"
+          >
+            {showSuggestions
+              ? 'Hide suggestions'
+              : `Show ${fileFindingGroups.suggestions.length} suggestions`}
+          </button>
         )}
         {/* Finding navigation */}
         {fileFindings.length > 0 && (

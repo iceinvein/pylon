@@ -1441,6 +1441,10 @@ ${detail.body || '(no description)'}
 - Use surrounding code to validate changed-code impact, not to review unrelated pre-existing code.
 - Prefer no finding over a speculative finding. If a concern depends on context you cannot verify, include "needs verification" in the description.
 - Avoid duplicate findings from other focus areas. Stay within your specialist role.
+- Anchor findings to a changed RIGHT-side diff line whenever possible. If the root cause is a pre-existing line, anchor to the changed line that makes the issue reachable and explain that relationship.
+- Do not report pre-existing issues unless the PR clearly makes them worse or newly exposes them.
+- Do not report findings that your own reasoning describes as harmless, negligible, or "no action needed".
+- Treat "needs verification" findings as lower-confidence: use severity "low" or "medium" unless the diff shows a clearly plausible high-impact path.
 
 ## Changed Files
 ${detail.files.map((f) => `- ${f.path} (+${f.additions} -${f.deletions})`).join('\n')}
@@ -1515,6 +1519,14 @@ Output your findings as a JSON array inside a fenced code block tagged \`review-
 
 If confidence is low, do not use blocker unless impact would be severe and the changed code makes the path plausible. Severity should reflect merge risk, not the agent focus area.
 
+## Final Quality Gate
+Before emitting the JSON block, silently remove any finding that fails one of these checks:
+- The issue is not introduced or materially worsened by this PR.
+- The finding is mostly stylistic preference, micro-optimization, or "nice to have" cleanup without a concrete maintenance or user impact.
+- The finding duplicates another issue on the same file and line; keep the clearest version and mention other affected focus areas only if needed.
+- The description says the behavior is harmless, negligible, pre-existing, or requires verification but the severity is still high/blocker.
+- The line number is outside the diff hunk and can be re-anchored to a changed line that triggers the issue.
+
 ## Tools: Code Intelligence (for deeper drilling)
 Use these when the pre-computed bundle does not cover something:
 - \`search_code\` for symbols or patterns not in the bundle
@@ -1532,6 +1544,8 @@ Keep these invariants:
 - Report only issues introduced or materially worsened by this PR.
 - Stay within your specialist role and avoid duplicate findings from other focus areas.
 - Prefer no finding over a speculative finding.
+- Anchor findings to changed RIGHT-side diff lines where possible; do not report harmless, negligible, pre-existing, or "no action needed" concerns.
+- Use low/medium severity for "needs verification" findings unless the diff shows a clearly plausible high-impact path.
 - Output only the \`review-findings\` fenced JSON block.
 
 ## Files in this chunk

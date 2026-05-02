@@ -24,6 +24,8 @@ type Props = {
   onPost: () => void
   onNavigate?: () => void
   showFilePath?: boolean
+  presentationTier?: 'actionable' | 'suggestion'
+  presentationSignals?: string[]
 }
 
 const DOMAIN_LABELS: Record<string, string> = {
@@ -89,6 +91,8 @@ export function FindingCard({
   onPost,
   onNavigate,
   showFilePath,
+  presentationTier,
+  presentationSignals = [],
 }: Props) {
   const style = SEVERITY_STYLES[finding.severity] ?? SEVERITY_STYLES.medium
   const Icon = style.icon
@@ -137,6 +141,11 @@ export function FindingCard({
                   {finding.posted ? 'Posted' : style.label}
                 </span>
                 <span className="font-medium text-base-text text-xs">{finding.title}</span>
+                {presentationTier === 'suggestion' && (
+                  <span className="rounded border border-base-border px-1.5 py-0.5 font-medium text-[10px] text-base-text-faint uppercase tracking-wide">
+                    Suggestion
+                  </span>
+                )}
                 {finding.domain && (
                   <span className="rounded bg-base-raised px-1.5 py-0.5 font-medium text-[10px] text-base-text-muted uppercase tracking-wider">
                     {DOMAIN_LABELS[finding.domain] ?? finding.domain}
@@ -191,6 +200,11 @@ export function FindingCard({
                 <span>Likelihood: {finding.risk.likelihood}</span>
                 <span>Confidence: {finding.risk.confidence}</span>
                 <span>Action: {finding.risk.action}</span>
+                {presentationSignals.slice(0, 2).map((signal) => (
+                  <span key={signal} className="text-base-text-muted">
+                    {signal}
+                  </span>
+                ))}
               </div>
             </div>
           </div>

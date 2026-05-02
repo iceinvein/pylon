@@ -1,5 +1,7 @@
 import { CheckCircle2 } from 'lucide-react'
+import { useMemo } from 'react'
 import { isVisibleLatestRunFinding } from '../../lib/pr-review-findings'
+import { splitFindingsForReview } from '../../lib/pr-review-presentation'
 import { usePrReviewStore } from '../../store/pr-review-store'
 import { FindingCard } from './FindingCard'
 
@@ -8,17 +10,14 @@ type Props = {
   prNumber: number
 }
 
-const SEVERITY_ORDER: Record<string, number> = {
-  blocker: 0,
-  high: 1,
-  medium: 2,
-  low: 3,
-}
-
 export function FindingsList({ repoFullName, prNumber }: Props) {
   const { activeFindings, selectedFindingIds, postingFindingIds, toggleFinding, postFinding } =
     usePrReviewStore()
-  const visibleFindings = activeFindings.filter((finding) => isVisibleLatestRunFinding(finding))
+  const visibleFindings = useMemo(
+    () => activeFindings.filter((finding) => isVisibleLatestRunFinding(finding)),
+    [activeFindings],
+  )
+  const split = useMemo(() => splitFindingsForReview(visibleFindings), [visibleFindings])
 
   if (visibleFindings.length === 0) {
     return (
@@ -29,15 +28,11 @@ export function FindingsList({ repoFullName, prNumber }: Props) {
     )
   }
 
-  const sorted = [...visibleFindings].sort((a, b) => {
-    if (a.posted !== b.posted) return a.posted ? 1 : -1
-    return (SEVERITY_ORDER[a.severity] ?? 2) - (SEVERITY_ORDER[b.severity] ?? 2)
-  })
-
   const blockerCount = visibleFindings.filter((f) => f.severity === 'blocker').length
   const highCount = visibleFindings.filter((f) => f.severity === 'high').length
   const mediumCount = visibleFindings.filter((f) => f.severity === 'medium').length
   const postedCount = visibleFindings.filter((f) => f.posted).length
+  const hiddenCount = split.suggestions.length
 
   return (
     <div>
@@ -46,6 +41,11 @@ export function FindingsList({ repoFullName, prNumber }: Props) {
         <span className="font-medium text-base-text-secondary text-xs">
           {activeFindings.length} finding{activeFindings.length !== 1 ? 's' : ''}
         </span>
+        {hiddenCount > 0 && (
+          <span className="rounded border border-base-border px-1.5 py-0.5 font-medium text-[10px] text-base-text-faint tabular-nums">
+            {hiddenCount} hidden
+          </span>
+        )}
         <div className="flex items-center gap-1.5">
           {blockerCount > 0 && (
             <span className="rounded bg-error/10 px-1.5 py-0.5 font-medium text-[10px] text-error tabular-nums">
@@ -70,10 +70,12 @@ export function FindingsList({ repoFullName, prNumber }: Props) {
 
       {/* Finding cards */}
       <div className="space-y-2">
-        {sorted.map((f) => (
+        {split.actionable.map(({ finding: f, tier, signals }) => (
           <FindingCard
             key={f.id}
             finding={f}
+            presentationTier={tier}
+            presentationSignals={signals}
             checked={selectedFindingIds.has(f.id)}
             isPosting={postingFindingIds.has(f.id)}
             onToggle={() => toggleFinding(f.id)}

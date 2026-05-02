@@ -1,7 +1,8 @@
 import { ChevronDown, ChevronRight, Eye, FileText, FolderOpen } from 'lucide-react'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { ReviewFinding } from '../../../../shared/types'
 import { filePathMatches } from '../../lib/diff-utils'
+import { defaultVisibleFindings } from '../../lib/pr-review-presentation'
 import { usePrReviewStore } from '../../store/pr-review-store'
 
 type FileEntry = {
@@ -101,8 +102,10 @@ const SEVERITY_COLORS: Record<string, string> = {
 
 export function DiffFileTree({ files, findings, selectedFile, onSelectFile }: Props) {
   const { findingsViewMode, setFindingsViewMode } = usePrReviewStore()
-  const tree = collapseTree(buildTree(files))
-  const generalFindings = findings.filter((f) => !f.file)
+  const tree = useMemo(() => collapseTree(buildTree(files)), [files])
+  const defaultFindings = useMemo(() => defaultVisibleFindings(findings), [findings])
+  const generalFindings = defaultFindings.filter((f) => !f.file)
+  const hiddenCount = findings.length - defaultFindings.length
 
   return (
     <div className="flex h-full flex-col overflow-y-auto border-base-border-subtle border-r bg-base-bg/50">
@@ -129,9 +132,16 @@ export function DiffFileTree({ files, findings, selectedFile, onSelectFile }: Pr
           }`}
         >
           All Issues
-          {findings.length > 0 && <span className="ml-1 tabular-nums">({findings.length})</span>}
+          {defaultFindings.length > 0 && (
+            <span className="ml-1 tabular-nums">({defaultFindings.length})</span>
+          )}
         </button>
       </div>
+      {hiddenCount > 0 && (
+        <div className="border-base-border-subtle/50 border-b px-3 py-1.5 text-[10px] text-base-text-faint">
+          {hiddenCount} suggestion{hiddenCount !== 1 ? 's' : ''} hidden by default
+        </div>
+      )}
 
       {findingsViewMode === 'files' && (
         <>
@@ -158,7 +168,7 @@ export function DiffFileTree({ files, findings, selectedFile, onSelectFile }: Pr
           <div className="flex-1 overflow-y-auto py-1">
             <DirContent
               node={tree}
-              findings={findings}
+              findings={defaultFindings}
               selectedFile={selectedFile}
               onSelectFile={onSelectFile}
               depth={0}

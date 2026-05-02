@@ -1,6 +1,7 @@
 import { Check, CheckCheck, Loader2, Send } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { isPostableFinding } from '../../lib/pr-review-findings'
+import { shouldShowFindingByDefault } from '../../lib/pr-review-presentation'
 import { usePrReviewStore } from '../../store/pr-review-store'
 
 type Props = {
@@ -67,7 +68,16 @@ export function PostActions({ repoFullName, prNumber }: Props) {
     return () => clearTimeout(timer)
   }, [lastPostResult?.timestamp, lastPostResult])
 
-  const postable = activeFindings.filter((f) => isPostableFinding(f))
+  const { postable, hiddenPostableCount } = useMemo(() => {
+    let hidden = 0
+    const visible: typeof activeFindings = []
+    for (const finding of activeFindings) {
+      if (!isPostableFinding(finding)) continue
+      if (shouldShowFindingByDefault(finding)) visible.push(finding)
+      else hidden++
+    }
+    return { postable: visible, hiddenPostableCount: hidden }
+  }, [activeFindings])
   const selectedCount = [...selectedFindingIds].filter((id) =>
     activeFindings.find((f) => f.id === id && isPostableFinding(f)),
   ).length
@@ -94,7 +104,7 @@ export function PostActions({ repoFullName, prNumber }: Props) {
             disabled={isPosting}
             className="text-base-text-muted text-xs transition-colors hover:text-base-text disabled:pointer-events-none disabled:opacity-30"
           >
-            {selectedFindingIds.size > 0 ? 'Deselect all' : 'Select all'}
+            {selectedFindingIds.size > 0 ? 'Deselect all' : 'Select recommended'}
           </button>
 
           {/* Severity filter pills */}
@@ -145,8 +155,13 @@ export function PostActions({ repoFullName, prNumber }: Props) {
             ) : (
               <CheckCheck size={12} />
             )}
-            {postingBatch === 'all' ? 'Posting...' : `Post All (${postable.length})`}
+            {postingBatch === 'all' ? 'Posting...' : `Post Recommended (${postable.length})`}
           </button>
+          {hiddenPostableCount > 0 && (
+            <span className="text-[10px] text-base-text-faint">
+              {hiddenPostableCount} suggestion{hiddenPostableCount !== 1 ? 's' : ''} excluded
+            </span>
+          )}
         </div>
       )}
     </div>

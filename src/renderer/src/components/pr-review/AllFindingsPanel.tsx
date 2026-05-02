@@ -1,18 +1,13 @@
 import { CheckCircle2 } from 'lucide-react'
+import { useMemo, useState } from 'react'
 import { isVisibleLatestRunFinding } from '../../lib/pr-review-findings'
+import { splitFindingsForReview } from '../../lib/pr-review-presentation'
 import { usePrReviewStore } from '../../store/pr-review-store'
 import { FindingCard } from './FindingCard'
 
 type Props = {
   repoFullName: string
   prNumber: number
-}
-
-const SEVERITY_ORDER: Record<string, number> = {
-  blocker: 0,
-  high: 1,
-  medium: 2,
-  low: 3,
 }
 
 const SEVERITY_LABELS: Record<string, string> = {
@@ -32,6 +27,7 @@ const SEVERITY_CHIP_ACTIVE: Record<string, string> = {
 const ALL_SEVERITIES = ['blocker', 'high', 'medium', 'low'] as const
 
 export function AllFindingsPanel({ repoFullName, prNumber }: Props) {
+  const [showSuggestions, setShowSuggestions] = useState(false)
   const {
     activeFindings,
     selectedFindingIds,
@@ -43,27 +39,43 @@ export function AllFindingsPanel({ repoFullName, prNumber }: Props) {
     navigateToFinding,
   } = usePrReviewStore()
 
-  const filtered = activeFindings
-    .filter((f) => isVisibleLatestRunFinding(f) && severityFilter.has(f.severity))
-    .sort((a, b) => {
-      if (a.posted !== b.posted) return a.posted ? 1 : -1
-      const sevDiff = (SEVERITY_ORDER[a.severity] ?? 2) - (SEVERITY_ORDER[b.severity] ?? 2)
-      if (sevDiff !== 0) return sevDiff
-      return a.file.localeCompare(b.file)
-    })
+  const visibleLatest = useMemo(
+    () => activeFindings.filter((f) => isVisibleLatestRunFinding(f)),
+    [activeFindings],
+  )
+  const split = useMemo(() => splitFindingsForReview(visibleLatest), [visibleLatest])
+  const presentationRows = showSuggestions
+    ? [...split.actionable, ...split.suggestions]
+    : split.actionable
+  const filtered = presentationRows.filter((entry) => severityFilter.has(entry.finding.severity))
 
   const counts = new Map<string, number>()
-  for (const f of activeFindings.filter((finding) => isVisibleLatestRunFinding(finding))) {
+  for (const f of visibleLatest) {
     counts.set(f.severity, (counts.get(f.severity) ?? 0) + 1)
   }
+  const hiddenCount = split.suggestions.length
 
   return (
     <div className="flex h-full flex-col">
       {/* Filter chips */}
-      <div className="flex items-center gap-2 border-base-border-subtle border-b px-4 py-2">
+      <div className="flex flex-wrap items-center gap-2 border-base-border-subtle border-b px-4 py-2">
         <span className="font-medium text-[10px] text-base-text-muted uppercase tracking-wider">
-          Filter
+          {split.actionable.length} should review
         </span>
+        {hiddenCount > 0 && (
+          <button
+            type="button"
+            onClick={() => setShowSuggestions((value) => !value)}
+            className={`rounded-full border px-2.5 py-0.5 font-medium text-[10px] tabular-nums transition-colors ${
+              showSuggestions
+                ? 'border-base-border bg-base-raised text-base-text'
+                : 'border-base-border text-base-text-muted hover:text-base-text'
+            }`}
+          >
+            {showSuggestions ? 'Hide suggestions' : `Show ${hiddenCount} suggestions`}
+          </button>
+        )}
+        <span className="h-3 w-px bg-base-border-subtle" />
         {ALL_SEVERITIES.map((sev) => {
           const count = counts.get(sev) ?? 0
           if (count === 0) return null
@@ -98,10 +110,12 @@ export function AllFindingsPanel({ repoFullName, prNumber }: Props) {
           </div>
         ) : (
           <div className="space-y-2">
-            {filtered.map((f) => (
+            {filtered.map(({ finding: f, tier, signals }) => (
               <FindingCard
                 key={f.id}
                 finding={f}
+                presentationTier={tier}
+                presentationSignals={signals}
                 checked={selectedFindingIds.has(f.id)}
                 isPosting={postingFindingIds.has(f.id)}
                 onToggle={() => toggleFinding(f.id)}
