@@ -1512,12 +1512,39 @@ Output your findings as a JSON array inside a fenced code block tagged \`review-
 \`\`\`
 
 ## Risk Calibration
+Severity is the headline triage label; risk explains why.
 - blocker: must-fix before merge; critical or high impact, realistically reachable, and medium/high confidence
 - high: should-fix before merge; meaningful impact or likely regression
 - medium: non-blocking but worth considering; limited impact, edge-case reachability, or moderate uncertainty
 - low: optional cleanup; minimal risk
 
-If confidence is low, do not use blocker unless impact would be severe and the changed code makes the path plausible. Severity should reflect merge risk, not the agent focus area.
+Risk fields — pick from concrete observations in the diff, do not default to the middle:
+- \`impact\`: blast radius if the issue triggers.
+  - critical: data loss, auth bypass, prod outage, irreversible user-facing failure
+  - high: broken core workflow, leaked secret, severe correctness regression
+  - medium: degraded UX or perf in a real path; recoverable correctness bug
+  - low: cosmetic, log noise, single-edge-case quirk
+- \`likelihood\`: how often the buggy path actually runs.
+  - likely: every call to this changed code, or every common input
+  - possible: requires a specific but plausible input or environment
+  - edge-case: only under unusual config, race, or rare branch
+  - unknown: can't tell from the diff alone
+- \`confidence\`: how sure you are this finding is real, not a misread.
+  - high: you can point at the exact lines and trace the failure
+  - medium: pattern is suspicious but at least one premise needs checking
+  - low: speculative — prefer dropping the finding over emitting it
+- \`action\`:
+  - must-fix: ship-blocker; reviewer should reject without this fixed
+  - should-fix: meaningful enough to delay merge; reviewer should push back
+  - consider: nice signal, reviewer can defer
+  - optional: pure preference; rarely worth emitting
+
+If \`confidence\` is "low", drop the finding instead of submitting it. If \`action\` would be "optional", drop the finding.
+
+## Volume Budget
+- Output **at most 6 findings per chunk**, ranked by material risk. If you have more candidates, keep only the most material; do not pad the list.
+- Do not produce parallel findings that boil down to the same defect. Pick the clearest version.
+- One concrete defect beats three vague observations.
 
 ## Final Quality Gate
 Before emitting the JSON block, silently remove any finding that fails one of these checks:
@@ -1526,6 +1553,16 @@ Before emitting the JSON block, silently remove any finding that fails one of th
 - The finding duplicates another issue on the same file and line; keep the clearest version and mention other affected focus areas only if needed.
 - The description says the behavior is harmless, negligible, pre-existing, or requires verification but the severity is still high/blocker.
 - The line number is outside the diff hunk and can be re-anchored to a changed line that triggers the issue.
+- \`risk.confidence\` is "low" or \`risk.action\` is "optional".
+
+## Anti-examples (do NOT emit)
+These illustrate the kind of low-signal finding that creates triage burden without surfacing real risk. Do not produce findings shaped like these:
+- "Inline arrow function allocates a new closure on every render" (micro-optimization on cold path)
+- "Magic number used for layout — consider extracting a constant" (style preference)
+- "Function name could be more descriptive" (style, not correctness)
+- "Potential issue if input is null, but the caller probably guards it — needs verification" (low confidence, speculation)
+- "Pre-existing in both branches but worth flagging" (not introduced by PR)
+- "Could add a comment explaining why" (documentation preference, not a defect)
 
 ## Tools: Code Intelligence (for deeper drilling)
 Use these when the pre-computed bundle does not cover something:
@@ -1546,6 +1583,8 @@ Keep these invariants:
 - Prefer no finding over a speculative finding.
 - Anchor findings to changed RIGHT-side diff lines where possible; do not report harmless, negligible, pre-existing, or "no action needed" concerns.
 - Use low/medium severity for "needs verification" findings unless the diff shows a clearly plausible high-impact path.
+- Apply the same risk rubric (impact / likelihood / confidence / action) and the same anti-examples from the first chunk. Drop low-confidence and optional-action findings.
+- Output **at most 6 findings for this chunk**, ranked by material risk.
 - Output only the \`review-findings\` fenced JSON block.
 
 ## Files in this chunk

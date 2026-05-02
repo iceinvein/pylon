@@ -138,4 +138,101 @@ describe('PR review presentation', () => {
     expect(reviewFindingQualityScore(high)).toBeGreaterThan(reviewFindingQualityScore(low))
     expect(defaultVisibleFindings([low, high]).map((f) => f.id)).toEqual(['high'])
   })
+
+  test('hides low-signal severities by default unless action is concrete', () => {
+    const lowSeverityWithoutAction = finding({
+      id: 'low-passive',
+      severity: 'low',
+      risk: {
+        impact: 'low',
+        likelihood: 'edge-case',
+        confidence: 'medium',
+        action: 'consider',
+      },
+    })
+    expect(shouldShowFindingByDefault(lowSeverityWithoutAction)).toBe(false)
+
+    const lowSeverityShouldFix = finding({
+      id: 'low-action',
+      severity: 'low',
+      risk: {
+        impact: 'low',
+        likelihood: 'likely',
+        confidence: 'high',
+        action: 'should-fix',
+      },
+    })
+    expect(shouldShowFindingByDefault(lowSeverityShouldFix)).toBe(true)
+  })
+
+  test('hides legacy nitpick/suggestion severities even when normalization missed them', () => {
+    const legacyNitpick = finding({
+      id: 'legacy-nit',
+      // Cast — these strings are off-spec but can still appear on un-migrated rows.
+      severity: 'nitpick' as ReviewFinding['severity'],
+      risk: {
+        impact: 'low',
+        likelihood: 'possible',
+        confidence: 'medium',
+        action: 'consider',
+      },
+    })
+    expect(shouldShowFindingByDefault(legacyNitpick)).toBe(false)
+
+    const legacySuggestion = finding({
+      id: 'legacy-sug',
+      severity: 'suggestion' as ReviewFinding['severity'],
+      risk: {
+        impact: 'medium',
+        likelihood: 'possible',
+        confidence: 'medium',
+        action: 'consider',
+      },
+    })
+    expect(shouldShowFindingByDefault(legacySuggestion)).toBe(false)
+  })
+
+  test('quality score is finite for off-spec severity values', () => {
+    const offSpec = finding({
+      id: 'off-spec',
+      severity: 'warning' as ReviewFinding['severity'],
+      risk: {
+        impact: 'high',
+        likelihood: 'likely',
+        confidence: 'high',
+        action: 'should-fix',
+      },
+    })
+    const score = reviewFindingQualityScore(offSpec)
+    expect(Number.isFinite(score)).toBe(true)
+    expect(score).toBeGreaterThan(0)
+  })
+
+  test('hides unanchored findings unless severity is strong or action is concrete', () => {
+    const unanchoredSoft = finding({
+      id: 'unanchored-soft',
+      line: null,
+      severity: 'medium',
+      risk: {
+        impact: 'medium',
+        likelihood: 'possible',
+        confidence: 'medium',
+        action: 'consider',
+      },
+    })
+    expect(shouldShowFindingByDefault(unanchoredSoft)).toBe(false)
+
+    const unanchoredStrong = finding({
+      id: 'unanchored-strong',
+      line: null,
+      severity: 'blocker',
+      risk: {
+        impact: 'critical',
+        likelihood: 'likely',
+        confidence: 'high',
+        action: 'must-fix',
+      },
+    })
+    expect(shouldShowFindingByDefault(unanchoredStrong)).toBe(true)
+  })
 })

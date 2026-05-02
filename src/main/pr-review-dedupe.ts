@@ -11,6 +11,13 @@ const SEVERITY_RANK: Record<string, number> = {
 const SIMILARITY_THRESHOLD = 0.5
 const MIN_TOKEN_OVERLAP = 2
 
+// For the near-line pass we tighten the bar: titles need to be more clearly the
+// same defect before we merge across different anchors, since lines that differ
+// can plausibly be unrelated bugs in adjacent code.
+const NEAR_LINE_SIMILARITY_THRESHOLD = 0.65
+const NEAR_LINE_MIN_TOKEN_OVERLAP = 3
+const NEAR_LINE_RADIUS = 3
+
 const STOPWORDS = new Set([
   'a',
   'an',
@@ -153,6 +160,66 @@ function mergeCluster(group: ReviewFinding[], indices: number[]): ReviewFinding 
   }
 }
 
+function mergeNearLineDuplicates(findings: ReviewFinding[]): ReviewFinding[] {
+  // Group by file. Within each file, walk findings sorted by severity then line,
+  // and absorb any later finding whose line is within ±NEAR_LINE_RADIUS of an
+  // existing kept finding's line and whose title is sufficiently similar.
+  const byFile = new Map<string, ReviewFinding[]>()
+  for (const f of findings) {
+    const key = f.file || ''
+    const list = byFile.get(key)
+    if (list) list.push(f)
+    else byFile.set(key, [f])
+  }
+
+  const result: ReviewFinding[] = []
+  for (const group of byFile.values()) {
+    const anchored = group.filter((f) => f.line != null)
+    const unanchored = group.filter((f) => f.line == null)
+    result.push(...unanchored)
+
+    // Stronger severity wins when absorbing a near-line duplicate.
+    const sorted = [...anchored].sort(
+      (a, b) => (SEVERITY_RANK[a.severity] ?? 99) - (SEVERITY_RANK[b.severity] ?? 99),
+    )
+
+    type Kept = { finding: ReviewFinding; tokens: Set<string>; line: number }
+    const kept: Kept[] = []
+
+    for (const candidate of sorted) {
+      const candidateLine = candidate.line as number
+      const candidateTokens = tokenize(candidate.title)
+      const absorber = kept.find((k) => {
+        if (Math.abs(k.line - candidateLine) > NEAR_LINE_RADIUS) return false
+        if (k.line === candidateLine) return false // exact anchor handled by primary pass
+        const overlap = intersectionSize(k.tokens, candidateTokens)
+        if (overlap < NEAR_LINE_MIN_TOKEN_OVERLAP) return false
+        return diceCoefficient(k.tokens, candidateTokens) >= NEAR_LINE_SIMILARITY_THRESHOLD
+      })
+
+      if (!absorber) {
+        kept.push({ finding: candidate, tokens: candidateTokens, line: candidateLine })
+        continue
+      }
+
+      // Absorb candidate into the existing keeper, recording the merge.
+      const mergedFromEntries = absorber.finding.mergedFrom ? [...absorber.finding.mergedFrom] : []
+      if (candidate.domain && candidate.domain !== absorber.finding.domain) {
+        mergedFromEntries.push({ domain: candidate.domain, title: candidate.title })
+      }
+      absorber.finding = {
+        ...absorber.finding,
+        suggestion: absorber.finding.suggestion ?? candidate.suggestion,
+        mergedFrom: mergedFromEntries.length > 0 ? mergedFromEntries : absorber.finding.mergedFrom,
+      }
+    }
+
+    result.push(...kept.map((k) => k.finding))
+  }
+
+  return result
+}
+
 export function deduplicateFindings(findings: ReviewFinding[]): ReviewFinding[] {
   const groups = new Map<string, ReviewFinding[]>()
   for (const f of findings) {
@@ -162,16 +229,17 @@ export function deduplicateFindings(findings: ReviewFinding[]): ReviewFinding[] 
     else groups.set(key, [f])
   }
 
-  const result: ReviewFinding[] = []
+  const exactPass: ReviewFinding[] = []
   for (const group of groups.values()) {
     if (group.length === 1) {
-      result.push(group[0])
+      exactPass.push(group[0])
       continue
     }
     const clusters = clusterByTitleSimilarity(group)
     for (const indices of clusters) {
-      result.push(mergeCluster(group, indices))
+      exactPass.push(mergeCluster(group, indices))
     }
   }
-  return result
+
+  return mergeNearLineDuplicates(exactPass)
 }

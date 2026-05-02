@@ -256,6 +256,16 @@ const migrations: Array<{ version: number; description: string; sql: string }> =
         ON pr_review_finding_posts(finding_id);
     `,
   },
+  {
+    version: 20,
+    description: 'Backfill legacy severity values on pr_review_findings to canonical scale',
+    sql: `
+      UPDATE pr_review_findings SET severity = 'blocker' WHERE severity = 'critical';
+      UPDATE pr_review_findings SET severity = 'high'    WHERE severity IN ('warning', 'warn', 'error');
+      UPDATE pr_review_findings SET severity = 'medium'  WHERE severity IN ('suggestion', 'consider');
+      UPDATE pr_review_findings SET severity = 'low'     WHERE severity IN ('nitpick', 'info', 'note');
+    `,
+  },
 ]
 
 /**

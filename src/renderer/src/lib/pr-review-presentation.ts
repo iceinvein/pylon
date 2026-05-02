@@ -1,33 +1,43 @@
 import type { ReviewFinding } from '../../../shared/types'
 
-const SEVERITY_WEIGHT: Record<ReviewFinding['severity'], number> = {
+const SEVERITY_WEIGHT: Record<string, number> = {
   blocker: 100,
   high: 85,
   medium: 55,
   low: 20,
+  // Legacy severities still seen on un-migrated rows.
+  critical: 100,
+  warning: 85,
+  warn: 85,
+  error: 85,
+  suggestion: 55,
+  consider: 55,
+  nitpick: 20,
+  info: 20,
+  note: 20,
 }
 
-const ACTION_WEIGHT: Record<ReviewFinding['risk']['action'], number> = {
+const ACTION_WEIGHT: Record<string, number> = {
   'must-fix': 25,
   'should-fix': 15,
   consider: 0,
   optional: -20,
 }
 
-const CONFIDENCE_WEIGHT: Record<ReviewFinding['risk']['confidence'], number> = {
+const CONFIDENCE_WEIGHT: Record<string, number> = {
   high: 15,
   medium: 0,
   low: -25,
 }
 
-const IMPACT_WEIGHT: Record<ReviewFinding['risk']['impact'], number> = {
+const IMPACT_WEIGHT: Record<string, number> = {
   critical: 15,
   high: 10,
   medium: 0,
   low: -10,
 }
 
-const LIKELIHOOD_WEIGHT: Record<ReviewFinding['risk']['likelihood'], number> = {
+const LIKELIHOOD_WEIGHT: Record<string, number> = {
   likely: 10,
   possible: 0,
   'edge-case': -12,
@@ -37,6 +47,23 @@ const LIKELIHOOD_WEIGHT: Record<ReviewFinding['risk']['likelihood'], number> = {
 const UNCERTAINTY_RE = /needs verification|cannot verify|worth validating|not clear from/i
 const LOW_VALUE_RE = /harmless|negligible|microseconds?|no action needed|tiny cleanup/i
 const PRE_EXISTING_RE = /pre-existing|didn't introduce|not introduced by this PR/i
+
+const LOW_SIGNAL_SEVERITIES: ReadonlySet<string> = new Set([
+  'low',
+  'nitpick',
+  'info',
+  'note',
+  'suggestion',
+])
+
+const STRONG_SEVERITIES: ReadonlySet<string> = new Set([
+  'blocker',
+  'high',
+  'critical',
+  'warning',
+  'warn',
+  'error',
+])
 
 export type ReviewFindingPresentation = {
   finding: ReviewFinding
@@ -54,8 +81,12 @@ function hasConcreteAction(finding: ReviewFinding): boolean {
   return finding.risk.action === 'must-fix' || finding.risk.action === 'should-fix'
 }
 
-function isHighSignalSeverity(finding: ReviewFinding): boolean {
-  return finding.severity === 'blocker' || finding.severity === 'high'
+function isStrongSeverity(finding: ReviewFinding): boolean {
+  return STRONG_SEVERITIES.has(finding.severity)
+}
+
+function isLowSignalSeverity(finding: ReviewFinding): boolean {
+  return LOW_SIGNAL_SEVERITIES.has(finding.severity)
 }
 
 function anchorKey(finding: ReviewFinding): string | null {
@@ -65,11 +96,11 @@ function anchorKey(finding: ReviewFinding): string | null {
 
 export function reviewFindingQualityScore(finding: ReviewFinding): number {
   let score =
-    SEVERITY_WEIGHT[finding.severity] +
-    ACTION_WEIGHT[finding.risk.action] +
-    CONFIDENCE_WEIGHT[finding.risk.confidence] +
-    IMPACT_WEIGHT[finding.risk.impact] +
-    LIKELIHOOD_WEIGHT[finding.risk.likelihood]
+    (SEVERITY_WEIGHT[finding.severity] ?? 30) +
+    (ACTION_WEIGHT[finding.risk.action] ?? 0) +
+    (CONFIDENCE_WEIGHT[finding.risk.confidence] ?? 0) +
+    (IMPACT_WEIGHT[finding.risk.impact] ?? 0) +
+    (LIKELIHOOD_WEIGHT[finding.risk.likelihood] ?? 0)
 
   if (finding.line != null) score += 8
   if (finding.suggestion) score += 6
@@ -99,12 +130,18 @@ export function shouldShowFindingByDefault(finding: ReviewFinding): boolean {
   if (finding.statusInRun === 'resolved' || finding.statusInRun === 'stale') return false
   if (finding.risk.confidence === 'low') return false
   if (finding.risk.action === 'optional') return false
+  if (isLowSignalSeverity(finding) && !hasConcreteAction(finding)) return false
   if (LOW_VALUE_RE.test(finding.description) || PRE_EXISTING_RE.test(finding.description)) {
     return false
   }
   if (UNCERTAINTY_RE.test(finding.description) && !hasConcreteAction(finding)) return false
+  // Unanchored findings pile up as "general" notes; only surface them by default if
+  // the agent committed to a strong severity or a concrete action.
+  if (finding.line == null && !isStrongSeverity(finding) && !hasConcreteAction(finding)) {
+    return false
+  }
 
-  return isHighSignalSeverity(finding) || hasConcreteAction(finding)
+  return isStrongSeverity(finding) || hasConcreteAction(finding)
 }
 
 export function splitFindingsForReview(findings: ReviewFinding[]): ReviewFindingPresentationGroups {

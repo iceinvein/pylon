@@ -241,4 +241,57 @@ describe('deduplicateFindings', () => {
     const result = deduplicateFindings(input)
     expect(result.length).toBe(1)
   })
+
+  test('near-line duplicates within ±3 with similar titles merge across anchors', () => {
+    const input = [
+      f({
+        id: 'block',
+        file: 'a.ts',
+        line: 100,
+        title: 'TOCTOU race condition between read and write',
+        domain: 'security',
+        severity: 'blocker',
+      }),
+      f({
+        id: 'high',
+        file: 'a.ts',
+        line: 102,
+        title: 'TOCTOU race between read and write',
+        domain: 'bugs',
+        severity: 'high',
+      }),
+    ]
+    const result = deduplicateFindings(input)
+    expect(result.length).toBe(1)
+    expect(result[0].id).toBe('block')
+    expect(result[0].mergedFrom?.[0]?.domain).toBe('bugs')
+  })
+
+  test('near-line findings with unrelated titles do not merge', () => {
+    const input = [
+      f({ id: '1', file: 'a.ts', line: 100, title: 'TOCTOU race in lock acquire' }),
+      f({ id: '2', file: 'a.ts', line: 102, title: 'Inefficient regex compile each call' }),
+    ]
+    const result = deduplicateFindings(input)
+    expect(result.length).toBe(2)
+  })
+
+  test('near-line findings outside the ±3 radius do not merge', () => {
+    const input = [
+      f({
+        id: '1',
+        file: 'a.ts',
+        line: 100,
+        title: 'TOCTOU race in lock acquire',
+      }),
+      f({
+        id: '2',
+        file: 'a.ts',
+        line: 110,
+        title: 'TOCTOU race in lock acquire',
+      }),
+    ]
+    const result = deduplicateFindings(input)
+    expect(result.length).toBe(2)
+  })
 })
