@@ -58,14 +58,16 @@ const FOCUS_OPTIONS: Array<{
   },
 ]
 
+export const DEFAULT_REVIEW_FOCUS: ReviewFocus[] = [
+  'security',
+  'bugs',
+  'performance',
+  'code-smells',
+  'architecture',
+]
+
 export function ReviewModal({ onStart, onClose, isRerun }: Props) {
-  const [selected, setSelected] = useState<ReviewFocus[]>([
-    'security',
-    'bugs',
-    'performance',
-    'code-smells',
-    'style',
-  ])
+  const [selected, setSelected] = useState<ReviewFocus[]>(DEFAULT_REVIEW_FOCUS)
 
   function toggle(id: ReviewFocus) {
     setSelected((prev) => (prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id]))
