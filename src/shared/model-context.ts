@@ -15,6 +15,7 @@ export const KNOWN_CONTEXT_WINDOWS: Record<string, number> = {
   'claude-haiku-4-5': 200_000,
   'claude-haiku-3-20250307': 200_000,
   // Codex / OpenAI
+  'gpt-5.5': 1_000_000,
   'gpt-5.4': 1_000_000,
   'gpt-5.4-mini': 400_000,
   'gpt-5.3-codex': 200_000,
@@ -37,6 +38,7 @@ export const KNOWN_MAX_OUTPUT_TOKENS: Record<string, number> = {
   'claude-haiku-4-5': 64_000,
   'claude-haiku-3-20250307': 64_000,
   // Codex / OpenAI
+  'gpt-5.5': 128_000,
   'gpt-5.4': 128_000,
   'gpt-5.4-mini': 64_000,
   'gpt-5.3-codex': 64_000,

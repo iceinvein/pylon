@@ -375,6 +375,9 @@ export class SessionManager {
 
       // ── Consume normalized event stream ────────────────
       for await (const event of agentSession.send(text, providerAttachments)) {
+        if (event.type === 'error' && !event.recoverable) {
+          throw new Error(event.message)
+        }
         this.handleProviderEvent(sessionId, session, text, event)
       }
 
@@ -387,6 +390,8 @@ export class SessionManager {
         sessionId,
         message: { type: 'error', error: errorMessage },
       })
+      this.notifyMessageListeners(sessionId, { type: 'error', error: errorMessage })
+      throw error
     } finally {
       session.agentSession = null
     }
@@ -488,6 +493,14 @@ export class SessionManager {
         if (currentTitle === '') {
           this.setTitleFromMessage(sessionId, userText)
         }
+        break
+      }
+
+      case 'error': {
+        const message = { type: 'error', error: event.message }
+        this.persistMessage(sessionId, message)
+        this.send(IPC.SESSION_MESSAGE, { sessionId, message })
+        this.notifyMessageListeners(sessionId, message)
         break
       }
 

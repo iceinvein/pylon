@@ -62,6 +62,13 @@ const logger = log.child('codex-provider')
 
 const CODEX_MODELS: ProviderModel[] = [
   {
+    id: 'gpt-5.5',
+    label: 'GPT-5.5',
+    provider: 'codex',
+    contextWindow: 1_000_000,
+    supportsEffort: ['low', 'medium', 'high', 'xhigh', 'max'],
+  },
+  {
     id: 'gpt-5.4',
     label: 'GPT-5.4',
     provider: 'codex',

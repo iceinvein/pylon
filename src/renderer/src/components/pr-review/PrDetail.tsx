@@ -17,7 +17,7 @@ import ReactMarkdown from 'react-markdown'
 import rehypeRaw from 'rehype-raw'
 import rehypeSanitize from 'rehype-sanitize'
 import remarkGfm from 'remark-gfm'
-import type { ReviewFocus } from '../../../../shared/types'
+import type { EffortLevel, ReviewFocus } from '../../../../shared/types'
 import { isClaudeSetupError } from '../../lib/setup-errors'
 import { usePrReviewStore } from '../../store/pr-review-store'
 import { ClaudeCodeSetupCard } from '../setup/ClaudeCodeSetupCard'
@@ -296,9 +296,13 @@ export function PrDetail() {
     postFinding(finding, selectedPr.repo.fullName, selectedPr.number)
   }
 
-  const handleStartReview = (focus: ReviewFocus[]) => {
+  const handleStartReview = (
+    focus: ReviewFocus[],
+    agentModel: string,
+    agentEffort: EffortLevel,
+  ) => {
     if (!selectedPr?.repo) return
-    startReview(selectedPr.repo, selectedPr, focus)
+    startReview(selectedPr.repo, selectedPr, focus, agentModel, agentEffort)
   }
 
   const handleRetryReview = () => {

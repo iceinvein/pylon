@@ -13,6 +13,8 @@ type DropdownMenuProps = {
   items: DropdownItem[]
   value: string
   onChange: (id: string) => void
+  /** Direction the dropdown panel opens from the trigger */
+  placement?: 'top' | 'bottom'
   /** Override the trigger label (defaults to selected item's label) */
   triggerLabel?: string
   /** Icon shown before the trigger label */
@@ -28,6 +30,7 @@ export function DropdownMenu({
   items,
   value,
   onChange,
+  placement = 'top',
   triggerLabel,
   triggerIcon,
   triggerClassName,
@@ -49,6 +52,8 @@ export function DropdownMenu({
 
   const selected = items.find((i) => i.id === value)
   const label = triggerLabel ?? selected?.label ?? value
+  const panelPositionClass = placement === 'bottom' ? 'top-full mt-1' : 'bottom-full mb-1'
+  const motionOffset = placement === 'bottom' ? -4 : 4
 
   return (
     <div className="relative" ref={ref}>
@@ -67,11 +72,11 @@ export function DropdownMenu({
       <AnimatePresence>
         {open && (
           <motion.div
-            className="absolute bottom-full left-0 z-50 mb-1 overflow-hidden rounded-lg border border-base-border bg-base-raised py-1 shadow-xl"
+            className={`absolute left-0 z-50 overflow-hidden rounded-lg border border-base-border bg-base-raised py-1 shadow-xl ${panelPositionClass}`}
             style={{ minWidth }}
-            initial={{ opacity: 0, y: 4 }}
+            initial={{ opacity: 0, y: motionOffset }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 4 }}
+            exit={{ opacity: 0, y: motionOffset }}
             transition={{ duration: 0.12 }}
           >
             {items.map((item) => (

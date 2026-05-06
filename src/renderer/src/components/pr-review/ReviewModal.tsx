@@ -1,12 +1,103 @@
-import { Blocks, Bug, Code2, Gauge, Monitor, Paintbrush, Play, Shield, X } from 'lucide-react'
-import { useState } from 'react'
-import type { ReviewFocus } from '../../../../shared/types'
+import {
+  Blocks,
+  Bot,
+  Bug,
+  Code2,
+  Gauge,
+  Monitor,
+  Paintbrush,
+  Play,
+  Shield,
+  SlidersHorizontal,
+  X,
+} from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import type { EffortLevel, ReviewFocus } from '../../../../shared/types'
+import { DropdownMenu } from '../DropdownMenu'
 
 type Props = {
-  onStart: (focus: ReviewFocus[]) => void
+  onStart: (focus: ReviewFocus[], agentModel: string, agentEffort: EffortLevel) => void
   onClose: () => void
   isRerun?: boolean
 }
+
+type ReviewAgentProvider = 'claude' | 'codex'
+
+type ProviderModelEntry = {
+  id: string
+  label: string
+  provider: string
+  supportsEffort: EffortLevel[]
+}
+
+const FALLBACK_MODELS: ProviderModelEntry[] = [
+  {
+    id: 'claude-opus-4-7',
+    label: 'Opus 4.7',
+    provider: 'claude',
+    supportsEffort: ['low', 'medium', 'high', 'xhigh', 'max'],
+  },
+  {
+    id: 'claude-opus-4-6',
+    label: 'Opus 4.6',
+    provider: 'claude',
+    supportsEffort: ['low', 'medium', 'high', 'max'],
+  },
+  {
+    id: 'claude-sonnet-4-6',
+    label: 'Sonnet 4.6',
+    provider: 'claude',
+    supportsEffort: ['low', 'medium', 'high'],
+  },
+  {
+    id: 'claude-haiku-4-5',
+    label: 'Haiku 4.5',
+    provider: 'claude',
+    supportsEffort: ['low', 'medium', 'high'],
+  },
+  {
+    id: 'gpt-5.5',
+    label: 'GPT-5.5',
+    provider: 'codex',
+    supportsEffort: ['low', 'medium', 'high', 'xhigh', 'max'],
+  },
+  {
+    id: 'gpt-5.4',
+    label: 'GPT-5.4',
+    provider: 'codex',
+    supportsEffort: ['low', 'medium', 'high', 'max'],
+  },
+  {
+    id: 'gpt-5.4-mini',
+    label: 'GPT-5.4 Mini',
+    provider: 'codex',
+    supportsEffort: ['low', 'medium', 'high', 'max'],
+  },
+  {
+    id: 'gpt-5.3-codex',
+    label: 'GPT-5.3 Codex',
+    provider: 'codex',
+    supportsEffort: ['low', 'medium', 'high', 'max'],
+  },
+  {
+    id: 'gpt-5.3-codex-spark',
+    label: 'GPT-5.3 Codex Spark',
+    provider: 'codex',
+    supportsEffort: ['low', 'medium', 'high', 'max'],
+  },
+]
+
+export const DEFAULT_REVIEW_AGENT_MODEL = 'claude-opus-4-7'
+export const DEFAULT_REVIEW_AGENT_EFFORT: EffortLevel = 'high'
+const DEFAULT_CODEX_REVIEW_AGENT_MODEL = 'gpt-5.5'
+
+const EFFORT_LEVELS: Array<{ id: EffortLevel; label: string }> = [
+  { id: 'low', label: 'Low' },
+  { id: 'medium', label: 'Medium' },
+  { id: 'high', label: 'High' },
+  { id: 'xhigh', label: 'xHigh' },
+  { id: 'max', label: 'Max' },
+]
 
 const FOCUS_OPTIONS: Array<{
   id: ReviewFocus
@@ -66,11 +157,65 @@ export const DEFAULT_REVIEW_FOCUS: ReviewFocus[] = [
   'architecture',
 ]
 
+function defaultModelForProvider(provider: ReviewAgentProvider): string {
+  return provider === 'codex' ? DEFAULT_CODEX_REVIEW_AGENT_MODEL : DEFAULT_REVIEW_AGENT_MODEL
+}
+
 export function ReviewModal({ onStart, onClose, isRerun }: Props) {
   const [selected, setSelected] = useState<ReviewFocus[]>(DEFAULT_REVIEW_FOCUS)
+  const [agentProvider, setAgentProvider] = useState<ReviewAgentProvider>('claude')
+  const [agentModel, setAgentModel] = useState(DEFAULT_REVIEW_AGENT_MODEL)
+  const [agentEffort, setAgentEffort] = useState<EffortLevel>(DEFAULT_REVIEW_AGENT_EFFORT)
+  const [providerModels, setProviderModels] = useState<ProviderModelEntry[]>(FALLBACK_MODELS)
+
+  useEffect(() => {
+    window.api
+      .getProviderModels()
+      .then((models) => {
+        if (models?.length) {
+          setProviderModels(
+            models.map((m) => ({
+              id: m.id,
+              label: m.label,
+              provider: m.provider,
+              supportsEffort: m.supportsEffort as EffortLevel[],
+            })),
+          )
+        }
+      })
+      .catch(() => {})
+  }, [])
+
+  const agentModels = useMemo(
+    () => providerModels.filter((m) => m.provider === agentProvider),
+    [providerModels, agentProvider],
+  )
+  const effortOptions = useMemo(() => {
+    const selectedModel = providerModels.find((m) => m.id === agentModel)
+    return EFFORT_LEVELS.filter((e) =>
+      (selectedModel?.supportsEffort ?? ['low', 'medium', 'high']).includes(e.id),
+    )
+  }, [agentModel, providerModels])
+
+  useEffect(() => {
+    if (effortOptions.some((e) => e.id === agentEffort)) return
+    const fallback = effortOptions.find((e) => e.id === DEFAULT_REVIEW_AGENT_EFFORT)
+    setAgentEffort(fallback?.id ?? effortOptions[0]?.id ?? DEFAULT_REVIEW_AGENT_EFFORT)
+  }, [agentEffort, effortOptions])
 
   function toggle(id: ReviewFocus) {
     setSelected((prev) => (prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id]))
+  }
+
+  function selectProvider(provider: ReviewAgentProvider) {
+    setAgentProvider(provider)
+    const nextModel =
+      providerModels.find(
+        (m) => m.provider === provider && m.id === defaultModelForProvider(provider),
+      )?.id ??
+      providerModels.find((m) => m.provider === provider)?.id ??
+      defaultModelForProvider(provider)
+    setAgentModel(nextModel)
   }
 
   return (
@@ -87,7 +232,7 @@ export function ReviewModal({ onStart, onClose, isRerun }: Props) {
 
       {/* Modal */}
       <div
-        className="relative w-full max-w-md rounded-xl border border-base-border bg-base-surface shadow-2xl"
+        className="relative w-full max-w-lg rounded-xl border border-base-border bg-base-surface shadow-2xl"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}
       >
@@ -105,8 +250,64 @@ export function ReviewModal({ onStart, onClose, isRerun }: Props) {
           </button>
         </div>
 
-        {/* Focus areas */}
-        <div className="px-5 py-4">
+        <div className="space-y-4 px-5 py-4">
+          <div>
+            <p className="mb-3 font-medium text-base-text-muted text-xs uppercase tracking-wider">
+              Agent
+            </p>
+            <div className="grid grid-cols-2 gap-1.5">
+              {(
+                [
+                  { id: 'claude' as const, label: 'Claude Code' },
+                  { id: 'codex' as const, label: 'Codex' },
+                ] satisfies Array<{ id: ReviewAgentProvider; label: string }>
+              ).map((opt) => {
+                const isSelected = agentProvider === opt.id
+                return (
+                  <button
+                    type="button"
+                    key={opt.id}
+                    onClick={() => selectProvider(opt.id)}
+                    className={`flex items-center justify-center gap-2 rounded-lg px-3 py-2 font-medium text-[12px] transition-colors ${
+                      isSelected
+                        ? 'bg-base-raised text-base-text ring-1 ring-base-border'
+                        : 'text-base-text-muted hover:bg-base-raised/50 hover:text-base-text'
+                    }`}
+                  >
+                    <Bot size={12} />
+                    {opt.label}
+                  </button>
+                )
+              })}
+            </div>
+            <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+              <DropdownMenu
+                items={
+                  agentModels.length > 0
+                    ? agentModels.map((model) => ({ id: model.id, label: model.label }))
+                    : [{ id: agentModel, label: agentModel }]
+                }
+                value={agentModel}
+                onChange={setAgentModel}
+                placement="bottom"
+                triggerClassName="flex h-8 w-full min-w-0 items-center justify-between gap-2 rounded-lg border border-base-border bg-base-bg px-3 text-base-text-secondary text-xs transition-colors hover:bg-base-raised hover:text-base-text"
+                minWidth={220}
+              />
+              <DropdownMenu
+                items={effortOptions.map((effort) => ({
+                  id: effort.id,
+                  label: `${effort.label} effort`,
+                }))}
+                value={agentEffort}
+                onChange={(id) => setAgentEffort(id as EffortLevel)}
+                placement="bottom"
+                triggerIcon={<SlidersHorizontal size={13} />}
+                triggerClassName="flex h-8 items-center justify-between gap-2 rounded-lg border border-base-border bg-base-bg px-3 text-base-text-secondary text-xs transition-colors hover:bg-base-raised hover:text-base-text"
+                minWidth={150}
+              />
+            </div>
+          </div>
+
           <p className="mb-3 font-medium text-base-text-muted text-xs uppercase tracking-wider">
             Focus areas
           </p>
@@ -162,7 +363,7 @@ export function ReviewModal({ onStart, onClose, isRerun }: Props) {
           <button
             type="button"
             onClick={() => {
-              onStart(selected)
+              onStart(selected, agentModel, agentEffort)
               onClose()
             }}
             disabled={selected.length === 0}

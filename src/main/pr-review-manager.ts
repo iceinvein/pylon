@@ -9,6 +9,7 @@ import type { BrowserWindow } from 'electron'
 import { IPC } from '../shared/ipc-channels'
 import { log } from '../shared/logger'
 import type {
+  EffortLevel,
   FindingPost,
   FindingPostKind,
   GhRepo,
@@ -44,10 +45,17 @@ import {
 } from './pr-review-critic'
 import { deduplicateFindings } from './pr-review-dedupe'
 import {
+  applyPeerReviewChanges,
+  buildPeerReviewPrompt,
+  parsePeerReviewChanges,
+} from './pr-review-peer-review'
+import {
   buildPrReviewContinuationPrompt,
   buildPrReviewFirstChunkPrompt,
   countMcpToolUses,
 } from './pr-review-prompts'
+import { getProvider, getProviderForModel } from './providers/registry'
+import type { ProviderId } from './providers/types'
 import { resolveReviewScope } from './review-scope'
 import { sessionManager } from './session-manager'
 
@@ -55,6 +63,9 @@ const execFileAsync = promisify(execFile)
 
 const logger = log.child('pr-review')
 const STREAM_THROTTLE_MS = 300
+const DEFAULT_REVIEW_MODEL = 'claude-opus-4-7'
+const DEFAULT_CODEX_REVIEW_MODEL = 'gpt-5.5'
+const DEFAULT_REVIEW_EFFORT: EffortLevel = 'high'
 
 const DEFAULT_AGENT_PROMPTS: Record<ReviewFocus, string> = {
   security: [
@@ -456,9 +467,14 @@ type ActiveReviewSession = {
   reviewId: string
   repoFullName: string
   prNumber: number
+  model: string
+  provider: ProviderId
+  effort: EffortLevel
   agents: Map<ReviewFocus, AgentSession>
   contextAbort?: AbortController
 }
+
+type ResolvedReviewAgent = { model: string; provider: ProviderId; effort: EffortLevel }
 
 type PreviousReviewBaseline = {
   reviewId: string
@@ -630,6 +646,48 @@ class PrReviewManager {
       reviewId: row.id as string,
       headSha: (row.head_sha as string) ?? null,
       baseSha: (row.base_sha as string) ?? null,
+    }
+  }
+
+  private resolveReviewAgent(model?: string, effort?: EffortLevel): ResolvedReviewAgent {
+    const requestedModel = model?.trim() || DEFAULT_REVIEW_MODEL
+    const provider = getProviderForModel(requestedModel)
+    if (!provider) {
+      logger.warn(
+        `Unknown PR review model "${requestedModel}", falling back to ${DEFAULT_REVIEW_MODEL}`,
+      )
+      return { model: DEFAULT_REVIEW_MODEL, provider: 'claude', effort: DEFAULT_REVIEW_EFFORT }
+    }
+    const requestedEffort = effort ?? DEFAULT_REVIEW_EFFORT
+    const modelInfo = provider.models.find((m) => m.id === requestedModel)
+    const supportedEfforts = modelInfo?.supportsEffort
+    const resolvedEffort = supportedEfforts?.includes(requestedEffort)
+      ? requestedEffort
+      : supportedEfforts?.includes(DEFAULT_REVIEW_EFFORT)
+        ? DEFAULT_REVIEW_EFFORT
+        : (supportedEfforts?.[0] ?? DEFAULT_REVIEW_EFFORT)
+
+    return { model: requestedModel, provider: provider.id, effort: resolvedEffort }
+  }
+
+  private resolvePeerReviewAgent(primary: ResolvedReviewAgent): ResolvedReviewAgent | null {
+    const peerProviderId: ProviderId = primary.provider === 'claude' ? 'codex' : 'claude'
+    try {
+      const peerProvider = getProvider(peerProviderId)
+      const preferredModel =
+        peerProviderId === 'codex' ? DEFAULT_CODEX_REVIEW_MODEL : DEFAULT_REVIEW_MODEL
+      const modelInfo =
+        peerProvider.models.find((m) => m.id === preferredModel) ?? peerProvider.models[0]
+      if (!modelInfo) return null
+      const effort = modelInfo.supportsEffort.includes(primary.effort)
+        ? primary.effort
+        : modelInfo.supportsEffort.includes(DEFAULT_REVIEW_EFFORT)
+          ? DEFAULT_REVIEW_EFFORT
+          : (modelInfo.supportsEffort[0] ?? DEFAULT_REVIEW_EFFORT)
+      return { model: modelInfo.id, provider: peerProviderId, effort }
+    } catch (err) {
+      logger.warn(`Unable to resolve PR peer-review provider ${peerProviderId}: ${String(err)}`)
+      return null
     }
   }
 
@@ -853,6 +911,7 @@ class PrReviewManager {
     const reviewId = randomUUID()
     const now = Date.now()
     const requestedMode: ReviewModePreference = options.mode ?? 'auto'
+    const reviewAgent = this.resolveReviewAgent(options.agentModel, options.agentEffort)
     const detail = await getPrDetail(repo.fullName, prNumber)
 
     const db = getDb()
@@ -895,6 +954,9 @@ class PrReviewManager {
       reviewId,
       repoFullName: repo.fullName,
       prNumber,
+      model: reviewAgent.model,
+      provider: reviewAgent.provider,
+      effort: reviewAgent.effort,
       agents: new Map(),
     })
 
@@ -942,6 +1004,7 @@ class PrReviewManager {
       requestedMode,
       parentReview,
       options.includeRevalidation !== false,
+      reviewAgent,
     ).catch((err) => {
       logger.error('Review failed:', err)
       this.updateReviewStatus(reviewId, 'error', Date.now())
@@ -959,6 +1022,7 @@ class PrReviewManager {
     requestedMode: ReviewModePreference,
     parentReview: PreviousReviewBaseline | null,
     includeRevalidation: boolean,
+    reviewAgent: { model: string; provider: ProviderId; effort: EffortLevel },
   ): Promise<void> {
     this.send(IPC.GH_REVIEW_UPDATE, {
       reviewId,
@@ -997,8 +1061,8 @@ class PrReviewManager {
       files: scope.files,
     }
 
-    // Use SDK-reported context window if available, otherwise fall back to hardcoded limits
-    const cachedContextWindow = sessionManager.getModelContextWindow('claude-sonnet-4-6')
+    // Use SDK-reported context window if available, otherwise fall back to hardcoded limits.
+    const cachedContextWindow = sessionManager.getModelContextWindow(reviewAgent.model)
     const tokenBudget = getTokenBudget(undefined, 0, cachedContextWindow)
     logger.info(
       `Token budget: ${tokenBudget} tokens (context window: ${cachedContextWindow ?? 'default'}, diff length: ${scopedDetail.diff.length} chars, ~${Math.ceil(scopedDetail.diff.length / 3.3)} tokens, mode: ${scope.reviewMode})`,
@@ -1148,6 +1212,7 @@ class PrReviewManager {
         focus,
         active,
         mcpConfig,
+        reviewAgent,
       ),
     )
 
@@ -1182,8 +1247,15 @@ class PrReviewManager {
     }
 
     const deduped = deduplicateFindings(allFindings)
-    const filtered = await this.runCriticPass(reviewId, reviewCwd, deduped)
-    const explicitAssignments = this.assignFindingThreads(reviewId, filtered)
+    const filtered = await this.runCriticPass(reviewId, reviewCwd, deduped, reviewAgent)
+    const peerReviewed = await this.runPeerReviewPass(
+      reviewId,
+      repo.projectPath,
+      scopedDetail,
+      filtered,
+      reviewAgent,
+    )
+    const explicitAssignments = this.assignFindingThreads(reviewId, peerReviewed)
 
     const touchedFiles = new Set(scope.files.map((file) => file.path))
     const seriesIdForReview = (
@@ -1211,7 +1283,8 @@ class PrReviewManager {
           seriesId: seriesIdForReview,
           repoCwd: reviewCwd,
           touchedFiles,
-          runSession: (input) => this.runRevalidationSession(reviewId, input.cwd, input.prompt),
+          runSession: (input) =>
+            this.runRevalidationSession(reviewId, input.cwd, input.prompt, reviewAgent),
         })
         revalidationAssignments = outcomes
           .filter((outcome) => !matchedThreadIds.has(outcome.threadId))
@@ -1340,9 +1413,16 @@ class PrReviewManager {
     _reviewId: string,
     cwd: string,
     prompt: string,
+    reviewAgent: { model: string; provider: ProviderId; effort: EffortLevel },
   ): Promise<string> {
-    const sessionId = await sessionManager.createSession(cwd, undefined, undefined, 'pr-review')
+    const sessionId = await sessionManager.createSession(
+      cwd,
+      reviewAgent.model,
+      undefined,
+      'pr-review',
+    )
     sessionManager.setPermissionMode(sessionId, 'auto-approve')
+    sessionManager.setEffort(sessionId, reviewAgent.effort)
     let collected = ''
     const unsub = sessionManager.onMessage(sessionId, (message: unknown) => {
       const msg = message as Record<string, unknown>
@@ -1376,6 +1456,7 @@ class PrReviewManager {
     reviewId: string,
     cwd: string,
     findings: ReviewFinding[],
+    reviewAgent: ResolvedReviewAgent,
   ): Promise<ReviewFinding[]> {
     if (findings.length === 0) return findings
     const partition = partitionForCritic(findings)
@@ -1386,8 +1467,14 @@ class PrReviewManager {
 
     let collected = ''
     try {
-      const sessionId = await sessionManager.createSession(cwd, undefined, undefined, 'pr-review')
+      const sessionId = await sessionManager.createSession(
+        cwd,
+        reviewAgent.model,
+        undefined,
+        'pr-review',
+      )
       sessionManager.setPermissionMode(sessionId, 'auto-approve')
+      sessionManager.setEffort(sessionId, reviewAgent.effort)
       const unsub = sessionManager.onMessage(sessionId, (message: unknown) => {
         const msg = message as Record<string, unknown>
         if (msg.type === 'stream_event') {
@@ -1420,6 +1507,82 @@ class PrReviewManager {
     return result
   }
 
+  private async runPeerReviewPass(
+    reviewId: string,
+    cwd: string,
+    detail: Awaited<ReturnType<typeof getPrDetail>>,
+    findings: ReviewFinding[],
+    reviewAgent: ResolvedReviewAgent,
+  ): Promise<ReviewFinding[]> {
+    if (findings.length === 0) return findings
+
+    const peerAgent = this.resolvePeerReviewAgent(reviewAgent)
+    if (!peerAgent) return findings
+
+    const active = this.activeReviews.get(reviewId)
+    this.send(IPC.GH_REVIEW_UPDATE, {
+      reviewId,
+      status: 'running',
+      streamingText: `Running ${peerAgent.provider === 'codex' ? 'Codex' : 'Claude Code'} second opinion...`,
+      agentProgress: active
+        ? Array.from(active.agents.values()).map((agent) => ({
+            agentId: agent.focus,
+            status: agent.status,
+            findingsCount: agent.findings.length,
+            error: agent.error,
+            currentChunk: agent.currentChunk,
+            totalChunks: agent.totalChunks,
+          }))
+        : undefined,
+    })
+
+    try {
+      const { systemPrompt, userPrompt } = buildPeerReviewPrompt({
+        primaryProvider: reviewAgent.provider,
+        peerProvider: peerAgent.provider,
+        detail,
+        findings,
+      })
+      const sessionId = await sessionManager.createSession(
+        cwd,
+        peerAgent.model,
+        undefined,
+        'pr-review',
+      )
+      sessionManager.setPermissionMode(sessionId, 'auto-approve')
+      sessionManager.setEffort(sessionId, peerAgent.effort)
+
+      let collected = ''
+      try {
+        collected = await sessionManager.sendGitAiQuery(sessionId, userPrompt, systemPrompt)
+      } finally {
+        sessionManager.stopSession(sessionId)
+      }
+
+      const changes = parsePeerReviewChanges(
+        collected,
+        new Set(findings.map((finding) => finding.id)),
+      )
+      if (changes.length === 0) {
+        logger.info(
+          `Peer-review pass for review ${reviewId}: ${peerAgent.provider} returned no finding changes`,
+        )
+        return findings
+      }
+
+      const updated = applyPeerReviewChanges(findings, changes)
+      logger.info(
+        `Peer-review pass for review ${reviewId}: ${peerAgent.provider} applied ${changes.length} finding changes (${updated.length - findings.length} net additions)`,
+      )
+      return deduplicateFindings(updated)
+    } catch (err) {
+      logger.warn(
+        `Peer-review pass failed for review ${reviewId}, keeping existing findings: ${String(err)}`,
+      )
+      return findings
+    }
+  }
+
   private async runAgentSession(
     reviewId: string,
     cwd: string,
@@ -1429,15 +1592,19 @@ class PrReviewManager {
     focus: ReviewFocus,
     active: ActiveReviewSession,
     mcpConfig: { command: string; args?: string[]; env?: Record<string, string> } | null,
+    reviewAgent: { model: string; provider: ProviderId; effort: EffortLevel },
   ): Promise<ReviewFinding[]> {
     const sessionId = await sessionManager.createSession(
       cwd,
-      undefined,
+      reviewAgent.model,
       undefined,
       'pr-review',
-      mcpConfig ? { mcpServers: { 'code-intelligence': mcpConfig } } : undefined,
+      reviewAgent.provider === 'claude' && mcpConfig
+        ? { mcpServers: { 'code-intelligence': mcpConfig } }
+        : undefined,
     )
     sessionManager.setPermissionMode(sessionId, 'auto-approve')
+    sessionManager.setEffort(sessionId, reviewAgent.effort)
 
     const agentSession: AgentSession = {
       focus,

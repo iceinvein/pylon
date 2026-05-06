@@ -10,6 +10,11 @@ const MODEL_SHORT: Record<string, string> = {
   'claude-opus-4-6': 'Opus 4.6',
   'claude-sonnet-4-6': 'Sonnet 4.6',
   'claude-haiku-4-5': 'Haiku 4.5',
+  'gpt-5.5': 'GPT-5.5',
+  'gpt-5.4': 'GPT-5.4',
+  'gpt-5.4-mini': 'GPT-5.4 Mini',
+  'gpt-5.3-codex': 'GPT-5.3 Codex',
+  'gpt-5.3-codex-spark': 'GPT-5.3 Spark',
 }
 
 type StatusBarProps = {

@@ -115,6 +115,12 @@ const FALLBACK_MODELS: ProviderModelEntry[] = [
     supportsEffort: ['low', 'medium', 'high'],
   },
   {
+    id: 'gpt-5.5',
+    label: 'GPT-5.5',
+    provider: 'codex',
+    supportsEffort: ['low', 'medium', 'high', 'xhigh', 'max'],
+  },
+  {
     id: 'gpt-5.4',
     label: 'GPT-5.4',
     provider: 'codex',

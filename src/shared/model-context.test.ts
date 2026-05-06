@@ -11,6 +11,7 @@ describe('model-context', () => {
     test('contains expected models', () => {
       expect(KNOWN_CONTEXT_WINDOWS['claude-opus-4-6']).toBe(1_000_000)
       expect(KNOWN_CONTEXT_WINDOWS['claude-sonnet-4-6']).toBe(200_000)
+      expect(KNOWN_CONTEXT_WINDOWS['gpt-5.5']).toBe(1_000_000)
       expect(KNOWN_CONTEXT_WINDOWS['gpt-5.4']).toBe(1_000_000)
     })
   })
@@ -19,6 +20,7 @@ describe('model-context', () => {
     test('contains expected models', () => {
       expect(KNOWN_MAX_OUTPUT_TOKENS['claude-opus-4-6']).toBe(128_000)
       expect(KNOWN_MAX_OUTPUT_TOKENS['claude-sonnet-4-6']).toBe(64_000)
+      expect(KNOWN_MAX_OUTPUT_TOKENS['gpt-5.5']).toBe(128_000)
       expect(KNOWN_MAX_OUTPUT_TOKENS['gpt-5.4']).toBe(128_000)
     })
   })

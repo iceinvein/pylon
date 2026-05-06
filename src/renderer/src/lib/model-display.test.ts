@@ -8,6 +8,7 @@ describe('getAssistantDisplayName', () => {
   })
 
   test('returns Codex for OpenAI and Codex models', () => {
+    expect(getAssistantDisplayName('gpt-5.5')).toBe('Codex')
     expect(getAssistantDisplayName('gpt-5.4')).toBe('Codex')
     expect(getAssistantDisplayName('gpt-5.4-mini')).toBe('Codex')
     expect(getAssistantDisplayName('gpt-5.3-codex')).toBe('Codex')

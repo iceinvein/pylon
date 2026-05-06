@@ -448,6 +448,8 @@ export type StartPrReviewOptions = {
   mode?: ReviewModePreference
   baselineReviewId?: string
   includeRevalidation?: boolean
+  agentModel?: string
+  agentEffort?: EffortLevel
 }
 
 export type PrReview = {

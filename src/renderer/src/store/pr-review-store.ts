@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { log } from '../../../shared/logger'
 import type {
+  EffortLevel,
   GhCliStatus,
   GhPrDetail,
   GhPrStateFilter,
@@ -240,7 +241,13 @@ type PrReviewStore = {
   loadReviewThreads: (seriesId: string) => Promise<void>
   loadReviewTimeline: (seriesId: string) => Promise<void>
   loadRunFiles: (reviewId: string) => Promise<void>
-  startReview: (repo: GhRepo, pr: GhPullRequest, focus: ReviewFocus[]) => Promise<void>
+  startReview: (
+    repo: GhRepo,
+    pr: GhPullRequest,
+    focus: ReviewFocus[],
+    agentModel?: string,
+    agentEffort?: EffortLevel,
+  ) => Promise<void>
   stopReview: (reviewId: string) => Promise<void>
   loadReview: (reviewId: string) => Promise<void>
   deleteReview: (reviewId: string) => Promise<void>
@@ -556,7 +563,7 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
     }
   },
 
-  startReview: async (repo, pr, focus) => {
+  startReview: async (repo, pr, focus, agentModel, agentEffort) => {
     try {
       const review = await window.api.startGhReview({
         repo,
@@ -564,7 +571,7 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
         prTitle: pr.title,
         prUrl: pr.url,
         focus,
-        options: { mode: 'auto', includeRevalidation: true },
+        options: { mode: 'auto', includeRevalidation: true, agentModel, agentEffort },
       })
       set((s) => ({
         activeReview: review,

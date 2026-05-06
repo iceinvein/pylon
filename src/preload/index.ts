@@ -157,6 +157,8 @@ const api = {
       mode?: 'auto' | 'full' | 'incremental'
       baselineReviewId?: string
       includeRevalidation?: boolean
+      agentModel?: string
+      agentEffort?: string
     }
   }) => ipcRenderer.invoke(IPC.GH_START_REVIEW, args),
   stopGhReview: (reviewId: string) => ipcRenderer.invoke(IPC.GH_STOP_REVIEW, { reviewId }),
