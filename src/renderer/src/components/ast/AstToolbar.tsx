@@ -36,6 +36,7 @@ export function AstToolbar({
   const toggleOverlay = useAstStore((s) => s.toggleOverlay)
   const searchQuery = useAstStore((s) => s.searchQuery)
   const setSearchQuery = useAstStore((s) => s.setSearchQuery)
+  const analysisFreshness = useAstStore((s) => s.analysisFreshness)
 
   const [popoverOpen, setPopoverOpen] = useState(false)
   const scopeBtnRef = useRef<HTMLButtonElement>(null)
@@ -124,7 +125,17 @@ export function AstToolbar({
 
       <div className="flex-1" />
 
-      {/* File count */}
+      {analysisFreshness && (
+        <span
+          className={`text-xs ${
+            analysisFreshness.stale ? 'text-warning-text' : 'text-base-text-muted'
+          }`}
+        >
+          {analysisFreshness.stale ? 'Stale' : 'Fresh'} ·{' '}
+          {new Date(analysisFreshness.analyzedAt).toLocaleTimeString()}
+        </span>
+      )}
+
       {repoGraph && (
         <span className="text-base-text-muted text-xs">
           {repoGraph.files.length} file{repoGraph.files.length !== 1 ? 's' : ''}

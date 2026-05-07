@@ -36,6 +36,7 @@ export function AstView() {
   const selectedFile = useAstStore((s) => s.selectedFile)
   const drilledFile = useAstStore((s) => s.drilledFile)
   const selectedNode = useAstStore((s) => s.selectedNode)
+  const selectedEntity = useAstStore((s) => s.selectedEntity)
   const analysisStatus = useAstStore((s) => s.analysisStatus)
   const analysisProgress = useAstStore((s) => s.analysisProgress)
   const setScope = useAstStore((s) => s.setScope)
@@ -63,6 +64,28 @@ export function AstView() {
     }
   }, [drilledFile, setFileAst])
 
+  useEffect(() => {
+    if (!scope || !selectedEntity) {
+      useAstStore.getState().setImpact(null)
+      return
+    }
+
+    let cancelled = false
+    useAstStore.getState().setImpactLoading(true)
+    window.api
+      .getImpact(scope, selectedEntity)
+      .then((summary) => {
+        if (!cancelled) useAstStore.getState().setImpact(summary)
+      })
+      .catch(() => {
+        if (!cancelled) useAstStore.getState().setImpactError('Could not load impact')
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [scope, selectedEntity])
+
   const setRepoGraph = useAstStore((s) => s.setRepoGraph)
   const setArchAnalysis = useAstStore((s) => s.setArchAnalysis)
   const setAnalysisStatus = useAstStore((s) => s.setAnalysisStatus)
@@ -75,13 +98,17 @@ export function AstView() {
       // Check for cached analysis first
       const cached = await window.api.getCachedAnalysis(scopePath)
       if (cached) {
-        setRepoGraph(cached.repoGraph as import('../../../shared/types').RepoGraph)
+        setRepoGraph(cached.repoGraph)
         if (cached.archAnalysis) {
-          setArchAnalysis(cached.archAnalysis as import('../../../shared/types').ArchAnalysis)
+          setArchAnalysis(cached.archAnalysis)
         }
+        useAstStore.getState().setImpactIndex(cached.impactIndex)
+        useAstStore.getState().setAnalysisFreshness(cached.freshness)
         setAnalysisStatus(
           'ready',
-          `Loaded from cache (${new Date(cached.analyzedAt).toLocaleString()})`,
+          cached.freshness.stale
+            ? `Loaded stale cache (${new Date(cached.freshness.analyzedAt).toLocaleString()})`
+            : `Loaded from cache (${new Date(cached.freshness.analyzedAt).toLocaleString()})`,
         )
         return
       }
@@ -107,6 +134,8 @@ export function AstView() {
   const handleReanalyze = useCallback(async () => {
     if (scope) {
       await window.api.analyzeScope(scope)
+      const index = await window.api.getImpactIndex(scope)
+      useAstStore.getState().setImpactIndex(index)
     }
   }, [scope])
 
