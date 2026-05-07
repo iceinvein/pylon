@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto'
+import * as fs from 'node:fs'
 import type {
   AstNode,
   CodeEntity,
@@ -101,6 +102,20 @@ function pathFor(id: string, label: string, entities: CodeEntity[]): ImpactPath 
 export function computeSnapshotHash(graph: RepoGraph): string {
   const rows = graph.files
     .map((file) => `${file.filePath}\0${file.lastModified}`)
+    .sort((a, b) => a.localeCompare(b))
+
+  return createHash('sha256').update(rows.join('\n')).digest('hex')
+}
+
+export function computeLiveSnapshotHash(graph: RepoGraph): string {
+  const rows = graph.files
+    .map((file) => {
+      try {
+        return `${file.filePath}\0${fs.statSync(file.filePath).mtimeMs}`
+      } catch {
+        return `${file.filePath}\0missing`
+      }
+    })
     .sort((a, b) => a.localeCompare(b))
 
   return createHash('sha256').update(rows.join('\n')).digest('hex')

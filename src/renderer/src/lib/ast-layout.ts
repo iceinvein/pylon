@@ -55,6 +55,7 @@ export type RepoLayout = {
 
 export type TreeLayoutNode = {
   id: string
+  filePath: string
   name: string
   type: string
   x: number
@@ -548,6 +549,7 @@ function collectNodes(
 ): void {
   outNodes.push({
     id: node.ast.id,
+    filePath: node.ast.filePath,
     name: node.ast.name,
     type: node.ast.type,
     x: node.x,

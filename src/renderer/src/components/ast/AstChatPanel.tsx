@@ -1,6 +1,48 @@
 import { Send } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import type { AstNode, CodeEntity, RepoGraph } from '../../../../shared/types'
 import { useAstStore } from '../../store/ast-store'
+
+function normalizeSlashes(value: string): string {
+  return value.replaceAll('\\', '/')
+}
+
+function findNodeByName(nodes: AstNode[], symbolName: string): AstNode | null {
+  for (const node of nodes) {
+    if (node.name === symbolName) return node
+    const child = findNodeByName(node.children, symbolName)
+    if (child) return child
+  }
+  return null
+}
+
+function resolveHighlightEntity(
+  graph: RepoGraph | null,
+  filePath: string,
+  symbolName?: string,
+): CodeEntity {
+  const normalized = normalizeSlashes(filePath).replace(/^\.\//, '')
+  const file = graph?.files.find((candidate) => {
+    const candidatePath = normalizeSlashes(candidate.filePath)
+    return candidatePath === normalized || candidatePath.endsWith(`/${normalized}`)
+  })
+  const resolvedPath = file?.filePath ?? filePath
+  const node = file && symbolName ? findNodeByName(file.declarations, symbolName) : null
+
+  if (node) {
+    return {
+      kind: 'symbol',
+      filePath: resolvedPath,
+      symbolId: node.id,
+      symbolName: node.name,
+      symbolType: node.type,
+      startLine: node.startLine,
+      endLine: node.endLine,
+    }
+  }
+
+  return { kind: 'file', filePath: resolvedPath }
+}
 
 export function AstChatPanel() {
   const chatMessages = useAstStore((s) => s.chatMessages)
@@ -8,6 +50,7 @@ export function AstChatPanel() {
   const addChatMessage = useAstStore((s) => s.addChatMessage)
   const setChatLoading = useAstStore((s) => s.setChatLoading)
   const scope = useAstStore((s) => s.scope)
+  const repoGraph = useAstStore((s) => s.repoGraph)
   const setSelectedEntity = useAstStore((s) => s.setSelectedEntity)
 
   const [input, setInput] = useState('')
@@ -43,10 +86,10 @@ export function AstChatPanel() {
   )
 
   const handleSelectCitation = useCallback(
-    (filePath: string) => {
-      setSelectedEntity({ kind: 'file', filePath })
+    (filePath: string, symbolName?: string) => {
+      setSelectedEntity(resolveHighlightEntity(repoGraph, filePath, symbolName))
     },
-    [setSelectedEntity],
+    [repoGraph, setSelectedEntity],
   )
 
   return (
@@ -85,7 +128,9 @@ export function AstChatPanel() {
                       <button
                         key={`${highlight.filePath}:${highlight.symbolName ?? ''}`}
                         type="button"
-                        onClick={() => handleSelectCitation(highlight.filePath)}
+                        onClick={() =>
+                          handleSelectCitation(highlight.filePath, highlight.symbolName)
+                        }
                         className="max-w-full truncate rounded border border-base-border px-1.5 py-0.5 font-mono text-[10px] text-base-text-muted transition-colors hover:bg-base-raised hover:text-base-text"
                         title={highlight.filePath}
                       >

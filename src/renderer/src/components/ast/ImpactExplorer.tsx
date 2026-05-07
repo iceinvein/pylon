@@ -4,7 +4,9 @@ import type { CodeEntity } from '../../../../shared/types'
 import { useAstStore } from '../../store/ast-store'
 
 function entityKey(entity: CodeEntity): string {
-  return entity.kind === 'file' ? `file:${entity.filePath}` : `symbol:${entity.symbolId}`
+  return entity.kind === 'file'
+    ? `file:${entity.filePath}`
+    : `symbol:${entity.filePath}:${entity.symbolId}`
 }
 
 function entityLabel(entity: CodeEntity): string {

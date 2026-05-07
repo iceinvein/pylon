@@ -53,8 +53,8 @@ function loadCachedAnalysis(scope: string): AstCachedAnalysis | null {
   const repoGraph = JSON.parse(row.repo_graph) as RepoGraph
   let currentSnapshotHash = row.snapshot_hash ?? ''
   try {
-    const { computeSnapshotHash } = require('./ast-impact') as typeof import('./ast-impact')
-    currentSnapshotHash = computeSnapshotHash(repoGraph)
+    const { computeLiveSnapshotHash } = require('./ast-impact') as typeof import('./ast-impact')
+    currentSnapshotHash = computeLiveSnapshotHash(repoGraph)
   } catch {
     currentSnapshotHash = row.snapshot_hash ?? ''
   }

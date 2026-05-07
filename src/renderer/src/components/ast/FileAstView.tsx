@@ -24,7 +24,7 @@ export function FileAstView({ fileAst, fileName }: FileAstViewProps) {
   const selectedNode = useAstStore((s) => s.selectedNode)
   const selectedFile = useAstStore((s) => s.selectedFile)
   const drillFile = useAstStore((s) => s.drillFile)
-  const selectNode = useAstStore((s) => s.selectNode)
+  const setSelectedEntity = useAstStore((s) => s.setSelectedEntity)
   const hoveredNode = useAstStore((s) => s.hoveredNode)
   const setHoveredNode = useAstStore((s) => s.setHoveredNode)
 
@@ -46,6 +46,21 @@ export function FileAstView({ fileAst, fileName }: FileAstViewProps) {
     useAstStore.getState().setExplain(null, true, requestId)
     window.api.explainAstNode(nodeId, filePath, nodeName, requestId)
   }, [])
+
+  const handleSelectNode = useCallback(
+    (node: (typeof layout.nodes)[number]) => {
+      setSelectedEntity({
+        kind: 'symbol',
+        filePath: node.filePath,
+        symbolId: node.id,
+        symbolName: node.name,
+        symbolType: node.type as import('../../../../shared/types').AstNodeType,
+        startLine: node.startLine,
+        endLine: node.endLine,
+      })
+    },
+    [setSelectedEntity],
+  )
 
   return (
     <div className="flex h-full flex-col">
@@ -93,7 +108,7 @@ export function FileAstView({ fileAst, fileName }: FileAstViewProps) {
             return (
               <g
                 key={node.id}
-                onClick={() => selectNode(node.id)}
+                onClick={() => handleSelectNode(node)}
                 onContextMenu={(e) => handleContextMenu(e, node.id, node.name, selectedFile ?? '')}
                 onMouseEnter={() => setHoveredNode(node.id)}
                 onMouseLeave={() => setHoveredNode(null)}

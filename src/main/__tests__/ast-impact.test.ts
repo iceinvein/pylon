@@ -1,7 +1,11 @@
 import { describe, expect, test } from 'bun:test'
+import * as fs from 'node:fs'
+import * as os from 'node:os'
+import * as path from 'node:path'
 import type { AstNode, ImpactIndex, RepoGraph } from '../../shared/types'
 import {
   buildImpactIndex,
+  computeLiveSnapshotHash,
   computeSnapshotHash,
   getImpactSummary,
   searchImpactEntities,
@@ -305,5 +309,31 @@ describe('ast-impact', () => {
     changed.files[0].lastModified = 999
     expect(first).toBe(second)
     expect(first).not.toBe(computeSnapshotHash(changed))
+  })
+
+  test('computes live snapshot hash from current filesystem mtimes', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'impact-snapshot-'))
+    const filePath = path.join(tmpDir, 'service.ts')
+    fs.writeFileSync(filePath, 'export function loadUser() {}')
+    const stat = fs.statSync(filePath)
+    const repoGraph: RepoGraph = {
+      files: [
+        {
+          filePath,
+          language: 'typescript',
+          declarations: [],
+          imports: [],
+          size: stat.size,
+          lastModified: stat.mtimeMs,
+        },
+      ],
+      edges: [],
+    }
+
+    expect(computeLiveSnapshotHash(repoGraph)).toBe(computeSnapshotHash(repoGraph))
+
+    fs.unlinkSync(filePath)
+    expect(computeLiveSnapshotHash(repoGraph)).not.toBe(computeSnapshotHash(repoGraph))
+    fs.rmSync(tmpDir, { recursive: true, force: true })
   })
 })

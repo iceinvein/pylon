@@ -497,5 +497,6 @@ describe('computeTreeLayout', () => {
     const layout = computeTreeLayout([node])
     expect(layout.nodes[0].startLine).toBe(5)
     expect(layout.nodes[0].endLine).toBe(20)
+    expect(layout.nodes[0].filePath).toBe('/test.ts')
   })
 })
