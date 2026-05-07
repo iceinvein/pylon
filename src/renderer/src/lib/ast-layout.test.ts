@@ -1,6 +1,12 @@
 import { describe, expect, test } from 'bun:test'
-import type { ArchAnalysis, AstNode, RepoGraph } from '../../../shared/types'
-import { computeRepoLayout, computeTreeLayout } from './ast-layout'
+import type {
+  ArchAnalysis,
+  AstNode,
+  CodeEntity,
+  ImpactSummary,
+  RepoGraph,
+} from '../../../shared/types'
+import { computeImpactLayout, computeRepoLayout, computeTreeLayout } from './ast-layout'
 
 // ── Helpers ──
 
@@ -28,6 +34,41 @@ function makeAstNode(
   children: AstNode[] = [],
 ): AstNode {
   return { id, type, name, startLine: 1, endLine: 10, children, filePath: '/test.ts' }
+}
+
+function makeFileEntity(filePath: string): CodeEntity {
+  return { kind: 'file', filePath }
+}
+
+function makeSymbolEntity(
+  filePath: string,
+  symbolId: string,
+  symbolName = symbolId,
+): CodeEntity {
+  return {
+    kind: 'symbol',
+    filePath,
+    symbolId,
+    symbolName,
+    symbolType: 'function',
+    startLine: 1,
+    endLine: 5,
+  }
+}
+
+function makeImpactSummary(overrides: Partial<ImpactSummary>): ImpactSummary {
+  return {
+    selected: makeFileEntity('/src/selected.ts'),
+    dependencies: [],
+    importers: [],
+    references: [],
+    likelyTests: [],
+    paths: [],
+    notes: [],
+    generatedAt: 1700000000,
+    stale: false,
+    ...overrides,
+  }
 }
 
 // ── computeRepoLayout ──
@@ -204,6 +245,117 @@ describe('computeRepoLayout', () => {
     const ys = new Set(layout.nodes.map((n) => Math.round(n.y)))
     // With 4 nodes and force simulation, they should spread out
     expect(xs.size + ys.size).toBeGreaterThan(2)
+  })
+})
+
+// ── computeImpactLayout ──
+
+describe('computeImpactLayout', () => {
+  test('lays out selected entity with dependency, importer, and likely test neighbors', () => {
+    const selected = makeFileEntity('/src/selected.ts')
+    const dependency = makeFileEntity('/src/dependency.ts')
+    const importer = makeFileEntity('/src/importer.ts')
+    const likelyTest = makeFileEntity('/src/selected.test.ts')
+    const summary = makeImpactSummary({
+      selected,
+      dependencies: [
+        {
+          kind: 'import',
+          source: selected,
+          target: dependency,
+          confidence: 'high',
+        },
+      ],
+      importers: [
+        {
+          kind: 'reverse-import',
+          source: importer,
+          target: selected,
+          confidence: 'high',
+        },
+      ],
+      likelyTests: [likelyTest],
+    })
+
+    const layout = computeImpactLayout(summary)
+
+    expect(layout.clusters).toHaveLength(0)
+    expect(layout.nodes.map((node) => node.id).sort()).toEqual([
+      '/src/dependency.ts',
+      '/src/importer.ts',
+      '/src/selected.test.ts',
+      '/src/selected.ts',
+    ])
+
+    const selectedNode = getNode(layout.nodes, '/src/selected.ts')
+    expect(selectedNode.x + selectedNode.width / 2).toBeCloseTo(0)
+    expect(selectedNode.y + selectedNode.height / 2).toBeCloseTo(0)
+    expect(selectedNode.name).toBe('selected.ts')
+
+    expect(layout.edges).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          source: '/src/selected.ts',
+          target: '/src/dependency.ts',
+          label: 'dependency',
+        }),
+        expect.objectContaining({
+          source: '/src/importer.ts',
+          target: '/src/selected.ts',
+          label: 'importer',
+        }),
+        expect.objectContaining({
+          source: '/src/selected.test.ts',
+          target: '/src/selected.ts',
+          label: 'test',
+        }),
+      ]),
+    )
+  })
+
+  test('uses filePath and symbol IDs as stable layout IDs', () => {
+    const selected = makeSymbolEntity('/src/service.ts', 'fn:run', 'run')
+    const dependency = makeSymbolEntity('/src/model.ts', 'type:User', 'User')
+    const reference = makeFileEntity('/src/caller.ts')
+    const summary = makeImpactSummary({
+      selected,
+      dependencies: [
+        {
+          kind: 'reference',
+          source: selected,
+          target: dependency,
+          confidence: 'inferred',
+        },
+      ],
+      references: [
+        {
+          kind: 'reference',
+          source: reference,
+          target: selected,
+          confidence: 'high',
+        },
+      ],
+    })
+
+    const layout = computeImpactLayout(summary)
+
+    expect(getNode(layout.nodes, '/src/service.ts:fn:run').name).toBe('run')
+    expect(getNode(layout.nodes, '/src/model.ts:type:User').name).toBe('User')
+    expect(getNode(layout.nodes, '/src/caller.ts').name).toBe('caller.ts')
+    expect(layout.edges).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          source: '/src/service.ts:fn:run',
+          target: '/src/model.ts:type:User',
+          label: 'dependency',
+        }),
+        expect.objectContaining({
+          source: '/src/caller.ts',
+          target: '/src/service.ts:fn:run',
+          label: 'reference',
+        }),
+      ]),
+    )
   })
 })
 

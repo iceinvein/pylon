@@ -6,6 +6,7 @@ import { AstToolbar } from '../components/ast/AstToolbar'
 import { CodePanel } from '../components/ast/CodePanel'
 import { FileAstView } from '../components/ast/FileAstView'
 import { ImpactExplorer } from '../components/ast/ImpactExplorer'
+import { ImpactGraphView } from '../components/ast/ImpactGraphView'
 import { ImpactPanel } from '../components/ast/ImpactPanel'
 import { RepoMapView } from '../components/ast/RepoMapView'
 import { useAstBridge } from '../hooks/use-ast-bridge'
@@ -230,23 +231,26 @@ export function AstView() {
         <>
           <div className="flex min-h-0 flex-1">
             <ImpactExplorer />
-            <div className="min-w-0 flex-1">
-              <AstSplitPanel
-                left={
-                  drilledFile && fileAst ? (
-                    <FileAstView fileAst={fileAst} fileName={fileName} />
-                  ) : (
-                    <RepoMapView repoGraph={repoGraph} archAnalysis={archAnalysis} />
-                  )
-                }
-                right={
-                  <CodePanel
-                    selectedFile={selectedFile}
-                    fileAst={fileAst}
-                    selectedNodeId={selectedNode}
-                  />
-                }
-              />
+            <div className="grid min-h-0 min-w-0 flex-1 grid-rows-[minmax(0,1fr)_minmax(180px,35%)]">
+              <ImpactGraphView />
+              <div className="min-h-0">
+                <AstSplitPanel
+                  left={
+                    drilledFile && fileAst ? (
+                      <FileAstView fileAst={fileAst} fileName={fileName} />
+                    ) : (
+                      <RepoMapView repoGraph={repoGraph} archAnalysis={archAnalysis} />
+                    )
+                  }
+                  right={
+                    <CodePanel
+                      selectedFile={selectedFile}
+                      fileAst={fileAst}
+                      selectedNodeId={selectedNode}
+                    />
+                  }
+                />
+              </div>
             </div>
             <ImpactPanel />
           </div>

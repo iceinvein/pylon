@@ -7,7 +7,13 @@
  */
 
 import { forceCenter, forceCollide, forceLink, forceManyBody, forceSimulation } from 'd3-force'
-import type { ArchAnalysis, AstNode, RepoGraph } from '../../../shared/types'
+import type {
+  ArchAnalysis,
+  AstNode,
+  CodeEntity,
+  ImpactSummary,
+  RepoGraph,
+} from '../../../shared/types'
 
 // ── Layout types ──
 
@@ -78,6 +84,11 @@ const NODE_HEIGHT = 28
 const TREE_H_SPACING = 140
 const TREE_V_SPACING = 60
 
+const IMPACT_NODE_WIDTH = 170
+const IMPACT_NODE_HEIGHT = 34
+const IMPACT_CENTER_WIDTH = 190
+const IMPACT_RING_RADIUS = 220
+
 // ── Repo-level layout (d3-force) ──
 
 type SimNode = {
@@ -101,6 +112,15 @@ type SimLink = {
 function fileBaseName(filePath: string): string {
   const parts = filePath.split('/')
   return parts[parts.length - 1] ?? filePath
+}
+
+function entityId(entity: CodeEntity): string {
+  return entity.kind === 'file' ? entity.filePath : `${entity.filePath}:${entity.symbolId}`
+}
+
+function entityName(entity: CodeEntity): string {
+  if (entity.kind === 'symbol') return entity.symbolName
+  return fileBaseName(entity.filePath)
 }
 
 /** Derive the directory path for a file (relative segments minus filename). */
@@ -368,6 +388,96 @@ export function computeRepoLayout(
   }
 
   return { nodes: layoutNodes, edges: layoutEdges, clusters }
+}
+
+// ── Impact ego graph layout ──
+
+export function computeImpactLayout(summary: ImpactSummary): RepoLayout {
+  const selectedId = entityId(summary.selected)
+  const entities = new Map<string, CodeEntity>()
+  const insertionOrder: string[] = []
+
+  function addEntity(entity: CodeEntity) {
+    const id = entityId(entity)
+    if (entities.has(id)) return
+    entities.set(id, entity)
+    insertionOrder.push(id)
+  }
+
+  addEntity(summary.selected)
+
+  const edgeDescriptors: LayoutEdge[] = []
+  const edgeDedupe = new Set<string>()
+
+  function addEdge(source: CodeEntity, target: CodeEntity, label: string) {
+    addEntity(source)
+    addEntity(target)
+    const sourceId = entityId(source)
+    const targetId = entityId(target)
+    if (sourceId === targetId) return
+    const key = `${sourceId}->${targetId}:${label}`
+    if (edgeDedupe.has(key)) return
+    edgeDedupe.add(key)
+    edgeDescriptors.push({ source: sourceId, target: targetId, label })
+  }
+
+  for (const edge of summary.dependencies) {
+    addEdge(edge.source, edge.target, 'dependency')
+  }
+
+  for (const edge of summary.importers) {
+    addEdge(edge.source, edge.target, 'importer')
+  }
+
+  for (const edge of summary.references) {
+    addEdge(edge.source, edge.target, 'reference')
+  }
+
+  for (const testEntity of summary.likelyTests) {
+    addEdge(testEntity, summary.selected, 'test')
+  }
+
+  const neighborIds = insertionOrder
+    .filter((id) => id !== selectedId)
+    .sort((a, b) => a.localeCompare(b))
+
+  const nodes: LayoutNode[] = [
+    {
+      id: selectedId,
+      filePath: summary.selected.filePath,
+      name: entityName(summary.selected),
+      x: -IMPACT_CENTER_WIDTH / 2,
+      y: -IMPACT_NODE_HEIGHT / 2,
+      width: IMPACT_CENTER_WIDTH,
+      height: IMPACT_NODE_HEIGHT,
+      layerColor: '#58a6ff',
+    },
+  ]
+
+  neighborIds.forEach((id, index) => {
+    const entity = entities.get(id)
+    if (!entity) return
+    const angle = -Math.PI / 2 + (2 * Math.PI * index) / Math.max(neighborIds.length, 1)
+    const centerX = Math.cos(angle) * IMPACT_RING_RADIUS
+    const centerY = Math.sin(angle) * IMPACT_RING_RADIUS
+    nodes.push({
+      id,
+      filePath: entity.filePath,
+      name: entityName(entity),
+      x: centerX - IMPACT_NODE_WIDTH / 2,
+      y: centerY - IMPACT_NODE_HEIGHT / 2,
+      width: IMPACT_NODE_WIDTH,
+      height: IMPACT_NODE_HEIGHT,
+      layerColor: entity.kind === 'symbol' ? '#d2a8ff' : '#7ee787',
+    })
+  })
+
+  const nodeIds = new Set(nodes.map((node) => node.id))
+  const edges = edgeDescriptors.filter(
+    (edge) => nodeIds.has(edge.source) && nodeIds.has(edge.target),
+  )
+
+  return { nodes, edges, clusters: [] }
 }
 
 // ── File-level AST tree layout ──
