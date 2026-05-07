@@ -5,6 +5,8 @@ import { AstSplitPanel } from '../components/ast/AstSplitPanel'
 import { AstToolbar } from '../components/ast/AstToolbar'
 import { CodePanel } from '../components/ast/CodePanel'
 import { FileAstView } from '../components/ast/FileAstView'
+import { ImpactExplorer } from '../components/ast/ImpactExplorer'
+import { ImpactPanel } from '../components/ast/ImpactPanel'
 import { RepoMapView } from '../components/ast/RepoMapView'
 import { useAstBridge } from '../hooks/use-ast-bridge'
 import { useAstStore } from '../store/ast-store'
@@ -226,23 +228,27 @@ export function AstView() {
 
       {repoGraph && analysisStatus === 'ready' && (
         <>
-          <div className="min-h-0 flex-1">
-            <AstSplitPanel
-              left={
-                drilledFile && fileAst ? (
-                  <FileAstView fileAst={fileAst} fileName={fileName} />
-                ) : (
-                  <RepoMapView repoGraph={repoGraph} archAnalysis={archAnalysis} />
-                )
-              }
-              right={
-                <CodePanel
-                  selectedFile={selectedFile}
-                  fileAst={fileAst}
-                  selectedNodeId={selectedNode}
-                />
-              }
-            />
+          <div className="flex min-h-0 flex-1">
+            <ImpactExplorer />
+            <div className="min-w-0 flex-1">
+              <AstSplitPanel
+                left={
+                  drilledFile && fileAst ? (
+                    <FileAstView fileAst={fileAst} fileName={fileName} />
+                  ) : (
+                    <RepoMapView repoGraph={repoGraph} archAnalysis={archAnalysis} />
+                  )
+                }
+                right={
+                  <CodePanel
+                    selectedFile={selectedFile}
+                    fileAst={fileAst}
+                    selectedNodeId={selectedNode}
+                  />
+                }
+              />
+            </div>
+            <ImpactPanel />
           </div>
           <AstChatPanel />
         </>

@@ -8,6 +8,7 @@ export function AstChatPanel() {
   const addChatMessage = useAstStore((s) => s.addChatMessage)
   const setChatLoading = useAstStore((s) => s.setChatLoading)
   const scope = useAstStore((s) => s.scope)
+  const setSelectedEntity = useAstStore((s) => s.setSelectedEntity)
 
   const [input, setInput] = useState('')
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -41,6 +42,13 @@ export function AstChatPanel() {
     [handleSend],
   )
 
+  const handleSelectCitation = useCallback(
+    (filePath: string) => {
+      setSelectedEntity({ kind: 'file', filePath })
+    },
+    [setSelectedEntity],
+  )
+
   return (
     <div className="flex flex-col border-base-border border-t bg-base-surface">
       {/* Messages */}
@@ -62,9 +70,32 @@ export function AstChatPanel() {
             >
               {msg.role === 'user' ? 'U' : 'C'}
             </div>
-            <p className="min-w-0 whitespace-pre-wrap text-base-text text-xs leading-relaxed">
-              {msg.content}
-            </p>
+            <div className="min-w-0 flex-1">
+              <p className="whitespace-pre-wrap text-base-text text-xs leading-relaxed">
+                {msg.content}
+              </p>
+              {msg.role === 'assistant' && msg.highlights && msg.highlights.length > 0 && (
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {msg.highlights.map((highlight) => {
+                    const fileName = highlight.filePath.split('/').pop() ?? highlight.filePath
+                    const label = highlight.symbolName
+                      ? `${fileName} · ${highlight.symbolName}`
+                      : fileName
+                    return (
+                      <button
+                        key={`${highlight.filePath}:${highlight.symbolName ?? ''}`}
+                        type="button"
+                        onClick={() => handleSelectCitation(highlight.filePath)}
+                        className="max-w-full truncate rounded border border-base-border px-1.5 py-0.5 font-mono text-[10px] text-base-text-muted transition-colors hover:bg-base-raised hover:text-base-text"
+                        title={highlight.filePath}
+                      >
+                        {label}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         ))}
 
