@@ -67,7 +67,7 @@ function loadCachedAnalysis(scope: string): AstCachedAnalysis | null {
       analyzedAt: row.analyzed_at,
       snapshotHash: row.snapshot_hash ?? '',
       currentSnapshotHash,
-      stale: Boolean(row.snapshot_hash && currentSnapshotHash && row.snapshot_hash !== currentSnapshotHash),
+      stale: row.snapshot_hash !== currentSnapshotHash,
     },
     analyzedAt: row.analyzed_at,
   }
