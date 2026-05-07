@@ -154,6 +154,7 @@ export function PrDetail() {
     activeThreads,
     activeTimeline,
     reviewError,
+    secondOpinionNotice,
     resultsMode,
     selectedFindingIds,
     findingsViewMode,
@@ -451,6 +452,11 @@ export function PrDetail() {
             <div className="px-3 py-1.5">
               <ReviewHistory />
             </div>
+            {secondOpinionNotice && (
+              <div className="border-base-border-subtle border-t px-3 py-2 text-[11px] text-base-text-secondary">
+                {secondOpinionNotice}
+              </div>
+            )}
             {(activeThreads.length > 0 || activeTimeline.length > 0 || activeSeries) && (
               <div className="flex items-center gap-1 px-3 pb-2">
                 <button

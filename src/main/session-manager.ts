@@ -742,6 +742,9 @@ export class SessionManager {
     const combinedPrompt = `${systemPrompt}\n\n${prompt}`
     let responseText = ''
     for await (const event of textSession.sendTextOnly(combinedPrompt)) {
+      if (event.type === 'error') {
+        throw new Error(event.message)
+      }
       if (event.type === 'message_complete' && event.role === 'assistant') {
         const textBlock = event.content.find((b) => b.type === 'text')
         if (textBlock && textBlock.type === 'text') {

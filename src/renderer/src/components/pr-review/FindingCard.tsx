@@ -83,6 +83,13 @@ const SEVERITY_STYLES: Record<
   },
 }
 
+export function getSecondOpinionNotes(finding: ReviewFinding): string[] {
+  return (finding.mergedFrom ?? [])
+    .filter((source) => source.domain === 'peer-review')
+    .map((source) => source.title.trim())
+    .filter(Boolean)
+}
+
 export function FindingCard({
   finding,
   checked,
@@ -98,6 +105,7 @@ export function FindingCard({
   const Icon = style.icon
   const descriptionSections = parseReviewFindingDescription(finding.description)
   const canPost = isPostableFinding(finding)
+  const secondOpinionNotes = getSecondOpinionNotes(finding)
 
   const borderClass = finding.posted ? style.postedBorder : style.border
   const bgClass = finding.posted ? 'bg-[var(--color-success)]/5' : style.bg
@@ -228,10 +236,17 @@ export function FindingCard({
               </div>
             )}
           </div>
-          {finding.mergedFrom && finding.mergedFrom.length > 0 && (
-            <p className="mt-1 pl-5 text-[10px] text-base-text-faint italic">
-              Also flagged by: {finding.mergedFrom.map((m) => m.domain).join(', ')}
-            </p>
+          {secondOpinionNotes.length > 0 && (
+            <div className="mt-2 space-y-1 pl-5">
+              <p className="font-medium text-[10px] text-base-text-faint uppercase tracking-wider">
+                Second opinion
+              </p>
+              {secondOpinionNotes.map((note) => (
+                <p key={note} className="text-[11px] text-base-text-secondary leading-relaxed">
+                  {note}
+                </p>
+              ))}
+            </div>
           )}
         </div>
 

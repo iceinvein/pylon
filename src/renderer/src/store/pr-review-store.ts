@@ -203,6 +203,7 @@ type PrReviewStore = {
   activeFindings: ReviewFinding[]
   reviewStreamingText: string
   reviewError: string | null
+  secondOpinionNotice: string | null
   selectedFindingIds: Set<string>
   postingFindingIds: Set<string>
   postingBatch: 'selected' | 'all' | null
@@ -270,6 +271,12 @@ type PrReviewStore = {
     incrementalValid?: boolean
     summary?: PrReview['summary']
     agentProgress?: PrReviewStore['agentProgress']
+    secondOpinion?: {
+      status: 'running' | 'completed' | 'unavailable' | 'skipped'
+      provider?: string
+      message?: string
+      changes?: number
+    }
   }) => void
   setUnseenCount: (count: number) => void
   markPrSeen: (repo: string, prNumber: number) => Promise<void>
@@ -305,6 +312,7 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
   activeFindings: [],
   reviewStreamingText: '',
   reviewError: null,
+  secondOpinionNotice: null,
   selectedFindingIds: new Set(),
   postingFindingIds: new Set(),
   postingBatch: null,
@@ -358,6 +366,7 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
               activeFindings: [],
               reviewStreamingText: '',
               reviewError: null,
+              secondOpinionNotice: null,
               reviews: [],
               agentProgress: [],
             }
@@ -383,6 +392,7 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
       activeFindings: [],
       reviewStreamingText: '',
       reviewError: null,
+      secondOpinionNotice: null,
       reviews: [],
       agentProgress: [],
       contextPhase: undefined,
@@ -409,6 +419,7 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
       activeFindings: [],
       reviewStreamingText: '',
       reviewError: null,
+      secondOpinionNotice: null,
       reviews: [],
       agentProgress: [],
       contextPhase: undefined,
@@ -478,6 +489,7 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
       activeRunFiles: [],
       reviewStreamingText: '',
       reviewError: null,
+      secondOpinionNotice: null,
       selectedFindingIds: new Set(),
       agentProgress: [],
       _selectPrSeq: seq,
@@ -578,6 +590,7 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
         activeFindings: [],
         reviewStreamingText: '',
         reviewError: null,
+        secondOpinionNotice: null,
         selectedFindingIds: new Set(),
         agentProgress: [],
         contextPhase: undefined,
@@ -601,6 +614,7 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
           s.activeReview?.id === reviewId ? { ...s.activeReview, status: 'error' } : s.activeReview,
         reviewStreamingText: '',
         reviewError: 'Review stopped by user',
+        secondOpinionNotice: null,
         agentProgress: [],
         contextPhase: undefined,
         contextMode: undefined,
@@ -633,6 +647,7 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
         activeFindings: findings,
         reviewStreamingText: rawOutput,
         reviewError: null,
+        secondOpinionNotice: null,
         resultsMode: 'latest-run',
         selectedFindingIds: new Set(),
         agentProgress: [],
@@ -656,6 +671,7 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
         activeFindings: s.activeReview?.id === reviewId ? [] : s.activeFindings,
         reviewStreamingText: s.activeReview?.id === reviewId ? '' : s.reviewStreamingText,
         reviewError: s.activeReview?.id === reviewId ? null : s.reviewError,
+        secondOpinionNotice: s.activeReview?.id === reviewId ? null : s.secondOpinionNotice,
       }))
     } catch (err) {
       logger.error('deleteReview failed:', err)
@@ -865,6 +881,10 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
 
       if (data.error !== undefined) {
         updates.reviewError = data.error
+      }
+
+      if (data.secondOpinion !== undefined) {
+        updates.secondOpinionNotice = data.secondOpinion.message ?? null
       }
 
       // Update agent progress if present

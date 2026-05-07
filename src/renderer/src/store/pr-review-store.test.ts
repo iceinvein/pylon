@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, test } from 'bun:test'
 import type {
+  PrReview,
   PrReviewSeries,
   ReviewFinding,
   ReviewRunFile,
@@ -43,6 +44,37 @@ function makeFinding(id: string, overrides: Partial<ReviewFinding> = {}): Review
     statusInRun: 'new',
     carriedForward: false,
     sourceReviewId: null,
+    ...overrides,
+  }
+}
+
+function makeReview(overrides: Partial<PrReview> = {}): PrReview {
+  return {
+    id: 'review-1',
+    seriesId: 'series-1',
+    parentReviewId: null,
+    prNumber: 1,
+    repo: { owner: 'o', repo: 'r', fullName: 'o/r', projectPath: '/tmp/project' },
+    prTitle: 'PR',
+    prUrl: 'https://example.test/pr/1',
+    status: 'running',
+    reviewMode: 'full',
+    snapshot: {
+      baseSha: null,
+      headSha: null,
+      mergeBaseSha: null,
+      comparedFromSha: null,
+      comparedToSha: null,
+    },
+    summary: { newCount: 0, persistingCount: 0, resolvedCount: 0, staleCount: 0 },
+    incrementalValid: false,
+    focus: ['bugs'],
+    findings: [],
+    sessionId: null,
+    startedAt: 1,
+    completedAt: null,
+    createdAt: 1,
+    costUsd: 0,
     ...overrides,
   }
 }
@@ -155,5 +187,24 @@ describe('pr-review-store cumulative views', () => {
       (f) => !f.posted && !f.postUrl && !f.carriedForward && f.statusInRun === 'new',
     )
     expect(postable.map((f) => f.id)).toEqual(['d'])
+  })
+
+  test('handleReviewUpdate stores second opinion notices for completed reviews', () => {
+    usePrReviewStore.setState({ activeReview: makeReview() })
+
+    usePrReviewStore.getState().handleReviewUpdate({
+      reviewId: 'review-1',
+      status: 'done',
+      findings: [],
+      secondOpinion: {
+        status: 'unavailable',
+        provider: 'codex',
+        message: 'Codex second opinion unavailable: no credits. Original findings were kept.',
+      },
+    })
+
+    expect(usePrReviewStore.getState().secondOpinionNotice).toBe(
+      'Codex second opinion unavailable: no credits. Original findings were kept.',
+    )
   })
 })

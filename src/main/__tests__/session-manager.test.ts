@@ -34,6 +34,14 @@ mock.module('../db', () => ({
 // Mock providers barrel — MUST provide ALL exports to avoid
 // Bun's process-global mock.module replacing the barrel with an
 // incomplete module (see ADR-012: Bun Test Mock Isolation Pattern).
+let mockTextOnlyEvents: unknown[] = []
+
+async function* textOnlyEvents() {
+  for (const event of mockTextOnlyEvents) {
+    yield event
+  }
+}
+
 const mockCreateSession = mock(() => ({
   send: () => ({
     [Symbol.asyncIterator]() {
@@ -44,6 +52,7 @@ const mockCreateSession = mock(() => ({
       }
     },
   }),
+  sendTextOnly: () => textOnlyEvents(),
   stop: () => {},
 }))
 
@@ -170,6 +179,7 @@ describe('SessionManager', () => {
 
   beforeEach(async () => {
     initTestDb()
+    mockTextOnlyEvents = []
     // Cache-busted dynamic import — forces Bun to re-evaluate the module
     // each time, avoiding stale state from process-global mock leaks.
     const mod = await import(`../session-manager?t=${Date.now()}`)
@@ -243,6 +253,20 @@ describe('SessionManager', () => {
     test('returns null for unknown session', () => {
       const sm = new SessionManager()
       expect(sm.getSessionInfo('nonexistent')).toBeNull()
+    })
+  })
+
+  describe('sendGitAiQuery', () => {
+    test('throws when the provider emits an error event', async () => {
+      mockTextOnlyEvents = [
+        { type: 'error', message: 'Codex credit exhausted', recoverable: false },
+      ]
+      const sm = new SessionManager()
+      const id = await sm.createSession('/tmp/project')
+
+      await expect(sm.sendGitAiQuery(id, 'prompt', 'system')).rejects.toThrow(
+        'Codex credit exhausted',
+      )
     })
   })
 

@@ -1514,16 +1514,42 @@ class PrReviewManager {
     findings: ReviewFinding[],
     reviewAgent: ResolvedReviewAgent,
   ): Promise<ReviewFinding[]> {
-    if (findings.length === 0) return findings
+    if (findings.length === 0) {
+      this.send(IPC.GH_REVIEW_UPDATE, {
+        reviewId,
+        status: 'running',
+        secondOpinion: {
+          status: 'skipped',
+          message: 'Second opinion skipped because there were no findings to audit.',
+        },
+      })
+      return findings
+    }
 
     const peerAgent = this.resolvePeerReviewAgent(reviewAgent)
-    if (!peerAgent) return findings
+    if (!peerAgent) {
+      this.send(IPC.GH_REVIEW_UPDATE, {
+        reviewId,
+        status: 'running',
+        secondOpinion: {
+          status: 'unavailable',
+          message: 'Second opinion unavailable. Original findings were kept.',
+        },
+      })
+      return findings
+    }
 
     const active = this.activeReviews.get(reviewId)
+    const peerName = peerAgent.provider === 'codex' ? 'Codex' : 'Claude Code'
     this.send(IPC.GH_REVIEW_UPDATE, {
       reviewId,
       status: 'running',
-      streamingText: `Running ${peerAgent.provider === 'codex' ? 'Codex' : 'Claude Code'} second opinion...`,
+      streamingText: `Running ${peerName} second opinion...`,
+      secondOpinion: {
+        status: 'running',
+        provider: peerAgent.provider,
+        message: `Running ${peerName} second opinion...`,
+      },
       agentProgress: active
         ? Array.from(active.agents.values()).map((agent) => ({
             agentId: agent.focus,
@@ -1567,6 +1593,16 @@ class PrReviewManager {
         logger.info(
           `Peer-review pass for review ${reviewId}: ${peerAgent.provider} returned no finding changes`,
         )
+        this.send(IPC.GH_REVIEW_UPDATE, {
+          reviewId,
+          status: 'running',
+          secondOpinion: {
+            status: 'completed',
+            provider: peerAgent.provider,
+            changes: 0,
+            message: `${peerName} second opinion reviewed the findings and made no changes.`,
+          },
+        })
         return findings
       }
 
@@ -1574,11 +1610,31 @@ class PrReviewManager {
       logger.info(
         `Peer-review pass for review ${reviewId}: ${peerAgent.provider} applied ${changes.length} finding changes (${updated.length - findings.length} net additions)`,
       )
+      this.send(IPC.GH_REVIEW_UPDATE, {
+        reviewId,
+        status: 'running',
+        secondOpinion: {
+          status: 'completed',
+          provider: peerAgent.provider,
+          changes: changes.length,
+          message: `${peerName} second opinion applied ${changes.length} finding change${changes.length === 1 ? '' : 's'}.`,
+        },
+      })
       return deduplicateFindings(updated)
     } catch (err) {
+      const message = `${peerName} second opinion unavailable: ${err instanceof Error ? err.message : String(err)}. Original findings were kept.`
       logger.warn(
         `Peer-review pass failed for review ${reviewId}, keeping existing findings: ${String(err)}`,
       )
+      this.send(IPC.GH_REVIEW_UPDATE, {
+        reviewId,
+        status: 'running',
+        secondOpinion: {
+          status: 'unavailable',
+          provider: peerAgent.provider,
+          message,
+        },
+      })
       return findings
     }
   }
