@@ -173,6 +173,9 @@ export function getImpactSummary(
   currentSnapshotHash = index.snapshotHash,
 ): ImpactSummary {
   const importerSources = importerSourcePaths(index, selected)
+  const symbolImportersUnavailable =
+    selected.kind === 'symbol' &&
+    !(index as Partial<ImpactIndexWithImportEdges>).importEdgesByTargetFile
   const dependencies = (index.dependenciesByFile[selected.filePath] ?? []).map((targetPath) =>
     impactEdge('import', selected, fileEntity(targetPath), edgeEvidence(selected.filePath, targetPath)),
   )
@@ -209,7 +212,7 @@ export function getImpactSummary(
     references: [],
     likelyTests,
     paths,
-    notes: selected.kind === 'symbol' ? ['Symbol impact uses deterministic file-level imports.'] : [],
+    notes: impactNotes(selected, symbolImportersUnavailable),
     generatedAt: index.generatedAt,
     stale: currentSnapshotHash !== index.snapshotHash,
   }
@@ -283,15 +286,12 @@ function importerSourcePaths(index: ImpactIndex, selected: CodeEntity): string[]
     selected.filePath
   ]
   if (!importEdges) {
-    return index.importersByFile[selected.filePath] ?? []
+    return []
   }
 
   return sortedUnique(
     importEdges
       .filter((edge) => {
-        if (edge.specifiers.length === 0) {
-          return true
-        }
         return edge.specifiers.includes(selected.symbolName)
       })
       .map((edge) => edge.source),
@@ -304,4 +304,16 @@ function camelCaseTokens(value: string): string[] {
     .split(/[\s._-]+/)
     .map((token) => token.toLowerCase())
     .filter(Boolean)
+}
+
+function impactNotes(selected: CodeEntity, symbolImportersUnavailable: boolean): string[] {
+  if (selected.kind !== 'symbol') {
+    return []
+  }
+
+  const notes = ['Symbol impact uses deterministic file-level imports.']
+  if (symbolImportersUnavailable) {
+    notes.push('Symbol importers unavailable without import-edge metadata.')
+  }
+  return notes
 }

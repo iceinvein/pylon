@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import type { AstNode, RepoGraph } from '../../shared/types'
+import type { AstNode, ImpactIndex, RepoGraph } from '../../shared/types'
 import {
   buildImpactIndex,
   computeSnapshotHash,
@@ -111,6 +111,18 @@ function symbolFilterGraph(): RepoGraph {
   }
 }
 
+function selectedLoadUser() {
+  return {
+    kind: 'symbol' as const,
+    filePath: '/repo/src/service.ts',
+    symbolId: 'function-1',
+    symbolName: 'loadUser',
+    symbolType: 'function' as const,
+    startLine: 1,
+    endLine: 3,
+  }
+}
+
 describe('ast-impact', () => {
   test('builds file and symbol entities', () => {
     const index = buildImpactIndex(graph())
@@ -198,21 +210,56 @@ describe('ast-impact', () => {
 
   test('filters symbol importers by explicit import specifiers', () => {
     const index = buildImpactIndex(symbolFilterGraph())
-    const selected = {
-      kind: 'symbol' as const,
-      filePath: '/repo/src/service.ts',
-      symbolId: 'function-1',
-      symbolName: 'loadUser',
-      symbolType: 'function' as const,
-      startLine: 1,
-      endLine: 3,
-    }
-    const summary = getImpactSummary(index, selected)
+    const summary = getImpactSummary(index, selectedLoadUser())
     expect(summary.importers.map((edge) => edge.source)).toEqual([
       { kind: 'file', filePath: '/repo/src/api.ts' },
     ])
 
     const fileSummary = getImpactSummary(index, { kind: 'file', filePath: '/repo/src/service.ts' })
+    expect(fileSummary.importers.map((edge) => edge.source)).toEqual([
+      { kind: 'file', filePath: '/repo/src/api.ts' },
+      { kind: 'file', filePath: '/repo/src/orders.ts' },
+    ])
+  })
+
+  test('excludes empty-specifier edges from high-confidence symbol importers', () => {
+    const selectedGraph = symbolFilterGraph()
+    selectedGraph.edges.push({
+      source: '/repo/src/unknown.ts',
+      target: '/repo/src/service.ts',
+      specifiers: [],
+    })
+    selectedGraph.files.push({
+      filePath: '/repo/src/unknown.ts',
+      language: 'typescript',
+      declarations: [node('/repo/src/unknown.ts', 'function-1', 'handleUnknown')],
+      imports: [],
+      size: 100,
+      lastModified: 40,
+    })
+
+    const summary = getImpactSummary(buildImpactIndex(selectedGraph), selectedLoadUser())
+    expect(summary.importers.map((edge) => edge.source)).toEqual([
+      { kind: 'file', filePath: '/repo/src/api.ts' },
+    ])
+  })
+
+  test('does not infer symbol importers without import-edge metadata', () => {
+    const index = buildImpactIndex(symbolFilterGraph())
+    const plainIndex: ImpactIndex = {
+      generatedAt: index.generatedAt,
+      snapshotHash: index.snapshotHash,
+      entities: index.entities,
+      dependenciesByFile: index.dependenciesByFile,
+      importersByFile: index.importersByFile,
+      likelyTestsByFile: index.likelyTestsByFile,
+    }
+
+    const summary = getImpactSummary(plainIndex, selectedLoadUser())
+    expect(summary.importers).toEqual([])
+    expect(summary.notes).toContain('Symbol importers unavailable without import-edge metadata.')
+
+    const fileSummary = getImpactSummary(plainIndex, { kind: 'file', filePath: '/repo/src/service.ts' })
     expect(fileSummary.importers.map((edge) => edge.source)).toEqual([
       { kind: 'file', filePath: '/repo/src/api.ts' },
       { kind: 'file', filePath: '/repo/src/orders.ts' },
