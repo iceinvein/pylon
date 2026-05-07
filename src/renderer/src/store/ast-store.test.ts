@@ -93,10 +93,39 @@ describe('ast-store', () => {
       expect(s.selectedNode).toBeNull()
     })
 
+    test('updates selectedEntity', () => {
+      useAstStore.getState().selectFile('/repo/src/app.ts')
+      expect(useAstStore.getState().selectedEntity).toEqual({
+        kind: 'file',
+        filePath: '/repo/src/app.ts',
+      })
+    })
+
     test('can set to null', () => {
       useAstStore.setState({ selectedFile: '/src/foo.ts' })
       useAstStore.getState().selectFile(null)
       expect(useAstStore.getState().selectedFile).toBeNull()
+    })
+  })
+
+  describe('drillFile', () => {
+    test('sets file selectedEntity', () => {
+      useAstStore.getState().drillFile('/repo/src/app.ts')
+      const s = useAstStore.getState()
+      expect(s.drilledFile).toBe('/repo/src/app.ts')
+      expect(s.selectedFile).toBe('/repo/src/app.ts')
+      expect(s.selectedNode).toBeNull()
+      expect(s.selectedEntity).toEqual({ kind: 'file', filePath: '/repo/src/app.ts' })
+    })
+
+    test('clears selectedEntity', () => {
+      useAstStore.getState().selectFile('/repo/src/app.ts')
+      useAstStore.getState().drillFile(null)
+      const s = useAstStore.getState()
+      expect(s.drilledFile).toBeNull()
+      expect(s.selectedFile).toBeNull()
+      expect(s.selectedNode).toBeNull()
+      expect(s.selectedEntity).toBeNull()
     })
   })
 
@@ -226,6 +255,36 @@ describe('ast-store', () => {
       useAstStore.getState().toggleOverlay('deps')
       useAstStore.getState().addChatMessage({ role: 'user', content: 'hi' })
       useAstStore.getState().setAnalysisStatus('ready', 'Done')
+      useAstStore.getState().setSelectedEntity({ kind: 'file', filePath: '/repo/src/app.ts' })
+      useAstStore.getState().setImpactIndex({
+        generatedAt: 123,
+        snapshotHash: 'abc',
+        entities: [],
+        dependenciesByFile: {},
+        importersByFile: {},
+        likelyTestsByFile: {},
+        importEdgesByTargetFile: {},
+      })
+      useAstStore.getState().setImpact({
+        selected: { kind: 'file', filePath: '/repo/src/app.ts' },
+        dependencies: [],
+        importers: [],
+        references: [],
+        likelyTests: [],
+        paths: [],
+        notes: [],
+        generatedAt: 123,
+        stale: false,
+      })
+      useAstStore.getState().setImpactError('Could not load impact')
+      useAstStore.getState().setAnalysisFreshness({
+        analyzedAt: 123,
+        snapshotHash: 'abc',
+        stale: true,
+      })
+      useAstStore
+        .getState()
+        .setEntitySearchResults([{ kind: 'file', filePath: '/repo/src/app.ts' }])
 
       useAstStore.getState().reset()
 
@@ -240,11 +299,20 @@ describe('ast-store', () => {
       expect(s.chatMessages).toEqual([])
       expect(s.analysisStatus).toBe('idle')
       expect(s.analysisProgress).toBe('')
+      expect(s.selectedEntity).toBeNull()
+      expect(s.impactIndex).toBeNull()
+      expect(s.impactSummary).toBeNull()
+      expect(s.impactLoading).toBe(false)
+      expect(s.impactError).toBeNull()
+      expect(s.analysisFreshness).toBeNull()
+      expect(s.entitySearchResults).toEqual([])
     })
   })
 })
 
 describe('impact selection state', () => {
+  beforeEach(resetStore)
+
   test('setSelectedEntity selects file entity and mirrors selectedFile', () => {
     useAstStore.getState().setSelectedEntity({ kind: 'file', filePath: '/repo/src/app.ts' })
     const s = useAstStore.getState()
@@ -286,6 +354,14 @@ describe('impact selection state', () => {
     expect(s.impactLoading).toBe(false)
     expect(s.impactError).toBeNull()
     expect(s.impactSummary?.selected).toEqual(selected)
+  })
+
+  test('setImpactLoading true clears stale impactError', () => {
+    useAstStore.getState().setImpactError('Could not load impact')
+    useAstStore.getState().setImpactLoading(true)
+    const s = useAstStore.getState()
+    expect(s.impactLoading).toBe(true)
+    expect(s.impactError).toBeNull()
   })
 
   test('setImpactError stores error and clears loading', () => {

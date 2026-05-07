@@ -138,7 +138,8 @@ export const useAstStore = create<AstStore>((set) => ({
       impactError: null,
     }),
 
-  setImpactLoading: (impactLoading) => set({ impactLoading }),
+  setImpactLoading: (impactLoading) =>
+    set(impactLoading ? { impactLoading, impactError: null } : { impactLoading }),
 
   setImpactError: (impactError) =>
     set({
@@ -150,7 +151,13 @@ export const useAstStore = create<AstStore>((set) => ({
 
   setEntitySearchResults: (entitySearchResults) => set({ entitySearchResults }),
 
-  drillFile: (drilledFile) => set({ drilledFile, selectedFile: drilledFile, selectedNode: null }),
+  drillFile: (drilledFile) =>
+    set({
+      drilledFile,
+      selectedFile: drilledFile,
+      selectedNode: null,
+      selectedEntity: drilledFile ? { kind: 'file', filePath: drilledFile } : null,
+    }),
 
   selectNode: (selectedNode) => set({ selectedNode }),
 
