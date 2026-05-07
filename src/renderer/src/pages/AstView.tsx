@@ -104,12 +104,7 @@ export function AstView() {
         }
         useAstStore.getState().setImpactIndex(cached.impactIndex)
         useAstStore.getState().setAnalysisFreshness(cached.freshness)
-        setAnalysisStatus(
-          'ready',
-          cached.freshness.stale
-            ? `Loaded stale cache (${new Date(cached.freshness.analyzedAt).toLocaleString()})`
-            : `Loaded from cache (${new Date(cached.freshness.analyzedAt).toLocaleString()})`,
-        )
+        setAnalysisStatus('ready', '')
         return
       }
 
@@ -134,10 +129,21 @@ export function AstView() {
   const handleReanalyze = useCallback(async () => {
     if (scope) {
       await window.api.analyzeScope(scope)
-      const index = await window.api.getImpactIndex(scope)
-      useAstStore.getState().setImpactIndex(index)
+      const cached = await window.api.getCachedAnalysis(scope)
+      useAstStore.getState().setImpactIndex(cached?.impactIndex ?? null)
+      useAstStore.getState().setAnalysisFreshness(cached?.freshness ?? null)
+
+      if (selectedEntity) {
+        useAstStore.getState().setImpactLoading(true)
+        try {
+          const summary = await window.api.getImpact(scope, selectedEntity)
+          useAstStore.getState().setImpact(summary)
+        } catch {
+          useAstStore.getState().setImpactError('Could not load impact')
+        }
+      }
     }
-  }, [scope])
+  }, [scope, selectedEntity])
 
   const reset = useAstStore((s) => s.reset)
 

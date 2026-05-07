@@ -131,7 +131,7 @@ export function AstToolbar({
             analysisFreshness.stale ? 'text-warning-text' : 'text-base-text-muted'
           }`}
         >
-          {analysisFreshness.stale ? 'Stale' : 'Fresh'} ·{' '}
+          Cache {analysisFreshness.stale ? 'stale' : 'fresh'} ·{' '}
           {new Date(analysisFreshness.analyzedAt).toLocaleTimeString()}
         </span>
       )}
