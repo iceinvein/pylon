@@ -8,6 +8,7 @@ import { FileAstView } from '../components/ast/FileAstView'
 import { RepoMapView } from '../components/ast/RepoMapView'
 import { useAstBridge } from '../hooks/use-ast-bridge'
 import { useAstStore } from '../store/ast-store'
+import type { CodeEntity } from '../../../shared/types'
 
 function formatTimeAgo(timestamp: number): string {
   const seconds = Math.floor((Date.now() - timestamp) / 1000)
@@ -24,6 +25,13 @@ function formatTimeAgo(timestamp: number): string {
 
 function getProjectName(projectPath: string): string {
   return projectPath.split('/').pop() ?? projectPath
+}
+
+function isSameCodeEntity(a: CodeEntity | null, b: CodeEntity | null): boolean {
+  if (a === b) return true
+  if (!a || !b || a.kind !== b.kind || a.filePath !== b.filePath) return false
+  if (a.kind === 'file' || b.kind === 'file') return true
+  return a.symbolId === b.symbolId
 }
 
 export function AstView() {
@@ -90,6 +98,40 @@ export function AstView() {
   const setArchAnalysis = useAstStore((s) => s.setArchAnalysis)
   const setAnalysisStatus = useAstStore((s) => s.setAnalysisStatus)
 
+  const refreshCachedImpactState = useCallback(
+    async (scopePath: string, selectedAtStart?: CodeEntity | null) => {
+      const cached = await window.api.getCachedAnalysis(scopePath)
+      if (useAstStore.getState().scope !== scopePath) return
+
+      useAstStore.getState().setImpactIndex(cached?.impactIndex ?? null)
+      useAstStore.getState().setAnalysisFreshness(cached?.freshness ?? null)
+
+      if (selectedAtStart === undefined || !selectedAtStart) return
+      if (!isSameCodeEntity(useAstStore.getState().selectedEntity, selectedAtStart)) return
+
+      useAstStore.getState().setImpactLoading(true)
+      try {
+        const summary = await window.api.getImpact(scopePath, selectedAtStart)
+        const currentState = useAstStore.getState()
+        if (
+          currentState.scope === scopePath &&
+          isSameCodeEntity(currentState.selectedEntity, selectedAtStart)
+        ) {
+          currentState.setImpact(summary)
+        }
+      } catch {
+        const currentState = useAstStore.getState()
+        if (
+          currentState.scope === scopePath &&
+          isSameCodeEntity(currentState.selectedEntity, selectedAtStart)
+        ) {
+          currentState.setImpactError('Could not load impact')
+        }
+      }
+    },
+    [],
+  )
+
   // Try loading cached analysis for a scope, fall back to full analysis
   const openScope = useCallback(
     async (scopePath: string) => {
@@ -97,6 +139,7 @@ export function AstView() {
 
       // Check for cached analysis first
       const cached = await window.api.getCachedAnalysis(scopePath)
+      if (useAstStore.getState().scope !== scopePath) return
       if (cached) {
         setRepoGraph(cached.repoGraph)
         if (cached.archAnalysis) {
@@ -110,8 +153,9 @@ export function AstView() {
 
       // No cache — run full analysis
       await window.api.analyzeScope(scopePath)
+      await refreshCachedImpactState(scopePath)
     },
-    [setScope, setRepoGraph, setArchAnalysis, setAnalysisStatus],
+    [setScope, setRepoGraph, setArchAnalysis, setAnalysisStatus, refreshCachedImpactState],
   )
 
   const handleBrowse = useCallback(async () => {
@@ -128,22 +172,12 @@ export function AstView() {
 
   const handleReanalyze = useCallback(async () => {
     if (scope) {
-      await window.api.analyzeScope(scope)
-      const cached = await window.api.getCachedAnalysis(scope)
-      useAstStore.getState().setImpactIndex(cached?.impactIndex ?? null)
-      useAstStore.getState().setAnalysisFreshness(cached?.freshness ?? null)
-
-      if (selectedEntity) {
-        useAstStore.getState().setImpactLoading(true)
-        try {
-          const summary = await window.api.getImpact(scope, selectedEntity)
-          useAstStore.getState().setImpact(summary)
-        } catch {
-          useAstStore.getState().setImpactError('Could not load impact')
-        }
-      }
+      const scopeAtStart = scope
+      const selectedAtStart = selectedEntity
+      await window.api.analyzeScope(scopeAtStart)
+      await refreshCachedImpactState(scopeAtStart, selectedAtStart)
     }
-  }, [scope, selectedEntity])
+  }, [scope, selectedEntity, refreshCachedImpactState])
 
   const reset = useAstStore((s) => s.reset)
 

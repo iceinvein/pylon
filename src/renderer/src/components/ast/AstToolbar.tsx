@@ -128,7 +128,7 @@ export function AstToolbar({
       {analysisFreshness && (
         <span
           className={`text-xs ${
-            analysisFreshness.stale ? 'text-warning-text' : 'text-base-text-muted'
+            analysisFreshness.stale ? 'text-warning' : 'text-base-text-muted'
           }`}
         >
           Cache {analysisFreshness.stale ? 'stale' : 'fresh'} ·{' '}
