@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
+import { setResourceDir } from '../ast-parsers/grammar-manager'
 import {
   analyzeScope,
   buildImportGraph,
@@ -11,9 +12,15 @@ import {
 } from '../ast-analyzer'
 
 let tmpDir: string
+const GRAMMARS_DIR = path.resolve(__dirname, '../../../resources/grammars')
 
 beforeAll(() => {
   tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ast-analyzer-test-'))
+  const pythonGrammar = path.join(GRAMMARS_DIR, 'tree-sitter-python.wasm')
+  if (!fs.existsSync(pythonGrammar)) {
+    throw new Error(`Missing bundled Python grammar: ${pythonGrammar}`)
+  }
+  setResourceDir(GRAMMARS_DIR)
 })
 
 afterAll(() => {
@@ -418,7 +425,12 @@ type Foo = string
     )
     const { parseFileAstMulti } = await import('../ast-analyzer')
     const nodes = await parseFileAstMulti(filePath)
-    expect(nodes.find((n) => n.name === 'greet')).toBeDefined()
+    const greet = nodes.find((n) => n.name === 'greet')
+    expect(greet).toBeDefined()
+    expect(greet?.type).toBe('function')
+    expect(greet?.filePath).toBe(filePath)
+    expect(greet?.startLine).toBe(1)
+    expect(greet?.endLine).toBe(2)
   })
 })
 
