@@ -843,6 +843,7 @@ export type ImpactIndex = {
   dependenciesByFile: Record<string, string[]>
   importersByFile: Record<string, string[]>
   likelyTestsByFile: Record<string, string[]>
+  importEdgesByTargetFile: Record<string, ImportEdge[]>
 }
 
 export type AstAnalysisFreshness = {
@@ -857,6 +858,7 @@ export type AstCachedAnalysis = {
   archAnalysis: ArchAnalysis | null
   impactIndex: ImpactIndex | null
   freshness: AstAnalysisFreshness
+  analyzedAt: number
 }
 
 export type AstChatHighlight = {

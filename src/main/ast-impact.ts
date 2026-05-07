@@ -11,10 +11,6 @@ import type {
   RepoGraph,
 } from '../shared/types'
 
-type ImpactIndexWithImportEdges = ImpactIndex & {
-  importEdgesByTargetFile: Record<string, ImportEdge[]>
-}
-
 function fileEntity(filePath: string): CodeEntity {
   return { kind: 'file', filePath }
 }
@@ -154,7 +150,7 @@ export function buildImpactIndex(graph: RepoGraph, generatedAt = Date.now()): Im
       ...collectSymbols(file.declarations).sort((a, b) => entityKey(a).localeCompare(entityKey(b))),
     ])
 
-  const index: ImpactIndexWithImportEdges = {
+  const index: ImpactIndex = {
     generatedAt,
     snapshotHash: computeSnapshotHash(graph),
     entities,
@@ -174,8 +170,7 @@ export function getImpactSummary(
 ): ImpactSummary {
   const importerSources = importerSourcePaths(index, selected)
   const symbolImportersUnavailable =
-    selected.kind === 'symbol' &&
-    !(index as Partial<ImpactIndexWithImportEdges>).importEdgesByTargetFile
+    selected.kind === 'symbol' && !(index as Partial<ImpactIndex>).importEdgesByTargetFile
   const dependencies = (index.dependenciesByFile[selected.filePath] ?? []).map((targetPath) =>
     impactEdge('import', selected, fileEntity(targetPath), edgeEvidence(selected.filePath, targetPath)),
   )
@@ -282,9 +277,7 @@ function importerSourcePaths(index: ImpactIndex, selected: CodeEntity): string[]
     return index.importersByFile[selected.filePath] ?? []
   }
 
-  const importEdges = (index as Partial<ImpactIndexWithImportEdges>).importEdgesByTargetFile?.[
-    selected.filePath
-  ]
+  const importEdges = (index as Partial<ImpactIndex>).importEdgesByTargetFile?.[selected.filePath]
   if (!importEdges) {
     return []
   }

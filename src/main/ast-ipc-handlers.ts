@@ -2,6 +2,7 @@ import * as path from 'node:path'
 import { app, BrowserWindow, ipcMain } from 'electron'
 import { IPC } from '../shared/ipc-channels'
 import { log } from '../shared/logger'
+import type { AstCachedAnalysis, ImpactIndex, RepoGraph } from '../shared/types'
 import { getDb } from './db'
 
 const logger = log.child('ast-ipc')
@@ -13,33 +14,61 @@ function saveAnalysis(
   repoGraph: unknown,
   archAnalysis: unknown | null,
   fileCount: number,
+  impactIndex: ImpactIndex | null,
+  snapshotHash: string | null,
 ): void {
   const db = getDb()
   db.prepare(
-    `INSERT OR REPLACE INTO ast_analyses (scope, repo_graph, arch_analysis, file_count, analyzed_at)
-     VALUES (?, ?, ?, ?, ?)`,
+    `INSERT OR REPLACE INTO ast_analyses
+      (scope, repo_graph, arch_analysis, file_count, impact_index, snapshot_hash, analyzed_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     scope,
     JSON.stringify(repoGraph),
     archAnalysis ? JSON.stringify(archAnalysis) : null,
     fileCount,
+    impactIndex ? JSON.stringify(impactIndex) : null,
+    snapshotHash,
     Date.now(),
   )
 }
 
-function loadCachedAnalysis(
-  scope: string,
-): { repoGraph: unknown; archAnalysis: unknown | null; analyzedAt: number } | null {
+function loadCachedAnalysis(scope: string): AstCachedAnalysis | null {
   const db = getDb()
   const row = db
-    .prepare('SELECT repo_graph, arch_analysis, analyzed_at FROM ast_analyses WHERE scope = ?')
+    .prepare(
+      'SELECT repo_graph, arch_analysis, impact_index, snapshot_hash, analyzed_at FROM ast_analyses WHERE scope = ?',
+    )
     .get(scope) as
-    | { repo_graph: string; arch_analysis: string | null; analyzed_at: number }
+    | {
+        repo_graph: string
+        arch_analysis: string | null
+        impact_index: string | null
+        snapshot_hash: string | null
+        analyzed_at: number
+      }
     | undefined
   if (!row) return null
+
+  const repoGraph = JSON.parse(row.repo_graph) as RepoGraph
+  let currentSnapshotHash = row.snapshot_hash ?? ''
+  try {
+    const { computeSnapshotHash } = require('./ast-impact') as typeof import('./ast-impact')
+    currentSnapshotHash = computeSnapshotHash(repoGraph)
+  } catch {
+    currentSnapshotHash = row.snapshot_hash ?? ''
+  }
+
   return {
-    repoGraph: JSON.parse(row.repo_graph),
+    repoGraph,
     archAnalysis: row.arch_analysis ? JSON.parse(row.arch_analysis) : null,
+    impactIndex: row.impact_index ? (JSON.parse(row.impact_index) as ImpactIndex) : null,
+    freshness: {
+      analyzedAt: row.analyzed_at,
+      snapshotHash: row.snapshot_hash ?? '',
+      currentSnapshotHash,
+      stale: Boolean(row.snapshot_hash && currentSnapshotHash && row.snapshot_hash !== currentSnapshotHash),
+    },
     analyzedAt: row.analyzed_at,
   }
 }
@@ -62,6 +91,33 @@ export function registerAstIpcHandlers(): void {
     return loadCachedAnalysis(args.scope)
   })
 
+  ipcMain.handle(IPC.AST_GET_IMPACT_INDEX, async (_e, args: { scope: string }) => {
+    const cached = loadCachedAnalysis(args.scope)
+    if (cached?.impactIndex) return cached.impactIndex
+    return null
+  })
+
+  ipcMain.handle(
+    IPC.AST_GET_IMPACT,
+    async (_e, args: { scope: string; entity: import('../shared/types').CodeEntity }) => {
+      const cached = loadCachedAnalysis(args.scope)
+      if (!cached?.impactIndex) return null
+      const { getImpactSummary } = await import('./ast-impact')
+      return getImpactSummary(
+        cached.impactIndex,
+        args.entity,
+        cached.freshness.currentSnapshotHash ?? cached.impactIndex.snapshotHash,
+      )
+    },
+  )
+
+  ipcMain.handle(IPC.AST_SEARCH_ENTITIES, async (_e, args: { scope: string; query: string }) => {
+    const cached = loadCachedAnalysis(args.scope)
+    if (!cached?.impactIndex) return []
+    const { searchImpactEntities } = await import('./ast-impact')
+    return searchImpactEntities(cached.impactIndex, args.query)
+  })
+
   ipcMain.handle(IPC.AST_ANALYZE_SCOPE, async (_e, args: { scope: string }) => {
     const { analyzeScope } = await import('./ast-analyzer')
     const win = BrowserWindow.getFocusedWindow()
@@ -71,10 +127,12 @@ export function registerAstIpcHandlers(): void {
       message: 'Parsing files...',
     })
     const graph = await analyzeScope(args.scope)
+    const { buildImpactIndex } = await import('./ast-impact')
+    const impactIndex = buildImpactIndex(graph)
     win.webContents.send(IPC.AST_REPO_GRAPH, graph)
 
     // Persist Stage 1 immediately so it's available on reload
-    saveAnalysis(args.scope, graph, null, graph.files.length)
+    saveAnalysis(args.scope, graph, null, graph.files.length, impactIndex, impactIndex.snapshotHash)
 
     win.webContents.send(IPC.AST_ANALYSIS_PROGRESS, {
       status: 'analyzing',
@@ -93,7 +151,14 @@ export function registerAstIpcHandlers(): void {
       if (analysis) {
         win.webContents.send(IPC.AST_ARCH_ANALYSIS, analysis)
         // Persist Stage 2 result
-        saveAnalysis(args.scope, graph, analysis, graph.files.length)
+        saveAnalysis(
+          args.scope,
+          graph,
+          analysis,
+          graph.files.length,
+          impactIndex,
+          impactIndex.snapshotHash,
+        )
       }
     } else {
       logger.warn('Claude CLI not found — skipping architecture analysis')

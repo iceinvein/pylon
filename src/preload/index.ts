@@ -309,6 +309,11 @@ const api = {
 
   // AST Visualizer
   getCachedAnalysis: (scope: string) => ipcRenderer.invoke(IPC.AST_GET_CACHED, { scope }),
+  getImpactIndex: (scope: string) => ipcRenderer.invoke(IPC.AST_GET_IMPACT_INDEX, { scope }),
+  getImpact: (scope: string, entity: unknown) =>
+    ipcRenderer.invoke(IPC.AST_GET_IMPACT, { scope, entity }),
+  searchEntities: (scope: string, query: string) =>
+    ipcRenderer.invoke(IPC.AST_SEARCH_ENTITIES, { scope, query }),
   analyzeScope: (scope: string) => ipcRenderer.invoke(IPC.AST_ANALYZE_SCOPE, { scope }),
   getFileAst: (filePath: string) => ipcRenderer.invoke(IPC.AST_FILE_AST, { filePath }),
   explainAstNode: (nodeId: string, filePath: string, context: string) =>
