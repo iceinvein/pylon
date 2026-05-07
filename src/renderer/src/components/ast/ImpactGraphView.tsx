@@ -107,7 +107,7 @@ export function ImpactGraphView() {
     <section className="flex h-full min-h-0 flex-col border-base-border border-b bg-base-bg">
       <div className="flex h-9 shrink-0 items-center justify-between border-base-border border-b px-3">
         <h2 className="font-medium text-base-text text-xs">Impact graph</h2>
-        <div className="flex items-center gap-3 text-base-text-muted text-[11px]">
+        <div className="flex items-center gap-3 text-[11px] text-base-text-muted">
           <span>{currentImpactSummary.dependencies.length} deps</span>
           <span>{currentImpactSummary.importers.length} importers</span>
           <span>{currentImpactSummary.likelyTests.length} tests</span>
@@ -174,13 +174,7 @@ export function ImpactGraphView() {
                   stroke={stroke}
                   strokeWidth={isSelected ? 2 : 1}
                 />
-                <text
-                  x={node.x + 8}
-                  y={node.y + 13}
-                  fill={stroke}
-                  fontSize={8}
-                  fontWeight={700}
-                >
+                <text x={node.x + 8} y={node.y + 13} fill={stroke} fontSize={8} fontWeight={700}>
                   {label}
                 </text>
                 <text

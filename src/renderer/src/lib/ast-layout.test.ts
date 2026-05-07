@@ -40,11 +40,7 @@ function makeFileEntity(filePath: string): CodeEntity {
   return { kind: 'file', filePath }
 }
 
-function makeSymbolEntity(
-  filePath: string,
-  symbolId: string,
-  symbolName = symbolId,
-): CodeEntity {
+function makeSymbolEntity(filePath: string, symbolId: string, symbolName = symbolId): CodeEntity {
   return {
     kind: 'symbol',
     filePath,

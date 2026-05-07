@@ -258,20 +258,13 @@ type Api = {
   onGitOpsConflictDetected: (callback: (data: unknown) => void) => () => void
   sendLog: (level: string, source: string, message: string) => void
   // AST Visualizer
-  getCachedAnalysis: (
-    scope: string,
-  ) => Promise<import('../shared/types').AstCachedAnalysis | null>
-  getImpactIndex: (
-    scope: string,
-  ) => Promise<import('../shared/types').ImpactIndex | null>
+  getCachedAnalysis: (scope: string) => Promise<import('../shared/types').AstCachedAnalysis | null>
+  getImpactIndex: (scope: string) => Promise<import('../shared/types').ImpactIndex | null>
   getImpact: (
     scope: string,
     entity: import('../shared/types').CodeEntity,
   ) => Promise<import('../shared/types').ImpactSummary | null>
-  searchEntities: (
-    scope: string,
-    query: string,
-  ) => Promise<import('../shared/types').CodeEntity[]>
+  searchEntities: (scope: string, query: string) => Promise<import('../shared/types').CodeEntity[]>
   analyzeScope: (scope: string) => Promise<void>
   getFileAst: (filePath: string) => Promise<import('../shared/types').AstNode[]>
   explainAstNode: (

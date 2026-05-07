@@ -80,7 +80,7 @@ export function ImpactExplorer() {
   )
 
   return (
-    <aside className="flex h-full min-h-0 w-[260px] shrink-0 flex-col border-base-border border-r bg-base-surface">
+    <aside className="flex h-full min-h-0 w-65 shrink-0 flex-col border-base-border border-r bg-base-surface">
       <div className="border-base-border border-b px-3 py-2">
         <div className="mb-2 flex items-center gap-1.5">
           <FileCode2 size={13} className="text-base-text-muted" />

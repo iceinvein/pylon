@@ -62,10 +62,10 @@ function EntityList({
   return (
     <section className="border-base-border border-t px-3 py-2">
       <div className="mb-1.5 flex items-center justify-between">
-        <h3 className="font-medium text-base-text-muted text-[10px] uppercase tracking-wider">
+        <h3 className="font-medium text-[10px] text-base-text-muted uppercase tracking-wider">
           {title}
         </h3>
-        <span className="text-base-text-muted text-[10px]">{entities.length}</span>
+        <span className="text-[10px] text-base-text-muted">{entities.length}</span>
       </div>
       {entities.length === 0 ? (
         <p className="text-base-text-muted text-xs">None found</p>
@@ -166,10 +166,10 @@ export function ImpactPanel() {
       <div className="border-base-border border-b px-3 py-2">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <h2 className="truncate font-mono font-medium text-base-text text-xs">
+            <h2 className="truncate font-medium font-mono text-base-text text-xs">
               {entityLabel(selectedEntity)}
             </h2>
-            <p className="truncate text-base-text-muted text-[10px]">
+            <p className="truncate text-[10px] text-base-text-muted">
               {entityContext(selectedEntity)}
             </p>
           </div>
@@ -184,7 +184,7 @@ export function ImpactPanel() {
             type="button"
             onClick={handleExplain}
             disabled={explainLoading}
-            className="flex h-6 items-center gap-1 rounded border border-base-border px-2 text-base-text-muted text-[10px] transition-colors hover:bg-base-raised hover:text-base-text disabled:opacity-50"
+            className="flex h-6 items-center gap-1 rounded border border-base-border px-2 text-[10px] text-base-text-muted transition-colors hover:bg-base-raised hover:text-base-text disabled:opacity-50"
           >
             {explainLoading ? (
               <Loader2 size={11} className="animate-spin" />
@@ -197,7 +197,7 @@ export function ImpactPanel() {
             type="button"
             onClick={handleCopy}
             disabled={!currentImpactSummary}
-            className="flex h-6 items-center gap-1 rounded border border-base-border px-2 text-base-text-muted text-[10px] transition-colors hover:bg-base-raised hover:text-base-text disabled:opacity-50"
+            className="flex h-6 items-center gap-1 rounded border border-base-border px-2 text-[10px] text-base-text-muted transition-colors hover:bg-base-raised hover:text-base-text disabled:opacity-50"
           >
             <Clipboard size={11} />
             Copy
@@ -222,24 +222,24 @@ export function ImpactPanel() {
                 <div className="font-mono text-base-text text-sm">
                   {currentImpactSummary.dependencies.length}
                 </div>
-                <div className="text-base-text-muted text-[10px]">Deps</div>
+                <div className="text-[10px] text-base-text-muted">Deps</div>
               </div>
               <div className="rounded border border-base-border bg-base-bg px-2 py-1.5">
                 <div className="font-mono text-base-text text-sm">
                   {currentImpactSummary.importers.length}
                 </div>
-                <div className="text-base-text-muted text-[10px]">Importers</div>
+                <div className="text-[10px] text-base-text-muted">Importers</div>
               </div>
               <div className="rounded border border-base-border bg-base-bg px-2 py-1.5">
                 <div className="font-mono text-base-text text-sm">
                   {currentImpactSummary.likelyTests.length}
                 </div>
-                <div className="text-base-text-muted text-[10px]">Tests</div>
+                <div className="text-[10px] text-base-text-muted">Tests</div>
               </div>
             </div>
 
             {confidence && (
-              <div className="px-3 pb-2 text-base-text-muted text-[10px]">
+              <div className="px-3 pb-2 text-[10px] text-base-text-muted">
                 Confidence: {confidence}
               </div>
             )}
@@ -254,7 +254,7 @@ export function ImpactPanel() {
 
             {currentImpactSummary.paths.length > 0 && (
               <section className="border-base-border border-t px-3 py-2">
-                <h3 className="mb-1.5 font-medium text-base-text-muted text-[10px] uppercase tracking-wider">
+                <h3 className="mb-1.5 font-medium text-[10px] text-base-text-muted uppercase tracking-wider">
                   Paths
                 </h3>
                 <ul className="flex flex-col gap-1.5">
@@ -265,11 +265,11 @@ export function ImpactPanel() {
                     >
                       <div className="flex items-center justify-between gap-2">
                         <span className="truncate text-base-text text-xs">{path.label}</span>
-                        <span className="shrink-0 text-base-text-muted text-[10px]">
+                        <span className="shrink-0 text-[10px] text-base-text-muted">
                           {path.confidence}
                         </span>
                       </div>
-                      <p className="mt-1 truncate font-mono text-base-text-muted text-[10px]">
+                      <p className="mt-1 truncate font-mono text-[10px] text-base-text-muted">
                         {path.entities.map(entityLabel).join(' -> ')}
                       </p>
                     </li>
@@ -280,7 +280,7 @@ export function ImpactPanel() {
 
             {currentImpactSummary.notes.length > 0 && (
               <section className="border-base-border border-t px-3 py-2">
-                <h3 className="mb-1.5 font-medium text-base-text-muted text-[10px] uppercase tracking-wider">
+                <h3 className="mb-1.5 font-medium text-[10px] text-base-text-muted uppercase tracking-wider">
                   Notes
                 </h3>
                 <ul className="list-disc space-y-1 pl-4 text-base-text-secondary text-xs">
@@ -293,7 +293,7 @@ export function ImpactPanel() {
 
             {explainText && (
               <section className="border-base-border border-t px-3 py-2">
-                <h3 className="mb-1.5 font-medium text-base-text-muted text-[10px] uppercase tracking-wider">
+                <h3 className="mb-1.5 font-medium text-[10px] text-base-text-muted uppercase tracking-wider">
                   Explanation
                 </h3>
                 <p className="whitespace-pre-wrap text-base-text-secondary text-xs leading-relaxed">

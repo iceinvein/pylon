@@ -126,15 +126,13 @@ export function buildImpactIndex(graph: RepoGraph, generatedAt = Date.now()): Im
     importersByFile[filePath] = sortedUnique(importersByFile[filePath])
   }
   for (const filePath of Object.keys(importEdgesByTargetFile)) {
-    importEdgesByTargetFile[filePath] = importEdgesByTargetFile[filePath]
-      .slice()
-      .sort((a, b) => {
-        const sourceCompare = a.source.localeCompare(b.source)
-        if (sourceCompare !== 0) {
-          return sourceCompare
-        }
-        return a.target.localeCompare(b.target)
-      })
+    importEdgesByTargetFile[filePath] = importEdgesByTargetFile[filePath].slice().sort((a, b) => {
+      const sourceCompare = a.source.localeCompare(b.source)
+      if (sourceCompare !== 0) {
+        return sourceCompare
+      }
+      return a.target.localeCompare(b.target)
+    })
   }
 
   const likelyTestsByFile: Record<string, string[]> = {}
@@ -172,7 +170,12 @@ export function getImpactSummary(
   const symbolImportersUnavailable =
     selected.kind === 'symbol' && !(index as Partial<ImpactIndex>).importEdgesByTargetFile
   const dependencies = (index.dependenciesByFile[selected.filePath] ?? []).map((targetPath) =>
-    impactEdge('import', selected, fileEntity(targetPath), edgeEvidence(selected.filePath, targetPath)),
+    impactEdge(
+      'import',
+      selected,
+      fileEntity(targetPath),
+      edgeEvidence(selected.filePath, targetPath),
+    ),
   )
   const importers = importerSources.map((sourcePath) =>
     impactEdge(
@@ -213,11 +216,7 @@ export function getImpactSummary(
   }
 }
 
-export function searchImpactEntities(
-  index: ImpactIndex,
-  query: string,
-  limit = 30,
-): CodeEntity[] {
+export function searchImpactEntities(index: ImpactIndex, query: string, limit = 30): CodeEntity[] {
   const normalizedQuery = query.trim().toLowerCase()
   if (!normalizedQuery) {
     return []

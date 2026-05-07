@@ -1,5 +1,6 @@
 import { Clock, FolderOpen, Loader2 } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
+import type { CodeEntity } from '../../../shared/types'
 import { AstChatPanel } from '../components/ast/AstChatPanel'
 import { AstSplitPanel } from '../components/ast/AstSplitPanel'
 import { AstToolbar } from '../components/ast/AstToolbar'
@@ -11,7 +12,6 @@ import { ImpactPanel } from '../components/ast/ImpactPanel'
 import { RepoMapView } from '../components/ast/RepoMapView'
 import { useAstBridge } from '../hooks/use-ast-bridge'
 import { useAstStore } from '../store/ast-store'
-import type { CodeEntity } from '../../../shared/types'
 
 function formatTimeAgo(timestamp: number): string {
   const seconds = Math.floor((Date.now() - timestamp) / 1000)

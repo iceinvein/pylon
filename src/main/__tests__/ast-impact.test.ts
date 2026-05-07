@@ -259,7 +259,10 @@ describe('ast-impact', () => {
     expect(summary.importers).toEqual([])
     expect(summary.notes).toContain('Symbol importers unavailable without import-edge metadata.')
 
-    const fileSummary = getImpactSummary(plainIndex, { kind: 'file', filePath: '/repo/src/service.ts' })
+    const fileSummary = getImpactSummary(plainIndex, {
+      kind: 'file',
+      filePath: '/repo/src/service.ts',
+    })
     expect(fileSummary.importers.map((edge) => edge.source)).toEqual([
       { kind: 'file', filePath: '/repo/src/api.ts' },
       { kind: 'file', filePath: '/repo/src/orders.ts' },

@@ -177,10 +177,7 @@ export function registerAstIpcHandlers(): void {
 
   ipcMain.handle(
     IPC.AST_EXPLAIN,
-    async (
-      _e,
-      args: { nodeId: string; filePath: string; context: string; requestId?: string },
-    ) => {
+    async (_e, args: { nodeId: string; filePath: string; context: string; requestId?: string }) => {
       const win = BrowserWindow.getFocusedWindow()
       const { explainNode, resolveClaudePath, createCliQueryFn } = await import('./ast-claude')
       const claudePath = resolveClaudePath()
