@@ -35,7 +35,9 @@ export function useAstBridge() {
   useEffect(() => {
     const unsub = window.api.onAstExplainResult((data) => {
       const d = data as { text: string; done: boolean }
-      useAstStore.getState().setExplain(d.text, !d.done)
+      const state = useAstStore.getState()
+      if (!state.explainLoading) return
+      state.setExplain(d.text, !d.done)
     })
     return unsub
   }, [])

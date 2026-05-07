@@ -104,6 +104,31 @@ const initialState = {
   searchMatches: [] as string[],
 }
 
+function isSameCodeEntity(a: CodeEntity | null, b: CodeEntity | null): boolean {
+  if (a === b) return true
+  if (!a || !b || a.kind !== b.kind || a.filePath !== b.filePath) return false
+  if (a.kind === 'file' || b.kind === 'file') return true
+  return a.symbolId === b.symbolId
+}
+
+function selectionState(entity: CodeEntity | null) {
+  return {
+    selectedEntity: entity,
+    selectedFile: entity?.filePath ?? null,
+    selectedNode: entity?.kind === 'symbol' ? entity.symbolId : null,
+  }
+}
+
+function clearSelectionScopedState() {
+  return {
+    impactSummary: null,
+    impactLoading: false,
+    impactError: null,
+    explainText: null,
+    explainLoading: false,
+  }
+}
+
 export const useAstStore = create<AstStore>((set) => ({
   ...initialState,
 
@@ -116,17 +141,20 @@ export const useAstStore = create<AstStore>((set) => ({
   setFileAst: (fileAst) => set({ fileAst }),
 
   selectFile: (selectedFile) =>
-    set({
-      selectedFile,
-      selectedNode: null,
-      selectedEntity: selectedFile ? { kind: 'file', filePath: selectedFile } : null,
+    set((s) => {
+      const selectedEntity = selectedFile ? { kind: 'file' as const, filePath: selectedFile } : null
+      return {
+        ...selectionState(selectedEntity),
+        ...(isSameCodeEntity(s.selectedEntity, selectedEntity) ? {} : clearSelectionScopedState()),
+      }
     }),
 
   setSelectedEntity: (selectedEntity) =>
-    set({
-      selectedEntity,
-      selectedFile: selectedEntity?.filePath ?? null,
-      selectedNode: selectedEntity?.kind === 'symbol' ? selectedEntity.symbolId : null,
+    set((s) => {
+      return {
+        ...selectionState(selectedEntity),
+        ...(isSameCodeEntity(s.selectedEntity, selectedEntity) ? {} : clearSelectionScopedState()),
+      }
     }),
 
   setImpactIndex: (impactIndex) => set({ impactIndex }),
@@ -152,11 +180,13 @@ export const useAstStore = create<AstStore>((set) => ({
   setEntitySearchResults: (entitySearchResults) => set({ entitySearchResults }),
 
   drillFile: (drilledFile) =>
-    set({
-      drilledFile,
-      selectedFile: drilledFile,
-      selectedNode: null,
-      selectedEntity: drilledFile ? { kind: 'file', filePath: drilledFile } : null,
+    set((s) => {
+      const selectedEntity = drilledFile ? { kind: 'file' as const, filePath: drilledFile } : null
+      return {
+        drilledFile,
+        ...selectionState(selectedEntity),
+        ...(isSameCodeEntity(s.selectedEntity, selectedEntity) ? {} : clearSelectionScopedState()),
+      }
     }),
 
   selectNode: (selectedNode) => set({ selectedNode }),

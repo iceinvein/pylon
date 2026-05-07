@@ -16,6 +16,13 @@ function entityContext(entity: CodeEntity): string {
   return entity.filePath
 }
 
+function isSameCodeEntity(a: CodeEntity | null, b: CodeEntity | null): boolean {
+  if (a === b) return true
+  if (!a || !b || a.kind !== b.kind || a.filePath !== b.filePath) return false
+  if (a.kind === 'file' || b.kind === 'file') return true
+  return a.symbolId === b.symbolId
+}
+
 function entityExplainArgs(entity: CodeEntity): {
   nodeId: string
   filePath: string
@@ -93,24 +100,31 @@ export function ImpactPanel() {
   const explainText = useAstStore((s) => s.explainText)
   const explainLoading = useAstStore((s) => s.explainLoading)
   const setSelectedEntity = useAstStore((s) => s.setSelectedEntity)
+  const currentImpactSummary = isSameCodeEntity(impactSummary?.selected ?? null, selectedEntity)
+    ? impactSummary
+    : null
 
   const dependencies = useMemo(() => {
-    if (!impactSummary || !selectedEntity) return []
-    return impactSummary.dependencies.map((edge) => edgeEntity(edge, selectedEntity))
-  }, [impactSummary, selectedEntity])
+    if (!currentImpactSummary || !selectedEntity) return []
+    return currentImpactSummary.dependencies.map((edge) => edgeEntity(edge, selectedEntity))
+  }, [currentImpactSummary, selectedEntity])
 
   const importers = useMemo(() => {
-    if (!impactSummary || !selectedEntity) return []
-    return impactSummary.importers.map((edge) => edgeEntity(edge, selectedEntity))
-  }, [impactSummary, selectedEntity])
+    if (!currentImpactSummary || !selectedEntity) return []
+    return currentImpactSummary.importers.map((edge) => edgeEntity(edge, selectedEntity))
+  }, [currentImpactSummary, selectedEntity])
 
   const confidence = useMemo(() => {
-    if (!impactSummary) return ''
+    if (!currentImpactSummary) return ''
     return uniqueConfidence(
-      [...impactSummary.dependencies, ...impactSummary.importers, ...impactSummary.references],
-      impactSummary.paths,
+      [
+        ...currentImpactSummary.dependencies,
+        ...currentImpactSummary.importers,
+        ...currentImpactSummary.references,
+      ],
+      currentImpactSummary.paths,
     )
-  }, [impactSummary])
+  }, [currentImpactSummary])
 
   const handleExplain = useCallback(() => {
     if (!selectedEntity) return
@@ -120,18 +134,18 @@ export function ImpactPanel() {
   }, [selectedEntity])
 
   const handleCopy = useCallback(() => {
-    if (!selectedEntity || !impactSummary) return
+    if (!selectedEntity || !currentImpactSummary) return
     const lines = [
       `Selected: ${entityLabel(selectedEntity)}`,
       `Path: ${selectedEntity.filePath}`,
-      `Dependencies: ${impactSummary.dependencies.length}`,
-      `Importers: ${impactSummary.importers.length}`,
-      `References: ${impactSummary.references.length}`,
-      `Likely tests: ${impactSummary.likelyTests.map(entityLabel).join(', ') || 'none'}`,
-      impactSummary.notes.length ? `Notes: ${impactSummary.notes.join(' ')}` : '',
+      `Dependencies: ${currentImpactSummary.dependencies.length}`,
+      `Importers: ${currentImpactSummary.importers.length}`,
+      `References: ${currentImpactSummary.references.length}`,
+      `Likely tests: ${currentImpactSummary.likelyTests.map(entityLabel).join(', ') || 'none'}`,
+      currentImpactSummary.notes.length ? `Notes: ${currentImpactSummary.notes.join(' ')}` : '',
     ].filter(Boolean)
     navigator.clipboard.writeText(lines.join('\n')).catch(() => {})
-  }, [impactSummary, selectedEntity])
+  }, [currentImpactSummary, selectedEntity])
 
   if (!selectedEntity) {
     return (
@@ -154,7 +168,7 @@ export function ImpactPanel() {
               {entityContext(selectedEntity)}
             </p>
           </div>
-          {impactSummary?.stale && (
+          {currentImpactSummary?.stale && (
             <span className="shrink-0 rounded border border-warning/30 px-1.5 py-0.5 text-[10px] text-warning">
               Stale
             </span>
@@ -177,7 +191,7 @@ export function ImpactPanel() {
           <button
             type="button"
             onClick={handleCopy}
-            disabled={!impactSummary}
+            disabled={!currentImpactSummary}
             className="flex h-6 items-center gap-1 rounded border border-base-border px-2 text-base-text-muted text-[10px] transition-colors hover:bg-base-raised hover:text-base-text disabled:opacity-50"
           >
             <Clipboard size={11} />
@@ -196,24 +210,24 @@ export function ImpactPanel() {
 
         {impactError && <div className="px-3 py-3 text-error text-xs">{impactError}</div>}
 
-        {impactSummary && (
+        {currentImpactSummary && (
           <>
             <div className="grid grid-cols-3 gap-1 px-3 py-2">
               <div className="rounded border border-base-border bg-base-bg px-2 py-1.5">
                 <div className="font-mono text-base-text text-sm">
-                  {impactSummary.dependencies.length}
+                  {currentImpactSummary.dependencies.length}
                 </div>
                 <div className="text-base-text-muted text-[10px]">Deps</div>
               </div>
               <div className="rounded border border-base-border bg-base-bg px-2 py-1.5">
                 <div className="font-mono text-base-text text-sm">
-                  {impactSummary.importers.length}
+                  {currentImpactSummary.importers.length}
                 </div>
                 <div className="text-base-text-muted text-[10px]">Importers</div>
               </div>
               <div className="rounded border border-base-border bg-base-bg px-2 py-1.5">
                 <div className="font-mono text-base-text text-sm">
-                  {impactSummary.likelyTests.length}
+                  {currentImpactSummary.likelyTests.length}
                 </div>
                 <div className="text-base-text-muted text-[10px]">Tests</div>
               </div>
@@ -229,17 +243,17 @@ export function ImpactPanel() {
             <EntityList title="Importers" entities={importers} onSelect={setSelectedEntity} />
             <EntityList
               title="Likely Tests"
-              entities={impactSummary.likelyTests}
+              entities={currentImpactSummary.likelyTests}
               onSelect={setSelectedEntity}
             />
 
-            {impactSummary.paths.length > 0 && (
+            {currentImpactSummary.paths.length > 0 && (
               <section className="border-base-border border-t px-3 py-2">
                 <h3 className="mb-1.5 font-medium text-base-text-muted text-[10px] uppercase tracking-wider">
                   Paths
                 </h3>
                 <ul className="flex flex-col gap-1.5">
-                  {impactSummary.paths.map((path) => (
+                  {currentImpactSummary.paths.map((path) => (
                     <li
                       key={path.id}
                       className="rounded border border-base-border bg-base-bg px-2 py-1.5"
@@ -259,13 +273,13 @@ export function ImpactPanel() {
               </section>
             )}
 
-            {impactSummary.notes.length > 0 && (
+            {currentImpactSummary.notes.length > 0 && (
               <section className="border-base-border border-t px-3 py-2">
                 <h3 className="mb-1.5 font-medium text-base-text-muted text-[10px] uppercase tracking-wider">
                   Notes
                 </h3>
                 <ul className="list-disc space-y-1 pl-4 text-base-text-secondary text-xs">
-                  {impactSummary.notes.map((note) => (
+                  {currentImpactSummary.notes.map((note) => (
                     <li key={note}>{note}</li>
                   ))}
                 </ul>

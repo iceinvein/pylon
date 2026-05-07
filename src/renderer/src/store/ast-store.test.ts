@@ -336,6 +336,54 @@ describe('impact selection state', () => {
     expect(s.selectedNode).toBe('function-1')
   })
 
+  test('setSelectedEntity clears impact and explanation state when target changes', () => {
+    useAstStore.getState().setSelectedEntity({ kind: 'file', filePath: '/repo/src/a.ts' })
+    useAstStore.getState().setImpact({
+      selected: { kind: 'file', filePath: '/repo/src/a.ts' },
+      dependencies: [],
+      importers: [],
+      references: [],
+      likelyTests: [],
+      paths: [],
+      notes: [],
+      generatedAt: 123,
+      stale: false,
+    })
+    useAstStore.getState().setExplain('explained a', true)
+
+    useAstStore.getState().setSelectedEntity({ kind: 'file', filePath: '/repo/src/b.ts' })
+
+    const s = useAstStore.getState()
+    expect(s.impactSummary).toBeNull()
+    expect(s.impactLoading).toBe(false)
+    expect(s.impactError).toBeNull()
+    expect(s.explainText).toBeNull()
+    expect(s.explainLoading).toBe(false)
+  })
+
+  test('setSelectedEntity preserves scoped state when target is unchanged', () => {
+    const selected = { kind: 'file' as const, filePath: '/repo/src/a.ts' }
+    useAstStore.getState().setSelectedEntity(selected)
+    useAstStore.getState().setImpact({
+      selected,
+      dependencies: [],
+      importers: [],
+      references: [],
+      likelyTests: [],
+      paths: [],
+      notes: [],
+      generatedAt: 123,
+      stale: false,
+    })
+    useAstStore.getState().setExplain('explained a', false)
+
+    useAstStore.getState().setSelectedEntity({ kind: 'file', filePath: '/repo/src/a.ts' })
+
+    const s = useAstStore.getState()
+    expect(s.impactSummary?.selected).toEqual(selected)
+    expect(s.explainText).toBe('explained a')
+  })
+
   test('setImpact stores impact result and clears loading', () => {
     const selected = { kind: 'file' as const, filePath: '/repo/src/app.ts' }
     useAstStore.getState().setImpactLoading(true)
