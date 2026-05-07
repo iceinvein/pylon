@@ -106,8 +106,8 @@ export function registerAstIpcHandlers(): void {
   })
 
   ipcMain.handle(IPC.AST_FILE_AST, async (_e, args: { filePath: string }) => {
-    const { parseFileAst } = await import('./ast-analyzer')
-    return parseFileAst(args.filePath)
+    const { parseFileAstMulti } = await import('./ast-analyzer')
+    return parseFileAstMulti(args.filePath)
   })
 
   ipcMain.handle(

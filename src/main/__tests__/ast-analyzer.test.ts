@@ -408,6 +408,18 @@ type Foo = string
     expect(nodes.find((n) => n.name === 'World')).toBeDefined()
     expect(nodes.find((n) => n.name === 'Foo')).toBeDefined()
   })
+
+  test('parseFileAstMulti returns tree-sitter declarations for Python files', async () => {
+    const filePath = writeFixture(
+      'ast-python.py',
+      `def greet(name):
+    return f"hello {name}"
+`,
+    )
+    const { parseFileAstMulti } = await import('../ast-analyzer')
+    const nodes = await parseFileAstMulti(filePath)
+    expect(nodes.find((n) => n.name === 'greet')).toBeDefined()
+  })
 })
 
 // ── parseFileCached ──

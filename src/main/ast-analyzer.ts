@@ -126,6 +126,11 @@ export function parseFileAst(filePath: string): AstNode[] {
   return parseFile(filePath).declarations
 }
 
+export async function parseFileAstMulti(filePath: string): Promise<AstNode[]> {
+  const parsed = await parseFileMulti(filePath)
+  return parsed.declarations
+}
+
 // ── Caching ──
 
 const fileCache = new Map<string, { mtime: number; result: FileNode }>()
