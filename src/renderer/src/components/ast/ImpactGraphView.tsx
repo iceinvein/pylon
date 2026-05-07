@@ -8,6 +8,13 @@ function entityId(entity: CodeEntity): string {
   return entity.kind === 'file' ? entity.filePath : `${entity.filePath}:${entity.symbolId}`
 }
 
+function isSameCodeEntity(a: CodeEntity | null, b: CodeEntity | null): boolean {
+  if (a === b) return true
+  if (!a || !b || a.kind !== b.kind || a.filePath !== b.filePath) return false
+  if (a.kind === 'file' || b.kind === 'file') return true
+  return a.symbolId === b.symbolId
+}
+
 function entityDetail(entity: CodeEntity): string {
   if (entity.kind === 'symbol') return entity.filePath.split('/').pop() ?? entity.filePath
   const dirIndex = entity.filePath.lastIndexOf('/')
@@ -58,12 +65,16 @@ function edgeColor(label?: string): string {
 }
 
 export function ImpactGraphView() {
+  const selectedEntity = useAstStore((s) => s.selectedEntity)
   const impactSummary = useAstStore((s) => s.impactSummary)
   const setSelectedEntity = useAstStore((s) => s.setSelectedEntity)
+  const currentImpactSummary = isSameCodeEntity(impactSummary?.selected ?? null, selectedEntity)
+    ? impactSummary
+    : null
 
   const layout = useMemo(
-    () => (impactSummary ? computeImpactLayout(impactSummary) : null),
-    [impactSummary],
+    () => (currentImpactSummary ? computeImpactLayout(currentImpactSummary) : null),
+    [currentImpactSummary],
   )
 
   const nodeMap = useMemo(() => {
@@ -72,13 +83,14 @@ export function ImpactGraphView() {
   }, [layout])
 
   const entityMap = useMemo(
-    () => (impactSummary ? collectEntities(impactSummary) : new Map<string, CodeEntity>()),
-    [impactSummary],
+    () =>
+      currentImpactSummary ? collectEntities(currentImpactSummary) : new Map<string, CodeEntity>(),
+    [currentImpactSummary],
   )
 
-  const selectedId = impactSummary ? entityId(impactSummary.selected) : ''
+  const selectedId = currentImpactSummary ? entityId(currentImpactSummary.selected) : ''
 
-  if (!impactSummary || !layout) {
+  if (!currentImpactSummary || !layout) {
     return (
       <section className="flex h-full min-h-0 flex-col border-base-border border-b bg-base-bg">
         <div className="flex h-9 shrink-0 items-center border-base-border border-b px-3">
@@ -96,14 +108,14 @@ export function ImpactGraphView() {
       <div className="flex h-9 shrink-0 items-center justify-between border-base-border border-b px-3">
         <h2 className="font-medium text-base-text text-xs">Impact graph</h2>
         <div className="flex items-center gap-3 text-base-text-muted text-[11px]">
-          <span>{impactSummary.dependencies.length} deps</span>
-          <span>{impactSummary.importers.length} importers</span>
-          <span>{impactSummary.likelyTests.length} tests</span>
+          <span>{currentImpactSummary.dependencies.length} deps</span>
+          <span>{currentImpactSummary.importers.length} importers</span>
+          <span>{currentImpactSummary.likelyTests.length} tests</span>
         </div>
       </div>
 
       <div className="min-h-0 flex-1">
-        <GraphCanvas layoutNodes={layout.nodes}>
+        <GraphCanvas layoutNodes={layout.nodes} viewportMode="local">
           {layout.edges.map((edge) => {
             const source = nodeMap.get(edge.source)
             const target = nodeMap.get(edge.target)

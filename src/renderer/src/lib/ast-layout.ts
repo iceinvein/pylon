@@ -408,16 +408,25 @@ export function computeImpactLayout(summary: ImpactSummary): RepoLayout {
 
   const edgeDescriptors: LayoutEdge[] = []
   const edgeDedupe = new Set<string>()
+  const edgePairDedupe = new Set<string>()
 
-  function addEdge(source: CodeEntity, target: CodeEntity, label: string) {
+  function addEdge(
+    source: CodeEntity,
+    target: CodeEntity,
+    label: string,
+    options?: { skipExistingPair?: boolean },
+  ) {
     addEntity(source)
     addEntity(target)
     const sourceId = entityId(source)
     const targetId = entityId(target)
     if (sourceId === targetId) return
+    const pairKey = `${sourceId}->${targetId}`
+    if (options?.skipExistingPair && edgePairDedupe.has(pairKey)) return
     const key = `${sourceId}->${targetId}:${label}`
     if (edgeDedupe.has(key)) return
     edgeDedupe.add(key)
+    edgePairDedupe.add(pairKey)
     edgeDescriptors.push({ source: sourceId, target: targetId, label })
   }
 
@@ -434,7 +443,7 @@ export function computeImpactLayout(summary: ImpactSummary): RepoLayout {
   }
 
   for (const testEntity of summary.likelyTests) {
-    addEdge(testEntity, summary.selected, 'test')
+    addEdge(testEntity, summary.selected, 'test', { skipExistingPair: true })
   }
 
   const neighborIds = insertionOrder

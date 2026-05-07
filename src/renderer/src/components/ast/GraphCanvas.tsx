@@ -1,25 +1,51 @@
-import { type ReactNode, useCallback, useEffect, useRef } from 'react'
+import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
 import { useAstStore } from '../../store/ast-store'
 
 type FitNode = { x: number; y: number; width: number; height: number }
+type ViewportMode = 'store' | 'local'
 
 type GraphCanvasProps = {
   children: ReactNode
   layoutNodes?: FitNode[]
+  viewportMode?: ViewportMode
 }
 
-export function GraphCanvas({ children, layoutNodes }: GraphCanvasProps) {
-  const zoom = useAstStore((s) => s.zoom)
-  const panX = useAstStore((s) => s.panX)
-  const panY = useAstStore((s) => s.panY)
-  const setZoom = useAstStore((s) => s.setZoom)
-  const setPan = useAstStore((s) => s.setPan)
+export function GraphCanvas({ children, layoutNodes, viewportMode = 'store' }: GraphCanvasProps) {
+  const storeZoom = useAstStore((s) => s.zoom)
+  const storePanX = useAstStore((s) => s.panX)
+  const storePanY = useAstStore((s) => s.panY)
+  const setStoreZoom = useAstStore((s) => s.setZoom)
+  const setStorePan = useAstStore((s) => s.setPan)
+
+  const [localZoom, setLocalZoom] = useState(1)
+  const [localPan, setLocalPan] = useState({ x: 0, y: 0 })
 
   const svgRef = useRef<SVGSVGElement>(null)
   const isDragging = useRef(false)
   const dragStart = useRef({ x: 0, y: 0 })
   const panStart = useRef({ x: 0, y: 0 })
   const hasFitted = useRef(false)
+
+  const useLocalViewport = viewportMode === 'local'
+  const zoom = useLocalViewport ? localZoom : storeZoom
+  const panX = useLocalViewport ? localPan.x : storePanX
+  const panY = useLocalViewport ? localPan.y : storePanY
+
+  const setZoom = useCallback(
+    (nextZoom: number) => {
+      if (useLocalViewport) setLocalZoom(nextZoom)
+      else setStoreZoom(nextZoom)
+    },
+    [useLocalViewport, setStoreZoom],
+  )
+
+  const setPan = useCallback(
+    (nextPanX: number, nextPanY: number) => {
+      if (useLocalViewport) setLocalPan({ x: nextPanX, y: nextPanY })
+      else setStorePan(nextPanX, nextPanY)
+    },
+    [useLocalViewport, setStorePan],
+  )
 
   const autoFit = useCallback(
     (nodes: FitNode[]) => {

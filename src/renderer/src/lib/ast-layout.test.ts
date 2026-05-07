@@ -357,6 +357,36 @@ describe('computeImpactLayout', () => {
       ]),
     )
   })
+
+  test('does not duplicate likely-test edge when the test is already an importer', () => {
+    const selected = makeFileEntity('/src/selected.ts')
+    const likelyTest = makeFileEntity('/src/selected.test.ts')
+    const summary = makeImpactSummary({
+      selected,
+      importers: [
+        {
+          kind: 'reverse-import',
+          source: likelyTest,
+          target: selected,
+          confidence: 'high',
+        },
+      ],
+      likelyTests: [likelyTest],
+    })
+
+    const layout = computeImpactLayout(summary)
+    const duplicateEdges = layout.edges.filter(
+      (edge) => edge.source === '/src/selected.test.ts' && edge.target === '/src/selected.ts',
+    )
+
+    expect(duplicateEdges).toEqual([
+      expect.objectContaining({
+        source: '/src/selected.test.ts',
+        target: '/src/selected.ts',
+        label: 'importer',
+      }),
+    ])
+  })
 })
 
 // ── computeTreeLayout ──
