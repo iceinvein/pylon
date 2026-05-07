@@ -243,3 +243,67 @@ describe('ast-store', () => {
     })
   })
 })
+
+describe('impact selection state', () => {
+  test('setSelectedEntity selects file entity and mirrors selectedFile', () => {
+    useAstStore.getState().setSelectedEntity({ kind: 'file', filePath: '/repo/src/app.ts' })
+    const s = useAstStore.getState()
+    expect(s.selectedEntity).toEqual({ kind: 'file', filePath: '/repo/src/app.ts' })
+    expect(s.selectedFile).toBe('/repo/src/app.ts')
+    expect(s.selectedNode).toBeNull()
+  })
+
+  test('setSelectedEntity selects symbol entity and mirrors file/node state', () => {
+    useAstStore.getState().setSelectedEntity({
+      kind: 'symbol',
+      filePath: '/repo/src/app.ts',
+      symbolId: 'function-1',
+      symbolName: 'run',
+      symbolType: 'function',
+      startLine: 2,
+      endLine: 5,
+    })
+    const s = useAstStore.getState()
+    expect(s.selectedFile).toBe('/repo/src/app.ts')
+    expect(s.selectedNode).toBe('function-1')
+  })
+
+  test('setImpact stores impact result and clears loading', () => {
+    const selected = { kind: 'file' as const, filePath: '/repo/src/app.ts' }
+    useAstStore.getState().setImpactLoading(true)
+    useAstStore.getState().setImpact({
+      selected,
+      dependencies: [],
+      importers: [],
+      references: [],
+      likelyTests: [],
+      paths: [],
+      notes: [],
+      generatedAt: 123,
+      stale: false,
+    })
+    const s = useAstStore.getState()
+    expect(s.impactLoading).toBe(false)
+    expect(s.impactError).toBeNull()
+    expect(s.impactSummary?.selected).toEqual(selected)
+  })
+
+  test('setImpactError stores error and clears loading', () => {
+    useAstStore.getState().setImpactLoading(true)
+    useAstStore.getState().setImpactError('Could not load impact')
+    const s = useAstStore.getState()
+    expect(s.impactLoading).toBe(false)
+    expect(s.impactError).toBe('Could not load impact')
+  })
+
+  test('assistant chat messages preserve highlights', () => {
+    useAstStore.getState().addChatMessage({
+      role: 'assistant',
+      content: 'Look at loadUser',
+      highlights: [{ filePath: '/repo/src/service.ts', symbolName: 'loadUser' }],
+    })
+    expect(useAstStore.getState().chatMessages[0].highlights).toEqual([
+      { filePath: '/repo/src/service.ts', symbolName: 'loadUser' },
+    ])
+  })
+})

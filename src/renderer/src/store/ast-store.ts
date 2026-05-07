@@ -1,9 +1,13 @@
 import { create } from 'zustand'
 import type {
   ArchAnalysis,
+  AstAnalysisFreshness,
   AstChatMessage,
   AstNode,
   AstOverlay,
+  CodeEntity,
+  ImpactIndex,
+  ImpactSummary,
   RepoGraph,
 } from '../../../shared/types'
 
@@ -15,8 +19,15 @@ type AstStore = {
   archAnalysis: ArchAnalysis | null
   fileAst: AstNode[] | null
   selectedFile: string | null // file shown in CodePanel (right pane)
+  selectedEntity: CodeEntity | null
   drilledFile: string | null // file drilled into AST tree (replaces repo map in left pane)
   selectedNode: string | null
+  impactIndex: ImpactIndex | null
+  impactSummary: ImpactSummary | null
+  impactLoading: boolean
+  impactError: string | null
+  analysisFreshness: AstAnalysisFreshness | null
+  entitySearchResults: CodeEntity[]
   hoveredNode: string | null
   activeOverlays: Set<AstOverlay>
   chatMessages: AstChatMessage[]
@@ -38,6 +49,13 @@ type AstStore = {
   setArchAnalysis: (analysis: ArchAnalysis) => void
   setFileAst: (nodes: AstNode[] | null) => void
   selectFile: (filePath: string | null) => void
+  setSelectedEntity: (entity: CodeEntity | null) => void
+  setImpactIndex: (index: ImpactIndex | null) => void
+  setImpact: (summary: ImpactSummary | null) => void
+  setImpactLoading: (loading: boolean) => void
+  setImpactError: (error: string | null) => void
+  setAnalysisFreshness: (freshness: AstAnalysisFreshness | null) => void
+  setEntitySearchResults: (results: CodeEntity[]) => void
   drillFile: (filePath: string | null) => void
   selectNode: (nodeId: string | null) => void
   setHoveredNode: (nodeId: string | null) => void
@@ -60,8 +78,15 @@ const initialState = {
   archAnalysis: null,
   fileAst: null,
   selectedFile: null,
+  selectedEntity: null as CodeEntity | null,
   drilledFile: null,
   selectedNode: null,
+  impactIndex: null as ImpactIndex | null,
+  impactSummary: null as ImpactSummary | null,
+  impactLoading: false,
+  impactError: null as string | null,
+  analysisFreshness: null as AstAnalysisFreshness | null,
+  entitySearchResults: [] as CodeEntity[],
   hoveredNode: null,
   activeOverlays: new Set<AstOverlay>(),
   chatMessages: [],
@@ -90,7 +115,40 @@ export const useAstStore = create<AstStore>((set) => ({
 
   setFileAst: (fileAst) => set({ fileAst }),
 
-  selectFile: (selectedFile) => set({ selectedFile, selectedNode: null }),
+  selectFile: (selectedFile) =>
+    set({
+      selectedFile,
+      selectedNode: null,
+      selectedEntity: selectedFile ? { kind: 'file', filePath: selectedFile } : null,
+    }),
+
+  setSelectedEntity: (selectedEntity) =>
+    set({
+      selectedEntity,
+      selectedFile: selectedEntity?.filePath ?? null,
+      selectedNode: selectedEntity?.kind === 'symbol' ? selectedEntity.symbolId : null,
+    }),
+
+  setImpactIndex: (impactIndex) => set({ impactIndex }),
+
+  setImpact: (impactSummary) =>
+    set({
+      impactSummary,
+      impactLoading: false,
+      impactError: null,
+    }),
+
+  setImpactLoading: (impactLoading) => set({ impactLoading }),
+
+  setImpactError: (impactError) =>
+    set({
+      impactError,
+      impactLoading: false,
+    }),
+
+  setAnalysisFreshness: (analysisFreshness) => set({ analysisFreshness }),
+
+  setEntitySearchResults: (entitySearchResults) => set({ entitySearchResults }),
 
   drillFile: (drilledFile) => set({ drilledFile, selectedFile: drilledFile, selectedNode: null }),
 

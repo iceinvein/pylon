@@ -42,9 +42,15 @@ export function useAstBridge() {
 
   useEffect(() => {
     const unsub = window.api.onAstChatResult((data) => {
-      const d = data as { text: string; done: boolean }
+      const d = data as {
+        text: string
+        highlights?: Array<{ filePath: string; symbolName?: string }>
+        done: boolean
+      }
       if (d.done) {
-        useAstStore.getState().addChatMessage({ role: 'assistant', content: d.text })
+        useAstStore
+          .getState()
+          .addChatMessage({ role: 'assistant', content: d.text, highlights: d.highlights })
         useAstStore.getState().setChatLoading(false)
       }
     })
