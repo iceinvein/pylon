@@ -68,6 +68,49 @@ function graph(): RepoGraph {
   }
 }
 
+function symbolFilterGraph(): RepoGraph {
+  const root = '/repo'
+  const api = `${root}/src/api.ts`
+  const orders = `${root}/src/orders.ts`
+  const service = `${root}/src/service.ts`
+
+  return {
+    files: [
+      {
+        filePath: api,
+        language: 'typescript',
+        declarations: [node(api, 'function-1', 'handleRequest')],
+        imports: [],
+        size: 100,
+        lastModified: 10,
+      },
+      {
+        filePath: orders,
+        language: 'typescript',
+        declarations: [node(orders, 'function-1', 'handleOrder')],
+        imports: [],
+        size: 100,
+        lastModified: 20,
+      },
+      {
+        filePath: service,
+        language: 'typescript',
+        declarations: [
+          node(service, 'function-1', 'loadUser'),
+          node(service, 'function-2', 'saveOrder'),
+        ],
+        imports: [],
+        size: 120,
+        lastModified: 30,
+      },
+    ],
+    edges: [
+      { source: api, target: service, specifiers: ['loadUser'] },
+      { source: orders, target: service, specifiers: ['saveOrder'] },
+    ],
+  }
+}
+
 describe('ast-impact', () => {
   test('builds file and symbol entities', () => {
     const index = buildImpactIndex(graph())
@@ -116,8 +159,64 @@ describe('ast-impact', () => {
       { kind: 'file', filePath: '/repo/src/service.test.ts' },
     ])
     expect(summary.likelyTests).toEqual([{ kind: 'file', filePath: '/repo/src/service.test.ts' }])
-    expect(summary.paths.length).toBeGreaterThanOrEqual(2)
+    expect(summary.paths).toContainEqual({
+      id: 'dependency:symbol:/repo/src/service.ts:function-1:loadUser:1:3:/repo/src/db.ts',
+      label: '/repo/src/service.ts imports /repo/src/db.ts',
+      entities: [
+        {
+          kind: 'symbol',
+          filePath: '/repo/src/service.ts',
+          symbolId: 'function-1',
+          symbolName: 'loadUser',
+          symbolType: 'function',
+          startLine: 1,
+          endLine: 3,
+        },
+        { kind: 'file', filePath: '/repo/src/db.ts' },
+      ],
+      confidence: 'high',
+    })
+    expect(summary.paths).toContainEqual({
+      id: 'importer:/repo/src/api.ts:symbol:/repo/src/service.ts:function-1:loadUser:1:3',
+      label: '/repo/src/api.ts imports /repo/src/service.ts',
+      entities: [
+        { kind: 'file', filePath: '/repo/src/api.ts' },
+        {
+          kind: 'symbol',
+          filePath: '/repo/src/service.ts',
+          symbolId: 'function-1',
+          symbolName: 'loadUser',
+          symbolType: 'function',
+          startLine: 1,
+          endLine: 3,
+        },
+      ],
+      confidence: 'high',
+    })
     expect(summary.stale).toBe(false)
+  })
+
+  test('filters symbol importers by explicit import specifiers', () => {
+    const index = buildImpactIndex(symbolFilterGraph())
+    const selected = {
+      kind: 'symbol' as const,
+      filePath: '/repo/src/service.ts',
+      symbolId: 'function-1',
+      symbolName: 'loadUser',
+      symbolType: 'function' as const,
+      startLine: 1,
+      endLine: 3,
+    }
+    const summary = getImpactSummary(index, selected)
+    expect(summary.importers.map((edge) => edge.source)).toEqual([
+      { kind: 'file', filePath: '/repo/src/api.ts' },
+    ])
+
+    const fileSummary = getImpactSummary(index, { kind: 'file', filePath: '/repo/src/service.ts' })
+    expect(fileSummary.importers.map((edge) => edge.source)).toEqual([
+      { kind: 'file', filePath: '/repo/src/api.ts' },
+      { kind: 'file', filePath: '/repo/src/orders.ts' },
+    ])
   })
 
   test('searches files and symbols case-insensitively', () => {
@@ -137,6 +236,16 @@ describe('ast-impact', () => {
       kind: 'file',
       filePath: '/repo/src/service.ts',
     })
+    expect(searchImpactEntities(index, 'user')).toContainEqual({
+      kind: 'symbol',
+      filePath: '/repo/src/service.ts',
+      symbolId: 'function-1',
+      symbolName: 'loadUser',
+      symbolType: 'function',
+      startLine: 1,
+      endLine: 3,
+    })
+    expect(searchImpactEntities(index, 'service', -1)).toEqual([])
   })
 
   test('computes stable snapshot hash from paths and mtimes', () => {

@@ -7,8 +7,13 @@ import type {
   ImpactIndex,
   ImpactPath,
   ImpactSummary,
+  ImportEdge,
   RepoGraph,
 } from '../shared/types'
+
+type ImpactIndexWithImportEdges = ImpactIndex & {
+  importEdgesByTargetFile: Record<string, ImportEdge[]>
+}
 
 function fileEntity(filePath: string): CodeEntity {
   return { kind: 'file', filePath }
@@ -48,16 +53,19 @@ function sortedUnique(values: string[]): string[] {
 function ensureFileMaps(files: string[]): {
   dependenciesByFile: Record<string, string[]>
   importersByFile: Record<string, string[]>
+  importEdgesByTargetFile: Record<string, ImportEdge[]>
 } {
   const dependenciesByFile: Record<string, string[]> = {}
   const importersByFile: Record<string, string[]> = {}
+  const importEdgesByTargetFile: Record<string, ImportEdge[]> = {}
 
   for (const filePath of files) {
     dependenciesByFile[filePath] = []
     importersByFile[filePath] = []
+    importEdgesByTargetFile[filePath] = []
   }
 
-  return { dependenciesByFile, importersByFile }
+  return { dependenciesByFile, importersByFile, importEdgesByTargetFile }
 }
 
 function isTestLikePath(filePath: string): boolean {
@@ -104,13 +112,15 @@ export function computeSnapshotHash(graph: RepoGraph): string {
 
 export function buildImpactIndex(graph: RepoGraph, generatedAt = Date.now()): ImpactIndex {
   const files = graph.files.map((file) => file.filePath).sort((a, b) => a.localeCompare(b))
-  const { dependenciesByFile, importersByFile } = ensureFileMaps(files)
+  const { dependenciesByFile, importersByFile, importEdgesByTargetFile } = ensureFileMaps(files)
 
   for (const edge of graph.edges) {
     dependenciesByFile[edge.source] ??= []
     importersByFile[edge.target] ??= []
+    importEdgesByTargetFile[edge.target] ??= []
     dependenciesByFile[edge.source].push(edge.target)
     importersByFile[edge.target].push(edge.source)
+    importEdgesByTargetFile[edge.target].push(edge)
   }
 
   for (const filePath of Object.keys(dependenciesByFile)) {
@@ -118,6 +128,17 @@ export function buildImpactIndex(graph: RepoGraph, generatedAt = Date.now()): Im
   }
   for (const filePath of Object.keys(importersByFile)) {
     importersByFile[filePath] = sortedUnique(importersByFile[filePath])
+  }
+  for (const filePath of Object.keys(importEdgesByTargetFile)) {
+    importEdgesByTargetFile[filePath] = importEdgesByTargetFile[filePath]
+      .slice()
+      .sort((a, b) => {
+        const sourceCompare = a.source.localeCompare(b.source)
+        if (sourceCompare !== 0) {
+          return sourceCompare
+        }
+        return a.target.localeCompare(b.target)
+      })
   }
 
   const likelyTestsByFile: Record<string, string[]> = {}
@@ -133,14 +154,17 @@ export function buildImpactIndex(graph: RepoGraph, generatedAt = Date.now()): Im
       ...collectSymbols(file.declarations).sort((a, b) => entityKey(a).localeCompare(entityKey(b))),
     ])
 
-  return {
+  const index: ImpactIndexWithImportEdges = {
     generatedAt,
     snapshotHash: computeSnapshotHash(graph),
     entities,
     dependenciesByFile,
     importersByFile,
     likelyTestsByFile,
+    importEdgesByTargetFile,
   }
+
+  return index
 }
 
 export function getImpactSummary(
@@ -148,10 +172,11 @@ export function getImpactSummary(
   selected: CodeEntity,
   currentSnapshotHash = index.snapshotHash,
 ): ImpactSummary {
+  const importerSources = importerSourcePaths(index, selected)
   const dependencies = (index.dependenciesByFile[selected.filePath] ?? []).map((targetPath) =>
     impactEdge('import', selected, fileEntity(targetPath), edgeEvidence(selected.filePath, targetPath)),
   )
-  const importers = (index.importersByFile[selected.filePath] ?? []).map((sourcePath) =>
+  const importers = importerSources.map((sourcePath) =>
     impactEdge(
       'reverse-import',
       fileEntity(sourcePath),
@@ -159,7 +184,7 @@ export function getImpactSummary(
       edgeEvidence(sourcePath, selected.filePath),
     ),
   )
-  const likelyTests = (index.likelyTestsByFile[selected.filePath] ?? []).map(fileEntity)
+  const likelyTests = importerSources.filter(isTestLikePath).map(fileEntity)
   const paths = [
     ...dependencies.map((edge) =>
       pathFor(
@@ -199,6 +224,9 @@ export function searchImpactEntities(
   if (!normalizedQuery) {
     return []
   }
+  if (limit <= 0) {
+    return []
+  }
 
   return index.entities
     .map((entity) => ({ entity, score: searchScore(entity, normalizedQuery) }))
@@ -225,6 +253,9 @@ function searchScore(entity: CodeEntity, query: string): number {
     if (name.startsWith(query)) {
       return 90
     }
+    if (camelCaseTokens(entity.symbolName).at(-1)?.startsWith(query)) {
+      return 80
+    }
   }
 
   if (basename === query) {
@@ -241,4 +272,36 @@ function searchScore(entity: CodeEntity, query: string): number {
   }
 
   return 0
+}
+
+function importerSourcePaths(index: ImpactIndex, selected: CodeEntity): string[] {
+  if (selected.kind === 'file') {
+    return index.importersByFile[selected.filePath] ?? []
+  }
+
+  const importEdges = (index as Partial<ImpactIndexWithImportEdges>).importEdgesByTargetFile?.[
+    selected.filePath
+  ]
+  if (!importEdges) {
+    return index.importersByFile[selected.filePath] ?? []
+  }
+
+  return sortedUnique(
+    importEdges
+      .filter((edge) => {
+        if (edge.specifiers.length === 0) {
+          return true
+        }
+        return edge.specifiers.includes(selected.symbolName)
+      })
+      .map((edge) => edge.source),
+  )
+}
+
+function camelCaseTokens(value: string): string[] {
+  return value
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .split(/[\s._-]+/)
+    .map((token) => token.toLowerCase())
+    .filter(Boolean)
 }
