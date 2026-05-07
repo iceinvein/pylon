@@ -34,6 +34,10 @@ function entityExplainArgs(entity: CodeEntity): {
   return { nodeId: entity.filePath, filePath: entity.filePath, context: entity.filePath }
 }
 
+function createExplainRequestId(): string {
+  return `impact-${Date.now()}-${Math.random().toString(36).slice(2)}`
+}
+
 function edgeEntity(edge: ImpactEdge, selected: CodeEntity): CodeEntity {
   if (edge.source.filePath === selected.filePath) return edge.target
   return edge.source
@@ -129,8 +133,9 @@ export function ImpactPanel() {
   const handleExplain = useCallback(() => {
     if (!selectedEntity) return
     const args = entityExplainArgs(selectedEntity)
-    useAstStore.getState().setExplain(null, true)
-    window.api.explainAstNode(args.nodeId, args.filePath, args.context)
+    const requestId = createExplainRequestId()
+    useAstStore.getState().setExplain(null, true, requestId)
+    window.api.explainAstNode(args.nodeId, args.filePath, args.context, requestId)
   }, [selectedEntity])
 
   const handleCopy = useCallback(() => {

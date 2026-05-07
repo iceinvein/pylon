@@ -35,6 +35,7 @@ type AstStore = {
   analysisProgress: string
   explainText: string | null
   explainLoading: boolean
+  explainRequestId: string | null
   chatLoading: boolean
   zoom: number
   panX: number
@@ -62,7 +63,7 @@ type AstStore = {
   toggleOverlay: (overlay: AstOverlay) => void
   addChatMessage: (message: AstChatMessage) => void
   setAnalysisStatus: (status: AnalysisStatus, progress?: string) => void
-  setExplain: (text: string | null, loading: boolean) => void
+  setExplain: (text: string | null, loading: boolean, requestId?: string | null) => void
   setChatLoading: (loading: boolean) => void
   setZoom: (zoom: number) => void
   setPan: (panX: number, panY: number) => void
@@ -94,6 +95,7 @@ const initialState = {
   analysisProgress: '',
   explainText: null,
   explainLoading: false,
+  explainRequestId: null as string | null,
   chatLoading: false,
   zoom: 1,
   panX: 0,
@@ -126,6 +128,7 @@ function clearSelectionScopedState() {
     impactError: null,
     explainText: null,
     explainLoading: false,
+    explainRequestId: null,
   }
 }
 
@@ -209,7 +212,12 @@ export const useAstStore = create<AstStore>((set) => ({
       analysisProgress: progress ?? s.analysisProgress,
     })),
 
-  setExplain: (explainText, explainLoading) => set({ explainText, explainLoading }),
+  setExplain: (explainText, explainLoading, explainRequestId) =>
+    set((s) => ({
+      explainText,
+      explainLoading,
+      explainRequestId: explainRequestId === undefined ? s.explainRequestId : explainRequestId,
+    })),
 
   setChatLoading: (chatLoading) => set({ chatLoading }),
 

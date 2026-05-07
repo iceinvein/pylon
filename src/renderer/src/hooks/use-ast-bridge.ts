@@ -34,10 +34,11 @@ export function useAstBridge() {
 
   useEffect(() => {
     const unsub = window.api.onAstExplainResult((data) => {
-      const d = data as { text: string; done: boolean }
+      const d = data as { text: string; done: boolean; requestId?: string }
       const state = useAstStore.getState()
+      if (d.requestId && state.explainRequestId !== d.requestId) return
       if (!state.explainLoading) return
-      state.setExplain(d.text, !d.done)
+      state.setExplain(d.text, !d.done, d.requestId ?? state.explainRequestId)
     })
     return unsub
   }, [])

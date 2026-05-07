@@ -42,8 +42,9 @@ export function FileAstView({ fileAst, fileName }: FileAstViewProps) {
   )
 
   const handleExplain = useCallback((nodeId: string, nodeName: string, filePath: string) => {
-    useAstStore.getState().setExplain(null, true)
-    window.api.explainAstNode(nodeId, filePath, nodeName)
+    const requestId = `file-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    useAstStore.getState().setExplain(null, true, requestId)
+    window.api.explainAstNode(nodeId, filePath, nodeName, requestId)
   }, [])
 
   return (

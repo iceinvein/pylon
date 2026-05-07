@@ -136,8 +136,9 @@ export function RepoMapView({ repoGraph, archAnalysis }: RepoMapViewProps) {
   )
 
   const handleExplain = useCallback((nodeId: string, nodeName: string, filePath: string) => {
-    useAstStore.getState().setExplain(null, true)
-    window.api.explainAstNode(nodeId, filePath, nodeName)
+    const requestId = `repo-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    useAstStore.getState().setExplain(null, true, requestId)
+    window.api.explainAstNode(nodeId, filePath, nodeName, requestId)
   }, [])
 
   /** Single-click on a file node: show code in side panel + ego network focus. */

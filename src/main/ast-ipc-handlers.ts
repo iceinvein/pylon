@@ -177,7 +177,10 @@ export function registerAstIpcHandlers(): void {
 
   ipcMain.handle(
     IPC.AST_EXPLAIN,
-    async (_e, args: { nodeId: string; filePath: string; context: string }) => {
+    async (
+      _e,
+      args: { nodeId: string; filePath: string; context: string; requestId?: string },
+    ) => {
       const win = BrowserWindow.getFocusedWindow()
       const { explainNode, resolveClaudePath, createCliQueryFn } = await import('./ast-claude')
       const claudePath = resolveClaudePath()
@@ -185,6 +188,7 @@ export function registerAstIpcHandlers(): void {
         const result = {
           text: 'Claude Code CLI not found. Install Claude Code to use this feature.',
           done: true,
+          requestId: args.requestId,
         }
         if (win) win.webContents.send(IPC.AST_EXPLAIN_RESULT, result)
         return result
@@ -195,7 +199,7 @@ export function registerAstIpcHandlers(): void {
         args.context || args.nodeId,
       )
       const text = await explainNode(args.filePath, nodeName, args.context, queryFn)
-      const result = { text, done: true }
+      const result = { text, done: true, requestId: args.requestId }
       if (win) win.webContents.send(IPC.AST_EXPLAIN_RESULT, result)
       return result
     },

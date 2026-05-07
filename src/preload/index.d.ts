@@ -278,7 +278,8 @@ type Api = {
     nodeId: string,
     filePath: string,
     context: string,
-  ) => Promise<{ text: string; done: boolean }>
+    requestId?: string,
+  ) => Promise<{ text: string; done: boolean; requestId?: string }>
   sendAstChat: (message: string, scope: string) => Promise<{ text: string; done: boolean }>
   onAstAnalysisProgress: (callback: (data: unknown) => void) => () => void
   onAstRepoGraph: (callback: (data: unknown) => void) => () => void

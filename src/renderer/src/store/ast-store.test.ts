@@ -25,6 +25,7 @@ describe('ast-store', () => {
       expect(s.analysisProgress).toBe('')
       expect(s.explainText).toBeNull()
       expect(s.explainLoading).toBe(false)
+      expect(s.explainRequestId).toBeNull()
       expect(s.chatLoading).toBe(false)
       expect(s.zoom).toBe(1)
       expect(s.panX).toBe(0)
@@ -205,17 +206,27 @@ describe('ast-store', () => {
 
   describe('setExplain', () => {
     test('sets explain text and loading state', () => {
-      useAstStore.getState().setExplain('explanation text', false)
+      useAstStore.getState().setExplain('explanation text', false, 'explain-1')
       const s = useAstStore.getState()
       expect(s.explainText).toBe('explanation text')
       expect(s.explainLoading).toBe(false)
+      expect(s.explainRequestId).toBe('explain-1')
     })
 
     test('can set loading true with null text', () => {
-      useAstStore.getState().setExplain(null, true)
+      useAstStore.getState().setExplain(null, true, 'explain-2')
       const s = useAstStore.getState()
       expect(s.explainText).toBeNull()
       expect(s.explainLoading).toBe(true)
+      expect(s.explainRequestId).toBe('explain-2')
+    })
+
+    test('preserves request ownership when request id is omitted', () => {
+      useAstStore.getState().setExplain(null, true, 'explain-3')
+      useAstStore.getState().setExplain('partial text', true)
+      const s = useAstStore.getState()
+      expect(s.explainText).toBe('partial text')
+      expect(s.explainRequestId).toBe('explain-3')
     })
   })
 
@@ -359,6 +370,7 @@ describe('impact selection state', () => {
     expect(s.impactError).toBeNull()
     expect(s.explainText).toBeNull()
     expect(s.explainLoading).toBe(false)
+    expect(s.explainRequestId).toBeNull()
   })
 
   test('setSelectedEntity preserves scoped state when target is unchanged', () => {
