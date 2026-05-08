@@ -34,6 +34,7 @@ export function registerTestIpcHandlers(): void {
         requirements?: string
         e2eOutputPath: string
         e2ePathReason?: string
+        customUrl?: string
         autoStartServer: boolean
         projectScan?: import('../shared/types').ProjectScan
       },

@@ -241,6 +241,7 @@ const api = {
     requirements?: string
     e2eOutputPath: string
     e2ePathReason?: string
+    customUrl?: string
     autoStartServer: boolean
     projectScan?: unknown
   }) => ipcRenderer.invoke(IPC.TEST_START_BATCH, args),

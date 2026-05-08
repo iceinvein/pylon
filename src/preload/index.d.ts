@@ -196,6 +196,7 @@ type Api = {
     requirements?: string
     e2eOutputPath: string
     e2ePathReason?: string
+    customUrl?: string
     autoStartServer: boolean
     projectScan?: unknown
   }) => Promise<import('../shared/types').TestExploration[]>

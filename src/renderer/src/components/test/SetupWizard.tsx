@@ -298,6 +298,9 @@ function Step3Config({
   mode,
   requirements,
   goalCount,
+  launchLoading,
+  launchError,
+  canLaunch,
   onSetAgentCount,
   onSetAutoStart,
   onSetCustomUrl,
@@ -316,6 +319,9 @@ function Step3Config({
   mode: ExplorationMode
   requirements: string
   goalCount: number
+  launchLoading: boolean
+  launchError: string | null
+  canLaunch: boolean
   onSetAgentCount: (n: number) => void
   onSetAutoStart: (enabled: boolean) => void
   onSetCustomUrl: (url: string | null) => void
@@ -480,13 +486,26 @@ function Step3Config({
         <button
           type="button"
           onClick={onLaunch}
-          className="flex items-center gap-2 rounded-lg bg-accent px-5 py-2 font-medium text-base-bg text-sm transition-colors hover:bg-accent/90"
+          disabled={!canLaunch || launchLoading}
+          className="flex items-center gap-2 rounded-lg bg-accent px-5 py-2 font-medium text-base-bg text-sm transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-40"
         >
-          <Play className="h-4 w-4" />
-          Start {agentCount} agent{agentCount !== 1 ? 's' : ''} on {goalCount} goal
-          {goalCount !== 1 ? 's' : ''}
+          {launchLoading ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Play className="h-4 w-4" />
+          )}
+          {launchLoading
+            ? 'Starting...'
+            : `Start ${agentCount} agent${agentCount !== 1 ? 's' : ''} on ${goalCount} goal${
+                goalCount !== 1 ? 's' : ''
+              }`}
         </button>
       </div>
+      {launchError && (
+        <p className="mt-2 rounded-lg border border-error/30 bg-error/10 px-3 py-2 text-error text-xs">
+          {launchError}
+        </p>
+      )}
     </div>
   )
 }
@@ -506,6 +525,8 @@ export function SetupWizard() {
   const agentCount = useTestStore((s) => s.agentCount)
   const autoStartServer = useTestStore((s) => s.autoStartServer)
   const customUrl = useTestStore((s) => s.customUrl)
+  const launchLoading = useTestStore((s) => s.launchLoading)
+  const launchError = useTestStore((s) => s.launchError)
   const setupStep = useTestStore((s) => s.setupStep)
 
   const selectProject = useTestStore((s) => s.selectProject)
@@ -523,6 +544,18 @@ export function SetupWizard() {
   const [e2ePath, setE2ePath] = useState('')
   const [mode, setMode] = useState<ExplorationMode>('manual')
   const [requirements, setRequirements] = useState('')
+
+  function normalizeUrlInput(value: string): string | null {
+    const trimmed = value.trim()
+    if (!trimmed) return null
+    const withProtocol = /^[a-z][a-z\d+.-]*:\/\//i.test(trimmed) ? trimmed : `http://${trimmed}`
+    try {
+      const parsed = new URL(withProtocol)
+      return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? parsed.toString() : null
+    } catch {
+      return null
+    }
+  }
 
   // Load projects on mount
   useEffect(() => {
@@ -550,18 +583,25 @@ export function SetupWizard() {
     const allGoals = [...selectedGoalTexts, ...customGoals]
     if (allGoals.length === 0) return
 
+    const normalizedCustomUrl = customUrl ? normalizeUrlInput(customUrl) : null
+    if (!autoStartServer && customUrl && !normalizedCustomUrl) return
+
     startBatch(selectedProject, {
       goals: allGoals,
       agentCount,
       mode,
       requirements: mode === 'requirements' ? requirements : undefined,
       e2eOutputPath: e2ePath,
+      customUrl: normalizedCustomUrl ?? undefined,
       autoStartServer,
       projectScan: projectScan ?? undefined,
     })
   }
 
   const selectedGoalCount = suggestedGoals.filter((g) => g.selected).length + customGoals.length
+  const normalizedCustomUrl = customUrl ? normalizeUrlInput(customUrl) : null
+  const hasInvalidCustomUrl = !autoStartServer && !!customUrl && !normalizedCustomUrl
+  const canLaunch = selectedGoalCount > 0 && !!selectedProject && !!e2ePath && !hasInvalidCustomUrl
 
   const steps = [1, 2, 3] as const
 
@@ -649,6 +689,11 @@ export function SetupWizard() {
               mode={mode}
               requirements={requirements}
               goalCount={selectedGoalCount}
+              launchLoading={launchLoading}
+              launchError={
+                hasInvalidCustomUrl ? 'Enter a valid http:// or https:// URL.' : launchError
+              }
+              canLaunch={canLaunch}
               onSetAgentCount={setAgentCount}
               onSetAutoStart={setAutoStartServer}
               onSetCustomUrl={setCustomUrl}

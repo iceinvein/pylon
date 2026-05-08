@@ -19,6 +19,7 @@ type BatchConfig = {
   requirements?: string
   e2eOutputPath: string
   e2ePathReason?: string
+  customUrl?: string
   autoStartServer: boolean
   projectScan?: ProjectScan
 }
@@ -51,6 +52,8 @@ type TestStore = {
 
   // Server override
   customUrl: string | null
+  launchLoading: boolean
+  launchError: string | null
 
   // Concurrency
   agentCount: number
@@ -88,6 +91,7 @@ type TestStore = {
   addCustomGoal: (goal: string) => void
   removeCustomGoal: (index: number) => void
   setCustomUrl: (url: string | null) => void
+  clearLaunchError: () => void
   setAgentCount: (count: number) => void
   setAutoStartServer: (enabled: boolean) => void
   startBatch: (cwd: string, config: BatchConfig) => Promise<void>
@@ -121,6 +125,8 @@ export const useTestStore = create<TestStore>((set, get) => ({
   goalsLoading: false,
   customGoals: [],
   customUrl: null,
+  launchLoading: false,
+  launchError: null,
   agentCount: 1,
   autoStartServer: true,
   selectedExplorationId: null,
@@ -155,6 +161,8 @@ export const useTestStore = create<TestStore>((set, get) => ({
       goalsLoading: false,
       customGoals: [],
       customUrl: null,
+      launchLoading: false,
+      launchError: null,
       selectedExplorationId: null,
       agentMessagesByExploration: {},
     })
@@ -209,13 +217,16 @@ export const useTestStore = create<TestStore>((set, get) => ({
     set((s) => ({ customGoals: s.customGoals.filter((_, i) => i !== index) }))
   },
 
-  setCustomUrl: (url) => set({ customUrl: url }),
+  setCustomUrl: (url) => set({ customUrl: url, launchError: null }),
+
+  clearLaunchError: () => set({ launchError: null }),
 
   setAgentCount: (count) => set({ agentCount: Math.max(1, Math.min(5, count)) }),
 
-  setAutoStartServer: (enabled) => set({ autoStartServer: enabled }),
+  setAutoStartServer: (enabled) => set({ autoStartServer: enabled, launchError: null }),
 
   startBatch: async (cwd, config) => {
+    set({ launchLoading: true, launchError: null })
     try {
       const explorations = await window.api.startBatch({
         cwd,
@@ -225,6 +236,7 @@ export const useTestStore = create<TestStore>((set, get) => ({
         requirements: config.requirements,
         e2eOutputPath: config.e2eOutputPath,
         e2ePathReason: config.e2ePathReason,
+        customUrl: config.customUrl,
         autoStartServer: config.autoStartServer,
         projectScan: config.projectScan,
       })
@@ -253,10 +265,16 @@ export const useTestStore = create<TestStore>((set, get) => ({
           lastBatchId: explorations[0]?.batchId ?? null,
           agentFilter: null,
           severityFilter: null,
+          launchLoading: false,
+          launchError: null,
         }
       })
     } catch (err) {
       console.error('startBatch failed:', err)
+      set({
+        launchLoading: false,
+        launchError: err instanceof Error ? err.message : String(err),
+      })
     }
   },
 
@@ -495,11 +513,37 @@ export const useTestStore = create<TestStore>((set, get) => ({
       comparisonTargetId: targetId,
     })
     const state = get()
-    if (!state.findingsByExploration[baselineId]) {
-      state.loadExploration(baselineId)
+    const baseline = state.explorations.find((e) => e.id === baselineId)
+    const target = state.explorations.find((e) => e.id === targetId)
+    const idsToLoad = new Set<string>([baselineId, targetId])
+
+    if (baseline?.batchId) {
+      for (const exp of state.explorations) {
+        if (exp.batchId === baseline.batchId) idsToLoad.add(exp.id)
+      }
     }
-    if (!state.findingsByExploration[targetId]) {
-      state.loadExploration(targetId)
+    if (target?.batchId) {
+      for (const exp of state.explorations) {
+        if (exp.batchId === target.batchId) idsToLoad.add(exp.id)
+      }
+    }
+
+    for (const id of idsToLoad) {
+      if (state.findingsByExploration[id]) continue
+      window.api
+        .getExploration(id)
+        .then((result) => {
+          if (!result) return
+          set((s) => ({
+            findingsByExploration: { ...s.findingsByExploration, [id]: result.findings },
+            testsByExploration: { ...s.testsByExploration, [id]: result.generatedTestPaths },
+            streamingTexts: { ...s.streamingTexts, [id]: s.streamingTexts[id] ?? '' },
+            explorations: s.explorations.map((e) => (e.id === id ? { ...e, ...result } : e)),
+          }))
+        })
+        .catch((err) => {
+          console.error('load comparison exploration failed:', err)
+        })
     }
   },
 

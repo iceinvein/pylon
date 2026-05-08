@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { resolve, sep } from 'node:path'
 import { createSdkMcpServer, query } from '@anthropic-ai/claude-agent-sdk'
 import { app, type BrowserWindow } from 'electron'
 import { z } from 'zod'
@@ -44,6 +44,7 @@ class TestManager {
   private window: BrowserWindow | null = null
   private batchCompletionCallbacks = new Map<string, { remaining: number; cwd: string }>()
   private serverCleanupRegistered = false
+  private stoppedExplorations = new Set<string>()
 
   setWindow(window: BrowserWindow): void {
     this.window = window
@@ -272,6 +273,7 @@ class TestManager {
     requirements?: string
     e2eOutputPath: string
     e2ePathReason?: string
+    customUrl?: string
     autoStartServer: boolean
     projectScan?: ProjectScan
   }): Promise<TestExploration[]> {
@@ -298,7 +300,11 @@ class TestManager {
       )
     }
 
-    const effectiveUrl = serverUrl || config.projectScan?.detectedUrl || `http://localhost:3000`
+    const effectiveUrl =
+      serverUrl ||
+      this.normalizeTargetUrl(config.customUrl) ||
+      config.projectScan?.detectedUrl ||
+      `http://localhost:3000`
     logger.info(`effectiveUrl=${effectiveUrl} (serverUrl=${serverUrl || 'empty'})`)
 
     // Create exploration records (but don't run yet — we control concurrency)
@@ -363,6 +369,16 @@ class TestManager {
     const runNext = async () => {
       const exploration = queue.shift()
       if (!exploration) return
+
+      if (this.stoppedExplorations.has(exploration.id)) {
+        this.stoppedExplorations.delete(exploration.id)
+        this.onExplorationComplete(batchId)
+        if (queue.length > 0) {
+          const next = runNext()
+          if (next) running.add(next)
+        }
+        return
+      }
 
       this.updateStatus(exploration.id, 'running', 0, 0)
       this.send(IPC.TEST_EXPLORATION_UPDATE, { explorationId: exploration.id, status: 'running' })
@@ -672,7 +688,15 @@ Generated test file conventions:
     const active = this.activeExplorations.get(explorationId)
     if (active) {
       active.abortController.abort()
+      return
     }
+
+    this.stoppedExplorations.add(explorationId)
+    this.updateStatus(explorationId, 'stopped', 0, 0)
+    this.send(IPC.TEST_EXPLORATION_UPDATE, {
+      explorationId,
+      status: 'stopped',
+    } satisfies ExplorationUpdate)
   }
 
   private updateStatus(
@@ -726,10 +750,23 @@ Generated test file conventions:
 
   readGeneratedTest(cwd: string, relativePath: string): string | null {
     try {
-      const fullPath = join(cwd, relativePath)
+      const root = resolve(cwd)
+      const fullPath = resolve(root, relativePath)
       // Security: ensure the resolved path is within cwd
-      if (!fullPath.startsWith(cwd)) return null
+      if (fullPath !== root && !fullPath.startsWith(`${root}${sep}`)) return null
       return readFileSync(fullPath, 'utf-8')
+    } catch {
+      return null
+    }
+  }
+
+  private normalizeTargetUrl(value?: string): string | null {
+    const trimmed = value?.trim()
+    if (!trimmed) return null
+    const withProtocol = /^[a-z][a-z\d+.-]*:\/\//i.test(trimmed) ? trimmed : `http://${trimmed}`
+    try {
+      const parsed = new URL(withProtocol)
+      return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? parsed.toString() : null
     } catch {
       return null
     }

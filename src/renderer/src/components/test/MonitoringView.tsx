@@ -52,7 +52,7 @@ export function MonitoringView() {
 
   const handleStopAll = () => {
     for (const exp of batchExplorations) {
-      if (exp.status === 'running') {
+      if (exp.status === 'running' || exp.status === 'pending') {
         stopExploration(exp.id)
       }
     }
@@ -81,7 +81,7 @@ export function MonitoringView() {
     }
   }
 
-  const goalCount = suggestedGoals.filter((g) => g.selected).length
+  const goalCount = batchExplorations.length || suggestedGoals.filter((g) => g.selected).length
 
   return (
     <div className="flex h-full flex-col">

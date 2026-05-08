@@ -42,6 +42,7 @@ export function FindingsPanel({
       goalText: string
       agentColor: string
       testPaths: string[]
+      findingCount: number
     }> = []
 
     const filteredExplorations = agentFilter
@@ -61,6 +62,7 @@ export function FindingsPanel({
           goalText,
           agentColor: getAgentColor(agentIndex),
           testPaths: tests,
+          findingCount: findings.length,
         })
       }
     }
@@ -130,7 +132,7 @@ export function FindingsPanel({
         )}
         <AnimatePresence mode="popLayout">
           <div className="space-y-2">
-            {filteredFindings.map(({ finding, agentColor, goalText, testPaths }) => (
+            {filteredFindings.map(({ finding, agentColor, goalText, testPaths, findingCount }) => (
               <motion.div
                 key={finding.id}
                 initial={{ opacity: 0, y: 8 }}
@@ -142,7 +144,9 @@ export function FindingsPanel({
                   finding={finding}
                   agentColor={agentColor}
                   goalText={goalText}
-                  linkedTestPath={testPaths[0] ?? null}
+                  linkedTestPath={
+                    findingCount === 1 && testPaths.length === 1 ? testPaths[0] : null
+                  }
                   cwd={cwd}
                 />
               </motion.div>

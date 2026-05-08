@@ -23,23 +23,31 @@ export function ComparisonView() {
   const baselineExploration = explorations.find((e) => e.id === comparisonBaselineId)
   const targetExploration = explorations.find((e) => e.id === comparisonTargetId)
 
+  const baselineExplorationIds = useMemo(() => {
+    if (!baselineExploration) return []
+    if (!baselineExploration.batchId) return [baselineExploration.id]
+    return explorations.filter((e) => e.batchId === baselineExploration.batchId).map((e) => e.id)
+  }, [baselineExploration, explorations])
+
+  const targetExplorationIds = useMemo(() => {
+    if (!targetExploration) return []
+    if (!targetExploration.batchId) return [targetExploration.id]
+    return explorations.filter((e) => e.batchId === targetExploration.batchId).map((e) => e.id)
+  }, [targetExploration, explorations])
+
   const baselineFindings = useMemo(() => {
     if (!baselineExploration) return []
-    if (baselineExploration.batchId) {
-      const batchExps = explorations.filter((e) => e.batchId === baselineExploration.batchId)
-      return batchExps.flatMap((e) => findingsByExploration[e.id] ?? [])
-    }
-    return findingsByExploration[baselineExploration.id] ?? []
-  }, [baselineExploration, explorations, findingsByExploration])
+    return baselineExplorationIds.flatMap((id) => findingsByExploration[id] ?? [])
+  }, [baselineExploration, baselineExplorationIds, findingsByExploration])
 
   const targetFindings = useMemo(() => {
     if (!targetExploration) return []
-    if (targetExploration.batchId) {
-      const batchExps = explorations.filter((e) => e.batchId === targetExploration.batchId)
-      return batchExps.flatMap((e) => findingsByExploration[e.id] ?? [])
-    }
-    return findingsByExploration[targetExploration.id] ?? []
-  }, [targetExploration, explorations, findingsByExploration])
+    return targetExplorationIds.flatMap((id) => findingsByExploration[id] ?? [])
+  }, [targetExploration, targetExplorationIds, findingsByExploration])
+
+  const comparisonLoading = [...baselineExplorationIds, ...targetExplorationIds].some(
+    (id) => !findingsByExploration[id],
+  )
 
   const diff = useMemo(
     () => diffFindings(baselineFindings, targetFindings),
@@ -79,6 +87,9 @@ export function ComparisonView() {
         <span className="rounded bg-base-border px-2 py-0.5 text-base-text-muted text-xs">
           {diff.unchanged.length} unchanged
         </span>
+        {comparisonLoading && (
+          <span className="text-base-text-faint text-xs">Loading full batch data...</span>
+        )}
       </div>
 
       <div className="flex min-h-0 flex-1">
