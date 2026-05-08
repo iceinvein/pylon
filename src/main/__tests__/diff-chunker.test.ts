@@ -90,21 +90,37 @@ test('classifyFile does not misclassify non-test files matching naming hints', (
 test('classifyFile identifies generated/lock files as skip', () => {
   // JS/TS lockfiles
   expect(classifyFile('package-lock.json')).toBe('skip')
+  expect(classifyFile('npm-shrinkwrap.json')).toBe('skip')
   expect(classifyFile('yarn.lock')).toBe('skip')
+  expect(classifyFile('bun.lock')).toBe('skip')
   expect(classifyFile('bun.lockb')).toBe('skip')
   expect(classifyFile('pnpm-lock.yaml')).toBe('skip')
+  expect(classifyFile('deno.lock')).toBe('skip')
+  expect(classifyFile('jsr.lock')).toBe('skip')
   // Other ecosystem lockfiles
   expect(classifyFile('Cargo.lock')).toBe('skip')
   expect(classifyFile('Gemfile.lock')).toBe('skip')
   expect(classifyFile('poetry.lock')).toBe('skip')
   expect(classifyFile('Pipfile.lock')).toBe('skip')
+  expect(classifyFile('uv.lock')).toBe('skip')
+  expect(classifyFile('pdm.lock')).toBe('skip')
+  expect(classifyFile('pixi.lock')).toBe('skip')
+  expect(classifyFile('conda-lock.yml')).toBe('skip')
+  expect(classifyFile('conda-lock.yaml')).toBe('skip')
   expect(classifyFile('composer.lock')).toBe('skip')
   expect(classifyFile('go.sum')).toBe('skip')
+  expect(classifyFile('go.work.sum')).toBe('skip')
   expect(classifyFile('Podfile.lock')).toBe('skip')
   expect(classifyFile('mix.lock')).toBe('skip')
   expect(classifyFile('pubspec.lock')).toBe('skip')
+  expect(classifyFile('gradle.lockfile')).toBe('skip')
+  expect(classifyFile('gradle/dependency-locks/runtimeClasspath.lockfile')).toBe('skip')
+  expect(classifyFile('Package.resolved')).toBe('skip')
+  expect(classifyFile('.swiftpm/Package.resolved')).toBe('skip')
+  expect(classifyFile('.terraform.lock.hcl')).toBe('skip')
   // Nested lockfiles (monorepo)
   expect(classifyFile('packages/web/yarn.lock')).toBe('skip')
+  expect(classifyFile('packages/web/bun.lock')).toBe('skip')
   expect(classifyFile('services/api/Cargo.lock')).toBe('skip')
   // ORM migrations / snapshots
   expect(classifyFile('drizzle/meta/0000_snapshot.json')).toBe('skip')
@@ -126,6 +142,12 @@ test('classifyFile identifies generated/lock files as skip', () => {
   expect(classifyFile('build/output.js')).toBe('skip')
   expect(classifyFile('.next/cache/data.json')).toBe('skip')
   expect(classifyFile('packages/desktop/src/routeTree.gen.ts')).toBe('skip')
+  expect(classifyFile('tsconfig.tsbuildinfo')).toBe('skip')
+  expect(classifyFile('packages/web/tsconfig.app.tsbuildinfo')).toBe('skip')
+  expect(classifyFile('.eslintcache')).toBe('skip')
+  expect(classifyFile('.stylelintcache')).toBe('skip')
+  expect(classifyFile('.pnp.cjs')).toBe('skip')
+  expect(classifyFile('.pnp.loader.mjs')).toBe('skip')
   // Documentation / prose
   expect(classifyFile('README.md')).toBe('skip')
   expect(classifyFile('docs/guide.md')).toBe('skip')
@@ -203,12 +225,18 @@ diff --git a/package-lock.json b/package-lock.json
 +++ b/package-lock.json
 @@ -1,1 +1,1 @@
 -old
++new
+diff --git a/bun.lock b/bun.lock
+--- a/bun.lock
++++ b/bun.lock
+@@ -1,1 +1,1 @@
+-old
 +new`
 
   const result = chunkDiff(diff, { tokenBudget: 100_000 })
   expect(result.chunks).toHaveLength(1)
   expect(result.chunks[0].files).toEqual(['src/app.ts'])
-  expect(result.skippedFiles).toEqual(['package-lock.json'])
+  expect(result.skippedFiles).toEqual(['package-lock.json', 'bun.lock'])
 })
 
 test('chunkDiff prioritizes critical files before low-priority files', () => {
