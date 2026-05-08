@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process'
 import { createHash, randomUUID } from 'node:crypto'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync } from 'node:fs'
 import { mkdir, rm } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { basename, join } from 'node:path'
@@ -44,6 +44,11 @@ import {
   partitionForCritic,
 } from './pr-review-critic'
 import { deduplicateFindings } from './pr-review-dedupe'
+import {
+  type McpStdioConfig,
+  resolveCodeIntelligenceMcpConfig as resolveMcpConfig,
+} from './pr-review-mcp-config'
+import { appendReviewOutputText, extractReviewOutputText } from './pr-review-output'
 import {
   applyPeerReviewChanges,
   buildPeerReviewPrompt,
@@ -504,29 +509,14 @@ type StoredReviewThread = {
   lastFinding: ReviewFinding | null
 }
 
-type McpStdioOverride = { command: string; args?: string[]; env?: Record<string, string> }
-
-function readDbMcpOverride(): McpStdioOverride | null {
+function readDbMcpOverride(): McpStdioConfig | null {
   const row = getDb()
     .prepare("SELECT value FROM settings WHERE key = 'prReview.mcp.codeIntelligence'")
     .get() as { value: string } | undefined
   if (!row?.value) return null
   try {
-    const parsed = JSON.parse(row.value) as Partial<McpStdioOverride>
+    const parsed = JSON.parse(row.value) as Partial<McpStdioConfig>
     return parsed.command ? { command: parsed.command, args: parsed.args, env: parsed.env } : null
-  } catch {
-    return null
-  }
-}
-
-function readMcpFromFile(path: string): McpStdioOverride | null {
-  if (!existsSync(path)) return null
-  try {
-    const json = JSON.parse(readFileSync(path, 'utf8')) as {
-      mcpServers?: Record<string, Partial<McpStdioOverride>>
-    }
-    const entry = json.mcpServers?.['code-intelligence']
-    return entry?.command ? { command: entry.command, args: entry.args, env: entry.env } : null
   } catch {
     return null
   }
@@ -1655,9 +1645,7 @@ class PrReviewManager {
       reviewAgent.model,
       undefined,
       'pr-review',
-      reviewAgent.provider === 'claude' && mcpConfig
-        ? { mcpServers: { 'code-intelligence': mcpConfig } }
-        : undefined,
+      mcpConfig ? { mcpServers: { 'code-intelligence': mcpConfig } } : undefined,
     )
     sessionManager.setPermissionMode(sessionId, 'auto-approve')
     sessionManager.setEffort(sessionId, reviewAgent.effort)
@@ -1679,17 +1667,13 @@ class PrReviewManager {
 
     let lastSendTime = 0
     const unsub = sessionManager.onMessage(sessionId, (message: unknown) => {
-      const msg = message as Record<string, unknown>
-      if (msg.type === 'stream_event') {
-        const event = msg.event as Record<string, unknown> | undefined
-        const delta = event?.delta as Record<string, unknown> | undefined
-        if (delta?.type === 'text_delta' && typeof delta.text === 'string') {
-          agentSession.streamedText += delta.text
-          const now = Date.now()
-          if (now - lastSendTime > STREAM_THROTTLE_MS) {
-            lastSendTime = now
-            this.sendAgentProgress(reviewId, active)
-          }
+      const text = extractReviewOutputText(message)
+      if (text) {
+        agentSession.streamedText = appendReviewOutputText(agentSession.streamedText, text)
+        const now = Date.now()
+        if (now - lastSendTime > STREAM_THROTTLE_MS) {
+          lastSendTime = now
+          this.sendAgentProgress(reviewId, active)
         }
       }
     })
@@ -2341,24 +2325,7 @@ class PrReviewManager {
     args?: string[]
     env?: Record<string, string>
   } | null {
-    // 1. Explicit user override in DB takes precedence.
-    const fromDb = readDbMcpOverride()
-    if (fromDb) return fromDb
-
-    // 2. Project-committed .mcp.json in any candidate cwd (worktree or repo path).
-    for (const cwd of candidateCwds) {
-      if (!cwd) continue
-      const fromProject = readMcpFromFile(join(cwd, '.mcp.json'))
-      if (fromProject) return fromProject
-    }
-
-    // 3. SDK user-scope: ~/.claude.json -> mcpServers["code-intelligence"].
-    //    The Agent SDK loads MCP servers from this file for regular sessions, so
-    //    PR reviews should reuse the same definition by default.
-    const fromUserScope = readMcpFromFile(join(homedir(), '.claude.json'))
-    if (fromUserScope) return fromUserScope
-
-    return null
+    return resolveMcpConfig(readDbMcpOverride(), candidateCwds)
   }
 
   // ── Persistence queries ──

@@ -19,6 +19,7 @@
 import type {
   ApprovalMode,
   Codex,
+  CodexOptions,
   Input,
   ModelReasoningEffort,
   ThreadEvent,
@@ -109,6 +110,25 @@ const CODEX_CAPABILITIES: ProviderCapabilities = {
   planMode: false,
 }
 
+export function buildCodexConfigOverrides(
+  mcpServers?: ProviderSessionConfig['mcpServers'],
+): NonNullable<CodexOptions['config']> | undefined {
+  if (!mcpServers || Object.keys(mcpServers).length === 0) return undefined
+
+  return {
+    mcp_servers: Object.fromEntries(
+      Object.entries(mcpServers).map(([name, config]) => {
+        const serverConfig: Record<string, string | string[] | Record<string, string>> = {
+          command: config.command,
+        }
+        if (config.args) serverConfig.args = config.args
+        if (config.env) serverConfig.env = config.env
+        return [name, serverConfig]
+      }),
+    ),
+  }
+}
+
 // ── Approval Mode Mapping ────────────────────────
 //
 // Pylon's PermissionMode → Codex's ApprovalMode.
@@ -177,7 +197,8 @@ class CodexSession implements AgentSession {
   private async ensureCodex(): Promise<Codex> {
     if (!this.codex) {
       const sdk = await loadCodexSdk()
-      this.codex = new sdk.Codex()
+      const config = buildCodexConfigOverrides(this.config.mcpServers)
+      this.codex = new sdk.Codex(config ? { config } : undefined)
     }
     return this.codex
   }
@@ -272,7 +293,10 @@ class CodexSession implements AgentSession {
             skills: [],
             slash_commands: [],
             plugins: [],
-            mcp_servers: [],
+            mcp_servers: Object.keys(this.config.mcpServers ?? {}).map((name) => ({
+              name,
+              status: 'configured',
+            })),
             model: this.config.model,
             permissionMode: this.config.permissionMode,
             claude_code_version: '',
@@ -396,6 +420,7 @@ class CodexSession implements AgentSession {
 
       case 'mcp_tool_call': {
         this.config.onBeforeToolUse?.(item.tool, item.arguments as Record<string, unknown>)
+        const toolName = `mcp__${item.server}__${item.tool}`
 
         yield {
           type: 'raw_passthrough',
@@ -407,7 +432,7 @@ class CodexSession implements AgentSession {
                 {
                   type: 'tool_use',
                   id: item.id,
-                  name: item.tool,
+                  name: toolName,
                   input: item.arguments,
                 },
               ],
@@ -589,6 +614,7 @@ class CodexSession implements AgentSession {
         const output = item.error
           ? `Error: ${item.error.message}`
           : JSON.stringify(item.result ?? {})
+        const toolName = `mcp__${item.server}__${item.tool}`
 
         yield {
           type: 'raw_passthrough',
@@ -598,7 +624,7 @@ class CodexSession implements AgentSession {
         yield {
           type: 'tool_result',
           toolId: item.id,
-          toolName: item.tool,
+          toolName,
           output,
           isError: item.status === 'failed',
         }

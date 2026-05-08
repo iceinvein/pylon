@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { HeuristicContextBackend } from '../pr-context/heuristic-context-backend'
 import { PrContextBuilder } from '../pr-context/pr-context-builder'
+import { appendReviewOutputText, extractReviewOutputText } from '../pr-review-output'
 
 describe('pr-review-manager context integration', () => {
   test('PrContextBuilder writes pr-context.json into worktree path', async () => {
@@ -24,5 +25,37 @@ describe('pr-review-manager context integration', () => {
     } finally {
       await rm(worktreePath, { recursive: true, force: true })
     }
+  })
+})
+
+describe('PR review output collection', () => {
+  test('extracts Codex completed assistant text for findings parsing', () => {
+    const text = '```review-findings\n[]\n```'
+    const message = {
+      type: 'assistant',
+      message: {
+        content: [{ type: 'text', text }],
+      },
+    }
+
+    expect(extractReviewOutputText(message)).toBe(text)
+  })
+
+  test('extracts Claude-style stream text deltas', () => {
+    const message = {
+      type: 'stream_event',
+      event: {
+        type: 'content_block_delta',
+        delta: { type: 'text_delta', text: '```review-findings\n[]\n```' },
+      },
+    }
+
+    expect(extractReviewOutputText(message)).toBe('```review-findings\n[]\n```')
+  })
+
+  test('does not duplicate completed text that was already streamed', () => {
+    const streamed = '```review-findings\n[]\n```'
+
+    expect(appendReviewOutputText(streamed, streamed)).toBe(streamed)
   })
 })
