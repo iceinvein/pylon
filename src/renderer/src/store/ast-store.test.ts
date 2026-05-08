@@ -1,9 +1,63 @@
 import { beforeEach, describe, expect, test } from 'bun:test'
-import type { AstChatMessage, AstOverlay } from '../../../shared/types'
+import type { AstChatMessage, AstOverlay, RepoGraph } from '../../../shared/types'
 import { useAstStore } from './ast-store'
 
 function resetStore() {
   useAstStore.getState().reset()
+}
+
+function makeGraph(): RepoGraph {
+  return {
+    files: [
+      {
+        filePath: '/workspace/app/src/components/Button.tsx',
+        language: 'tsx',
+        declarations: [
+          {
+            id: 'Button',
+            type: 'function',
+            name: 'Button',
+            startLine: 1,
+            endLine: 10,
+            children: [],
+            filePath: '/workspace/app/src/components/Button.tsx',
+          },
+        ],
+        imports: [],
+        size: 100,
+        lastModified: 1700000000,
+      },
+      {
+        filePath: '/workspace/app/src/store/session-store.ts',
+        language: 'typescript',
+        declarations: [
+          {
+            id: 'createSessionStore',
+            type: 'function',
+            name: 'createSessionStore',
+            startLine: 1,
+            endLine: 20,
+            children: [
+              {
+                id: 'restoreSession',
+                type: 'function',
+                name: 'restoreSession',
+                startLine: 5,
+                endLine: 8,
+                children: [],
+                filePath: '/workspace/app/src/store/session-store.ts',
+              },
+            ],
+            filePath: '/workspace/app/src/store/session-store.ts',
+          },
+        ],
+        imports: [],
+        size: 200,
+        lastModified: 1700000000,
+      },
+    ],
+    edges: [],
+  }
 }
 
 describe('ast-store', () => {
@@ -29,6 +83,8 @@ describe('ast-store', () => {
       expect(s.zoom).toBe(1)
       expect(s.panX).toBe(0)
       expect(s.panY).toBe(0)
+      expect(s.searchQuery).toBe('')
+      expect(s.searchMatches).toEqual([])
     })
   })
 
@@ -44,6 +100,14 @@ describe('ast-store', () => {
       const graph = { files: [], edges: [] }
       useAstStore.getState().setRepoGraph(graph)
       expect(useAstStore.getState().repoGraph).toEqual(graph)
+    })
+
+    test('recomputes existing search when the graph changes', () => {
+      useAstStore.getState().setSearchQuery('session')
+      useAstStore.getState().setRepoGraph(makeGraph())
+      expect(useAstStore.getState().searchMatches).toEqual([
+        '/workspace/app/src/store/session-store.ts',
+      ])
     })
   })
 
@@ -135,9 +199,11 @@ describe('ast-store', () => {
     })
 
     test('can toggle multiple overlays independently', () => {
+      useAstStore.getState().toggleOverlay('groups')
       useAstStore.getState().toggleOverlay('deps')
       useAstStore.getState().toggleOverlay('calls')
       const s = useAstStore.getState()
+      expect(s.activeOverlays.has('groups')).toBe(true)
       expect(s.activeOverlays.has('deps')).toBe(true)
       expect(s.activeOverlays.has('calls')).toBe(true)
       expect(s.activeOverlays.has('dataflow')).toBe(false)
@@ -215,6 +281,40 @@ describe('ast-store', () => {
     })
   })
 
+  describe('setSearchQuery', () => {
+    test('matches file names and paths', () => {
+      useAstStore.getState().setRepoGraph(makeGraph())
+
+      useAstStore.getState().setSearchQuery('components')
+      expect(useAstStore.getState().searchMatches).toEqual([
+        '/workspace/app/src/components/Button.tsx',
+      ])
+
+      useAstStore.getState().setSearchQuery('button')
+      expect(useAstStore.getState().searchMatches).toEqual([
+        '/workspace/app/src/components/Button.tsx',
+      ])
+    })
+
+    test('matches nested declaration names', () => {
+      useAstStore.getState().setRepoGraph(makeGraph())
+      useAstStore.getState().setSearchQuery('restore')
+
+      expect(useAstStore.getState().searchMatches).toEqual([
+        '/workspace/app/src/store/session-store.ts',
+      ])
+    })
+
+    test('keeps the query visible when there are no matches', () => {
+      useAstStore.getState().setRepoGraph(makeGraph())
+      useAstStore.getState().setSearchQuery('missing')
+
+      const s = useAstStore.getState()
+      expect(s.searchQuery).toBe('missing')
+      expect(s.searchMatches).toEqual([])
+    })
+  })
+
   describe('reset', () => {
     test('restores all state to initial values', () => {
       // Dirty the store
@@ -226,6 +326,7 @@ describe('ast-store', () => {
       useAstStore.getState().toggleOverlay('deps')
       useAstStore.getState().addChatMessage({ role: 'user', content: 'hi' })
       useAstStore.getState().setAnalysisStatus('ready', 'Done')
+      useAstStore.getState().setSearchQuery('foo')
 
       useAstStore.getState().reset()
 
@@ -240,6 +341,8 @@ describe('ast-store', () => {
       expect(s.chatMessages).toEqual([])
       expect(s.analysisStatus).toBe('idle')
       expect(s.analysisProgress).toBe('')
+      expect(s.searchQuery).toBe('')
+      expect(s.searchMatches).toEqual([])
     })
   })
 })

@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useRef } from 'react'
+import { AST_GRAPH_COLORS } from '../../lib/ast-colors'
 import type { LayoutNode } from '../../lib/ast-layout'
 import { useAstStore } from '../../store/ast-store'
 
@@ -96,7 +97,7 @@ export function Minimap({ nodes, canvasWidth, canvasHeight }: MinimapProps) {
             cx={toMiniX(node.x + node.width / 2)}
             cy={toMiniY(node.y + node.height / 2)}
             r={node.isCluster ? 3 : 2}
-            fill={node.layerColor ?? '#484f58'}
+            fill={node.layerColor ?? AST_GRAPH_COLORS.mutedStroke}
             opacity={0.8}
           />
         ))}
@@ -106,9 +107,9 @@ export function Minimap({ nodes, canvasWidth, canvasHeight }: MinimapProps) {
           y={toMiniY(vpY)}
           width={vpW * scale}
           height={vpH * scale}
-          fill="#58a6ff"
+          fill={AST_GRAPH_COLORS.selected}
           fillOpacity={0.1}
-          stroke="#58a6ff"
+          stroke={AST_GRAPH_COLORS.selected}
           strokeWidth={1}
           strokeOpacity={0.5}
           rx={2}

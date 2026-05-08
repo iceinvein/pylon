@@ -4,6 +4,7 @@ import type {
   AstChatMessage,
   AstNode,
   AstOverlay,
+  FileNode,
   RepoGraph,
 } from '../../../shared/types'
 
@@ -79,12 +80,38 @@ const initialState = {
   searchMatches: [] as string[],
 }
 
+function nodeMatchesQuery(node: AstNode, lowerQuery: string): boolean {
+  if (node.name.toLowerCase().includes(lowerQuery)) return true
+  return node.children.some((child) => nodeMatchesQuery(child, lowerQuery))
+}
+
+function getSearchMatches(graph: RepoGraph | null, query: string): string[] {
+  const trimmed = query.trim().toLowerCase()
+  if (!trimmed || !graph) return []
+
+  return graph.files
+    .filter((file: FileNode) => {
+      const normalizedPath = file.filePath.replace(/\\/g, '/').toLowerCase()
+      const name = normalizedPath.split('/').pop() ?? normalizedPath
+      return (
+        normalizedPath.includes(trimmed) ||
+        name.includes(trimmed) ||
+        file.declarations.some((node) => nodeMatchesQuery(node, trimmed))
+      )
+    })
+    .map((file) => file.filePath)
+}
+
 export const useAstStore = create<AstStore>((set) => ({
   ...initialState,
 
   setScope: (scope) => set({ scope }),
 
-  setRepoGraph: (repoGraph) => set({ repoGraph }),
+  setRepoGraph: (repoGraph) =>
+    set((s) => ({
+      repoGraph,
+      searchMatches: getSearchMatches(repoGraph, s.searchQuery),
+    })),
 
   setArchAnalysis: (archAnalysis) => set({ archAnalysis }),
 
@@ -134,18 +161,7 @@ export const useAstStore = create<AstStore>((set) => ({
 
   setSearchQuery: (query) =>
     set((s) => {
-      const graph = s.repoGraph
-      if (!query || !graph) {
-        return { searchQuery: query, searchMatches: [] }
-      }
-      const lower = query.toLowerCase()
-      const matches = graph.files
-        .map((f) => f.filePath)
-        .filter((fp) => {
-          const name = fp.split('/').pop() ?? fp
-          return name.toLowerCase().includes(lower)
-        })
-      return { searchQuery: query, searchMatches: matches }
+      return { searchQuery: query, searchMatches: getSearchMatches(s.repoGraph, query) }
     }),
 
   reset: () =>

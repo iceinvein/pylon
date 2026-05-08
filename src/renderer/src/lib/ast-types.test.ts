@@ -210,8 +210,8 @@ test('ArchAnalysis annotations is a string record', () => {
 // ── AstOverlay ──
 
 test('AstOverlay accepts all valid values', () => {
-  const overlays: AstOverlay[] = ['deps', 'calls', 'dataflow']
-  expect(overlays).toHaveLength(3)
+  const overlays: AstOverlay[] = ['groups', 'deps', 'calls', 'dataflow']
+  expect(overlays).toHaveLength(4)
 })
 
 // ── AstChatMessage ──

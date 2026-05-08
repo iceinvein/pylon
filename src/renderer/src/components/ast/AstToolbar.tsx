@@ -1,12 +1,13 @@
-import { ChevronDown, GitBranch, RefreshCw, Search, Workflow } from 'lucide-react'
+import { Boxes, ChevronDown, GitBranch, RefreshCw, Search, Workflow, X } from 'lucide-react'
 import { useCallback, useRef, useState } from 'react'
-import type { AstOverlay, RepoGraph } from '../../../../shared/types'
+import type { ArchAnalysis, AstOverlay, RepoGraph } from '../../../../shared/types'
 import { useAstStore } from '../../store/ast-store'
 import { ProjectsPopover } from '../ProjectsPopover'
 
 type AstToolbarProps = {
   scope: string
   repoGraph: RepoGraph | null
+  archAnalysis: ArchAnalysis | null
   analysisStatus: string
   onReanalyze: () => void
   onSwitchProject: (path: string) => void
@@ -14,6 +15,7 @@ type AstToolbarProps = {
 }
 
 const OVERLAYS: Array<{ id: AstOverlay; label: string; icon: typeof GitBranch }> = [
+  { id: 'groups', label: 'Groups', icon: Boxes },
   { id: 'deps', label: 'Dependencies', icon: GitBranch },
   { id: 'calls', label: 'Calls', icon: Workflow },
   { id: 'dataflow', label: 'Data Flow', icon: Workflow },
@@ -27,14 +29,17 @@ function scopeBreadcrumb(scope: string): string {
 export function AstToolbar({
   scope,
   repoGraph,
+  archAnalysis,
   analysisStatus,
   onReanalyze,
   onSwitchProject,
   onBrowse,
 }: AstToolbarProps) {
   const activeOverlays = useAstStore((s) => s.activeOverlays)
+  const expandedClusters = useAstStore((s) => s.expandedClusters)
   const toggleOverlay = useAstStore((s) => s.toggleOverlay)
   const searchQuery = useAstStore((s) => s.searchQuery)
+  const searchMatches = useAstStore((s) => s.searchMatches)
   const setSearchQuery = useAstStore((s) => s.setSearchQuery)
 
   const [popoverOpen, setPopoverOpen] = useState(false)
@@ -54,6 +59,21 @@ export function AstToolbar({
   }, [onBrowse])
 
   const isAnalyzing = analysisStatus === 'parsing' || analysisStatus === 'analyzing'
+  const dataFlowLinkCount =
+    archAnalysis?.dataFlows.reduce((sum, flow) => sum + Math.max(flow.steps.length - 1, 0), 0) ?? 0
+
+  const overlayCounts: Record<AstOverlay, number> = {
+    groups: expandedClusters.size + (archAnalysis?.clusters.length ?? 0),
+    deps: repoGraph?.edges.length ?? 0,
+    calls: archAnalysis?.callEdges.length ?? 0,
+    dataflow: dataFlowLinkCount,
+  }
+  const trimmedSearchQuery = searchQuery.trim()
+  const showSearchStatus = trimmedSearchQuery.length > 0
+  const searchStatus =
+    searchMatches.length === 0
+      ? 'No matches'
+      : `${searchMatches.length} file${searchMatches.length === 1 ? '' : 's'}`
 
   return (
     <div className="flex items-center gap-3 border-base-border border-b px-4 py-2">
@@ -81,43 +101,60 @@ export function AstToolbar({
 
       {/* Overlay toggles */}
       {OVERLAYS.map(({ id, label, icon: Icon }) => {
-        const isActive = activeOverlays.has(id)
+        const count = overlayCounts[id]
+        const isDisabled = count === 0
+        const isActive = activeOverlays.has(id) && !isDisabled
         return (
           <button
             key={id}
             type="button"
-            onClick={() => toggleOverlay(id)}
+            onClick={() => {
+              if (!isDisabled) toggleOverlay(id)
+            }}
+            disabled={isDisabled}
+            title={isDisabled ? `${label}: no links available` : `${label}: ${count} links`}
             className={`flex items-center gap-1 rounded-md px-2 py-1 text-xs transition-colors ${
               isActive
                 ? 'bg-base-raised text-base-text'
-                : 'text-base-text-muted hover:text-base-text'
+                : 'text-base-text-muted hover:text-base-text disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:text-base-text-muted'
             }`}
           >
             <Icon size={12} />
             {label}
+            <span className="font-mono text-[10px] text-base-text-faint">{count}</span>
           </button>
         )
       })}
 
       <div className="h-4 w-px bg-base-border" />
 
-      {/* Search files */}
-      <div className="flex items-center gap-1">
+      {/* Search files and symbols */}
+      <div className="flex min-w-0 items-center gap-1">
         <Search size={12} className="text-base-text-muted" />
         <input
           type="text"
-          placeholder="Search files..."
+          placeholder="Search files, paths, symbols..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-40 bg-transparent text-base-text text-xs placeholder:text-base-text-muted focus:outline-none"
+          className="w-48 bg-transparent text-base-text text-xs placeholder:text-base-text-muted focus:outline-none"
         />
+        {showSearchStatus && (
+          <span
+            className={`shrink-0 font-mono text-[10px] ${
+              searchMatches.length === 0 ? 'text-error' : 'text-base-text-faint'
+            }`}
+          >
+            {searchStatus}
+          </span>
+        )}
         {searchQuery && (
           <button
             type="button"
             onClick={() => setSearchQuery('')}
-            className="text-base-text-muted text-xs"
+            className="flex h-4 w-4 shrink-0 items-center justify-center rounded text-base-text-muted transition-colors hover:bg-base-raised hover:text-base-text"
+            aria-label="Clear search"
           >
-            &times;
+            <X size={11} />
           </button>
         )}
       </div>

@@ -1,6 +1,7 @@
 import { ArrowLeft } from 'lucide-react'
 import { useCallback, useMemo, useState } from 'react'
 import type { AstNode } from '../../../../shared/types'
+import { AST_GRAPH_COLORS } from '../../lib/ast-colors'
 import { computeTreeLayout } from '../../lib/ast-layout'
 import { useAstStore } from '../../store/ast-store'
 import { AstContextMenu } from './AstContextMenu'
@@ -62,7 +63,7 @@ export function FileAstView({ fileAst, fileName }: FileAstViewProps) {
       </div>
 
       <div className="min-h-0 flex-1">
-        <GraphCanvas>
+        <GraphCanvas onCanvasClick={() => selectNode(null)}>
           {/* Parent -> child edges */}
           {layout.edges.map((edge) => {
             const source = layout.nodes.find((n) => n.id === edge.source)
@@ -75,9 +76,9 @@ export function FileAstView({ fileAst, fileName }: FileAstViewProps) {
                 y1={source.y + source.height}
                 x2={target.x + target.width / 2}
                 y2={target.y}
-                stroke="#484f58"
-                strokeWidth={1}
-                opacity={0.5}
+                stroke={AST_GRAPH_COLORS.treeConnector}
+                strokeWidth={1.15}
+                opacity={0.55}
               />
             )
           })}
@@ -92,6 +93,7 @@ export function FileAstView({ fileAst, fileName }: FileAstViewProps) {
             return (
               <g
                 key={node.id}
+                data-node="true"
                 onClick={() => selectNode(node.id)}
                 onContextMenu={(e) => handleContextMenu(e, node.id, node.name, selectedFile ?? '')}
                 onMouseEnter={() => setHoveredNode(node.id)}
@@ -104,8 +106,8 @@ export function FileAstView({ fileAst, fileName }: FileAstViewProps) {
                   width={node.width}
                   height={node.height}
                   rx={4}
-                  fill={isHovered ? '#30363d' : '#21262d'}
-                  stroke={isSelected ? '#58a6ff' : color}
+                  fill={isHovered ? AST_GRAPH_COLORS.surfaceHover : AST_GRAPH_COLORS.surface}
+                  stroke={isSelected ? AST_GRAPH_COLORS.selected : color}
                   strokeWidth={isSelected ? 2 : 1}
                 />
                 <text
@@ -121,7 +123,7 @@ export function FileAstView({ fileAst, fileName }: FileAstViewProps) {
                 <text
                   x={node.x + 6 + label.length * 6 + 4}
                   y={node.y + node.height / 2 + 4}
-                  fill="#e6edf3"
+                  fill={AST_GRAPH_COLORS.text}
                   fontSize={10}
                   fontFamily="var(--font-mono, monospace)"
                 >

@@ -782,7 +782,7 @@ export type ArchAnalysis = {
   dataFlows: DataFlow[]
 }
 
-export type AstOverlay = 'deps' | 'calls' | 'dataflow'
+export type AstOverlay = 'groups' | 'deps' | 'calls' | 'dataflow'
 
 export type AstChatMessage = {
   role: 'user' | 'assistant'

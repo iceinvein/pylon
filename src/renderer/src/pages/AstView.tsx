@@ -142,6 +142,7 @@ export function AstView() {
       <AstToolbar
         scope={scope}
         repoGraph={repoGraph}
+        archAnalysis={archAnalysis}
         analysisStatus={analysisStatus}
         onReanalyze={handleReanalyze}
         onSwitchProject={handleSwitchProject}

@@ -8,6 +8,7 @@
 
 import { forceCenter, forceCollide, forceLink, forceManyBody, forceSimulation } from 'd3-force'
 import type { ArchAnalysis, AstNode, RepoGraph } from '../../../shared/types'
+import { DIR_COLORS } from './ast-colors'
 
 // ── Layout types ──
 
@@ -46,6 +47,8 @@ export type RepoLayout = {
   edges: LayoutEdge[]
   clusters: LayoutCluster[]
 }
+
+export type RepoLayoutSeed = Map<string, { x: number; y: number }>
 
 export type TreeLayoutNode = {
   id: string
@@ -90,6 +93,8 @@ type SimNode = {
   vy: number
   clusterId?: string
   layerColor?: string
+  fx?: number
+  fy?: number
 }
 
 type SimLink = {
@@ -109,24 +114,29 @@ function fileDir(filePath: string): string {
   return idx > 0 ? filePath.slice(0, idx) : '.'
 }
 
-/** Palette for directory-based clusters when no ArchAnalysis colours exist. */
-const DIR_COLORS = [
-  '#58a6ff',
-  '#7ee787',
-  '#d2a8ff',
-  '#ff7b72',
-  '#79c0ff',
-  '#ffa657',
-  '#f778ba',
-  '#a5d6ff',
-  '#56d4dd',
-  '#e3b341',
-]
+function averageSeed(
+  filePaths: string[],
+  previousNodeCenters?: RepoLayoutSeed,
+): { x: number; y: number } | null {
+  if (!previousNodeCenters) return null
+  let x = 0
+  let y = 0
+  let count = 0
+  for (const filePath of filePaths) {
+    const seed = previousNodeCenters.get(filePath)
+    if (!seed) continue
+    x += seed.x
+    y += seed.y
+    count++
+  }
+  return count > 0 ? { x: x / count, y: y / count } : null
+}
 
 export function computeRepoLayout(
   graph: RepoGraph,
   analysis: ArchAnalysis | null,
   expandedClusters?: Set<string>,
+  previousNodeCenters?: RepoLayoutSeed,
 ): RepoLayout {
   if (graph.files.length === 0) {
     return { nodes: [], edges: [], clusters: [] }
@@ -182,18 +192,37 @@ export function computeRepoLayout(
 
     if (isExpanded) {
       // Expanded: individual file nodes
-      for (const f of files) {
+      for (let fileIndex = 0; fileIndex < files.length; fileIndex++) {
+        const f = files[fileIndex]
         const info = fileClusterMap.get(f.filePath)
+        const seed = previousNodeCenters?.get(f.filePath)
+        const parentSeed = previousNodeCenters?.get(dir)
+        const fallbackAngle = parentSeed
+          ? (2 * Math.PI * fileIndex) / Math.max(files.length, 1)
+          : (2 * Math.PI * angle) / Math.max(totalItems * 3, 1)
+        const fallbackRadius = parentSeed ? 35 + Math.floor(fileIndex / 8) * 18 : 200
+        const x =
+          seed?.x ??
+          (parentSeed
+            ? parentSeed.x + Math.cos(fallbackAngle) * fallbackRadius
+            : Math.cos(fallbackAngle) * fallbackRadius)
+        const y =
+          seed?.y ??
+          (parentSeed
+            ? parentSeed.y + Math.sin(fallbackAngle) * fallbackRadius
+            : Math.sin(fallbackAngle) * fallbackRadius)
         simNodes.push({
           id: f.filePath,
           filePath: f.filePath,
           name: fileBaseName(f.filePath),
-          x: Math.cos((2 * Math.PI * angle) / Math.max(totalItems * 3, 1)) * 200,
-          y: Math.sin((2 * Math.PI * angle) / Math.max(totalItems * 3, 1)) * 200,
+          x,
+          y,
           vx: 0,
           vy: 0,
           clusterId: info?.clusterId ?? dir,
           layerColor: info?.layerColor ?? dirColorMap.get(dir),
+          fx: seed?.x,
+          fy: seed?.y,
         })
         angle++
       }
@@ -203,16 +232,27 @@ export function computeRepoLayout(
       for (const f of files) {
         collapsedFileToDir.set(f.filePath, dir)
       }
+      const seed =
+        previousNodeCenters?.get(dir) ??
+        averageSeed(
+          files.map((file) => file.filePath),
+          previousNodeCenters,
+        )
+      const fallbackAngle = (2 * Math.PI * angle) / Math.max(totalItems, 1)
+      const x = seed?.x ?? Math.cos(fallbackAngle) * 200
+      const y = seed?.y ?? Math.sin(fallbackAngle) * 200
       simNodes.push({
         id: dir,
         filePath: dir,
         name: `${dirBaseName} (${files.length})`,
-        x: Math.cos((2 * Math.PI * angle) / Math.max(totalItems, 1)) * 200,
-        y: Math.sin((2 * Math.PI * angle) / Math.max(totalItems, 1)) * 200,
+        x,
+        y,
         vx: 0,
         vy: 0,
         clusterId: dir,
         layerColor: dirColorMap.get(dir),
+        fx: previousNodeCenters?.get(dir)?.x,
+        fy: previousNodeCenters?.get(dir)?.y,
       })
       angle++
     }

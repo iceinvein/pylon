@@ -30,6 +30,10 @@ function writeFixture(name: string, content: string): string {
   return filePath
 }
 
+function toPosixPath(filePath: string): string {
+  return filePath.split(path.sep).join('/')
+}
+
 // ── parseFile: function declarations ──
 
 describe('parseFile — function declarations', () => {
@@ -356,6 +360,39 @@ const x = 1
     expect(filePaths.some((p) => p.includes('node_modules'))).toBe(false)
     expect(filePaths.some((p) => p.includes('/dist/'))).toBe(false)
     expect(filePaths.some((p) => p.endsWith('index.ts'))).toBe(true)
+  })
+
+  test('respects root .gitignore file, directory, glob, and negation rules', async () => {
+    const subDir = path.join(tmpDir, 'gitignore-test')
+    fs.mkdirSync(path.join(subDir, 'src', 'ignored-dir'), { recursive: true })
+
+    writeFixture(
+      'gitignore-test/.gitignore',
+      `ignored.ts
+ignored-dir/
+*.generated.ts
+!keep.generated.ts
+/anchored.ts
+`,
+    )
+    writeFixture('gitignore-test/src/index.ts', `export const kept = 1\n`)
+    writeFixture('gitignore-test/src/ignored.ts', `export const ignored = 1\n`)
+    writeFixture('gitignore-test/src/ignored-dir/nested.ts', `export const nested = 1\n`)
+    writeFixture('gitignore-test/src/foo.generated.ts', `export const generated = 1\n`)
+    writeFixture('gitignore-test/src/keep.generated.ts', `export const keepGenerated = 1\n`)
+    writeFixture('gitignore-test/anchored.ts', `export const anchored = 1\n`)
+    writeFixture('gitignore-test/src/anchored.ts', `export const nestedAnchored = 1\n`)
+
+    const graph = await buildImportGraph(subDir)
+    const filePaths = graph.files.map((f) => toPosixPath(path.relative(subDir, f.filePath)))
+
+    expect(filePaths).toContain('src/index.ts')
+    expect(filePaths).toContain('src/keep.generated.ts')
+    expect(filePaths).toContain('src/anchored.ts')
+    expect(filePaths).not.toContain('src/ignored.ts')
+    expect(filePaths).not.toContain('src/ignored-dir/nested.ts')
+    expect(filePaths).not.toContain('src/foo.generated.ts')
+    expect(filePaths).not.toContain('anchored.ts')
   })
 
   test('resolves imports with index files', async () => {

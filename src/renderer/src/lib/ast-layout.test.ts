@@ -205,6 +205,42 @@ describe('computeRepoLayout', () => {
     // With 4 nodes and force simulation, they should spread out
     expect(xs.size + ys.size).toBeGreaterThan(2)
   })
+
+  test('uses previous node centers to keep unchanged nodes stable across expansion', () => {
+    const graph: RepoGraph = {
+      files: [
+        makeFileNode('/src/a.ts'),
+        makeFileNode('/src/b.ts'),
+        makeFileNode('/lib/c.ts'),
+        makeFileNode('/lib/d.ts'),
+      ],
+      edges: [{ source: '/src/a.ts', target: '/lib/c.ts', specifiers: ['c'] }],
+    }
+
+    const collapsed = computeRepoLayout(graph, null)
+    const previousCenters = new Map(
+      collapsed.nodes.map((node) => [
+        node.id,
+        { x: node.x + node.width / 2, y: node.y + node.height / 2 },
+      ]),
+    )
+
+    const expanded = computeRepoLayout(graph, null, new Set(['/src']), previousCenters)
+    const previousLib = getNode(collapsed.nodes, '/lib')
+    const nextLib = getNode(expanded.nodes, '/lib')
+    const previousSrcCenter = previousCenters.get('/src')
+    const expandedSrcNode = getNode(expanded.nodes, '/src/a.ts')
+
+    expect(nextLib.x + nextLib.width / 2).toBeCloseTo(previousLib.x + previousLib.width / 2, 4)
+    expect(nextLib.y + nextLib.height / 2).toBeCloseTo(previousLib.y + previousLib.height / 2, 4)
+    expect(previousSrcCenter).toBeDefined()
+    expect(
+      Math.abs(expandedSrcNode.x + expandedSrcNode.width / 2 - (previousSrcCenter?.x ?? 0)),
+    ).toBeLessThan(160)
+    expect(
+      Math.abs(expandedSrcNode.y + expandedSrcNode.height / 2 - (previousSrcCenter?.y ?? 0)),
+    ).toBeLessThan(160)
+  })
 })
 
 // ── computeTreeLayout ──

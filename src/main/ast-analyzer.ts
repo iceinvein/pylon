@@ -165,6 +165,14 @@ async function parseFileCachedMulti(filePath: string): Promise<FileNode> {
 
 // ── File filtering ──
 
+type GitignoreRule = {
+  pattern: string
+  negated: boolean
+  directoryOnly: boolean
+  anchored: boolean
+  hasSlash: boolean
+}
+
 /** Skip minified, bundled, generated, and declaration files */
 function isMinifiedOrGenerated(fileName: string): boolean {
   const lower = fileName.toLowerCase()
@@ -182,10 +190,122 @@ function isMinifiedOrGenerated(fileName: string): boolean {
   )
 }
 
+function toPosixPath(filePath: string): string {
+  return filePath.split(path.sep).join('/')
+}
+
+function globToRegExp(pattern: string): RegExp {
+  let source = ''
+  for (let i = 0; i < pattern.length; i++) {
+    const char = pattern[i]
+    const next = pattern[i + 1]
+
+    if (char === '*') {
+      if (next === '*') {
+        source += '.*'
+        i++
+      } else {
+        source += '[^/]*'
+      }
+    } else if (char === '?') {
+      source += '[^/]'
+    } else {
+      source += char.replace(/[|\\{}()[\]^$+?.]/g, '\\$&')
+    }
+  }
+  return new RegExp(`^${source}$`)
+}
+
+function parseGitignore(content: string): GitignoreRule[] {
+  const rules: GitignoreRule[] = []
+
+  for (const rawLine of content.split(/\r?\n/)) {
+    let line = rawLine.trim()
+    if (!line || line.startsWith('#')) continue
+
+    if (line.startsWith('\\#') || line.startsWith('\\!')) {
+      line = line.slice(1)
+    }
+
+    const negated = line.startsWith('!')
+    if (negated) line = line.slice(1)
+    if (!line) continue
+
+    const anchored = line.startsWith('/')
+    if (anchored) line = line.slice(1)
+
+    const directoryOnly = line.endsWith('/')
+    if (directoryOnly) line = line.slice(0, -1)
+    if (!line) continue
+
+    rules.push({
+      pattern: line,
+      negated,
+      directoryOnly,
+      anchored,
+      hasSlash: line.includes('/'),
+    })
+  }
+
+  return rules
+}
+
+function loadGitignoreRules(rootDir: string): GitignoreRule[] {
+  const gitignorePath = path.join(rootDir, '.gitignore')
+  try {
+    return parseGitignore(fs.readFileSync(gitignorePath, 'utf-8'))
+  } catch {
+    return []
+  }
+}
+
+function matchesGitignoreRule(
+  rule: GitignoreRule,
+  relativePath: string,
+  isDirectory: boolean,
+): boolean {
+  if (rule.directoryOnly && !isDirectory && !relativePath.startsWith(`${rule.pattern}/`)) {
+    return false
+  }
+
+  const patternRe = globToRegExp(rule.pattern)
+
+  if (rule.anchored || rule.hasSlash) {
+    return patternRe.test(relativePath) || relativePath.startsWith(`${rule.pattern}/`)
+  }
+
+  const segments = relativePath.split('/')
+  return segments.some((segment, index) => {
+    if (!patternRe.test(segment)) return false
+    return isDirectory || index === segments.length - 1 || rule.directoryOnly
+  })
+}
+
+function isGitignored(
+  rootDir: string,
+  filePath: string,
+  isDirectory: boolean,
+  rules: GitignoreRule[],
+): boolean {
+  if (rules.length === 0) return false
+
+  const relativePath = toPosixPath(path.relative(rootDir, filePath))
+  if (!relativePath || relativePath.startsWith('..')) return false
+
+  let ignored = false
+  for (const rule of rules) {
+    if (matchesGitignoreRule(rule, relativePath, isDirectory)) {
+      ignored = !rule.negated
+    }
+  }
+  return ignored
+}
+
 // ── Recursive file collection ──
 
 function collectFiles(dir: string): string[] {
   const parseableExtensions = getParseableExtensions()
+  const gitignoreRules = loadGitignoreRules(dir)
   const results: string[] = []
 
   function walk(currentDir: string): void {
@@ -197,15 +317,25 @@ function collectFiles(dir: string): string[] {
     }
 
     for (const entry of entries) {
+      const fullPath = path.join(currentDir, entry.name)
+
       if (entry.isDirectory()) {
         // Skip ignored dirs and hidden dirs (e.g., .vite, .parcel-cache)
-        if (!IGNORED_DIRS.has(entry.name) && !entry.name.startsWith('.')) {
-          walk(path.join(currentDir, entry.name))
+        if (
+          !IGNORED_DIRS.has(entry.name) &&
+          !entry.name.startsWith('.') &&
+          !isGitignored(dir, fullPath, true, gitignoreRules)
+        ) {
+          walk(fullPath)
         }
       } else if (entry.isFile()) {
         const ext = path.extname(entry.name).toLowerCase()
-        if (parseableExtensions.has(ext) && !isMinifiedOrGenerated(entry.name)) {
-          results.push(path.join(currentDir, entry.name))
+        if (
+          parseableExtensions.has(ext) &&
+          !isMinifiedOrGenerated(entry.name) &&
+          !isGitignored(dir, fullPath, false, gitignoreRules)
+        ) {
+          results.push(fullPath)
         }
       }
     }

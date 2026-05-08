@@ -6,9 +6,12 @@ type FitNode = { x: number; y: number; width: number; height: number }
 type GraphCanvasProps = {
   children: ReactNode
   layoutNodes?: FitNode[]
+  onCanvasClick?: () => void
 }
 
-export function GraphCanvas({ children, layoutNodes }: GraphCanvasProps) {
+const CLICK_DRAG_THRESHOLD = 4
+
+export function GraphCanvas({ children, layoutNodes, onCanvasClick }: GraphCanvasProps) {
   const zoom = useAstStore((s) => s.zoom)
   const panX = useAstStore((s) => s.panX)
   const panY = useAstStore((s) => s.panY)
@@ -17,6 +20,7 @@ export function GraphCanvas({ children, layoutNodes }: GraphCanvasProps) {
 
   const svgRef = useRef<SVGSVGElement>(null)
   const isDragging = useRef(false)
+  const hasDragged = useRef(false)
   const dragStart = useRef({ x: 0, y: 0 })
   const panStart = useRef({ x: 0, y: 0 })
   const hasFitted = useRef(false)
@@ -72,6 +76,7 @@ export function GraphCanvas({ children, layoutNodes }: GraphCanvasProps) {
     (e: React.MouseEvent) => {
       if (e.button !== 0) return
       isDragging.current = true
+      hasDragged.current = false
       dragStart.current = { x: e.clientX, y: e.clientY }
       panStart.current = { x: panX, y: panY }
     },
@@ -83,12 +88,29 @@ export function GraphCanvas({ children, layoutNodes }: GraphCanvasProps) {
       if (!isDragging.current) return
       const dx = e.clientX - dragStart.current.x
       const dy = e.clientY - dragStart.current.y
+      if (Math.hypot(dx, dy) > CLICK_DRAG_THRESHOLD) {
+        hasDragged.current = true
+      }
       setPan(panStart.current.x + dx, panStart.current.y + dy)
     },
     [setPan],
   )
 
-  const handleMouseUp = useCallback(() => {
+  const handleMouseUp = useCallback(
+    (e: React.MouseEvent) => {
+      if (!isDragging.current) return
+      const wasDragging = hasDragged.current
+      isDragging.current = false
+      if (wasDragging) return
+      const target = e.target as SVGElement
+      if (target.tagName === 'svg' || (target.tagName === 'g' && !target.closest('[data-node]'))) {
+        onCanvasClick?.()
+      }
+    },
+    [onCanvasClick],
+  )
+
+  const handleMouseLeave = useCallback(() => {
     isDragging.current = false
   }, [])
 
@@ -104,7 +126,7 @@ export function GraphCanvas({ children, layoutNodes }: GraphCanvasProps) {
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
+      onMouseLeave={handleMouseLeave}
     >
       <title>Graph visualization canvas</title>
       <g transform={`translate(${panX + 400}, ${panY + 300}) scale(${zoom})`}>{children}</g>
