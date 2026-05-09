@@ -5,13 +5,12 @@ import * as path from 'node:path'
 import { initTreeSitter, setCacheDir, setResourceDir } from '../grammar-manager'
 import { parseFileAsync } from '../tree-sitter-parser'
 
-// These tests use pre-built grammars from the tree-sitter-wasms package.
-// Falls back to CDN download if the package grammars aren't available.
+// These tests use the same bundled grammars that are packaged with the app.
+// The artifacts are synced from pinned tree-sitter-* packages.
 
 const GRAMMAR_CACHE = path.join(os.tmpdir(), 'pylon-test-grammars')
 
-// Point to the tree-sitter-wasms package for bundled grammars
-const WASMS_DIR = path.resolve(__dirname, '../../../../node_modules/tree-sitter-wasms/out')
+const WASMS_DIR = path.resolve(__dirname, '../../../../resources/grammars')
 
 beforeAll(async () => {
   fs.mkdirSync(GRAMMAR_CACHE, { recursive: true })

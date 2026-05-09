@@ -16,6 +16,7 @@
     "lint": "tailwind-suggest-canonical-classes \"src/**/*.{tsx,jsx,ts,html}\" --css src/renderer/src/styles/globals.css --check && biome check src/",
     "lint:fix": "tailwind-suggest-canonical-classes \"src/**/*.{tsx,jsx,ts,html}\" --css src/renderer/src/styles/globals.css && biome check --write src/",
     "format": "biome format --write src/",
+    "grammars:sync": "bun scripts/sync-tree-sitter-grammars.ts",
     "eval:pr-reviews": "bun scripts/eval-pr-reviews.ts",
     "build:dmg": "bun scripts/build-dmg.ts --mac dmg --universal",
     "release": "bun scripts/release.ts"
@@ -44,8 +45,7 @@
     "remark-gfm": "^4.0.1",
     "shiki": "^4.0.2",
     "tailwindcss": "^4.3.0",
-    "tree-sitter-wasms": "^0.1.13",
-    "web-tree-sitter": "0.20.8",
+    "web-tree-sitter": "0.26.8",
     "wouter": "^3.9.0",
     "zustand": "^5.0.13"
   },
@@ -63,6 +63,9 @@
     "electron": "^42.0.1",
     "electron-builder": "^26.8.1",
     "electron-vite": "^5.0.0",
+    "tree-sitter-go": "0.25.0",
+    "tree-sitter-python": "0.25.0",
+    "tree-sitter-rust": "0.24.0",
     "typescript": "^6.0.3",
     "vite": "^8.0.11"
   }

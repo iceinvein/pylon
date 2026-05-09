@@ -140,7 +140,7 @@ Both AI SDKs are normalized into a common event stream through a provider abstra
 | Database | Native Node/Electron SQLite (`node:sqlite`) via a local adapter |
 | AI (Claude) | [@anthropic-ai/claude-agent-sdk](https://www.npmjs.com/package/@anthropic-ai/claude-agent-sdk) |
 | AI (Codex) | [@openai/codex-sdk](https://www.npmjs.com/package/@openai/codex-sdk) |
-| Code Analysis | [web-tree-sitter](https://github.com/nicolo-ribaudo/tree-sitter-wasm) + [tree-sitter-wasms](https://github.com/nicolo-ribaudo/tree-sitter-wasm) |
+| Code Analysis | [web-tree-sitter](https://github.com/tree-sitter/tree-sitter/tree/master/lib/binding_web) + pinned tree-sitter grammar WASMs |
 | Visualization | [d3-force](https://d3js.org/d3-force) |
 | Charts | [Recharts](https://recharts.org/) |
 | Animations | [Motion](https://motion.dev/) |

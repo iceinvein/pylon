@@ -1,7 +1,7 @@
 /**
  * Grammar manager — handles downloading, caching, and loading tree-sitter WASM grammars.
  * Supports bundled grammars (resources/grammars/), cached grammars (~/.pylon/grammars/),
- * and CDN fallback (jsdelivr).
+ * and pinned CDN fallback (jsdelivr).
  */
 import * as fs from 'node:fs'
 import * as https from 'node:https'
@@ -12,7 +12,17 @@ const glog = log.child('grammar-manager')
 
 // ── CDN base URL ──
 
-const CDN_BASE = 'https://cdn.jsdelivr.net/npm/tree-sitter-wasms@latest/out'
+const CDN_GRAMMARS: Record<string, { packageName: string; version: string }> = {
+  rust: { packageName: 'tree-sitter-rust', version: '0.24.0' },
+  python: { packageName: 'tree-sitter-python', version: '0.25.0' },
+  go: { packageName: 'tree-sitter-go', version: '0.25.0' },
+  c: { packageName: 'tree-sitter-c', version: '0.24.1' },
+  cpp: { packageName: 'tree-sitter-cpp', version: '0.23.4' },
+  java: { packageName: 'tree-sitter-java', version: '0.23.5' },
+  ruby: { packageName: 'tree-sitter-ruby', version: '0.23.1' },
+  swift: { packageName: 'tree-sitter-swift', version: '0.7.1' },
+  kotlin: { packageName: 'tree-sitter-kotlin', version: '0.3.8' },
+}
 
 // ── State ──
 
@@ -36,6 +46,13 @@ let ParserClass: any = null
  */
 // biome-ignore lint/suspicious/noExplicitAny: web-tree-sitter Language class
 let LanguageClass: any = null
+
+/**
+ * Resolved Query class. Newer web-tree-sitter versions construct queries via
+ * `new Query(language, source)` instead of `language.query(source)`.
+ */
+// biome-ignore lint/suspicious/noExplicitAny: web-tree-sitter Query class
+let QueryClass: any = null
 
 /** In-memory cache of loaded Language objects keyed by language name. */
 // biome-ignore lint/suspicious/noExplicitAny: web-tree-sitter Language objects
@@ -88,8 +105,10 @@ export async function initTreeSitter(): Promise<void> {
   const mod: any = await import('web-tree-sitter')
   ParserClass = mod.Parser ?? mod.default?.Parser ?? mod.default ?? mod
   LanguageClass = mod.Language ?? mod.default?.Language ?? ParserClass?.Language
+  QueryClass = mod.Query ?? mod.default?.Query
   await ParserClass.init()
   LanguageClass ??= ParserClass?.Language
+  QueryClass ??= ParserClass?.Query
   parserInstance = new ParserClass()
   treeSitterInitialized = true
   glog.info('tree-sitter WASM runtime initialized')
@@ -103,6 +122,17 @@ export function getParserInstance(): any {
     throw new Error('tree-sitter not initialized — call initTreeSitter() first')
   }
   return parserInstance
+}
+
+// biome-ignore lint/suspicious/noExplicitAny: web-tree-sitter Query interop
+export function createQuery(language: any, source: string): any {
+  if (typeof language?.query === 'function') {
+    return language.query(source)
+  }
+  if (!QueryClass) {
+    throw new Error('tree-sitter query class not initialized')
+  }
+  return new QueryClass(language, source)
 }
 
 // ── Download a file from URL to disk ──
@@ -221,8 +251,13 @@ export async function loadGrammar(
     }
   }
 
-  // 3. Download from CDN
-  const url = `${CDN_BASE}/${fileName}`
+  // 3. Download from pinned grammar packages on CDN
+  const cdnGrammar = CDN_GRAMMARS[lang]
+  if (!cdnGrammar) {
+    glog.error(`no CDN grammar configured for ${lang}`)
+    return null
+  }
+  const url = `https://cdn.jsdelivr.net/npm/${cdnGrammar.packageName}@${cdnGrammar.version}/${fileName}`
   glog.info(`downloading grammar from CDN: ${url}`)
   try {
     await downloadFile(url, cachedPath, onProgress)

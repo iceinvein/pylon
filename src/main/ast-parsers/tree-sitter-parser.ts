@@ -5,7 +5,12 @@
 
 import { log } from '../../shared/logger'
 import type { AstNode, AstNodeType } from '../../shared/types'
-import { getParserInstance, initTreeSitter, loadGrammarCached } from './grammar-manager'
+import {
+  createQuery,
+  getParserInstance,
+  initTreeSitter,
+  loadGrammarCached,
+} from './grammar-manager'
 import { QUERIES } from './language-queries'
 import type { ParsedFile } from './types'
 
@@ -72,7 +77,7 @@ function extractControlFlow(
   if (!queries?.controlFlow) return []
 
   try {
-    const query = language.query(queries.controlFlow)
+    const query = createQuery(language, queries.controlFlow)
     const matches = query.matches(node)
     const children: AstNode[] = []
 
@@ -170,7 +175,7 @@ export async function parseFileAsync(
   const declarations: AstNode[] = []
 
   try {
-    const declQuery = language.query(queries.declarations)
+    const declQuery = createQuery(language, queries.declarations)
     const matches = declQuery.matches(tree.rootNode)
 
     for (const match of matches) {
@@ -207,7 +212,7 @@ export async function parseFileAsync(
   const imports: Array<{ moduleSpecifier: string; specifiers: string[] }> = []
 
   try {
-    const importQuery = language.query(queries.imports)
+    const importQuery = createQuery(language, queries.imports)
     const matches = importQuery.matches(tree.rootNode)
 
     for (const match of matches) {
