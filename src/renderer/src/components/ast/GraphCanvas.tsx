@@ -128,7 +128,6 @@ export function GraphCanvas({ children, layoutNodes, onCanvasClick }: GraphCanva
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseLeave}
     >
-      <title>Graph visualization canvas</title>
       <g transform={`translate(${panX + 400}, ${panY + 300}) scale(${zoom})`}>{children}</g>
     </svg>
   )
