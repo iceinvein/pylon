@@ -112,8 +112,6 @@ const migrations: Array<{ version: number; description: string; sql: string }> =
         repo_graph TEXT NOT NULL,
         arch_analysis TEXT,
         file_count INTEGER NOT NULL DEFAULT 0,
-        impact_index TEXT,
-        snapshot_hash TEXT,
         analyzed_at INTEGER NOT NULL
       );
     `,
@@ -268,28 +266,7 @@ const migrations: Array<{ version: number; description: string; sql: string }> =
       UPDATE pr_review_findings SET severity = 'low'     WHERE severity IN ('nitpick', 'info', 'note');
     `,
   },
-  {
-    version: 21,
-    description: 'Add impact index metadata to AST analyses',
-    sql: `
-      ALTER TABLE ast_analyses ADD COLUMN impact_index TEXT;
-      ALTER TABLE ast_analyses ADD COLUMN snapshot_hash TEXT;
-    `,
-  },
 ]
-
-function astImpactColumnsExist(database: SqliteDatabase): boolean {
-  try {
-    const astCols = new Set(
-      (database.prepare('PRAGMA table_info(ast_analyses)').all() as { name: string }[]).map(
-        (c) => c.name,
-      ),
-    )
-    return astCols.has('impact_index') && astCols.has('snapshot_hash')
-  } catch {
-    return false
-  }
-}
 
 /**
  * Determine which migrations need to run for an existing DB.
@@ -393,8 +370,6 @@ function detectAppliedMigrations(database: SqliteDatabase): Set<number> {
 
   if (tableExists('pr_review_finding_posts')) applied.add(19)
 
-  if (astImpactColumnsExist(database)) applied.add(21)
-
   // Check test_explorations columns
   try {
     const explorCols = new Set(
@@ -460,13 +435,6 @@ function runMigrations(database: SqliteDatabase): void {
   // Run pending migrations in order
   for (const migration of migrations) {
     if (tracked.has(migration.version)) continue
-
-    if (migration.version === 21 && astImpactColumnsExist(database)) {
-      database
-        .prepare('INSERT INTO schema_version (version, description, applied_at) VALUES (?, ?, ?)')
-        .run(migration.version, migration.description, Date.now())
-      continue
-    }
 
     database.exec(migration.sql)
     database

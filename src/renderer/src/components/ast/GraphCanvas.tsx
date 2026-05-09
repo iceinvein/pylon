@@ -1,60 +1,29 @@
-import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { type ReactNode, useCallback, useEffect, useRef } from 'react'
 import { useAstStore } from '../../store/ast-store'
 
 type FitNode = { x: number; y: number; width: number; height: number }
-type ViewportMode = 'store' | 'local'
 
 type GraphCanvasProps = {
   children: ReactNode
   layoutNodes?: FitNode[]
   onCanvasClick?: () => void
-  viewportMode?: ViewportMode
 }
 
 const CLICK_DRAG_THRESHOLD = 4
 
-export function GraphCanvas({
-  children,
-  layoutNodes,
-  onCanvasClick,
-  viewportMode = 'store',
-}: GraphCanvasProps) {
-  const storeZoom = useAstStore((s) => s.zoom)
-  const storePanX = useAstStore((s) => s.panX)
-  const storePanY = useAstStore((s) => s.panY)
-  const setStoreZoom = useAstStore((s) => s.setZoom)
-  const setStorePan = useAstStore((s) => s.setPan)
-
-  const [localZoom, setLocalZoom] = useState(1)
-  const [localPan, setLocalPan] = useState({ x: 0, y: 0 })
+export function GraphCanvas({ children, layoutNodes, onCanvasClick }: GraphCanvasProps) {
+  const zoom = useAstStore((s) => s.zoom)
+  const panX = useAstStore((s) => s.panX)
+  const panY = useAstStore((s) => s.panY)
+  const setZoom = useAstStore((s) => s.setZoom)
+  const setPan = useAstStore((s) => s.setPan)
 
   const svgRef = useRef<SVGSVGElement>(null)
   const isDragging = useRef(false)
   const hasDragged = useRef(false)
   const dragStart = useRef({ x: 0, y: 0 })
   const panStart = useRef({ x: 0, y: 0 })
-  const fittedBoundsKey = useRef<string | null>(null)
-
-  const useLocalViewport = viewportMode === 'local'
-  const zoom = useLocalViewport ? localZoom : storeZoom
-  const panX = useLocalViewport ? localPan.x : storePanX
-  const panY = useLocalViewport ? localPan.y : storePanY
-
-  const setZoom = useCallback(
-    (nextZoom: number) => {
-      if (useLocalViewport) setLocalZoom(nextZoom)
-      else setStoreZoom(nextZoom)
-    },
-    [useLocalViewport, setStoreZoom],
-  )
-
-  const setPan = useCallback(
-    (nextPanX: number, nextPanY: number) => {
-      if (useLocalViewport) setLocalPan({ x: nextPanX, y: nextPanY })
-      else setStorePan(nextPanX, nextPanY)
-    },
-    [useLocalViewport, setStorePan],
-  )
+  const hasFitted = useRef(false)
 
   const autoFit = useCallback(
     (nodes: FitNode[]) => {
@@ -82,32 +51,16 @@ export function GraphCanvas({
     [setZoom, setPan],
   )
 
-  const layoutBoundsKey = useMemo(() => {
-    if (!layoutNodes || layoutNodes.length === 0) return null
-    let minX = Number.POSITIVE_INFINITY
-    let minY = Number.POSITIVE_INFINITY
-    let maxX = Number.NEGATIVE_INFINITY
-    let maxY = Number.NEGATIVE_INFINITY
-    for (const node of layoutNodes) {
-      minX = Math.min(minX, node.x)
-      minY = Math.min(minY, node.y)
-      maxX = Math.max(maxX, node.x + node.width)
-      maxY = Math.max(maxY, node.y + node.height)
-    }
-    return `${layoutNodes.length}:${Math.round(minX)}:${Math.round(minY)}:${Math.round(maxX)}:${Math.round(maxY)}`
-  }, [layoutNodes])
-
-  // Auto-fit when the rendered graph bounds change.
+  // Auto-fit on initial layout load
   useEffect(() => {
-    if (!layoutNodes || layoutNodes.length === 0 || !layoutBoundsKey) return
-    if (fittedBoundsKey.current === layoutBoundsKey) return
+    if (!layoutNodes || layoutNodes.length === 0 || hasFitted.current) return
     // Small delay to ensure SVG has rendered and has dimensions
     const raf = requestAnimationFrame(() => {
       autoFit(layoutNodes)
-      fittedBoundsKey.current = layoutBoundsKey
+      hasFitted.current = true
     })
     return () => cancelAnimationFrame(raf)
-  }, [layoutNodes, layoutBoundsKey, autoFit])
+  }, [layoutNodes, autoFit])
 
   const handleWheel = useCallback(
     (e: React.WheelEvent) => {

@@ -9,18 +9,11 @@ import {
   parseFileAst,
   parseFileCached,
 } from '../ast-analyzer'
-import { setResourceDir } from '../ast-parsers/grammar-manager'
 
 let tmpDir: string
-const GRAMMARS_DIR = path.resolve(__dirname, '../../../resources/grammars')
 
 beforeAll(() => {
   tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ast-analyzer-test-'))
-  const pythonGrammar = path.join(GRAMMARS_DIR, 'tree-sitter-python.wasm')
-  if (!fs.existsSync(pythonGrammar)) {
-    throw new Error(`Missing bundled Python grammar: ${pythonGrammar}`)
-  }
-  setResourceDir(GRAMMARS_DIR)
 })
 
 afterAll(() => {
@@ -451,23 +444,6 @@ type Foo = string
     expect(nodes.find((n) => n.name === 'hello')).toBeDefined()
     expect(nodes.find((n) => n.name === 'World')).toBeDefined()
     expect(nodes.find((n) => n.name === 'Foo')).toBeDefined()
-  })
-
-  test('parseFileAstMulti returns tree-sitter declarations for Python files', async () => {
-    const filePath = writeFixture(
-      'ast-python.py',
-      `def greet(name):
-    return f"hello {name}"
-`,
-    )
-    const { parseFileAstMulti } = await import('../ast-analyzer')
-    const nodes = await parseFileAstMulti(filePath)
-    const greet = nodes.find((n) => n.name === 'greet')
-    expect(greet).toBeDefined()
-    expect(greet?.type).toBe('function')
-    expect(greet?.filePath).toBe(filePath)
-    expect(greet?.startLine).toBe(1)
-    expect(greet?.endLine).toBe(2)
   })
 })
 

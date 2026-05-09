@@ -26,7 +26,6 @@ export function FileAstView({ fileAst, fileName }: FileAstViewProps) {
   const selectedFile = useAstStore((s) => s.selectedFile)
   const drillFile = useAstStore((s) => s.drillFile)
   const selectNode = useAstStore((s) => s.selectNode)
-  const setSelectedEntity = useAstStore((s) => s.setSelectedEntity)
   const hoveredNode = useAstStore((s) => s.hoveredNode)
   const setHoveredNode = useAstStore((s) => s.setHoveredNode)
 
@@ -44,30 +43,9 @@ export function FileAstView({ fileAst, fileName }: FileAstViewProps) {
   )
 
   const handleExplain = useCallback((nodeId: string, nodeName: string, filePath: string) => {
-    const requestId = `file-${Date.now()}-${Math.random().toString(36).slice(2)}`
-    useAstStore.getState().setExplain(null, true, requestId)
-    window.api.explainAstNode(nodeId, filePath, nodeName, requestId)
+    useAstStore.getState().setExplain(null, true)
+    window.api.explainAstNode(nodeId, filePath, nodeName)
   }, [])
-
-  const handleSelectNode = useCallback(
-    (node: (typeof layout.nodes)[number]) => {
-      setSelectedEntity({
-        kind: 'symbol',
-        filePath: node.filePath,
-        symbolId: node.id,
-        symbolName: node.name,
-        symbolType: node.type as import('../../../../shared/types').AstNodeType,
-        startLine: node.startLine,
-        endLine: node.endLine,
-      })
-    },
-    [setSelectedEntity],
-  )
-
-  const handleCanvasClick = useCallback(() => {
-    selectNode(null)
-    setSelectedEntity(selectedFile ? { kind: 'file', filePath: selectedFile } : null)
-  }, [selectNode, selectedFile, setSelectedEntity])
 
   return (
     <div className="flex h-full flex-col">
@@ -85,7 +63,7 @@ export function FileAstView({ fileAst, fileName }: FileAstViewProps) {
       </div>
 
       <div className="min-h-0 flex-1">
-        <GraphCanvas layoutNodes={layout.nodes} onCanvasClick={handleCanvasClick}>
+        <GraphCanvas onCanvasClick={() => selectNode(null)}>
           {/* Parent -> child edges */}
           {layout.edges.map((edge) => {
             const source = layout.nodes.find((n) => n.id === edge.source)
@@ -116,7 +94,7 @@ export function FileAstView({ fileAst, fileName }: FileAstViewProps) {
               <g
                 key={node.id}
                 data-node="true"
-                onClick={() => handleSelectNode(node)}
+                onClick={() => selectNode(node.id)}
                 onContextMenu={(e) => handleContextMenu(e, node.id, node.name, selectedFile ?? '')}
                 onMouseEnter={() => setHoveredNode(node.id)}
                 onMouseLeave={() => setHoveredNode(null)}

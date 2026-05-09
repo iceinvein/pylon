@@ -79,7 +79,6 @@ describe('ast-store', () => {
       expect(s.analysisProgress).toBe('')
       expect(s.explainText).toBeNull()
       expect(s.explainLoading).toBe(false)
-      expect(s.explainRequestId).toBeNull()
       expect(s.chatLoading).toBe(false)
       expect(s.zoom).toBe(1)
       expect(s.panX).toBe(0)
@@ -158,39 +157,10 @@ describe('ast-store', () => {
       expect(s.selectedNode).toBeNull()
     })
 
-    test('updates selectedEntity', () => {
-      useAstStore.getState().selectFile('/repo/src/app.ts')
-      expect(useAstStore.getState().selectedEntity).toEqual({
-        kind: 'file',
-        filePath: '/repo/src/app.ts',
-      })
-    })
-
     test('can set to null', () => {
       useAstStore.setState({ selectedFile: '/src/foo.ts' })
       useAstStore.getState().selectFile(null)
       expect(useAstStore.getState().selectedFile).toBeNull()
-    })
-  })
-
-  describe('drillFile', () => {
-    test('sets file selectedEntity', () => {
-      useAstStore.getState().drillFile('/repo/src/app.ts')
-      const s = useAstStore.getState()
-      expect(s.drilledFile).toBe('/repo/src/app.ts')
-      expect(s.selectedFile).toBe('/repo/src/app.ts')
-      expect(s.selectedNode).toBeNull()
-      expect(s.selectedEntity).toEqual({ kind: 'file', filePath: '/repo/src/app.ts' })
-    })
-
-    test('clears selectedEntity', () => {
-      useAstStore.getState().selectFile('/repo/src/app.ts')
-      useAstStore.getState().drillFile(null)
-      const s = useAstStore.getState()
-      expect(s.drilledFile).toBeNull()
-      expect(s.selectedFile).toBeNull()
-      expect(s.selectedNode).toBeNull()
-      expect(s.selectedEntity).toBeNull()
     })
   })
 
@@ -272,27 +242,17 @@ describe('ast-store', () => {
 
   describe('setExplain', () => {
     test('sets explain text and loading state', () => {
-      useAstStore.getState().setExplain('explanation text', false, 'explain-1')
+      useAstStore.getState().setExplain('explanation text', false)
       const s = useAstStore.getState()
       expect(s.explainText).toBe('explanation text')
       expect(s.explainLoading).toBe(false)
-      expect(s.explainRequestId).toBe('explain-1')
     })
 
     test('can set loading true with null text', () => {
-      useAstStore.getState().setExplain(null, true, 'explain-2')
+      useAstStore.getState().setExplain(null, true)
       const s = useAstStore.getState()
       expect(s.explainText).toBeNull()
       expect(s.explainLoading).toBe(true)
-      expect(s.explainRequestId).toBe('explain-2')
-    })
-
-    test('preserves request ownership when request id is omitted', () => {
-      useAstStore.getState().setExplain(null, true, 'explain-3')
-      useAstStore.getState().setExplain('partial text', true)
-      const s = useAstStore.getState()
-      expect(s.explainText).toBe('partial text')
-      expect(s.explainRequestId).toBe('explain-3')
     })
   })
 
@@ -367,36 +327,6 @@ describe('ast-store', () => {
       useAstStore.getState().addChatMessage({ role: 'user', content: 'hi' })
       useAstStore.getState().setAnalysisStatus('ready', 'Done')
       useAstStore.getState().setSearchQuery('foo')
-      useAstStore.getState().setSelectedEntity({ kind: 'file', filePath: '/repo/src/app.ts' })
-      useAstStore.getState().setImpactIndex({
-        generatedAt: 123,
-        snapshotHash: 'abc',
-        entities: [],
-        dependenciesByFile: {},
-        importersByFile: {},
-        likelyTestsByFile: {},
-        importEdgesByTargetFile: {},
-      })
-      useAstStore.getState().setImpact({
-        selected: { kind: 'file', filePath: '/repo/src/app.ts' },
-        dependencies: [],
-        importers: [],
-        references: [],
-        likelyTests: [],
-        paths: [],
-        notes: [],
-        generatedAt: 123,
-        stale: false,
-      })
-      useAstStore.getState().setImpactError('Could not load impact')
-      useAstStore.getState().setAnalysisFreshness({
-        analyzedAt: 123,
-        snapshotHash: 'abc',
-        stale: true,
-      })
-      useAstStore
-        .getState()
-        .setEntitySearchResults([{ kind: 'file', filePath: '/repo/src/app.ts' }])
 
       useAstStore.getState().reset()
 
@@ -413,136 +343,6 @@ describe('ast-store', () => {
       expect(s.analysisProgress).toBe('')
       expect(s.searchQuery).toBe('')
       expect(s.searchMatches).toEqual([])
-      expect(s.selectedEntity).toBeNull()
-      expect(s.impactIndex).toBeNull()
-      expect(s.impactSummary).toBeNull()
-      expect(s.impactLoading).toBe(false)
-      expect(s.impactError).toBeNull()
-      expect(s.analysisFreshness).toBeNull()
-      expect(s.entitySearchResults).toEqual([])
     })
-  })
-})
-
-describe('impact selection state', () => {
-  beforeEach(resetStore)
-
-  test('setSelectedEntity selects file entity and mirrors selectedFile', () => {
-    useAstStore.getState().setSelectedEntity({ kind: 'file', filePath: '/repo/src/app.ts' })
-    const s = useAstStore.getState()
-    expect(s.selectedEntity).toEqual({ kind: 'file', filePath: '/repo/src/app.ts' })
-    expect(s.selectedFile).toBe('/repo/src/app.ts')
-    expect(s.selectedNode).toBeNull()
-  })
-
-  test('setSelectedEntity selects symbol entity and mirrors file/node state', () => {
-    useAstStore.getState().setSelectedEntity({
-      kind: 'symbol',
-      filePath: '/repo/src/app.ts',
-      symbolId: 'function-1',
-      symbolName: 'run',
-      symbolType: 'function',
-      startLine: 2,
-      endLine: 5,
-    })
-    const s = useAstStore.getState()
-    expect(s.selectedFile).toBe('/repo/src/app.ts')
-    expect(s.selectedNode).toBe('function-1')
-  })
-
-  test('setSelectedEntity clears impact and explanation state when target changes', () => {
-    useAstStore.getState().setSelectedEntity({ kind: 'file', filePath: '/repo/src/a.ts' })
-    useAstStore.getState().setImpact({
-      selected: { kind: 'file', filePath: '/repo/src/a.ts' },
-      dependencies: [],
-      importers: [],
-      references: [],
-      likelyTests: [],
-      paths: [],
-      notes: [],
-      generatedAt: 123,
-      stale: false,
-    })
-    useAstStore.getState().setExplain('explained a', true)
-
-    useAstStore.getState().setSelectedEntity({ kind: 'file', filePath: '/repo/src/b.ts' })
-
-    const s = useAstStore.getState()
-    expect(s.impactSummary).toBeNull()
-    expect(s.impactLoading).toBe(false)
-    expect(s.impactError).toBeNull()
-    expect(s.explainText).toBeNull()
-    expect(s.explainLoading).toBe(false)
-    expect(s.explainRequestId).toBeNull()
-  })
-
-  test('setSelectedEntity preserves scoped state when target is unchanged', () => {
-    const selected = { kind: 'file' as const, filePath: '/repo/src/a.ts' }
-    useAstStore.getState().setSelectedEntity(selected)
-    useAstStore.getState().setImpact({
-      selected,
-      dependencies: [],
-      importers: [],
-      references: [],
-      likelyTests: [],
-      paths: [],
-      notes: [],
-      generatedAt: 123,
-      stale: false,
-    })
-    useAstStore.getState().setExplain('explained a', false)
-
-    useAstStore.getState().setSelectedEntity({ kind: 'file', filePath: '/repo/src/a.ts' })
-
-    const s = useAstStore.getState()
-    expect(s.impactSummary?.selected).toEqual(selected)
-    expect(s.explainText).toBe('explained a')
-  })
-
-  test('setImpact stores impact result and clears loading', () => {
-    const selected = { kind: 'file' as const, filePath: '/repo/src/app.ts' }
-    useAstStore.getState().setImpactLoading(true)
-    useAstStore.getState().setImpact({
-      selected,
-      dependencies: [],
-      importers: [],
-      references: [],
-      likelyTests: [],
-      paths: [],
-      notes: [],
-      generatedAt: 123,
-      stale: false,
-    })
-    const s = useAstStore.getState()
-    expect(s.impactLoading).toBe(false)
-    expect(s.impactError).toBeNull()
-    expect(s.impactSummary?.selected).toEqual(selected)
-  })
-
-  test('setImpactLoading true clears stale impactError', () => {
-    useAstStore.getState().setImpactError('Could not load impact')
-    useAstStore.getState().setImpactLoading(true)
-    const s = useAstStore.getState()
-    expect(s.impactLoading).toBe(true)
-    expect(s.impactError).toBeNull()
-  })
-
-  test('setImpactError stores error and clears loading', () => {
-    useAstStore.getState().setImpactLoading(true)
-    useAstStore.getState().setImpactError('Could not load impact')
-    const s = useAstStore.getState()
-    expect(s.impactLoading).toBe(false)
-    expect(s.impactError).toBe('Could not load impact')
-  })
-
-  test('assistant chat messages preserve highlights', () => {
-    useAstStore.getState().addChatMessage({
-      role: 'assistant',
-      content: 'Look at loadUser',
-      highlights: [{ filePath: '/repo/src/service.ts', symbolName: 'loadUser' }],
-    })
-    expect(useAstStore.getState().chatMessages[0].highlights).toEqual([
-      { filePath: '/repo/src/service.ts', symbolName: 'loadUser' },
-    ])
   })
 })

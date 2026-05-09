@@ -369,9 +369,8 @@ export function RepoMapView({ repoGraph, archAnalysis }: RepoMapViewProps) {
   )
 
   const handleExplain = useCallback((nodeId: string, nodeName: string, filePath: string) => {
-    const requestId = `repo-${Date.now()}-${Math.random().toString(36).slice(2)}`
-    useAstStore.getState().setExplain(null, true, requestId)
-    window.api.explainAstNode(nodeId, filePath, nodeName, requestId)
+    useAstStore.getState().setExplain(null, true)
+    window.api.explainAstNode(nodeId, filePath, nodeName)
   }, [])
 
   /** Single-click selects a visible node without changing graph layout. */

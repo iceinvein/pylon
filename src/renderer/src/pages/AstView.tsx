@@ -1,14 +1,10 @@
 import { Clock, FolderOpen, Loader2 } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
-import type { CodeEntity } from '../../../shared/types'
 import { AstChatPanel } from '../components/ast/AstChatPanel'
 import { AstSplitPanel } from '../components/ast/AstSplitPanel'
 import { AstToolbar } from '../components/ast/AstToolbar'
 import { CodePanel } from '../components/ast/CodePanel'
 import { FileAstView } from '../components/ast/FileAstView'
-import { ImpactExplorer } from '../components/ast/ImpactExplorer'
-import { ImpactGraphView } from '../components/ast/ImpactGraphView'
-import { ImpactPanel } from '../components/ast/ImpactPanel'
 import { RepoMapView } from '../components/ast/RepoMapView'
 import { useAstBridge } from '../hooks/use-ast-bridge'
 import { useAstStore } from '../store/ast-store'
@@ -30,13 +26,6 @@ function getProjectName(projectPath: string): string {
   return projectPath.split('/').pop() ?? projectPath
 }
 
-function isSameCodeEntity(a: CodeEntity | null, b: CodeEntity | null): boolean {
-  if (a === b) return true
-  if (!a || !b || a.kind !== b.kind || a.filePath !== b.filePath) return false
-  if (a.kind === 'file' || b.kind === 'file') return true
-  return a.symbolId === b.symbolId
-}
-
 export function AstView() {
   useAstBridge()
 
@@ -47,7 +36,6 @@ export function AstView() {
   const selectedFile = useAstStore((s) => s.selectedFile)
   const drilledFile = useAstStore((s) => s.drilledFile)
   const selectedNode = useAstStore((s) => s.selectedNode)
-  const selectedEntity = useAstStore((s) => s.selectedEntity)
   const analysisStatus = useAstStore((s) => s.analysisStatus)
   const analysisProgress = useAstStore((s) => s.analysisProgress)
   const setScope = useAstStore((s) => s.setScope)
@@ -75,65 +63,9 @@ export function AstView() {
     }
   }, [drilledFile, setFileAst])
 
-  useEffect(() => {
-    if (!scope || !selectedEntity) {
-      useAstStore.getState().setImpact(null)
-      return
-    }
-
-    let cancelled = false
-    useAstStore.getState().setImpactLoading(true)
-    window.api
-      .getImpact(scope, selectedEntity)
-      .then((summary) => {
-        if (!cancelled) useAstStore.getState().setImpact(summary)
-      })
-      .catch(() => {
-        if (!cancelled) useAstStore.getState().setImpactError('Could not load impact')
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [scope, selectedEntity])
-
   const setRepoGraph = useAstStore((s) => s.setRepoGraph)
   const setArchAnalysis = useAstStore((s) => s.setArchAnalysis)
   const setAnalysisStatus = useAstStore((s) => s.setAnalysisStatus)
-
-  const refreshCachedImpactState = useCallback(
-    async (scopePath: string, selectedAtStart?: CodeEntity | null) => {
-      const cached = await window.api.getCachedAnalysis(scopePath)
-      if (useAstStore.getState().scope !== scopePath) return
-
-      useAstStore.getState().setImpactIndex(cached?.impactIndex ?? null)
-      useAstStore.getState().setAnalysisFreshness(cached?.freshness ?? null)
-
-      if (selectedAtStart === undefined || !selectedAtStart) return
-      if (!isSameCodeEntity(useAstStore.getState().selectedEntity, selectedAtStart)) return
-
-      useAstStore.getState().setImpactLoading(true)
-      try {
-        const summary = await window.api.getImpact(scopePath, selectedAtStart)
-        const currentState = useAstStore.getState()
-        if (
-          currentState.scope === scopePath &&
-          isSameCodeEntity(currentState.selectedEntity, selectedAtStart)
-        ) {
-          currentState.setImpact(summary)
-        }
-      } catch {
-        const currentState = useAstStore.getState()
-        if (
-          currentState.scope === scopePath &&
-          isSameCodeEntity(currentState.selectedEntity, selectedAtStart)
-        ) {
-          currentState.setImpactError('Could not load impact')
-        }
-      }
-    },
-    [],
-  )
 
   // Try loading cached analysis for a scope, fall back to full analysis
   const openScope = useCallback(
@@ -142,23 +74,22 @@ export function AstView() {
 
       // Check for cached analysis first
       const cached = await window.api.getCachedAnalysis(scopePath)
-      if (useAstStore.getState().scope !== scopePath) return
       if (cached) {
-        setRepoGraph(cached.repoGraph)
+        setRepoGraph(cached.repoGraph as import('../../../shared/types').RepoGraph)
         if (cached.archAnalysis) {
-          setArchAnalysis(cached.archAnalysis)
+          setArchAnalysis(cached.archAnalysis as import('../../../shared/types').ArchAnalysis)
         }
-        useAstStore.getState().setImpactIndex(cached.impactIndex)
-        useAstStore.getState().setAnalysisFreshness(cached.freshness)
-        setAnalysisStatus('ready', '')
+        setAnalysisStatus(
+          'ready',
+          `Loaded from cache (${new Date(cached.analyzedAt).toLocaleString()})`,
+        )
         return
       }
 
       // No cache — run full analysis
       await window.api.analyzeScope(scopePath)
-      await refreshCachedImpactState(scopePath)
     },
-    [setScope, setRepoGraph, setArchAnalysis, setAnalysisStatus, refreshCachedImpactState],
+    [setScope, setRepoGraph, setArchAnalysis, setAnalysisStatus],
   )
 
   const handleBrowse = useCallback(async () => {
@@ -175,12 +106,9 @@ export function AstView() {
 
   const handleReanalyze = useCallback(async () => {
     if (scope) {
-      const scopeAtStart = scope
-      const selectedAtStart = selectedEntity
-      await window.api.analyzeScope(scopeAtStart)
-      await refreshCachedImpactState(scopeAtStart, selectedAtStart)
+      await window.api.analyzeScope(scope)
     }
-  }, [scope, selectedEntity, refreshCachedImpactState])
+  }, [scope])
 
   const reset = useAstStore((s) => s.reset)
 
@@ -230,30 +158,23 @@ export function AstView() {
 
       {repoGraph && analysisStatus === 'ready' && (
         <>
-          <div className="flex min-h-0 flex-1">
-            <ImpactExplorer />
-            <div className="grid min-h-0 min-w-0 flex-1 grid-rows-[minmax(0,1fr)_minmax(180px,35%)]">
-              <ImpactGraphView />
-              <div className="min-h-0">
-                <AstSplitPanel
-                  left={
-                    drilledFile && fileAst ? (
-                      <FileAstView fileAst={fileAst} fileName={fileName} />
-                    ) : (
-                      <RepoMapView repoGraph={repoGraph} archAnalysis={archAnalysis} />
-                    )
-                  }
-                  right={
-                    <CodePanel
-                      selectedFile={selectedFile}
-                      fileAst={fileAst}
-                      selectedNodeId={selectedNode}
-                    />
-                  }
+          <div className="min-h-0 flex-1">
+            <AstSplitPanel
+              left={
+                drilledFile && fileAst ? (
+                  <FileAstView fileAst={fileAst} fileName={fileName} />
+                ) : (
+                  <RepoMapView repoGraph={repoGraph} archAnalysis={archAnalysis} />
+                )
+              }
+              right={
+                <CodePanel
+                  selectedFile={selectedFile}
+                  fileAst={fileAst}
+                  selectedNodeId={selectedNode}
                 />
-              </div>
-            </div>
-            <ImpactPanel />
+              }
+            />
           </div>
           <AstChatPanel />
         </>
