@@ -36,10 +36,7 @@ export type SqliteDatabase = {
   transaction<T extends (...args: never[]) => unknown>(fn: T): T
 }
 
-export function createSqliteDatabase(
-  path: string,
-  options?: DatabaseSyncOptions,
-): SqliteDatabase {
+export function createSqliteDatabase(path: string, options?: DatabaseSyncOptions): SqliteDatabase {
   const { DatabaseSync } = require('node:sqlite') as typeof import('node:sqlite')
   return createSqliteDatabaseWithNative(DatabaseSync, path, options)
 }

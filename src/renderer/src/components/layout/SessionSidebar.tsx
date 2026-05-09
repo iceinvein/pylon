@@ -189,7 +189,7 @@ export function SessionSidebar() {
                   ) : (
                     <ChevronDown size={10} className="shrink-0 text-base-text-faint" />
                   )}
-                  <span className="font-semibold text-[10px] text-base-text-muted uppercase tracking-[0.05em]">
+                  <span className="font-semibold text-[10px] text-base-text-muted uppercase tracking-wider">
                     {group.projectName}
                   </span>
                 </button>

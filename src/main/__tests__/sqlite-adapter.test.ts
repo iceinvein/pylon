@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { createSqliteDatabaseWithNative, createSqliteDatabaseFromNative } from '../sqlite-adapter'
+import { createSqliteDatabaseFromNative, createSqliteDatabaseWithNative } from '../sqlite-adapter'
 
 class FakeStatement {
   constructor(private readonly calls: unknown[][]) {}
@@ -42,9 +42,10 @@ describe('sqlite adapter', () => {
   test('omits constructor options when none are provided', () => {
     const calls: unknown[][] = []
     class FakeDatabase extends FakeNativeDb {
-      constructor(path: string, options?: unknown) {
+      constructor(...args: [path: string, options?: unknown]) {
         super()
-        calls.push(['constructor', arguments.length, path, options])
+        const [path, options] = args
+        calls.push(['constructor', args.length, path, options])
       }
     }
 
@@ -56,9 +57,10 @@ describe('sqlite adapter', () => {
   test('passes constructor options when provided', () => {
     const calls: unknown[][] = []
     class FakeDatabase extends FakeNativeDb {
-      constructor(path: string, options?: unknown) {
+      constructor(...args: [path: string, options?: unknown]) {
         super()
-        calls.push(['constructor', arguments.length, path, options])
+        const [path, options] = args
+        calls.push(['constructor', args.length, path, options])
       }
     }
     const options = { readOnly: true }
@@ -89,10 +91,7 @@ describe('sqlite adapter', () => {
     const db = createSqliteDatabaseFromNative(native)
 
     expect(db.pragma('foreign_keys = ON')).toEqual([{ ok: 1 }])
-    expect(native.calls).toEqual([
-      ['prepare', 'PRAGMA foreign_keys = ON'],
-      ['all'],
-    ])
+    expect(native.calls).toEqual([['prepare', 'PRAGMA foreign_keys = ON'], ['all']])
   })
 
   test('wraps successful transactions in begin and commit', () => {

@@ -1,7 +1,7 @@
 import type { ErrorInfo, ReactNode } from 'react'
 import { Component } from 'react'
-import { log } from '../lib/logger'
 import logoUrl from '../assets/logo.png'
+import { log } from '../lib/logger'
 
 const logger = log.child('error-boundary')
 
