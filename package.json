@@ -1,6 +1,6 @@
 {
   "name": "pylon",
-  "version": "0.2.10",
+  "version": "0.2.11",
   "description": "Pylon desktop app",
   "main": "./out/main/index.js",
   "author": "iceinvein",
