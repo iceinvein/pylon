@@ -7,7 +7,7 @@ mock.module('electron', () => ({
   BrowserWindow: class {},
 }))
 
-// In-memory DB with better-sqlite3 compatible API
+// In-memory DB with the same adapter surface as production.
 let rawDb: Database
 
 function createDbProxy(db: Database) {

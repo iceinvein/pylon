@@ -2,7 +2,7 @@
  * Pure parsing utilities for GitHub diff output.
  *
  * Extracted from gh-cli.ts so they can be tested without loading Electron
- * or better-sqlite3 (gh-cli.ts has a transitive dependency on both via db.ts).
+ * or database runtime dependencies.
  */
 
 /**

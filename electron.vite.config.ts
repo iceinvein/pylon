@@ -7,7 +7,7 @@ export default defineConfig({
   main: {
     build: {
       rollupOptions: {
-        external: ['better-sqlite3', '@anthropic-ai/claude-agent-sdk']
+        external: ['node:sqlite', '@anthropic-ai/claude-agent-sdk']
       }
     }
   },

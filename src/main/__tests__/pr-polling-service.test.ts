@@ -8,11 +8,11 @@ mock.module('electron', () => ({
 }))
 
 // Use an in-memory DB for tests.
-// The production service uses the better-sqlite3 API (prepare/transaction).
-// We wrap bun:sqlite to expose a compatible surface.
+// The production service uses a small synchronous SQLite adapter surface
+// (prepare/transaction). We wrap bun:sqlite to expose that same surface.
 let rawDb: Database
 
-// Proxy object that mirrors the better-sqlite3 API used in PrPollingService
+// Proxy object that mirrors the DB API used in PrPollingService.
 function createDbProxy(db: Database) {
   return {
     prepare(sql: string) {

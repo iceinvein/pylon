@@ -1,7 +1,7 @@
 import { join } from 'node:path'
-import Database from 'better-sqlite3'
+import { createSqliteDatabase, type SqliteDatabase } from './sqlite-adapter'
 
-let db: Database.Database
+let db: SqliteDatabase
 
 /**
  * Ordered list of schema migrations. Each entry runs exactly once.
@@ -273,7 +273,7 @@ const migrations: Array<{ version: number; description: string; sql: string }> =
  * Existing databases that predate the migration system need to skip
  * migrations for columns that already exist.
  */
-function detectAppliedMigrations(database: Database.Database): Set<number> {
+function detectAppliedMigrations(database: SqliteDatabase): Set<number> {
   const applied = new Set<number>()
   const tableExists = (table: string): boolean => {
     try {
@@ -397,7 +397,7 @@ function detectAppliedMigrations(database: Database.Database): Set<number> {
   return applied
 }
 
-function runMigrations(database: Database.Database): void {
+function runMigrations(database: SqliteDatabase): void {
   // Create version tracking table
   database.exec(`
     CREATE TABLE IF NOT EXISTS schema_version (
@@ -443,12 +443,12 @@ function runMigrations(database: Database.Database): void {
   }
 }
 
-export function initDatabase(): Database.Database {
+export function initDatabase(): SqliteDatabase {
   // Lazy-load electron so this module can be imported in CI tests
   // without triggering a missing 'electron' native module error.
   const { app } = require('electron') as typeof import('electron')
   const dbPath = join(app.getPath('userData'), 'pylon.db')
-  db = new Database(dbPath)
+  db = createSqliteDatabase(dbPath)
   db.pragma('journal_mode = WAL')
   db.pragma('foreign_keys = ON')
 
@@ -679,7 +679,7 @@ export function initDatabase(): Database.Database {
 // Indexes that depend on columns added by migrations (e.g. pr_reviews.series_id
 // added in migration 18). Must run after runMigrations so legacy databases have
 // the columns available before they are indexed.
-function createPrReviewIndexes(database: Database.Database): void {
+function createPrReviewIndexes(database: SqliteDatabase): void {
   database.exec(`
     CREATE INDEX IF NOT EXISTS idx_pr_review_series_repo ON pr_review_series(repo_full_name, pr_number);
     CREATE INDEX IF NOT EXISTS idx_pr_reviews_repo ON pr_reviews(repo_full_name, pr_number);
@@ -699,7 +699,7 @@ function createPrReviewIndexes(database: Database.Database): void {
   `)
 }
 
-export function getDb(): Database.Database {
+export function getDb(): SqliteDatabase {
   if (!db) throw new Error('Database not initialized')
   return db
 }
