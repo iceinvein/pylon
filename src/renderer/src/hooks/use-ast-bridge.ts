@@ -34,17 +34,26 @@ export function useAstBridge() {
 
   useEffect(() => {
     const unsub = window.api.onAstExplainResult((data) => {
-      const d = data as { text: string; done: boolean }
-      useAstStore.getState().setExplain(d.text, !d.done)
+      const d = data as { text: string; done: boolean; requestId?: string }
+      const state = useAstStore.getState()
+      if (d.requestId && state.explainRequestId !== d.requestId) return
+      if (!state.explainLoading) return
+      state.setExplain(d.text, !d.done, d.requestId ?? state.explainRequestId)
     })
     return unsub
   }, [])
 
   useEffect(() => {
     const unsub = window.api.onAstChatResult((data) => {
-      const d = data as { text: string; done: boolean }
+      const d = data as {
+        text: string
+        highlights?: Array<{ filePath: string; symbolName?: string }>
+        done: boolean
+      }
       if (d.done) {
-        useAstStore.getState().addChatMessage({ role: 'assistant', content: d.text })
+        useAstStore
+          .getState()
+          .addChatMessage({ role: 'assistant', content: d.text, highlights: d.highlights })
         useAstStore.getState().setChatLoading(false)
       }
     })

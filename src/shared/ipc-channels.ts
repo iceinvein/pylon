@@ -139,6 +139,9 @@ export const IPC = {
   AST_CHAT: 'ast:chat',
   AST_CHAT_RESULT: 'ast:chat-result',
   AST_GET_CACHED: 'ast:get-cached',
+  AST_GET_IMPACT_INDEX: 'ast:get-impact-index',
+  AST_GET_IMPACT: 'ast:get-impact',
+  AST_SEARCH_ENTITIES: 'ast:search-entities',
   // Plan Mode
   SESSION_SET_MODE: 'session:set-mode',
   SESSION_PLAN_APPROVAL: 'session:plan-approval',

@@ -1,6 +1,48 @@
 import { Send } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import type { AstNode, CodeEntity, RepoGraph } from '../../../../shared/types'
 import { useAstStore } from '../../store/ast-store'
+
+function normalizeSlashes(value: string): string {
+  return value.replaceAll('\\', '/')
+}
+
+function findNodeByName(nodes: AstNode[], symbolName: string): AstNode | null {
+  for (const node of nodes) {
+    if (node.name === symbolName) return node
+    const child = findNodeByName(node.children, symbolName)
+    if (child) return child
+  }
+  return null
+}
+
+function resolveHighlightEntity(
+  graph: RepoGraph | null,
+  filePath: string,
+  symbolName?: string,
+): CodeEntity {
+  const normalized = normalizeSlashes(filePath).replace(/^\.\//, '')
+  const file = graph?.files.find((candidate) => {
+    const candidatePath = normalizeSlashes(candidate.filePath)
+    return candidatePath === normalized || candidatePath.endsWith(`/${normalized}`)
+  })
+  const resolvedPath = file?.filePath ?? filePath
+  const node = file && symbolName ? findNodeByName(file.declarations, symbolName) : null
+
+  if (node) {
+    return {
+      kind: 'symbol',
+      filePath: resolvedPath,
+      symbolId: node.id,
+      symbolName: node.name,
+      symbolType: node.type,
+      startLine: node.startLine,
+      endLine: node.endLine,
+    }
+  }
+
+  return { kind: 'file', filePath: resolvedPath }
+}
 
 export function AstChatPanel() {
   const chatMessages = useAstStore((s) => s.chatMessages)
@@ -8,6 +50,8 @@ export function AstChatPanel() {
   const addChatMessage = useAstStore((s) => s.addChatMessage)
   const setChatLoading = useAstStore((s) => s.setChatLoading)
   const scope = useAstStore((s) => s.scope)
+  const repoGraph = useAstStore((s) => s.repoGraph)
+  const setSelectedEntity = useAstStore((s) => s.setSelectedEntity)
 
   const [input, setInput] = useState('')
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -41,6 +85,13 @@ export function AstChatPanel() {
     [handleSend],
   )
 
+  const handleSelectCitation = useCallback(
+    (filePath: string, symbolName?: string) => {
+      setSelectedEntity(resolveHighlightEntity(repoGraph, filePath, symbolName))
+    },
+    [repoGraph, setSelectedEntity],
+  )
+
   return (
     <div className="flex flex-col border-base-border border-t bg-base-surface">
       {/* Messages */}
@@ -62,9 +113,34 @@ export function AstChatPanel() {
             >
               {msg.role === 'user' ? 'U' : 'C'}
             </div>
-            <p className="min-w-0 whitespace-pre-wrap text-base-text text-xs leading-relaxed">
-              {msg.content}
-            </p>
+            <div className="min-w-0 flex-1">
+              <p className="whitespace-pre-wrap text-base-text text-xs leading-relaxed">
+                {msg.content}
+              </p>
+              {msg.role === 'assistant' && msg.highlights && msg.highlights.length > 0 && (
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {msg.highlights.map((highlight) => {
+                    const fileName = highlight.filePath.split('/').pop() ?? highlight.filePath
+                    const label = highlight.symbolName
+                      ? `${fileName} · ${highlight.symbolName}`
+                      : fileName
+                    return (
+                      <button
+                        key={`${highlight.filePath}:${highlight.symbolName ?? ''}`}
+                        type="button"
+                        onClick={() =>
+                          handleSelectCitation(highlight.filePath, highlight.symbolName)
+                        }
+                        className="max-w-full truncate rounded border border-base-border px-1.5 py-0.5 font-mono text-[10px] text-base-text-muted transition-colors hover:bg-base-raised hover:text-base-text"
+                        title={highlight.filePath}
+                      >
+                        {label}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         ))}
 
