@@ -3,6 +3,12 @@ import { app, BrowserWindow, ipcMain } from 'electron'
 import { IPC } from '../shared/ipc-channels'
 import { log } from '../shared/logger'
 import type { AstCachedAnalysis, ImpactIndex, RepoGraph } from '../shared/types'
+import {
+  buildImpactIndex,
+  computeLiveSnapshotHash,
+  getImpactSummary,
+  searchImpactEntities,
+} from './ast-impact'
 import { getDb } from './db'
 
 const logger = log.child('ast-ipc')
@@ -53,7 +59,6 @@ function loadCachedAnalysis(scope: string): AstCachedAnalysis | null {
   const repoGraph = JSON.parse(row.repo_graph) as RepoGraph
   let currentSnapshotHash = row.snapshot_hash ?? ''
   try {
-    const { computeLiveSnapshotHash } = require('./ast-impact') as typeof import('./ast-impact')
     currentSnapshotHash = computeLiveSnapshotHash(repoGraph)
   } catch {
     currentSnapshotHash = row.snapshot_hash ?? ''
@@ -102,7 +107,6 @@ export function registerAstIpcHandlers(): void {
     async (_e, args: { scope: string; entity: import('../shared/types').CodeEntity }) => {
       const cached = loadCachedAnalysis(args.scope)
       if (!cached?.impactIndex) return null
-      const { getImpactSummary } = await import('./ast-impact')
       return getImpactSummary(
         cached.impactIndex,
         args.entity,
@@ -114,7 +118,6 @@ export function registerAstIpcHandlers(): void {
   ipcMain.handle(IPC.AST_SEARCH_ENTITIES, async (_e, args: { scope: string; query: string }) => {
     const cached = loadCachedAnalysis(args.scope)
     if (!cached?.impactIndex) return []
-    const { searchImpactEntities } = await import('./ast-impact')
     return searchImpactEntities(cached.impactIndex, args.query)
   })
 
@@ -127,7 +130,6 @@ export function registerAstIpcHandlers(): void {
       message: 'Parsing files...',
     })
     const graph = await analyzeScope(args.scope)
-    const { buildImpactIndex } = await import('./ast-impact')
     const impactIndex = buildImpactIndex(graph)
     win.webContents.send(IPC.AST_REPO_GRAPH, graph)
 

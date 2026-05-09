@@ -31,7 +31,7 @@ import type {
 } from '../shared/types'
 import { getDb } from './db'
 import { type ChunkResult, chunkDiff, getTokenBudget } from './diff-chunker'
-import { getPrDetail } from './gh-cli'
+import { appendToPullRequestReviewComment, getPrDetail } from './gh-cli'
 import { HeuristicContextBackend } from './pr-context/heuristic-context-backend'
 import { CodeIntelligenceMcpClient } from './pr-context/mcp-client'
 import { McpContextBackend } from './pr-context/mcp-context-backend'
@@ -2619,7 +2619,6 @@ class PrReviewManager {
       )
       .all(...resolvedThreadIds) as Array<{ id: string; gh_comment_id: number }>
     if (rows.length === 0) return
-    const { appendToPullRequestReviewComment } = await import('./gh-cli')
     const now = Date.now()
     const update = db.prepare('UPDATE pr_review_finding_posts SET resolved_at = ? WHERE id = ?')
     for (const row of rows) {

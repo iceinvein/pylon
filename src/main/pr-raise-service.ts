@@ -10,6 +10,7 @@ import type {
   PrRaiseResult,
 } from '../shared/types'
 import { getDb } from './db'
+import { createPullRequest, execGh, parseGitHubRemote } from './gh-cli'
 
 const logger = log.child('pr-raise-service')
 
@@ -108,13 +109,11 @@ export class PrRaiseService {
     // Detect repo full name
     let repoFullName = ''
     try {
-      const { execGh } = await import('./gh-cli')
       repoFullName = await execGh(
         ['repo', 'view', '--json', 'nameWithOwner', '-q', '.nameWithOwner'],
         cwd,
       )
     } catch {
-      const { parseGitHubRemote } = await import('./gh-cli')
       try {
         const { stdout } = await execFileAsync('git', ['remote', 'get-url', remote], { cwd })
         const parsed = parseGitHubRemote(stdout.trim())
@@ -127,7 +126,6 @@ export class PrRaiseService {
     // Detect default base branch
     let baseBranch = 'main'
     try {
-      const { execGh } = await import('./gh-cli')
       baseBranch =
         (await execGh(
           ['repo', 'view', '--json', 'defaultBranchRef', '-q', '.defaultBranchRef.name'],
@@ -295,13 +293,11 @@ ${diffPreview}`
       // Detect repo full name
       let repoFullName = ''
       try {
-        const { execGh } = await import('./gh-cli')
         repoFullName = await execGh(
           ['repo', 'view', '--json', 'nameWithOwner', '-q', '.nameWithOwner'],
           cwd,
         )
       } catch {
-        const { parseGitHubRemote } = await import('./gh-cli')
         const { stdout } = await execFileAsync('git', ['remote', 'get-url', remote], { cwd })
         const parsed = parseGitHubRemote(stdout.trim())
         if (parsed) repoFullName = `${parsed.owner}/${parsed.repo}`
@@ -315,7 +311,6 @@ ${diffPreview}`
       }
 
       // Create PR
-      const { createPullRequest } = await import('./gh-cli')
       const result = await createPullRequest(
         repoFullName,
         branch,

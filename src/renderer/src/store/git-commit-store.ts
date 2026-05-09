@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import type { CommitGroup, CommitPlan, FileStatus } from '../../../shared/git-types'
-import { log } from '../../../shared/logger'
+import { log } from '../lib/logger'
 
 const logger = log.child('git-commit-store')
 

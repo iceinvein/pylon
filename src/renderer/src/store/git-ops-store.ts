@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import type { CommandEntry, ConflictResolution, GitCommandPlan } from '../../../shared/git-types'
-import { log } from '../../../shared/logger'
+import { log } from '../lib/logger'
 
 const logger = log.child('git-ops-store')
 

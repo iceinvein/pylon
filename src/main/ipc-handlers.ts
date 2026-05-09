@@ -16,6 +16,7 @@ import type {
   QuestionResponse,
 } from '../shared/types'
 import { getDb } from './db'
+import { getAllModels } from './providers'
 import { sessionManager } from './session-manager'
 import { worktreeRecipeService } from './worktree-recipe-service'
 
@@ -320,7 +321,6 @@ export function registerIpcHandlers(): void {
   )
 
   ipcMain.handle(IPC.PROVIDER_MODELS, async () => {
-    const { getAllModels } = await import('./providers')
     return getAllModels()
   })
 

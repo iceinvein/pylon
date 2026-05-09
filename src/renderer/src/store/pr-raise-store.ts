@@ -1,6 +1,7 @@
 import { create } from 'zustand'
-import { log } from '../../../shared/logger'
 import type { PrRaiseDescription, PrRaiseInfo, PrRaiseResult } from '../../../shared/types'
+import { log } from '../lib/logger'
+import { useSessionStore } from './session-store'
 
 const logger = log.child('pr-raise-store')
 
@@ -118,7 +119,6 @@ export const usePrRaiseStore = create<PrRaiseStore>((set, get) => ({
       get().setResult(result)
       // On success, append a synthetic message to show PR card in chat
       if (result.success && result.prUrl && result.prNumber) {
-        const { useSessionStore } = await import('./session-store')
         const overlay = get().overlay
         if (overlay) {
           useSessionStore.getState().appendMessage(args.sessionId, {

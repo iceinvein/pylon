@@ -3,6 +3,8 @@ import { IPC } from '../shared/ipc-channels'
 import { log } from '../shared/logger'
 import type { GhPullRequest, GhRepo } from '../shared/types'
 import { getDb } from './db'
+import { checkGhStatus, discoverRepos, listPrs } from './gh-cli'
+import { sessionManager } from './session-manager'
 
 const logger = log.child('pr-polling')
 
@@ -46,9 +48,6 @@ class PrPollingService {
     this.polling = true
 
     try {
-      const { checkGhStatus, discoverRepos, listPrs } = await import('./gh-cli')
-      const { sessionManager } = await import('./session-manager')
-
       // Check gh availability
       const status = await checkGhStatus()
       if (!status.available || !status.authenticated) return

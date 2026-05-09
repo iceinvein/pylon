@@ -1,5 +1,4 @@
 import { create } from 'zustand'
-import { log } from '../../../shared/logger'
 import type {
   EffortLevel,
   GhCliStatus,
@@ -19,6 +18,7 @@ import type {
   ReviewThread,
   ReviewTimelineEntry,
 } from '../../../shared/types'
+import { log } from '../lib/logger'
 import { isPostableFinding } from '../lib/pr-review-findings'
 import { shouldShowFindingByDefault } from '../lib/pr-review-presentation'
 

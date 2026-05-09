@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { log } from '../../../shared/logger'
+import { log } from '../lib/logger'
 
 const logger = log.child('changes-panel')
 

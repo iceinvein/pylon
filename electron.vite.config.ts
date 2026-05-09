@@ -7,7 +7,7 @@ export default defineConfig({
   main: {
     build: {
       rollupOptions: {
-        external: ['node:sqlite', '@anthropic-ai/claude-agent-sdk']
+        external: ['electron', 'node:sqlite', '@anthropic-ai/claude-agent-sdk', 'web-tree-sitter']
       }
     }
   },
