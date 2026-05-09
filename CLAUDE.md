@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-Pylon — an Electron desktop app that wraps the `@anthropic-ai/claude-agent-sdk` to provide a native chat interface for Claude. Built with Electron 39, React 19, Zustand, Tailwind CSS 4, and SQLite (better-sqlite3).
+Pylon — an Electron desktop app for AI-assisted development. It wraps the `@anthropic-ai/claude-agent-sdk` and `@openai/codex-sdk` behind a shared provider layer, then presents sessions, PR review, testing, git, and code exploration in a native desktop UI. Built with Electron 42, React 19.2, Zustand, Tailwind CSS 4.3, and native Node/Electron SQLite via `node:sqlite`.
 
 ## Commands
 
@@ -26,7 +26,7 @@ bun test src/renderer    # Run renderer tests only
 bun test src/main        # Run main process tests only
 ```
 
-Test files live alongside source (`*.test.ts`) in `src/renderer/src/lib/`, `src/renderer/src/store/`, and `src/main/__tests__/`.
+Test files live alongside source (`*.test.ts` / `*.test.tsx`) in `src/main/`, `src/renderer/src/lib/`, `src/renderer/src/store/`, `src/renderer/src/components/`, and `src/shared/`.
 
 ```bash
 bun run lint             # Check lint + format violations
@@ -39,35 +39,49 @@ bun run format           # Format all source files
 This is an **electron-vite** project with three processes:
 
 ### Main Process (`src/main/`)
-- **index.ts** — App bootstrap, BrowserWindow creation, DB init, IPC handler registration
-- **session-manager.ts** — Core orchestrator: session lifecycle, Claude Agent SDK `query()` calls, tool permission flow, git worktree management, message streaming, diff computation. This is the largest and most important file.
-- **ipc-handlers.ts** — Registers IPC `ipcMain.handle()` channels that delegate to session-manager and pr-review-manager
-- **db.ts** — SQLite schema (sessions, messages, settings tables) with WAL mode
-- **pr-review-manager.ts** — PR review orchestration: fetches PR diffs via GitHub CLI, runs parallel Claude review agents, streams findings back
-- **gh-cli.ts** — GitHub CLI wrapper for PR operations (list, diff, post comments)
-- **diff-chunker.ts** — Smart diff chunking: splits large PR diffs into reviewable chunks for parallel agents
+- **index.ts** — App bootstrap, BrowserWindow creation, DB init, provider registration, model discovery, IPC handler registration
+- **session-manager.ts** — Core orchestrator: session lifecycle, provider session creation, permission/question flow, message streaming, session persistence, model/effort settings, and provider event handling
+- **providers/** — Provider abstraction and concrete Claude/Codex adapters. `registry.ts` owns provider registration, model discovery, and SQLite-backed model caching
+- **ipc-handlers.ts** — Core session/settings/plugin IPC channels. Feature-specific handlers are split into `git-ipc-handlers.ts`, `pr-review-ipc-handlers.ts`, `test-ipc-handlers.ts`, and `ast-ipc-handlers.ts`
+- **db.ts** — SQLite schema for sessions, messages, settings, PR review history, testing, AST cache, plugins, and worktree recipes
+- **sqlite-adapter.ts** — Lightweight adapter around `node:sqlite` that supplies the prepare/get/all/run/transaction API used by the app
+- **pr-review-manager.ts** — PR review orchestration: fetches PR diffs via GitHub CLI, builds review context, runs parallel review agents, dedupes/peer-reviews/revalidates findings, persists history, and posts to GitHub
+- **pr-context/** — MCP-backed and heuristic PR context builders for changed files, symbols, references, and related tests
+- **test-manager.ts** / **server-manager.ts** / **test-tools.ts** — Test exploration orchestration, local server launch/monitoring, and tools for reporting findings or generated Playwright tests
+- **ast-analyzer.ts**, **ast-impact.ts**, **ast-parsers/** — Multi-language AST analysis, repo graph construction, and impact indexing
+- **git-*.ts**, **diff-service.ts**, **git-worktree-service.ts**, **worktree-recipe-service.ts** — Git status/graph/operations, diff computation, isolated worktrees, and setup recipes
 
 ### Preload (`src/preload/`)
 - **index.ts** — `contextBridge.exposeInMainWorld('api', ...)` — typed API surface for renderer
 - **index.d.ts** — Global `window.api` type declarations
 
 ### Renderer (`src/renderer/src/`)
-- **App.tsx** — Route dispatch (HomePage vs SessionView), keyboard shortcuts (Cmd+N, Cmd+1..9), IPC bridge init
+- **App.tsx** — Mode dispatch (`sessions`, `pr-review`, `testing`, `code`), keyboard shortcuts, IPC bridge init, startup session restore, and React 19 `<Activity>` preservation for recent sessions
 - **pages/SessionView.tsx** — Main chat page: lazy session creation on first message, model/permission selectors, attachment handling
-- **pages/HomePage.tsx** — Landing page with folder picker + session history
 - **pages/PrReviewView.tsx** — PR review page: select PRs, view diffs, run AI reviews, post findings to GitHub
+- **pages/TestView.tsx** — Test explorer setup, monitoring, findings, generated tests, and comparison view
+- **pages/AstView.tsx** — Repo graph, file AST, impact explorer, and code-structure chat
 
 **State (Zustand stores in `store/`):**
-- `session-store.ts` — Sessions, messages, streaming text, subagent blocks, tasks, changed files, diffs, pending permissions/questions
-- `tab-store.ts` — Tab management (add/close/switch)
-- `ui-store.ts` — Command palette, settings overlay, sidebar view
-- `pr-review-store.ts` — PR review state: PR list, selected PR, review findings, review progress
+- `session-store.ts` — Sessions, messages, streaming text, subagent blocks, tasks, changed files, diffs, pending permissions/questions, branch status
+- `ui-store.ts` — Active mode/session, recent sessions, command palette, settings overlay, sidebar/popover state
+- `draft-store.ts` — Per-session draft persistence
+- `pr-review-store.ts` — PR list/detail state, selected PR, review runs, findings, timelines, posting state, active issues
+- `pr-raise-store.ts` — Pull request creation overlay, generated metadata/body, included commits/files
+- `test-store.ts` — Test explorer setup, scans, batches, exploration runs, findings, generated tests
+- `ast-store.ts` — Repo graph, file ASTs, impact summaries, cached analysis freshness, chat state
+- `git-graph-store.ts`, `git-ops-store.ts`, `git-commit-store.ts` — Git graph, natural-language git operations, staged files, commit plans
+- `worktree-setup-store.ts` — Worktree recipe setup progress
 
 **Key hooks (`hooks/`):**
 - `use-ipc-bridge.ts` — Bridges IPC event channels into Zustand. Parses SDK messages, accumulates streaming deltas, extracts TodoWrite tasks, tracks changed files
-- `use-folder-open.ts` — Native folder picker with git dirty-state detection → worktree dialog
+- `use-folder-open.ts` — Native folder picker with git dirty-state detection and worktree setup flow
 - `use-shiki.ts` — Lazy Shiki highlighter with caching
 - `use-pr-review-bridge.ts` — Bridges PR review IPC events (findings, progress, errors) into pr-review-store
+- `use-test-bridge.ts` — Bridges test exploration events into test-store
+- `use-ast-bridge.ts` — Bridges AST analysis/cache/chat events into ast-store
+- `use-git-bridge.ts` — Bridges git status and operation events
+- `use-worktree-setup-bridge.ts` — Bridges worktree recipe setup progress
 - `use-agent-grouping.ts` — Groups agent/subagent messages for flow visualization
 
 **Lib (`lib/`):**
@@ -77,6 +91,10 @@ This is an **electron-vite** project with three processes:
 - `detect-choices.ts` — Detects inline choice prompts from assistant messages
 - `group-agent-messages.ts` — Groups messages by agent/subagent for flow visualization
 - `flow-graph.ts` / `flow-types.ts` — Agent flow graph construction and types
+- `ast-layout.ts`, `ast-graph-resolve.ts`, `ast-colors.ts` — AST and repo graph layout/rendering helpers
+- `comparison.ts`, `activity-format.ts`, `setup-errors.ts` — Test explorer presentation helpers
+- `pr-review-presentation.ts`, `pr-review-findings.ts` — PR review presentation and finding parsing helpers
+- `command-registry.ts` — Command palette registry
 - `diff-utils.ts` — Diff display helpers
 - `parse-plan.ts` — Parses structured plans from assistant messages
 - `ansi.ts` — ANSI escape code handling for terminal output
@@ -85,26 +103,36 @@ This is an **electron-vite** project with three processes:
 **Components:**
 - `components/messages/` — ChatView, AssistantMessage, UserMessage, SystemMessage, ResultMessage, TextBlock (markdown+shiki), ThinkingBlock, PermissionPrompt, QuestionPrompt, ChoiceButtons
 - `components/tools/` — ToolUseBlock (dispatcher), BashTool, ReadTool, EditTool, WriteTool, GlobGrepTool, TodoWriteTool, WebSearchTool, AskUserQuestionTool, GenericTool, CollapsibleOutput, SubagentBlock, CommitCard, PlanCard
-- `components/layout/` — Layout (shell), NavRail, TabBar, TasksPanel
+- `components/layout/` — Layout shell, mode switcher, session sidebar/cards, tasks panel
 - `components/flow/` — FlowPanel, FlowNode — agent execution flow visualization
 - `components/review/` — ReviewPanel, ReviewSection — inline code review UI
-- `components/pr-review/` — PrList, PrCard, PrDetail, PrFilesChanged, SplitDiffView, DiffPane, DiffFileTree, DiffFindingAnnotation, FindingCard, FindingsList, ReviewModal, ReviewHistory, ReviewProgress, PostActions, GhSetupGuide
-- `components/` — InputBar, ChangesPanel, DiffView, HistoryPanel, SessionHistory, SettingsOverlay, CommandPalette, WorktreeDialog, StatusBar, ErrorBoundary, ThinkingIndicator, UsageDashboard, ProjectsPopover
+- `components/pr-review/` — PR list/detail, split diff view, finding annotations/cards, review modal/progress/history, posting actions, timeline, active issues, all findings
+- `components/pr-raise/` — PR creation overlay, generated metadata/body, commit/file review, created PR card
+- `components/test/` — Setup wizard, config bar, monitoring view, agent tiles, activity feed, findings panel, generated tests, comparison view
+- `components/ast/` — Repo map, file AST view, graph canvas, minimap, code panel, impact explorer/panel, AST toolbar/context menu/chat
+- `components/git/` — Git panel, graph canvas, branch list, commit detail, commit plan, natural-language operations, conflict resolver
+- `components/setup/` — Claude Code setup card
+- `components/` — InputBar, ChangesPanel, DiffView, SettingsOverlay, CommandPalette, KeyboardShortcuts, WorktreeDialog, WorktreeSetupModal, StatusBar, ErrorBoundary, ThinkingIndicator, UsageDashboard, ProjectsPopover, EmptyState
 
 ### Shared (`src/shared/`)
 - **ipc-channels.ts** — IPC channel name constants (SESSION_*, FOLDER_*, SETTINGS_*, PR_REVIEW_*, etc.)
-- **types.ts** — Shared types: SessionStatus, Session, Tab, Message, Attachments, PermissionRequest/Response, QuestionRequest/Response, AppSettings, FileDiff, PR review types
+- **types.ts** — Shared types: sessions, attachments, permissions/questions, settings, usage, GitHub/PR review, PR creation, test exploration, AST graph/impact, worktree recipes, PR context
+- **git-types.ts** — Git graph, branch, file status, commit plan, command plan, conflict resolution types
+- **model-context.ts** — Known model context/output limits and resolver helpers
+- **pr-context-schema.json** — JSON schema for PR context bundles
 - **logger.ts** — Centralized logging utility
 
 ## Key Patterns
 
 **Main ↔ Renderer IPC:** Renderer invokes via `window.api.methodName()` → `ipcMain.handle()`. Main pushes events via `window.webContents.send()` → renderer subscribes with `window.api.onEventName()`.
 
-**Session lifecycle:** Tab created → first message triggers lazy `createSession(cwd, model, useWorktree)` → main starts SDK `query()` → messages stream back via IPC → persisted to SQLite.
+**Session lifecycle:** Session selected/created → first message triggers lazy `createSession(cwd, model, useWorktree)` → main resolves the provider for the selected model → normalized provider events stream back via IPC → persisted to SQLite.
 
-**Tool permissions:** SDK's `canUseTool` callback → main sends IPC event → renderer shows PermissionPrompt → user responds → promise resolves back to SDK. Two modes: `'default'` (ask each time) and `'auto-approve'`.
+**Provider events:** Claude and Codex SDK events are mapped into `NormalizedEvent` while raw passthrough messages are retained for renderer compatibility. SessionManager should consume provider interfaces only, not SDK-specific APIs.
 
-**Git worktrees:** Created at `~/.pylon/worktrees/` per session. Baseline hash captured on first Edit/Write. Diffs computed against baseline. Branch named `claude/{title-slug}`.
+**Tool permissions:** Claude uses the SDK `canUseTool` callback → main sends IPC event → renderer shows PermissionPrompt → user responds → promise resolves back to SDK. Codex maps Pylon permission modes to Codex approval modes (`never`, `on-request`, `on-failure`, `untrusted`).
+
+**Git worktrees:** Created at `~/.pylon/worktrees/` per session. Baseline hash captured on first write-capable tool/file-change event. Diffs computed against baseline. Branches are named from the session title and can be initialized with stored worktree setup recipes.
 
 ## Path Aliases
 
@@ -126,9 +154,9 @@ bun run typecheck        # Must pass with no errors
 bun test                 # Must pass with no failures
 ```
 
-## Anthropic API access
+## AI SDK access
 
-All Claude calls go through the Agent SDK via `src/main/providers/claude-provider.ts`, which inherits the user's existing auth (Claude Code subscription, Claude Pro, Claude Max). Pylon does not own or read raw API keys.
+All Claude calls go through the Agent SDK via `src/main/providers/claude-provider.ts`, which inherits the user's existing auth (Claude Code subscription, Claude Pro, Claude Max). Codex calls go through `src/main/providers/codex-provider.ts`, which uses the Codex SDK/CLI auth path. Pylon does not own or read raw API keys for normal agent sessions.
 
 **Forbidden in `src/`:**
 - Reading `ANTHROPIC_API_KEY` from `process.env`
