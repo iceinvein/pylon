@@ -25,11 +25,17 @@ let treeSitterInitialized = false
 /**
  * Resolved Parser class (the constructor). Available only after initTreeSitter().
  * In web-tree-sitter 0.24, the module default IS the Parser class.
- * In 0.26+, it's a named export `Parser`.
- * Parser.Language becomes available only after Parser.init() is called.
+ * In 0.26+, Parser and Language are named exports.
  */
 // biome-ignore lint/suspicious/noExplicitAny: web-tree-sitter Parser class
 let ParserClass: any = null
+
+/**
+ * Resolved Language class. Older web-tree-sitter versions expose it via Parser.Language;
+ * newer versions export it directly from the module.
+ */
+// biome-ignore lint/suspicious/noExplicitAny: web-tree-sitter Language class
+let LanguageClass: any = null
 
 /** In-memory cache of loaded Language objects keyed by language name. */
 // biome-ignore lint/suspicious/noExplicitAny: web-tree-sitter Language objects
@@ -81,7 +87,9 @@ export async function initTreeSitter(): Promise<void> {
   // biome-ignore lint/suspicious/noExplicitAny: web-tree-sitter version-agnostic import
   const mod: any = await import('web-tree-sitter')
   ParserClass = mod.Parser ?? mod.default?.Parser ?? mod.default ?? mod
+  LanguageClass = mod.Language ?? mod.default?.Language ?? ParserClass?.Language
   await ParserClass.init()
+  LanguageClass ??= ParserClass?.Language
   parserInstance = new ParserClass()
   treeSitterInitialized = true
   glog.info('tree-sitter WASM runtime initialized')
@@ -176,8 +184,7 @@ export async function loadGrammar(
   // Ensure tree-sitter is initialized (Parser.Language is only available after init)
   await initTreeSitter()
 
-  // After init, ParserClass.Language is available
-  const Language = ParserClass?.Language
+  const Language = LanguageClass
   if (!Language?.load) {
     glog.error('could not resolve Language.load from web-tree-sitter module')
     return null

@@ -29,7 +29,7 @@
         "shiki": "^4.0.2",
         "tailwindcss": "^4.3.0",
         "tree-sitter-wasms": "^0.1.13",
-        "web-tree-sitter": "0.26.8",
+        "web-tree-sitter": "0.20.8",
         "wouter": "^3.9.0",
         "zustand": "^5.0.13",
       },
@@ -1493,7 +1493,7 @@
 
     "web-namespaces": ["web-namespaces@2.0.1", "", {}, "sha512-bKr1DkiNa2krS7qxNtdrtHAmzuYGFQLiQ13TsorsdT6ULTkPLKuu5+GsFpDlg6JFjUTwX2DyhMPG2be8uPrqsQ=="],
 
-    "web-tree-sitter": ["web-tree-sitter@0.26.8", "", {}, "sha512-4sUwi7ZyOrIk5KLgYLkc2A/F0LFMQnBhfb+2Cdl7ik4ePJ6JD+fk4ofI2sA5eGawBKBaK4Vntt7Ww5KcEsay4A=="],
+    "web-tree-sitter": ["web-tree-sitter@0.20.8", "", {}, "sha512-weOVgZ3aAARgdnb220GqYuh7+rZU0Ka9k9yfKtGAzEYMa6GgiCzW9JjQRJyCJakvibQW+dfjJdihjInKuuCAUQ=="],
 
     "which": ["which@5.0.0", "", { "dependencies": { "isexe": "^3.1.1" }, "bin": { "node-which": "bin/which.js" } }, "sha512-JEdGzHwwkrbWoGOlIHqQ5gtprKGOenpDHpxE9zVR1bWbOtYRyPPHMe9FaP6x61CmNaTThSkb0DAJte5jD+DmzQ=="],
 
