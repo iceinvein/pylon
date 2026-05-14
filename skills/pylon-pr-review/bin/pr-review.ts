@@ -34,7 +34,24 @@ const HANDLERS: Record<string, Handler> = {
     const { runSetup } = await import('../scripts/setup-cmd.ts')
     return runSetup({ runDir, prNumber, repoPath })
   },
-  serve: async () => 0,
+  serve: async (args) => {
+    const runDir = args[0]
+    if (!runDir) {
+      process.stderr.write('serve: missing <run-dir>\n')
+      return 2
+    }
+    const idleFlag = args.indexOf('--idle-ms')
+    const idleRaw = idleFlag !== -1 ? args[idleFlag + 1] : undefined
+    const idleMs = idleRaw !== undefined ? Number(idleRaw) : 30 * 60 * 1000
+    if (!Number.isFinite(idleMs) || idleMs <= 0) {
+      process.stderr.write(`serve: invalid --idle-ms ${idleRaw}\n`)
+      return 2
+    }
+    const hostFlag = args.indexOf('--host')
+    const host = hostFlag !== -1 ? args[hostFlag + 1] : undefined
+    const { runServe } = await import('../scripts/serve-cmd.ts')
+    return runServe({ runDir, idleMs, host })
+  },
   dedupe: async (args) => {
     const runDir = args[0]
     if (!runDir) {
