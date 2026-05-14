@@ -93,8 +93,23 @@ const HANDLERS: Record<string, Handler> = {
     process.stdout.write(`${JSON.stringify(result)}\n`)
     return 0
   },
-  '--list-runs': async () => 0,
-  '--cleanup-run': async () => 0,
+  '--list-runs': async () => {
+    const { listRuns } = await import('../scripts/housekeeping-cmd.ts')
+    const runs = await listRuns()
+    for (const r of runs) {
+      process.stdout.write(`${r.id}\t${r.archived ? 'archived' : 'active'}\t${r.path}\n`)
+    }
+    return 0
+  },
+  '--cleanup-run': async (args) => {
+    const id = args[0]
+    if (!id) {
+      process.stderr.write('--cleanup-run: missing <id>\n')
+      return 2
+    }
+    const { cleanupRun } = await import('../scripts/housekeeping-cmd.ts')
+    return cleanupRun(undefined, id)
+  },
 }
 
 async function main(argv: string[]): Promise<number> {
