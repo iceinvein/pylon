@@ -82,7 +82,17 @@ const HANDLERS: Record<string, Handler> = {
     const { runCleanup } = await import('../scripts/cleanup-cmd.ts')
     return runCleanup({ runDir, repoPath, gitBin: process.env.PR_REVIEW_GIT_BIN || 'git' })
   },
-  status: async () => 0,
+  status: async (args) => {
+    const runDir = args[0]
+    if (!runDir) {
+      process.stderr.write('status: missing <run-dir>\n')
+      return 2
+    }
+    const { runStatus } = await import('../scripts/status-cmd.ts')
+    const result = await runStatus(runDir)
+    process.stdout.write(`${JSON.stringify(result)}\n`)
+    return 0
+  },
   '--list-runs': async () => 0,
   '--cleanup-run': async () => 0,
 }
