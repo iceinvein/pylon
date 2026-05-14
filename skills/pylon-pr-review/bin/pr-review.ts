@@ -16,7 +16,24 @@ Subcommands:
 type Handler = (args: string[]) => Promise<number> | number
 
 const HANDLERS: Record<string, Handler> = {
-  setup: async () => 0,
+  setup: async (args) => {
+    const runDir = args[0]
+    const prFlag = args.indexOf('--pr')
+    const prValue = prFlag !== -1 ? args[prFlag + 1] : undefined
+    const repoFlag = args.indexOf('--repo')
+    if (!runDir || prFlag === -1 || !prValue) {
+      process.stderr.write('setup: missing <run-dir> --pr <n> [--repo <path>]\n')
+      return 2
+    }
+    const prNumber = Number(prValue)
+    if (!Number.isFinite(prNumber)) {
+      process.stderr.write(`setup: invalid PR number ${prValue}\n`)
+      return 2
+    }
+    const repoPath = (repoFlag !== -1 ? args[repoFlag + 1] : undefined) ?? process.cwd()
+    const { runSetup } = await import('../scripts/setup-cmd.ts')
+    return runSetup({ runDir, prNumber, repoPath })
+  },
   serve: async () => 0,
   dedupe: async (args) => {
     const runDir = args[0]
