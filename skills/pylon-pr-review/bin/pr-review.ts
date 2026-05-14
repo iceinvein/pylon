@@ -71,7 +71,17 @@ const HANDLERS: Record<string, Handler> = {
     const { runRender } = await import('../scripts/render-cmd.ts')
     return runRender(runDir, page)
   },
-  cleanup: async () => 0,
+  cleanup: async (args) => {
+    const runDir = args[0]
+    const repoFlag = args.indexOf('--repo')
+    if (!runDir) {
+      process.stderr.write('cleanup: missing <run-dir> [--repo <path>]\n')
+      return 2
+    }
+    const repoPath = (repoFlag !== -1 ? args[repoFlag + 1] : undefined) ?? process.cwd()
+    const { runCleanup } = await import('../scripts/cleanup-cmd.ts')
+    return runCleanup({ runDir, repoPath, gitBin: process.env.PR_REVIEW_GIT_BIN || 'git' })
+  },
   status: async () => 0,
   '--list-runs': async () => 0,
   '--cleanup-run': async () => 0,
