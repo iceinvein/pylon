@@ -7,6 +7,7 @@ test('FOCUS_IDS contains the five default focuses', () => {
 })
 
 test('parseFinding accepts a minimal finding', () => {
+  const focus: FocusId = 'bugs'
   const raw = {
     id: 'f1',
     file: 'src/x.ts',
@@ -15,7 +16,7 @@ test('parseFinding accepts a minimal finding', () => {
     risk: { impact: 'high', likelihood: 'possible', confidence: 'medium', action: 'should-fix' },
     title: 'oops',
     description: 'detail',
-    domain: 'bugs',
+    domain: focus,
   }
   const parsed: ReviewFinding = parseFinding(raw)
   expect(parsed.title).toBe('oops')
