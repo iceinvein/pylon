@@ -18,7 +18,15 @@ type Handler = (args: string[]) => Promise<number> | number
 const HANDLERS: Record<string, Handler> = {
   setup: async () => 0,
   serve: async () => 0,
-  dedupe: async () => 0,
+  dedupe: async (args) => {
+    const runDir = args[0]
+    if (!runDir) {
+      process.stderr.write('dedupe: missing <run-dir>\n')
+      return 2
+    }
+    const { runDedupe } = await import('../scripts/dedupe-cmd.ts')
+    return runDedupe(runDir)
+  },
   render: async () => 0,
   cleanup: async () => 0,
   status: async () => 0,
