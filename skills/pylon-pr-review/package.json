@@ -8,5 +8,8 @@
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "typecheck": "test -z \"$(find bin scripts -name '*.ts' -print -quit 2>/dev/null)\" || tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.2.0"
   }
 }
