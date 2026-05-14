@@ -1,4 +1,4 @@
-import { readdir, readFile, stat, writeFile, appendFile, unlink } from 'node:fs/promises'
+import { appendFile, readdir, readFile, stat, unlink, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
 export type ServerHandle = {
@@ -98,16 +98,19 @@ export async function startServer(input: StartServerInput): Promise<ServerHandle
   const url = `http://${input.host ?? '127.0.0.1'}:${port}`
   await writeFile(serverInfo, JSON.stringify({ url, port, pid: process.pid }))
 
-  const idleTimer = setInterval(async () => {
-    if (stopped) return
-    if (Date.now() - lastActivity >= idleMs) {
-      stopped = true
-      clearInterval(idleTimer)
-      server.stop(true)
-      await writeFile(serverStopped, String(Date.now()))
-      await unlink(serverInfo).catch(() => {})
-    }
-  }, Math.max(50, Math.min(idleMs / 4, 5000)))
+  const idleTimer = setInterval(
+    async () => {
+      if (stopped) return
+      if (Date.now() - lastActivity >= idleMs) {
+        stopped = true
+        clearInterval(idleTimer)
+        server.stop(true)
+        await writeFile(serverStopped, String(Date.now()))
+        await unlink(serverInfo).catch(() => {})
+      }
+    },
+    Math.max(50, Math.min(idleMs / 4, 5000)),
+  )
 
   return {
     url,

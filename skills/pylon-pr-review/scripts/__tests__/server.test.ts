@@ -1,8 +1,8 @@
-import { test, expect, beforeEach, afterEach } from 'bun:test'
-import { mkdtemp, mkdir, writeFile, readFile, rm } from 'node:fs/promises'
+import { afterEach, beforeEach, expect, test } from 'bun:test'
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { startServer, type ServerHandle } from '../server.ts'
+import { type ServerHandle, startServer } from '../server.ts'
 
 let runDir: string
 let server: ServerHandle | null
