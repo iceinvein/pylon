@@ -61,7 +61,16 @@ const HANDLERS: Record<string, Handler> = {
     const { runDedupe } = await import('../scripts/dedupe-cmd.ts')
     return runDedupe(runDir)
   },
-  render: async () => 0,
+  render: async (args) => {
+    const runDir = args[0]
+    const page = args[1]
+    if (!runDir || (page !== 'progress' && page !== 'findings')) {
+      process.stderr.write('render: missing <run-dir> <progress|findings>\n')
+      return 2
+    }
+    const { runRender } = await import('../scripts/render-cmd.ts')
+    return runRender(runDir, page)
+  },
   cleanup: async () => 0,
   status: async () => 0,
   '--list-runs': async () => 0,
