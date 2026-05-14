@@ -11,7 +11,116 @@ The skill pre-flights `bun`, `gh`, `codex`, `git`. If any are missing the run ab
 
 ## Stage walkthrough
 
-(Filled in by Task 23.)
+Stop reading and follow these steps in order. Do not skip stages. Use the exact Bash invocations below.
+
+### 0. Identify the PR
+
+Parse the user's request for a PR number, URL, or "this PR" (current branch). If ambiguous, ask one clarifying terminal question. Capture the PR number into `$PR_NUMBER` and the repository path into `$REPO` (default: current working directory).
+
+Compute the run directory:
+
+```
+RUN_ID="pr-${PR_NUMBER}-$(date +%s)"
+RUN_DIR="$HOME/.pylon-review/$RUN_ID"
+```
+
+### 1. Setup
+
+```
+pr-review setup "$RUN_DIR" --pr $PR_NUMBER --repo "$REPO"
+```
+
+If exit is non-zero, surface stderr verbatim and stop. No partial state remains.
+
+### 2. Serve
+
+Start the HTML server in the background using the Bash tool with `run_in_background: true`:
+
+```
+pr-review serve "$RUN_DIR"
+```
+
+Read `$RUN_DIR/state/server-info` for the URL. Print to the user: "Open <url> in your browser to follow along."
+
+Render the first progress paint:
+
+```
+pr-review render "$RUN_DIR" progress
+```
+
+### 3. Context (optional)
+
+If the `mcp__code-intelligence__search_code` tool is available in this conversation, build the context bundle by calling code-intelligence MCP tools for each changed file and writing the result to `$RUN_DIR/pr-context.json`. The file's shape matches Pylon's `pr-context.json` (changed symbols with definitions, references capped at 20 per symbol, tests for each symbol). If MCP is not available, log `{stage: context, status: skipped, reason: mcp-unavailable}` to `$RUN_DIR/log.jsonl` and continue. Re-render progress.
+
+### 4. Specialists
+
+Dispatch the five specialist subagents in a single message using five Agent tool calls in parallel. For each focus in (security, bugs, performance, code-smells, architecture), the prompt is:
+
+```
+<specialist block for focus from this SKILL.md>
+
+You are reviewing PR #<PR_NUMBER>.
+Working directory: $RUN_DIR/worktree
+Diff: $RUN_DIR/diff.patch
+Code context (if exists): $RUN_DIR/pr-context.json
+
+Output contract: write findings to $RUN_DIR/findings/<focus>.json before returning. Each entry must match the schema in scripts/types.ts (id, file, line, severity, risk, title, description, optional suggestion, domain="<focus>"). Return a one-line summary as your tool result.
+```
+
+After each subagent returns, append `{stage: specialist, focus: <focus>, status: done, findings: <count>}` to `$RUN_DIR/log.jsonl` and re-render progress.
+
+If all five specialists fail (no findings files written), log `{stage: specialists, status: error}` and stop. Otherwise mark `{stage: specialists, status: done}`.
+
+### 5. Dedupe
+
+```
+pr-review dedupe "$RUN_DIR"
+```
+
+Re-render progress.
+
+### 6. Critic
+
+Read `$RUN_DIR/findings.deduped.json`. Apply the critic rubric from this SKILL.md verbatim (one verdict per finding). Write the kept subset to `$RUN_DIR/findings.kept.json`. Append `{stage: critic, status: done}` and re-render progress.
+
+### 7. Peer review
+
+Write the peer-review prompt (from this SKILL.md) plus the contents of `findings.kept.json` to `$RUN_DIR/peer-prompt.md`. Then:
+
+```
+codex exec --file "$RUN_DIR/peer-prompt.md" > "$RUN_DIR/peer.json"
+```
+
+If codex returns non-zero, ask the user once: "Codex peer-review failed: <stderr>. Skip peer-review and proceed, or abort?". On "skip", copy `findings.kept.json` to `findings.final.json` and add `{stage: peer-review, status: skipped}`.
+
+Otherwise parse the verdicts JSON, apply them (drop / downgrade), and write `findings.final.json`. Append `{stage: peer-review, status: done}` and re-render progress.
+
+### 8. Report
+
+```
+pr-review render "$RUN_DIR" findings
+```
+
+Print to the terminal: "Findings ready at <url>. Click checkboxes to select what to post, then reply with `post`."
+
+End the turn.
+
+### 9. Post
+
+On the user's next message, if they say `post` (or `post 1,3,7` for explicit indices), read `$RUN_DIR/state/events`. Compute the latest selection set (union of `select` events minus `deselect`, plus any explicit indices from the user message). For each selected finding, post via `gh`:
+
+- If the finding has `line`: `gh api repos/<owner>/<repo>/pulls/<n>/comments -X POST -F body=<body> -F commit_id=<head_sha> -F path=<file> -F line=<line> -F side=RIGHT`
+- Otherwise: `gh pr comment <n> --body <body>`
+
+After each post, append `{stage: post, status: ok|failed, id: <finding-id>}` to `log.jsonl` and update `$RUN_DIR/post-status.json` ({"<finding-id>": "posted" | {"status": "failed", "message": "..."}}). When all selected findings are processed, re-render `findings.html`.
+
+### 10. Cleanup
+
+```
+pr-review cleanup "$RUN_DIR" --repo "$REPO"
+```
+
+The run directory is renamed to `<run-dir>.archived-<timestamp>` and the worktree is removed.
 
 ## Specialist prompts
 
@@ -424,4 +533,14 @@ Return verdicts as a JSON array inside a fenced code block tagged "peer-review-v
 
 ## Resuming a crashed run
 
-(Filled in by Task 23.)
+If the user re-invokes the skill and a `$RUN_DIR/state/server-info` exists:
+
+```
+pr-review status "$RUN_DIR"
+```
+
+The JSON output tells you `lastCompleted` and `next`. Resume from `next`. If a specialist focus has no findings file but its sibling stages are done, re-dispatch only that focus.
+
+## Aborting
+
+If the user types `abort` mid-run, run `pr-review cleanup` immediately and exit.
