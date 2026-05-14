@@ -367,7 +367,60 @@ Return verdicts as a JSON array inside a fenced code block tagged "critic-verdic
 
 ## Peer-review prompt
 
-(Filled in by Task 22.)
+The agent writes the kept-findings list and this prompt to `<run-dir>/peer-prompt.md`, then runs:
+
+```
+codex exec --file <run-dir>/peer-prompt.md > <run-dir>/peer.json
+```
+
+````pr-review-peer-review
+You are the second-opinion reviewer for a PR review. ${input.primaryProvider} produced the findings; ${input.peerProvider} is auditing that review.
+
+Do not run a broad PR review. Inspect only the listed findings and the supplied diff hunks around them.
+Return no changes unless a finding has a material issue or a directly adjacent issue is clearly visible while validating it.
+Do not rewrite for tone, preference, or completeness. Do not emit confirmations.
+Use "update" only when an existing finding is materially wrong, under/overstates risk, has a wrong anchor, or is missing a crucial correction.
+Use "add" only for a clear, actionable issue visible in the provided hunks that is absent from the current findings.
+Do not drop findings in this pass. If nothing needs changing, return an empty array.
+
+Review this review, not the full PR.
+
+## PR
+- Title: ${input.detail.title}
+- Author: ${input.detail.author}
+- Branch: ${input.detail.headBranch} -> ${input.detail.baseBranch}
+- Files changed: ${input.detail.files.length}
+
+## Current Findings
+```json
+${JSON.stringify(compactFindings, null, 2)}
+```
+
+## Diff Hunks For Those Findings
+${diffExcerpt}
+
+## Output Format
+Output a JSON array inside a fenced code block tagged `review-peer-review`.
+
+Allowed entries:
+- Update an existing finding:
+  { "type": "update", "id": "<existing finding id>", "reason": "material reason", "fields": { "severity": "medium", "risk": { "impact": "medium", "likelihood": "possible", "confidence": "high", "action": "consider" }, "line": 42, "title": "...", "description": "...", "suggestion": null } }
+- Add a missing adjacent issue:
+  { "type": "add", "reason": "why the original review missed a real issue", "finding": { "file": "src/app.ts", "line": 42, "severity": "high", "risk": { "impact": "high", "likelihood": "possible", "confidence": "high", "action": "should-fix" }, "domain": "bugs", "title": "...", "description": "Observation: ...\n\nWhy it matters: ...\n\nSuggested direction: ..." } }
+
+Rules:
+- Output [] when the existing review is acceptable.
+- Do not include unchanged findings.
+- Do not add issues outside the supplied hunks.
+- Do not use "add" to express a general opinion about review quality.
+
+```review-peer-review
+[]
+```
+
+## Output Contract
+Return verdicts as a JSON array inside a fenced code block tagged "peer-review-verdicts". Each verdict: {"id": <finding-id>, "verdict": "keep" | "drop" | "downgrade", "newSeverity"?: "blocker"|"high"|"medium"|"low", "reason": <one-sentence>}.
+````
 
 ## Resuming a crashed run
 
