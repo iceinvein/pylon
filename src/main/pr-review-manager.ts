@@ -1237,10 +1237,13 @@ class PrReviewManager {
     }
 
     const deduped = deduplicateFindings(allFindings)
-    const filtered = await this.runCriticPass(reviewId, reviewCwd, deduped, reviewAgent)
+    // After the PR worktree is removed above, fall back to the main project path
+    // for any provider sessions that follow (critic, peer-review, revalidation).
+    const postWorktreeCwd = repo.projectPath
+    const filtered = await this.runCriticPass(reviewId, postWorktreeCwd, deduped, reviewAgent)
     const peerReviewed = await this.runPeerReviewPass(
       reviewId,
-      repo.projectPath,
+      postWorktreeCwd,
       scopedDetail,
       filtered,
       reviewAgent,
@@ -1271,7 +1274,7 @@ class PrReviewManager {
         const outcomes = await runRevalidationPass({
           reviewId,
           seriesId: seriesIdForReview,
-          repoCwd: reviewCwd,
+          repoCwd: postWorktreeCwd,
           touchedFiles,
           runSession: (input) =>
             this.runRevalidationSession(reviewId, input.cwd, input.prompt, reviewAgent),
@@ -1438,9 +1441,9 @@ class PrReviewManager {
    * generator+critic pattern from the multi-pass self-consistency literature
    * (SWR-Bench arXiv 2509.01494) at ~1.2x cost rather than 3x: high-prior
    * findings (severity blocker/high + must-fix/should-fix + anchored) skip the
-   * critic, and the critic's prompt does not re-feed the diff. Falls back to
-   * the unfiltered list on any transient failure so we never silently drop
-   * findings on a parse error.
+   * critic, and the critic's prompt does not re-feed the diff. If the primary
+   * provider can't reach the critic (e.g. missing Claude native binary), retry
+   * once with the peer-resolved provider before returning unfiltered findings.
    */
   private async runCriticPass(
     reviewId: string,
@@ -1455,37 +1458,39 @@ class PrReviewManager {
     const { systemPrompt, userPrompt } = buildCriticPrompt(partition.candidates)
     const candidateIds = new Set(partition.candidates.map((f) => f.id))
 
-    let collected = ''
-    try {
-      const sessionId = await sessionManager.createSession(
-        cwd,
-        reviewAgent.model,
-        undefined,
-        'pr-review',
-      )
+    const runWithAgent = async (agent: ResolvedReviewAgent): Promise<string> => {
+      const sessionId = await sessionManager.createSession(cwd, agent.model, undefined, 'pr-review')
       sessionManager.setPermissionMode(sessionId, 'auto-approve')
-      sessionManager.setEffort(sessionId, reviewAgent.effort)
-      const unsub = sessionManager.onMessage(sessionId, (message: unknown) => {
-        const msg = message as Record<string, unknown>
-        if (msg.type === 'stream_event') {
-          const event = msg.event as Record<string, unknown> | undefined
-          const delta = event?.delta as Record<string, unknown> | undefined
-          if (delta?.type === 'text_delta' && typeof delta.text === 'string') {
-            collected += delta.text
-          }
-        }
-      })
+      sessionManager.setEffort(sessionId, agent.effort)
       try {
-        collected = await sessionManager.sendGitAiQuery(sessionId, userPrompt, systemPrompt)
+        return await sessionManager.sendGitAiQuery(sessionId, userPrompt, systemPrompt)
       } finally {
-        unsub()
         sessionManager.stopSession(sessionId)
       }
-    } catch (err) {
+    }
+
+    let collected: string
+    try {
+      collected = await runWithAgent(reviewAgent)
+    } catch (primaryErr) {
+      const peerAgent = this.resolvePeerReviewAgent(reviewAgent)
+      if (!peerAgent) {
+        logger.warn(
+          `Critic pass failed for review ${reviewId} and no peer provider is available, falling back to unfiltered findings: ${String(primaryErr)}`,
+        )
+        return findings
+      }
       logger.warn(
-        `Critic pass failed for review ${reviewId}, falling back to unfiltered findings: ${String(err)}`,
+        `Critic pass with ${reviewAgent.provider} failed for review ${reviewId} (${String(primaryErr)}), retrying with ${peerAgent.provider}`,
       )
-      return findings
+      try {
+        collected = await runWithAgent(peerAgent)
+      } catch (peerErr) {
+        logger.warn(
+          `Critic pass fallback to ${peerAgent.provider} also failed for review ${reviewId}, falling back to unfiltered findings: ${String(peerErr)}`,
+        )
+        return findings
+      }
     }
 
     const verdicts = parseCriticVerdicts(collected, candidateIds)
