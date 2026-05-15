@@ -14,7 +14,3 @@ docs/superpowers
 .superpowers
 .claude/
 .remember
-
-skills/*/node_modules/
-skills/*/.bun/
-skills/*/fixtures/runs/
