@@ -122,11 +122,13 @@ const mockListPrs = mock<(repo: string) => Promise<PrInfo[]>>(() =>
     },
   ]),
 )
+const mockAppendToPullRequestReviewComment = mock(() => Promise.resolve(true))
 
 mock.module('../gh-cli', () => ({
   checkGhStatus: mockCheckGhStatus,
   discoverRepos: mockDiscoverRepos,
   listPrs: mockListPrs,
+  appendToPullRequestReviewComment: mockAppendToPullRequestReviewComment,
 }))
 
 // Mock session-manager
