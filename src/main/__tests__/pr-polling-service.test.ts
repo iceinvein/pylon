@@ -122,12 +122,32 @@ const mockListPrs = mock<(repo: string) => Promise<PrInfo[]>>(() =>
     },
   ]),
 )
+const mockGetPrDetail = mock(() => Promise.resolve({}))
+const mockGetHeadCommitSha = mock(() => Promise.resolve(''))
+const mockPostComment = mock(() => Promise.resolve())
+const mockPostFindingComment = mock(() =>
+  Promise.resolve({ kind: 'inline', ghCommentId: null, ghCommentUrl: null, body: '' }),
+)
+const mockPostReview = mock(() =>
+  Promise.resolve({
+    ghReviewId: null,
+    ghReviewUrl: null,
+    reviewBody: '',
+    inlineFindings: [],
+    inlineCommentBodies: [],
+  }),
+)
 const mockAppendToPullRequestReviewComment = mock(() => Promise.resolve(true))
 
 mock.module('../gh-cli', () => ({
   checkGhStatus: mockCheckGhStatus,
   discoverRepos: mockDiscoverRepos,
   listPrs: mockListPrs,
+  getPrDetail: mockGetPrDetail,
+  getHeadCommitSha: mockGetHeadCommitSha,
+  postComment: mockPostComment,
+  postFindingComment: mockPostFindingComment,
+  postReview: mockPostReview,
   appendToPullRequestReviewComment: mockAppendToPullRequestReviewComment,
 }))
 
