@@ -42,6 +42,7 @@ type RegisteredExploration = {
   cwd: string
   e2eOutputPath: string
   window: BrowserWindow | null
+  onToolExecute?: (toolName: string, args: Record<string, unknown>) => void
 }
 
 type ToolCallRequest = {
@@ -201,6 +202,7 @@ export class TestingToolCallbackServer {
     }
 
     const result = await tool.execute(args)
+    exploration.onToolExecute?.(body.toolName, args)
     this.writeJson(response, 200, result)
   }
 

@@ -18,12 +18,14 @@ import type {
 import { getDb } from './db'
 import { resolveE2eOutputPath } from './e2e-path-resolver'
 import { checkPortInUse, scanProject as runProjectScan } from './project-scanner'
-import { getProviderForModel, type AgentProvider, type NormalizedEvent } from './providers'
-import { serverManager } from './server-manager'
 import {
-  buildTestingMcpServers,
-  testingToolCallbackServer,
-} from './test-mcp-bridge'
+  getProviderForModel,
+  type AgentProvider,
+  type AgentSession,
+  type NormalizedEvent,
+} from './providers'
+import { serverManager } from './server-manager'
+import { buildTestingMcpServers, testingToolCallbackServer } from './test-mcp-bridge'
 
 const logger = log.child('test-manager')
 const STREAM_THROTTLE_MS = 300
@@ -48,7 +50,12 @@ class TestManager {
     {
       id: string
       abortController: AbortController
+      session?: AgentSession
       streamedText: string
+      pendingTextDelta: string
+      completedTextBlocks: Set<string>
+      emittedToolUseIds: Set<string>
+      emittedToolResultIds: Set<string>
     }
   >()
   private goalSuggestionAbort: AbortController | null = null
@@ -143,6 +150,11 @@ class TestManager {
         cwd,
         e2eOutputPath: '',
         window: this.window,
+        onToolExecute: (toolName) => {
+          if (this.isReportGoalsToolName(toolName)) {
+            goalToolCalled = true
+          }
+        },
       })
 
       const session = agent.provider.createSession({
@@ -479,6 +491,10 @@ class TestManager {
       id: explorationId,
       abortController,
       streamedText: '',
+      pendingTextDelta: '',
+      completedTextBlocks: new Set(),
+      emittedToolUseIds: new Set(),
+      emittedToolResultIds: new Set(),
     })
 
     const prompt = this.buildPrompt({
@@ -539,6 +555,11 @@ class TestManager {
           e2eOutputPath: config.e2eOutputPath,
         }),
       })
+      active.session = session
+      if (abortController.signal.aborted) {
+        session.stop()
+        throw new Error('Exploration stopped')
+      }
 
       for await (const event of session.send(prompt)) {
         if (event.type === 'error') throw new Error(event.message)
@@ -589,18 +610,27 @@ class TestManager {
 
   private appendExplorationAgentEvent(
     event: NormalizedEvent,
-    active: { streamedText: string },
+    active: {
+      streamedText: string
+      pendingTextDelta: string
+      emittedToolUseIds: Set<string>
+      emittedToolResultIds: Set<string>
+      completedTextBlocks: Set<string>
+    },
     pushMessage: (message: ExplorationAgentMessage) => void,
   ): void {
     switch (event.type) {
       case 'text_delta':
         active.streamedText += event.text
+        active.pendingTextDelta += event.text
         pushMessage({ type: 'text', text: event.text })
         break
       case 'thinking_delta':
         pushMessage({ type: 'thinking', text: event.text })
         break
       case 'tool_use':
+        if (active.emittedToolUseIds.has(event.toolId)) break
+        active.emittedToolUseIds.add(event.toolId)
         pushMessage({
           type: 'tool_use',
           id: event.toolId,
@@ -609,6 +639,8 @@ class TestManager {
         })
         break
       case 'tool_result':
+        if (active.emittedToolResultIds.has(event.toolId)) break
+        active.emittedToolResultIds.add(event.toolId)
         pushMessage({
           type: 'tool_result',
           toolUseId: event.toolId,
@@ -623,20 +655,34 @@ class TestManager {
 
   private appendCompleteMessage(
     event: Extract<NormalizedEvent, { type: 'message_complete' }>,
-    active: { streamedText: string },
+    active: {
+      streamedText: string
+      pendingTextDelta: string
+      completedTextBlocks: Set<string>
+      emittedToolUseIds: Set<string>
+      emittedToolResultIds: Set<string>
+    },
     pushMessage: (message: ExplorationAgentMessage) => void,
   ): void {
     for (const block of event.content) {
       if (block.type === 'text' && event.role === 'assistant') {
-        if (!active.streamedText.includes(block.text)) {
-          active.streamedText += `${block.text}\n`
-          pushMessage({ type: 'text', text: block.text })
+        if (active.pendingTextDelta.startsWith(block.text)) {
+          active.pendingTextDelta = active.pendingTextDelta.slice(block.text.length)
+          active.completedTextBlocks.add(block.text)
+          continue
         }
+        if (active.completedTextBlocks.has(block.text)) continue
+
+        active.streamedText += `${block.text}\n`
+        active.completedTextBlocks.add(block.text)
+        pushMessage({ type: 'text', text: block.text })
       }
       if (block.type === 'thinking' && event.role === 'assistant') {
         pushMessage({ type: 'thinking', text: block.text })
       }
       if (block.type === 'tool_use' && event.role === 'assistant') {
+        if (active.emittedToolUseIds.has(block.toolId)) continue
+        active.emittedToolUseIds.add(block.toolId)
         pushMessage({
           type: 'tool_use',
           id: block.toolId,
@@ -645,12 +691,18 @@ class TestManager {
         })
       }
       if (block.type === 'tool_result' && event.role === 'user') {
+        if (active.emittedToolResultIds.has(block.toolId)) continue
+        active.emittedToolResultIds.add(block.toolId)
         pushMessage({
           type: 'tool_result',
           toolUseId: block.toolId,
           content: block.output.slice(0, 2000),
         })
       }
+    }
+
+    if (event.role === 'assistant') {
+      active.pendingTextDelta = ''
     }
   }
 
@@ -662,14 +714,16 @@ class TestManager {
 
   private isReportGoalsToolUse(event: NormalizedEvent): boolean {
     if (event.type === 'tool_use') {
-      return event.toolName === 'report_goals' || event.toolName.endsWith('__report_goals')
+      return this.isReportGoalsToolName(event.toolName)
     }
     if (event.type !== 'message_complete') return false
     return event.content.some(
-      (block) =>
-        block.type === 'tool_use' &&
-        (block.toolName === 'report_goals' || block.toolName.endsWith('__report_goals')),
+      (block) => block.type === 'tool_use' && this.isReportGoalsToolName(block.toolName),
     )
+  }
+
+  private isReportGoalsToolName(toolName: string): boolean {
+    return toolName === 'report_goals' || toolName.endsWith('__report_goals')
   }
 
   private buildGoalSuggestionPrompt(cwd: string, scan: ProjectScan): string {
@@ -745,6 +799,7 @@ Generated test file conventions:
     const active = this.activeExplorations.get(explorationId)
     if (active) {
       active.abortController.abort()
+      active.session?.stop()
       return
     }
 

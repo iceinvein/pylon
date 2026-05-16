@@ -195,6 +195,46 @@ describe('testing MCP bridge', () => {
     ])
   })
 
+  test('callback server notifies registered hook after authorized tool execution', async () => {
+    const hookCalls: Array<{ toolName: string; args: Record<string, unknown> }> = []
+    callbackServer = new TestingToolCallbackServer()
+    const { port } = await callbackServer.start()
+    callbackServer.registerExploration({
+      callbackToken: 'secret-token',
+      explorationId: 'exploration-1',
+      cwd: '/repo',
+      e2eOutputPath: 'e2e',
+      window: null,
+      onToolExecute: (toolName, args) => {
+        hookCalls.push({ toolName, args })
+      },
+    })
+
+    const response = await fetch(createTestingToolCallbackUrl(port), {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer secret-token',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        toolName: 'report_goals',
+        args: {
+          goals: [{ id: 'login', title: 'Login', description: 'Check login' }],
+        },
+      }),
+    })
+
+    expect(response.status).toBe(200)
+    expect(hookCalls).toEqual([
+      {
+        toolName: 'report_goals',
+        args: {
+          goals: [{ id: 'login', title: 'Login', description: 'Check login' }],
+        },
+      },
+    ])
+  })
+
   test('stdio server tool forwarder posts tool calls to the parent callback URL', async () => {
     const originalFetch = globalThis.fetch
     const fetchCalls: Array<{ url: string; init: RequestInit }> = []

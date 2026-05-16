@@ -1,8 +1,28 @@
 import { beforeEach, describe, expect, mock, test } from 'bun:test'
-import type { EffortLevel, ProjectScan } from '../../shared/types'
-import type { AgentProvider, ProviderSessionConfig } from '../providers'
+import { IPC } from '../../shared/ipc-channels'
+import type { EffortLevel, ExplorationUpdate, ProjectScan } from '../../shared/types'
+import type {
+  AgentProvider,
+  AgentSession,
+  NormalizedEvent,
+  ProviderSessionConfig,
+} from '../providers'
 
 const createSessionCalls: ProviderSessionConfig[] = []
+const sessionStopCalls: AgentSession[] = []
+const registeredExplorations = new Map<
+  string,
+  {
+    callbackToken: string
+    explorationId: string
+    cwd: string
+    e2eOutputPath: string
+    window: { webContents?: { send?: (channel: string, data: unknown) => void } } | null
+    onToolExecute?: (toolName: string, args: Record<string, unknown>) => void
+  }
+>()
+let nextSessionEvents: ((config: ProviderSessionConfig) => AsyncIterable<NormalizedEvent>) | null =
+  null
 
 const fakeProvider: AgentProvider = {
   id: 'codex',
@@ -34,13 +54,27 @@ const fakeProvider: AgentProvider = {
   },
   createSession: (config: ProviderSessionConfig) => {
     createSessionCalls.push(config)
-    return {
+    const session: AgentSession = {
       nativeSessionId: null,
-      async *send() {},
-      async *sendTextOnly() {},
-      stop: () => {},
+      send: () => nextSessionEvents?.(config) ?? emptyEvents(),
+      sendTextOnly: () => emptyEvents(),
+      stop: () => {
+        sessionStopCalls.push(session)
+      },
     }
+    return session
   },
+}
+
+async function* emptyEvents(): AsyncIterable<NormalizedEvent> {}
+
+async function* stopOnAbortEvents(config: ProviderSessionConfig): AsyncIterable<NormalizedEvent> {
+  if (!config.abortController.signal.aborted) {
+    await new Promise<void>((resolve) => {
+      config.abortController.signal.addEventListener('abort', () => resolve(), { once: true })
+    })
+  }
+  throw new Error('aborted')
 }
 
 mock.module('electron', () => ({
@@ -66,8 +100,21 @@ mock.module('../test-mcp-bridge', () => ({
   }),
   testingToolCallbackServer: {
     start: mock(() => Promise.resolve({ port: 49152, callbackUrl: 'http://127.0.0.1:49152/tool' })),
-    registerExploration: mock(() => {}),
-    unregisterExploration: mock(() => {}),
+    registerExploration: mock(
+      (exploration: {
+        callbackToken: string
+        explorationId: string
+        cwd: string
+        e2eOutputPath: string
+        window: { webContents?: { send?: (channel: string, data: unknown) => void } } | null
+        onToolExecute?: (toolName: string, args: Record<string, unknown>) => void
+      }) => {
+        registeredExplorations.set(exploration.callbackToken, exploration)
+      },
+    ),
+    unregisterExploration: mock((callbackToken: string) => {
+      registeredExplorations.delete(callbackToken)
+    }),
   },
 }))
 
@@ -119,6 +166,21 @@ async function waitForCreateSessionCall(index = 0): Promise<ProviderSessionConfi
   throw new Error(`provider session call ${index} was not captured`)
 }
 
+async function waitForExplorationStatus(
+  sent: Array<{ channel: string; data: unknown }>,
+  status: ExplorationUpdate['status'],
+): Promise<ExplorationUpdate> {
+  for (let i = 0; i < 20; i++) {
+    const update = sent
+      .filter((entry) => entry.channel === IPC.TEST_EXPLORATION_UPDATE)
+      .map((entry) => entry.data as ExplorationUpdate)
+      .find((entry) => entry.status === status)
+    if (update) return update
+    await new Promise((resolve) => setTimeout(resolve, 0))
+  }
+  throw new Error(`exploration update with status ${status} was not captured`)
+}
+
 function expectProviderAgentOptions(
   call: ProviderSessionConfig,
   model: string,
@@ -131,6 +193,9 @@ function expectProviderAgentOptions(
 describe('TestManager agent settings', () => {
   beforeEach(() => {
     createSessionCalls.length = 0
+    sessionStopCalls.length = 0
+    registeredExplorations.clear()
+    nextSessionEvents = null
   })
 
   test('passes selected agent model and effort into goal suggestion provider session', async () => {
@@ -166,5 +231,128 @@ describe('TestManager agent settings', () => {
     })
 
     expectProviderAgentOptions(await waitForCreateSessionCall(), 'gpt-5.5', 'xhigh')
+  })
+
+  test('does not send fallback empty goals after report_goals runs through the callback path', async () => {
+    const sent: Array<{ channel: string; data: unknown }> = []
+    testManager.setWindow({
+      webContents: {
+        send: (channel: string, data: unknown) => sent.push({ channel, data }),
+      },
+    } as never)
+    nextSessionEvents = () =>
+      (async function* () {
+        const exploration = [...registeredExplorations.values()][0]
+        exploration?.window?.webContents?.send?.(IPC.TEST_GOAL_SUGGESTION, {
+          cwd: '/repo',
+          goals: [{ id: 'login', title: 'Login', description: 'Check login' }],
+          status: 'done',
+        })
+        exploration?.onToolExecute?.('report_goals', {
+          goals: [{ id: 'login', title: 'Login', description: 'Check login' }],
+        })
+        yield { type: 'raw_passthrough', message: { type: 'mcp_call_begin' }, persist: false }
+      })()
+
+    await testManager.suggestGoals('/repo', 'gpt-5.5', 'xhigh')
+
+    const goalUpdates = sent.filter((entry) => entry.channel === IPC.TEST_GOAL_SUGGESTION)
+    expect(goalUpdates.map((entry) => entry.data)).toEqual([
+      { cwd: '/repo', goals: [], status: 'loading' },
+      {
+        cwd: '/repo',
+        goals: [{ id: 'login', title: 'Login', description: 'Check login' }],
+        status: 'done',
+      },
+    ])
+  })
+
+  test('stopExploration stops the provider session as well as aborting it', async () => {
+    nextSessionEvents = (config) => stopOnAbortEvents(config)
+
+    const exploration = await testManager.startExploration({
+      cwd: '/repo',
+      url: 'http://localhost:3000',
+      goal: 'Login',
+      mode: 'manual',
+      e2eOutputPath: 'e2e',
+      agentModel: 'gpt-5.5',
+      agentEffort: 'xhigh',
+    })
+
+    const call = await waitForCreateSessionCall()
+    testManager.stopExploration(exploration.id)
+
+    expect(call.abortController.signal.aborted).toBe(true)
+    expect(sessionStopCalls).toHaveLength(1)
+  })
+
+  test('complete text mapping does not dedupe against unrelated prior streamed text', async () => {
+    const sent: Array<{ channel: string; data: unknown }> = []
+    testManager.setWindow({
+      webContents: {
+        send: (channel: string, data: unknown) => sent.push({ channel, data }),
+      },
+    } as never)
+    nextSessionEvents = () =>
+      (async function* () {
+        yield { type: 'text_delta', text: 'prefix hello suffix' }
+        yield {
+          type: 'message_complete',
+          role: 'assistant',
+          content: [{ type: 'text', text: 'hello' }],
+          raw: {},
+        }
+      })()
+
+    await testManager.startExploration({
+      cwd: '/repo',
+      url: 'http://localhost:3000',
+      goal: 'Login',
+      mode: 'manual',
+      e2eOutputPath: 'e2e',
+      agentModel: 'gpt-5.5',
+      agentEffort: 'xhigh',
+    })
+
+    const done = await waitForExplorationStatus(sent, 'done')
+    expect(done.streamingText).toBe('prefix hello suffixhello\n')
+    expect(done.agentMessages).toContainEqual({ type: 'text', text: 'hello' })
+  })
+
+  test('complete message mapping does not repeat tool uses already emitted by id', async () => {
+    const sent: Array<{ channel: string; data: unknown }> = []
+    testManager.setWindow({
+      webContents: {
+        send: (channel: string, data: unknown) => sent.push({ channel, data }),
+      },
+    } as never)
+    nextSessionEvents = () =>
+      (async function* () {
+        yield { type: 'tool_use', toolId: 'tool-1', toolName: 'report_finding', input: {} }
+        yield {
+          type: 'message_complete',
+          role: 'assistant',
+          content: [{ type: 'tool_use', toolId: 'tool-1', toolName: 'report_finding', input: {} }],
+          raw: {},
+        }
+      })()
+
+    await testManager.startExploration({
+      cwd: '/repo',
+      url: 'http://localhost:3000',
+      goal: 'Login',
+      mode: 'manual',
+      e2eOutputPath: 'e2e',
+      agentModel: 'gpt-5.5',
+      agentEffort: 'xhigh',
+    })
+
+    await waitForExplorationStatus(sent, 'done')
+    const toolUseMessages = sent
+      .filter((entry) => entry.channel === IPC.TEST_EXPLORATION_UPDATE)
+      .flatMap((entry) => (entry.data as ExplorationUpdate).agentMessages ?? [])
+      .filter((message) => message.type === 'tool_use' && message.id === 'tool-1')
+    expect(toolUseMessages).toHaveLength(1)
   })
 })
