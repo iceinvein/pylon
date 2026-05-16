@@ -45,10 +45,13 @@ export function FileAstView({ fileAst, fileName }: FileAstViewProps) {
     [],
   )
 
-  const handleExplain = useCallback((nodeId: string, nodeName: string, filePath: string) => {
-    useAstStore.getState().setExplain(null, true)
-    window.api.explainAstNode(nodeId, filePath, nodeName, agentModel, agentEffort, scope)
-  }, [agentEffort, agentModel, scope])
+  const handleExplain = useCallback(
+    (nodeId: string, nodeName: string, filePath: string) => {
+      useAstStore.getState().setExplain(null, true)
+      window.api.explainAstNode(nodeId, filePath, nodeName, agentModel, agentEffort, scope)
+    },
+    [agentEffort, agentModel, scope],
+  )
 
   return (
     <div className="flex h-full flex-col">

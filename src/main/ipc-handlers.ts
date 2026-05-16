@@ -4,7 +4,6 @@ import path from 'node:path'
 import { BrowserWindow, dialog, ipcMain } from 'electron'
 import { IPC } from '../shared/ipc-channels'
 import { log } from '../shared/logger'
-import { isEffortLevel } from '../shared/types'
 import type {
   AppSettings,
   InstalledPlugin,
@@ -15,6 +14,7 @@ import type {
   PluginMarketplace,
   QuestionResponse,
 } from '../shared/types'
+import { isEffortLevel } from '../shared/types'
 import { getDb } from './db'
 import { getAllModels } from './providers'
 import { sessionManager } from './session-manager'

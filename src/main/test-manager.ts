@@ -19,9 +19,9 @@ import { getDb } from './db'
 import { resolveE2eOutputPath } from './e2e-path-resolver'
 import { checkPortInUse, scanProject as runProjectScan } from './project-scanner'
 import {
-  getProviderForModel,
   type AgentProvider,
   type AgentSession,
+  getProviderForModel,
   type NormalizedEvent,
 } from './providers'
 import { serverManager } from './server-manager'

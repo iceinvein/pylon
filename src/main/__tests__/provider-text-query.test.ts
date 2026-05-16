@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
-import type { AgentProvider, AgentSession, NormalizedEvent } from '../providers'
 import { runProviderTextQuery } from '../provider-text-query'
+import type { AgentProvider, AgentSession, NormalizedEvent } from '../providers'
 
 function fakeProvider(events: NormalizedEvent[]): AgentProvider {
   let sessionConfigAssertions: Promise<void> | null = null

@@ -371,10 +371,13 @@ export function RepoMapView({ repoGraph, archAnalysis }: RepoMapViewProps) {
     [],
   )
 
-  const handleExplain = useCallback((nodeId: string, nodeName: string, filePath: string) => {
-    useAstStore.getState().setExplain(null, true)
-    window.api.explainAstNode(nodeId, filePath, nodeName, agentModel, agentEffort, scope)
-  }, [agentEffort, agentModel, scope])
+  const handleExplain = useCallback(
+    (nodeId: string, nodeName: string, filePath: string) => {
+      useAstStore.getState().setExplain(null, true)
+      window.api.explainAstNode(nodeId, filePath, nodeName, agentModel, agentEffort, scope)
+    },
+    [agentEffort, agentModel, scope],
+  )
 
   /** Single-click selects a visible node without changing graph layout. */
   const handleNodeClick = useCallback(

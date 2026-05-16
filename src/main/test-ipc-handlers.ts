@@ -1,6 +1,6 @@
 import { ipcMain } from 'electron'
 import { IPC } from '../shared/ipc-channels'
-import { isEffortLevel, type EffortLevel, type ProjectScan } from '../shared/types'
+import { type EffortLevel, isEffortLevel, type ProjectScan } from '../shared/types'
 import { testManager } from './test-manager'
 
 function validAgentEffort(effort: unknown): EffortLevel | undefined {

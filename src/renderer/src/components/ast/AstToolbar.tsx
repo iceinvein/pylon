@@ -3,8 +3,8 @@ import { useCallback, useRef, useState } from 'react'
 import type { ArchAnalysis, AstOverlay, EffortLevel, RepoGraph } from '../../../../shared/types'
 import type { ProviderId, ProviderModelEntry } from '../../lib/provider-models'
 import { useAstStore } from '../../store/ast-store'
-import { ProviderModelPicker } from '../ProviderModelPicker'
 import { ProjectsPopover } from '../ProjectsPopover'
+import { ProviderModelPicker } from '../ProviderModelPicker'
 
 type AstToolbarProps = {
   scope: string

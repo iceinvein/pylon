@@ -1,5 +1,6 @@
 import { Clock, FolderOpen, Loader2 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import type { AppSettings, EffortLevel } from '../../../shared/types'
 import { AstChatPanel } from '../components/ast/AstChatPanel'
 import { AstSplitPanel } from '../components/ast/AstSplitPanel'
 import { AstToolbar } from '../components/ast/AstToolbar'
@@ -15,7 +16,6 @@ import {
   resolveFeatureAgentSelection,
 } from '../lib/provider-models'
 import { useAstStore } from '../store/ast-store'
-import type { AppSettings, EffortLevel } from '../../../shared/types'
 
 function formatTimeAgo(timestamp: number): string {
   const seconds = Math.floor((Date.now() - timestamp) / 1000)

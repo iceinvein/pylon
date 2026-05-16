@@ -2,60 +2,17 @@ import * as path from 'node:path'
 import { app, BrowserWindow, ipcMain } from 'electron'
 import { IPC } from '../shared/ipc-channels'
 import { log } from '../shared/logger'
-import { isEffortLevel, type EffortLevel } from '../shared/types'
+import {
+  type AstAgentArgs,
+  type CachedAstAnalysisRow,
+  createProviderQueryFn,
+  normalizeCachedAnalysisRow,
+  resolveAstAgent,
+  resolveAstExplainCwd,
+} from './ast-ipc-utils'
 import { getDb } from './db'
-import { runProviderTextQuery } from './provider-text-query'
-import { getProviderForModel } from './providers/registry'
-import type { AgentProvider } from './providers/types'
 
 const logger = log.child('ast-ipc')
-const DEFAULT_AST_AGENT_MODEL = 'claude-opus-4-7'
-const DEFAULT_AST_AGENT_EFFORT: EffortLevel = 'high'
-
-type AstAgentArgs = {
-  agentModel?: string
-  agentEffort?: EffortLevel
-}
-
-function validAgentEffort(effort: unknown): EffortLevel {
-  return isEffortLevel(effort) ? effort : DEFAULT_AST_AGENT_EFFORT
-}
-
-function providerLabel(provider: AgentProvider): string {
-  return provider.id === 'codex' ? 'Codex' : 'Claude Code'
-}
-
-function resolveAstAgent(args: AstAgentArgs): {
-  model: string
-  effort: EffortLevel
-  provider: AgentProvider | undefined
-  label: string
-} {
-  const model = args.agentModel || DEFAULT_AST_AGENT_MODEL
-  const effort = validAgentEffort(args.agentEffort)
-  const provider = getProviderForModel(model)
-  return {
-    model,
-    effort,
-    provider,
-    label: provider ? providerLabel(provider) : `model ${model}`,
-  }
-}
-
-function createProviderQueryFn(
-  cwd: string,
-  agent: { model: string; effort: EffortLevel; provider: AgentProvider },
-) {
-  return (system: string, prompt: string) =>
-    runProviderTextQuery({
-      cwd,
-      model: agent.model,
-      effort: agent.effort,
-      systemPrompt: system,
-      prompt,
-      provider: agent.provider,
-    })
-}
 
 // ── Persistence helpers ──
 
@@ -84,16 +41,8 @@ function loadCachedAnalysis(
   const db = getDb()
   const row = db
     .prepare('SELECT repo_graph, arch_analysis, analyzed_at FROM ast_analyses WHERE scope = ?')
-    .get(scope) as
-    | { repo_graph: string; arch_analysis: string | null; analyzed_at: number }
-    | undefined
-  if (!row) return null
-  if (!row.arch_analysis) return null
-  return {
-    repoGraph: JSON.parse(row.repo_graph),
-    archAnalysis: JSON.parse(row.arch_analysis),
-    analyzedAt: row.analyzed_at,
-  }
+    .get(scope) as CachedAstAnalysisRow | undefined
+  return normalizeCachedAnalysisRow(row)
 }
 
 // ── IPC Handlers ──
@@ -199,7 +148,7 @@ export function registerAstIpcHandlers(): void {
         if (win) win.webContents.send(IPC.AST_EXPLAIN_RESULT, result)
         return result
       }
-      const cwd = args.scope || path.dirname(args.filePath)
+      const cwd = resolveAstExplainCwd(args)
       const queryFn = createProviderQueryFn(cwd, {
         model: agent.model,
         effort: agent.effort,

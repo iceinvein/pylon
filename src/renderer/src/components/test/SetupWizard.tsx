@@ -18,7 +18,6 @@ import type {
   ProjectScan,
   SuggestedGoal,
 } from '../../../../shared/types'
-import { ProviderModelPicker } from '../ProviderModelPicker'
 import {
   FALLBACK_PROVIDER_MODELS,
   normalizeProviderModels,
@@ -28,6 +27,7 @@ import {
 } from '../../lib/provider-models'
 import { timeAgo } from '../../lib/utils'
 import { useTestStore } from '../../store/test-store'
+import { ProviderModelPicker } from '../ProviderModelPicker'
 
 /* -------------------------------------------------------------------------- */
 /*  Step 1 — Project Selection                                                */
@@ -590,9 +590,10 @@ export function SetupWizard() {
     useState<ProviderModelEntry[]>(FALLBACK_PROVIDER_MODELS)
   const agentSelectionRequestRef = useRef(0)
   const agentSelectionBaseRevisionRef = useRef(useTestStore.getState().agentSelectionRevision)
-  const agentSelectionLoadRef = useRef<
-    Promise<{ models: ProviderModelEntry[]; selection: AgentSelection }> | null
-  >(null)
+  const agentSelectionLoadRef = useRef<Promise<{
+    models: ProviderModelEntry[]
+    selection: AgentSelection
+  }> | null>(null)
 
   type AgentSelection = {
     provider: ProviderId

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, mock, test } from 'bun:test'
 import { IPC } from '../../shared/ipc-channels'
-import type { EffortLevel, ExplorationUpdate, ProjectScan } from '../../shared/types'
+import type { EffortLevel, ExplorationUpdate } from '../../shared/types'
 import type {
   AgentProvider,
   AgentSession,
@@ -79,6 +79,7 @@ async function* stopOnAbortEvents(config: ProviderSessionConfig): AsyncIterable<
 
 mock.module('electron', () => ({
   app: { on: mock(() => {}) },
+  BrowserWindow: class {},
 }))
 
 mock.module('../providers', () => ({
@@ -126,25 +127,6 @@ mock.module('../db', () => ({
       get: () => undefined,
     }),
   }),
-}))
-
-const scan: ProjectScan = {
-  framework: 'vite',
-  devCommand: 'bun run dev',
-  detectedPort: 3000,
-  detectedUrl: 'http://localhost:3000',
-  packageManager: 'bun',
-  portOverrideMethod: null,
-  serverRunning: false,
-  routeFiles: [],
-  hasPlaywrightConfig: false,
-  docsFiles: [],
-  error: null,
-}
-
-mock.module('../project-scanner', () => ({
-  scanProject: () => scan,
-  checkPortInUse: () => Promise.resolve(false),
 }))
 
 mock.module('../server-manager', () => ({

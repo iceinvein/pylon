@@ -3,9 +3,9 @@ import { useMemo } from 'react'
 import type { EffortLevel } from '../../../shared/types'
 import {
   defaultModelForProvider,
-  providerForModel,
   type ProviderId,
   type ProviderModelEntry,
+  providerForModel,
 } from '../lib/provider-models'
 
 type ProviderModelPickerProps = {
