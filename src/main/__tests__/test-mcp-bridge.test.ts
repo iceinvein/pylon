@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
+import { createServer as createNetServer } from 'node:net'
 
 const executeCalls: Array<{ toolName: string; args: Record<string, unknown> }> = []
 
@@ -123,6 +124,30 @@ describe('testing MCP bridge', () => {
     expect(executeCalls).toHaveLength(0)
   })
 
+  test('callback server shares one listener across concurrent starts', async () => {
+    const handlesBefore = new Set(getActiveServerHandles())
+    callbackServer = new TestingToolCallbackServer()
+    const port = await findFreePort()
+
+    const results = await Promise.allSettled([
+      callbackServer.start(port),
+      callbackServer.start(port),
+    ])
+    await callbackServer.stop().catch(() => {})
+    callbackServer = null
+
+    const leakedHandles = getActiveServerHandles().filter((handle) => !handlesBefore.has(handle))
+    await Promise.all(leakedHandles.map(closeServerHandle))
+
+    expect(results.every((result) => result.status === 'fulfilled')).toBe(true)
+    const [first, second] = results.map((result) =>
+      result.status === 'fulfilled' ? result.value : null,
+    )
+    expect(first).toEqual({ port, callbackUrl: createTestingToolCallbackUrl(port) })
+    expect(second).toEqual(first)
+    expect(leakedHandles).toHaveLength(0)
+  })
+
   test('callback server dispatches authorized tool calls to registered test tools', async () => {
     callbackServer = new TestingToolCallbackServer()
     const { port } = await callbackServer.start()
@@ -208,3 +233,53 @@ describe('testing MCP bridge', () => {
     }
   })
 })
+
+type CloseableServerHandle = {
+  close: (callback?: (err?: Error) => void) => void
+  constructor?: { name?: string }
+}
+
+function getActiveServerHandles(): CloseableServerHandle[] {
+  const processWithHandles = process as typeof process & {
+    _getActiveHandles?: () => unknown[]
+  }
+  return (processWithHandles._getActiveHandles?.() ?? []).filter(
+    (handle): handle is CloseableServerHandle =>
+      Boolean(
+        handle &&
+          typeof handle === 'object' &&
+          'close' in handle &&
+          typeof handle.close === 'function' &&
+          handle.constructor?.name === 'Server',
+      ),
+  )
+}
+
+async function closeServerHandle(handle: CloseableServerHandle): Promise<void> {
+  await new Promise<void>((resolve) => {
+    try {
+      handle.close(() => resolve())
+    } catch {
+      resolve()
+    }
+  })
+}
+
+async function findFreePort(): Promise<number> {
+  const server = createNetServer()
+  await new Promise<void>((resolve, reject) => {
+    server.once('error', reject)
+    server.listen(0, '127.0.0.1', () => resolve())
+  })
+  const address = server.address()
+  if (!address || typeof address === 'string') {
+    throw new Error('Failed to allocate a local test port')
+  }
+  await new Promise<void>((resolve, reject) => {
+    server.close((err) => {
+      if (err) reject(err)
+      else resolve()
+    })
+  })
+  return address.port
+}

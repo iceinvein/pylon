@@ -1,5 +1,4 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
-import type { AddressInfo } from 'node:net'
 import { join } from 'node:path'
 import { app, type BrowserWindow } from 'electron'
 import {
@@ -95,32 +94,52 @@ export function buildTestingMcpServers(input: BuildTestingMcpServersInput): Test
 export class TestingToolCallbackServer {
   private server: Server | null = null
   private port: number | null = null
+  private startPromise: Promise<{ port: number; callbackUrl: string }> | null = null
   private readonly explorationsByToken = new Map<string, RegisteredExploration>()
 
   async start(port = 0): Promise<{ port: number; callbackUrl: string }> {
     if (this.server && this.port !== null) {
       return { port: this.port, callbackUrl: createTestingToolCallbackUrl(this.port) }
     }
+    if (this.startPromise) return this.startPromise
 
-    this.server = createServer((request, response) => {
+    const server = createServer((request, response) => {
       this.handleRequest(request, response).catch((err) => {
         this.writeJson(response, 500, {
           error: err instanceof Error ? err.message : String(err),
         })
       })
     })
+    this.server = server
 
-    await new Promise<void>((resolve, reject) => {
-      this.server?.once('error', reject)
-      this.server?.listen(port, '127.0.0.1', () => {
-        this.server?.off('error', reject)
-        resolve()
+    this.startPromise = new Promise<{ port: number; callbackUrl: string }>((resolve, reject) => {
+      const rejectStart = (err: Error) => {
+        server.off('error', rejectStart)
+        if (this.server === server) {
+          this.server = null
+          this.port = null
+        }
+        this.startPromise = null
+        reject(err)
+      }
+
+      server.once('error', rejectStart)
+      server.listen(port, '127.0.0.1', () => {
+        server.off('error', rejectStart)
+        const address = server.address()
+        if (!address || typeof address === 'string') {
+          rejectStart(new Error('Testing tool callback server did not bind to a TCP port'))
+          return
+        }
+
+        this.server = server
+        this.port = address.port
+        this.startPromise = null
+        resolve({ port: this.port, callbackUrl: createTestingToolCallbackUrl(this.port) })
       })
     })
 
-    const address = this.server.address() as AddressInfo
-    this.port = address.port
-    return { port: this.port, callbackUrl: createTestingToolCallbackUrl(this.port) }
+    return this.startPromise
   }
 
   registerExploration(exploration: RegisteredExploration): void {
@@ -133,6 +152,7 @@ export class TestingToolCallbackServer {
 
   async stop(): Promise<void> {
     this.explorationsByToken.clear()
+    this.startPromise = null
 
     if (!this.server) {
       this.port = null
