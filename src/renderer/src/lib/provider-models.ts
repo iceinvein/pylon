@@ -73,8 +73,18 @@ const PROVIDER_DEFAULTS: Record<ProviderId, string> = {
 
 const EFFORT_ORDER: EffortLevel[] = ['low', 'medium', 'high', 'xhigh', 'max']
 
-export function isProviderId(value: string | undefined): value is ProviderId {
+export function isProviderId(value: unknown): value is ProviderId {
   return value === 'claude' || value === 'codex'
+}
+
+export function isEffortLevel(value: unknown): value is EffortLevel {
+  return (
+    value === 'low' ||
+    value === 'medium' ||
+    value === 'high' ||
+    value === 'xhigh' ||
+    value === 'max'
+  )
 }
 
 export function providerLabel(provider: ProviderId): string {
@@ -115,14 +125,27 @@ export function clampEffortForModel(
 
 export function normalizeProviderModels(models: unknown[]): ProviderModelEntry[] {
   const normalized = models.flatMap((raw): ProviderModelEntry[] => {
-    const model = raw as Partial<ProviderModelEntry>
-    if (!model.id || !model.label || !isProviderId(model.provider)) return []
+    if (!raw || typeof raw !== 'object') return []
+
+    const model = raw as Record<string, unknown>
+    if (
+      typeof model.id !== 'string' ||
+      typeof model.label !== 'string' ||
+      !isProviderId(model.provider)
+    ) {
+      return []
+    }
+
+    const supportsEffort = Array.isArray(model.supportsEffort)
+      ? model.supportsEffort.filter(isEffortLevel)
+      : undefined
+
     return [
       {
         id: model.id,
         label: model.label,
         provider: model.provider,
-        supportsEffort: model.supportsEffort,
+        supportsEffort,
       },
     ]
   })
@@ -131,31 +154,40 @@ export function normalizeProviderModels(models: unknown[]): ProviderModelEntry[]
 
 export function resolveFeatureAgentSelection(input: {
   persistedModel?: string
-  persistedProvider?: ProviderId
-  persistedEffort?: EffortLevel
+  persistedProvider?: unknown
+  persistedEffort?: unknown
   appDefaultModel?: string
-  appDefaultEffort?: EffortLevel
+  appDefaultEffort?: unknown
   models: ProviderModelEntry[]
 }): { provider: ProviderId; model: string; effort: EffortLevel } {
   const modelExists = input.persistedModel
     ? input.models.some((model) => model.id === input.persistedModel)
     : false
+  const appDefaultModelExists = input.appDefaultModel
+    ? input.models.some((model) => model.id === input.appDefaultModel)
+    : false
+  const persistedProvider = isProviderId(input.persistedProvider)
+    ? input.persistedProvider
+    : undefined
   const provider =
     (modelExists && input.persistedModel
       ? providerForModel(input.persistedModel, input.models)
       : undefined) ??
-    input.persistedProvider ??
+    persistedProvider ??
     (input.appDefaultModel ? providerForModel(input.appDefaultModel, input.models) : undefined) ??
     'claude'
   const model =
     modelExists && input.persistedModel
       ? input.persistedModel
-      : defaultModelForProvider(provider, input.models)
-  const effort = clampEffortForModel(
-    model,
-    input.persistedEffort ?? input.appDefaultEffort ?? 'high',
-    input.models,
-  )
+      : !persistedProvider && appDefaultModelExists && input.appDefaultModel
+        ? input.appDefaultModel
+        : defaultModelForProvider(provider, input.models)
+  const requestedEffort = isEffortLevel(input.persistedEffort)
+    ? input.persistedEffort
+    : isEffortLevel(input.appDefaultEffort)
+      ? input.appDefaultEffort
+      : 'high'
+  const effort = clampEffortForModel(model, requestedEffort, input.models)
 
   return { provider, model, effort }
 }
