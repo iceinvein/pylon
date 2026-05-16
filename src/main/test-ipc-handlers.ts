@@ -1,6 +1,11 @@
 import { ipcMain } from 'electron'
 import { IPC } from '../shared/ipc-channels'
+import { isEffortLevel, type EffortLevel, type ProjectScan } from '../shared/types'
 import { testManager } from './test-manager'
+
+function validAgentEffort(effort: unknown): EffortLevel | undefined {
+  return isEffortLevel(effort) ? effort : undefined
+}
 
 export function registerTestIpcHandlers(): void {
   ipcMain.handle(
@@ -15,12 +20,16 @@ export function registerTestIpcHandlers(): void {
         requirements?: string
         e2eOutputPath: string
         e2ePathReason?: string
-        projectScan?: import('../shared/types').ProjectScan
+        projectScan?: ProjectScan
         agentModel?: string
-        agentEffort?: import('../shared/types').EffortLevel
+        agentEffort?: EffortLevel
       },
     ) => {
-      return testManager.startExploration({ ...args, mode: args.mode as 'manual' | 'requirements' })
+      return testManager.startExploration({
+        ...args,
+        mode: args.mode as 'manual' | 'requirements',
+        agentEffort: validAgentEffort(args.agentEffort),
+      })
     },
   )
 
@@ -38,14 +47,15 @@ export function registerTestIpcHandlers(): void {
         e2ePathReason?: string
         customUrl?: string
         autoStartServer: boolean
-        projectScan?: import('../shared/types').ProjectScan
+        projectScan?: ProjectScan
         agentModel?: string
-        agentEffort?: import('../shared/types').EffortLevel
+        agentEffort?: EffortLevel
       },
     ) => {
       return testManager.startBatch({
         ...args,
         mode: args.mode as 'manual' | 'requirements',
+        agentEffort: validAgentEffort(args.agentEffort),
       })
     },
   )
@@ -90,17 +100,14 @@ export function registerTestIpcHandlers(): void {
       args: {
         cwd: string
         agentModel?: string
-        agentEffort?: import('../shared/types').EffortLevel
+        agentEffort?: EffortLevel
       },
     ) => {
-      const suggestGoals = testManager.suggestGoals as (
-        cwd: string,
-        agentModel?: string,
-        agentEffort?: import('../shared/types').EffortLevel,
-      ) => Promise<void>
-      suggestGoals(args.cwd, args.agentModel, args.agentEffort).catch((err) => {
-        console.error('suggestGoals failed:', err)
-      })
+      testManager
+        .suggestGoals(args.cwd, args.agentModel, validAgentEffort(args.agentEffort))
+        .catch((err) => {
+          console.error('suggestGoals failed:', err)
+        })
       return true
     },
   )

@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { IPC } from '../shared/ipc-channels'
-import type { GhPrStateFilter, IpcAttachment, PrContextUpdate } from '../shared/types'
+import type { EffortLevel, GhPrStateFilter, IpcAttachment, PrContextUpdate } from '../shared/types'
 
 const api = {
   createSession: (cwd: string, model?: string, useWorktree?: boolean) =>
@@ -158,7 +158,7 @@ const api = {
       baselineReviewId?: string
       includeRevalidation?: boolean
       agentModel?: string
-      agentEffort?: string
+      agentEffort?: EffortLevel
     }
   }) => ipcRenderer.invoke(IPC.GH_START_REVIEW, args),
   stopGhReview: (reviewId: string) => ipcRenderer.invoke(IPC.GH_STOP_REVIEW, { reviewId }),
@@ -234,7 +234,7 @@ const api = {
     e2ePathReason?: string
     projectScan?: unknown
     agentModel?: string
-    agentEffort?: string
+    agentEffort?: EffortLevel
   }) => ipcRenderer.invoke(IPC.TEST_START_EXPLORATION, args),
   startBatch: (args: {
     cwd: string
@@ -248,7 +248,7 @@ const api = {
     autoStartServer: boolean
     projectScan?: unknown
     agentModel?: string
-    agentEffort?: string
+    agentEffort?: EffortLevel
   }) => ipcRenderer.invoke(IPC.TEST_START_BATCH, args),
   stopExploration: (explorationId: string) =>
     ipcRenderer.invoke(IPC.TEST_STOP_EXPLORATION, { explorationId }),
@@ -266,7 +266,7 @@ const api = {
     return () => ipcRenderer.removeListener(IPC.TEST_EXPLORATION_UPDATE, handler)
   },
   scanProject: (cwd: string) => ipcRenderer.invoke(IPC.TEST_SCAN_PROJECT, { cwd }),
-  suggestGoals: (cwd: string, agentModel?: string, agentEffort?: string) =>
+  suggestGoals: (cwd: string, agentModel?: string, agentEffort?: EffortLevel) =>
     ipcRenderer.invoke(IPC.TEST_SUGGEST_GOALS, { cwd, agentModel, agentEffort }),
   onGoalSuggestion: (callback: (data: unknown) => void) => {
     const handler = (_event: unknown, data: unknown) => callback(data)
@@ -316,7 +316,7 @@ const api = {
 
   // AST Visualizer
   getCachedAnalysis: (scope: string) => ipcRenderer.invoke(IPC.AST_GET_CACHED, { scope }),
-  analyzeScope: (scope: string, agentModel?: string, agentEffort?: string) =>
+  analyzeScope: (scope: string, agentModel?: string, agentEffort?: EffortLevel) =>
     ipcRenderer.invoke(IPC.AST_ANALYZE_SCOPE, { scope, agentModel, agentEffort }),
   getFileAst: (filePath: string) => ipcRenderer.invoke(IPC.AST_FILE_AST, { filePath }),
   explainAstNode: (
@@ -324,9 +324,9 @@ const api = {
     filePath: string,
     context: string,
     agentModel?: string,
-    agentEffort?: string,
+    agentEffort?: EffortLevel,
   ) => ipcRenderer.invoke(IPC.AST_EXPLAIN, { nodeId, filePath, context, agentModel, agentEffort }),
-  sendAstChat: (message: string, scope: string, agentModel?: string, agentEffort?: string) =>
+  sendAstChat: (message: string, scope: string, agentModel?: string, agentEffort?: EffortLevel) =>
     ipcRenderer.invoke(IPC.AST_CHAT, { message, scope, agentModel, agentEffort }),
   onAstAnalysisProgress: (callback: (data: unknown) => void) => {
     const handler = (_event: unknown, data: unknown) => callback(data)

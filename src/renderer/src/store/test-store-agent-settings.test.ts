@@ -35,4 +35,43 @@ describe('test-store agent settings', () => {
       agentEffort: 'xhigh',
     })
   })
+
+  test('passes selected agent model and effort into goal suggestions', async () => {
+    const calls: unknown[] = []
+    globalThis.window = {
+      api: {
+        suggestGoals: async (...args: unknown[]) => {
+          calls.push(args)
+        },
+      },
+    } as unknown as Window & typeof globalThis
+
+    await useTestStore.getState().suggestGoals('/repo')
+
+    expect(calls[0]).toEqual(['/repo', 'gpt-5.5', 'xhigh'])
+  })
+
+  test('passes selected agent model and effort into exploration starts', async () => {
+    const calls: unknown[] = []
+    globalThis.window = {
+      api: {
+        startExploration: async (args: unknown) => {
+          calls.push(args)
+          return { id: 'exp-1' }
+        },
+      },
+    } as unknown as Window & typeof globalThis
+
+    await useTestStore.getState().startExploration('/repo', {
+      url: 'http://localhost:3000',
+      goal: 'Login',
+      mode: 'manual',
+      e2eOutputPath: 'e2e',
+    })
+
+    expect(calls[0]).toMatchObject({
+      agentModel: 'gpt-5.5',
+      agentEffort: 'xhigh',
+    })
+  })
 })

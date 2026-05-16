@@ -188,7 +188,7 @@ type Api = {
     e2ePathReason?: string
     projectScan?: import('../shared/types').ProjectScan
     agentModel?: string
-    agentEffort?: string
+    agentEffort?: import('../shared/types').EffortLevel
   }) => Promise<import('../shared/types').TestExploration>
   startBatch: (args: {
     cwd: string
@@ -202,7 +202,7 @@ type Api = {
     autoStartServer: boolean
     projectScan?: unknown
     agentModel?: string
-    agentEffort?: string
+    agentEffort?: import('../shared/types').EffortLevel
   }) => Promise<import('../shared/types').TestExploration[]>
   stopExploration: (explorationId: string) => Promise<boolean>
   listExplorations: (cwd: string) => Promise<import('../shared/types').TestExploration[]>
@@ -217,7 +217,11 @@ type Api = {
   readGeneratedTest: (cwd: string, relativePath: string) => Promise<string | null>
   onExplorationUpdate: (callback: (data: unknown) => void) => () => void
   scanProject: (cwd: string) => Promise<import('../shared/types').ProjectScan>
-  suggestGoals: (cwd: string, agentModel?: string, agentEffort?: string) => Promise<void>
+  suggestGoals: (
+    cwd: string,
+    agentModel?: string,
+    agentEffort?: import('../shared/types').EffortLevel,
+  ) => Promise<void>
   onGoalSuggestion: (
     callback: (data: import('../shared/types').GoalSuggestionUpdate) => void,
   ) => () => void
@@ -268,20 +272,24 @@ type Api = {
     archAnalysis: unknown | null
     analyzedAt: number
   } | null>
-  analyzeScope: (scope: string, agentModel?: string, agentEffort?: string) => Promise<void>
+  analyzeScope: (
+    scope: string,
+    agentModel?: string,
+    agentEffort?: import('../shared/types').EffortLevel,
+  ) => Promise<void>
   getFileAst: (filePath: string) => Promise<import('../shared/types').AstNode[]>
   explainAstNode: (
     nodeId: string,
     filePath: string,
     context: string,
     agentModel?: string,
-    agentEffort?: string,
+    agentEffort?: import('../shared/types').EffortLevel,
   ) => Promise<{ text: string; done: boolean }>
   sendAstChat: (
     message: string,
     scope: string,
     agentModel?: string,
-    agentEffort?: string,
+    agentEffort?: import('../shared/types').EffortLevel,
   ) => Promise<{ text: string; done: boolean }>
   onAstAnalysisProgress: (callback: (data: unknown) => void) => () => void
   onAstRepoGraph: (callback: (data: unknown) => void) => () => void

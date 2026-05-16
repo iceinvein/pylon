@@ -7,6 +7,7 @@ import { z } from 'zod'
 import { IPC } from '../shared/ipc-channels'
 import { log } from '../shared/logger'
 import type {
+  EffortLevel,
   ExplorationAgentMessage,
   ExplorationMode,
   ExplorationStatus,
@@ -30,6 +31,16 @@ import {
 const logger = log.child('test-manager')
 const STREAM_THROTTLE_MS = 300
 const GOAL_SUGGESTION_TIMEOUT_MS = 60_000 // 60s max for goal suggestion
+
+type AgentSettings = {
+  agentModel?: string
+  agentEffort?: EffortLevel
+}
+
+type AgentQueryOptions = {
+  model?: string
+  effort?: EffortLevel
+}
 
 class TestManager {
   private activeExplorations = new Map<
@@ -74,7 +85,14 @@ class TestManager {
     return scan
   }
 
-  async suggestGoals(cwd: string): Promise<void> {
+  private getAgentQueryOptions(settings: AgentSettings): AgentQueryOptions {
+    return {
+      ...(settings.agentModel ? { model: settings.agentModel } : {}),
+      ...(settings.agentEffort ? { effort: settings.agentEffort } : {}),
+    }
+  }
+
+  async suggestGoals(cwd: string, agentModel?: string, agentEffort?: EffortLevel): Promise<void> {
     // Abort any in-flight suggestion
     if (this.goalSuggestionAbort) {
       this.goalSuggestionAbort.abort()
@@ -149,6 +167,7 @@ class TestManager {
             allowDangerouslySkipPermissions: true,
             abortController,
             ...getClaudeCodeSdkRuntimeOptions(),
+            ...this.getAgentQueryOptions({ agentModel, agentEffort }),
             mcpServers: {
               'pylon-goal-analysis': toolsServer,
             },
@@ -204,6 +223,8 @@ class TestManager {
     projectScan?: ProjectScan
     batchId?: string
     autoStartServer?: boolean
+    agentModel?: string
+    agentEffort?: EffortLevel
   }): Promise<TestExploration> {
     const id = randomUUID()
     const now = Date.now()
@@ -276,6 +297,8 @@ class TestManager {
     customUrl?: string
     autoStartServer: boolean
     projectScan?: ProjectScan
+    agentModel?: string
+    agentEffort?: EffortLevel
   }): Promise<TestExploration[]> {
     const batchId = randomUUID()
     const { goals, agentCount } = config
@@ -392,6 +415,8 @@ class TestManager {
         e2eOutputPath: config.e2eOutputPath,
         projectScan: config.projectScan,
         autoStartServer: config.autoStartServer,
+        agentModel: config.agentModel,
+        agentEffort: config.agentEffort,
       })
         .catch((err) => {
           logger.error(`Exploration ${exploration.id} failed:`, err)
@@ -443,6 +468,8 @@ class TestManager {
       e2eOutputPath: string
       projectScan?: ProjectScan
       autoStartServer?: boolean
+      agentModel?: string
+      agentEffort?: EffortLevel
     },
   ): Promise<void> {
     const abortController = new AbortController()
@@ -530,6 +557,7 @@ class TestManager {
           allowDangerouslySkipPermissions: true,
           abortController,
           ...getClaudeCodeSdkRuntimeOptions(),
+          ...this.getAgentQueryOptions(config),
           mcpServers: {
             playwright: {
               command: 'bunx',
