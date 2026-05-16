@@ -509,7 +509,17 @@ class ClaudeSession implements AgentSession {
     }
 
     if (config.mcpServers && Object.keys(config.mcpServers).length > 0) {
-      base.mcpServers = config.mcpServers
+      // Force tools to load up-front. By default the SDK defers MCP tools
+      // behind tool search, so a review agent that does not first call
+      // `tool_search` never sees `mcp__code-intelligence__*` and reports
+      // `attempts=0`. We attach these servers deliberately, so they must
+      // appear in the turn-1 tool list.
+      base.mcpServers = Object.fromEntries(
+        Object.entries(config.mcpServers).map(([name, server]) => [
+          name,
+          { type: 'stdio' as const, ...server, alwaysLoad: true },
+        ]),
+      )
     }
 
     return base
