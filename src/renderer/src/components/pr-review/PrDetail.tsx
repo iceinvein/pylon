@@ -18,7 +18,7 @@ import rehypeRaw from 'rehype-raw'
 import rehypeSanitize from 'rehype-sanitize'
 import remarkGfm from 'remark-gfm'
 import type { EffortLevel, ReviewFocus } from '../../../../shared/types'
-import { isClaudeSetupError } from '../../lib/setup-errors'
+import { getProviderSetupError } from '../../lib/setup-errors'
 import { usePrReviewStore } from '../../store/pr-review-store'
 import { ClaudeCodeSetupCard } from '../setup/ClaudeCodeSetupCard'
 import { ActiveIssuesPanel } from './ActiveIssuesPanel'
@@ -99,13 +99,13 @@ function splitDiffByFile(fullDiff: string): Map<string, string> {
 }
 
 function ReviewErrorState({ error, onRetry }: { error: string | null; onRetry: () => void }) {
-  const isSetupError = isClaudeSetupError(error)
+  const setupError = getProviderSetupError(error)
 
   return (
     <div className="flex h-full flex-col items-center justify-center gap-4 px-8 text-center">
       <div
         className={`flex h-14 w-14 items-center justify-center rounded-2xl ${
-          isSetupError ? 'bg-base-raised text-base-text-secondary' : 'bg-warning/10 text-warning'
+          setupError ? 'bg-base-raised text-base-text-secondary' : 'bg-warning/10 text-warning'
         }`}
       >
         <AlertTriangle size={24} />
@@ -113,12 +113,12 @@ function ReviewErrorState({ error, onRetry }: { error: string | null; onRetry: (
 
       <div className="max-w-lg space-y-2">
         <h3 className="font-medium text-base text-base-text">
-          {isSetupError ? 'Claude Code Required' : 'Review Failed'}
+          {setupError ? setupError.title : 'Review Failed'}
         </h3>
         <p className="text-base-text-secondary text-sm leading-relaxed">
-          {isSetupError
+          {setupError?.provider === 'claude'
             ? 'Pylon requires Claude Code to run PR review. Install Claude Code on this machine and make sure the `claude` command is available on your PATH.'
-            : 'The review could not be completed.'}
+            : (setupError?.description ?? 'The review could not be completed.')}
         </p>
         {error && (
           <div className="rounded-lg border border-base-border-subtle bg-base-surface/50 px-3 py-2 font-mono text-[11px] text-base-text-muted">
@@ -127,7 +127,7 @@ function ReviewErrorState({ error, onRetry }: { error: string | null; onRetry: (
         )}
       </div>
 
-      {isSetupError && <ClaudeCodeSetupCard errorMessage={error} />}
+      {setupError && <ClaudeCodeSetupCard errorMessage={error} setup={setupError} />}
 
       <button
         type="button"

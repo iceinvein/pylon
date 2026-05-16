@@ -1,6 +1,6 @@
 import { CheckCircle, XCircle } from 'lucide-react'
 import { motion } from 'motion/react'
-import { isClaudeSetupError } from '../../lib/setup-errors'
+import { getProviderSetupError } from '../../lib/setup-errors'
 import { formatCost, formatTokens } from '../../lib/utils'
 import { ClaudeCodeSetupCard } from '../setup/ClaudeCodeSetupCard'
 
@@ -39,7 +39,7 @@ export function ResultMessage({
   errorMessage,
 }: ResultMessageProps) {
   if (isError) {
-    const isSetupError = isClaudeSetupError(errorMessage)
+    const setupError = getProviderSetupError(errorMessage)
 
     return (
       <motion.div
@@ -55,8 +55,8 @@ export function ResultMessage({
               'linear-gradient(to right, transparent, color-mix(in srgb, var(--color-error) 20%, transparent), transparent)',
           }}
         />
-        {isSetupError ? (
-          <ClaudeCodeSetupCard errorMessage={errorMessage} compact />
+        {setupError ? (
+          <ClaudeCodeSetupCard errorMessage={errorMessage} setup={setupError} compact />
         ) : (
           <div className="flex items-center gap-2">
             <span className="rounded-full bg-error/15 px-2 py-0.5 text-error text-xs">
