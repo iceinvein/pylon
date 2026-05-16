@@ -52,7 +52,7 @@ export function groupSummaryItems(items: PeerReviewSummaryItem[]): {
   return { updates, additions }
 }
 
-function deriveProviderLabel(message: string): string {
+export function deriveProviderLabel(message: string): string {
   for (const [key, label] of Object.entries(PROVIDER_LABEL)) {
     if (message.toLowerCase().includes(key)) return label
   }

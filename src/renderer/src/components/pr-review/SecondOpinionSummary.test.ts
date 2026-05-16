@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import type { PeerReviewSummaryItem } from '../../../../shared/types'
-import { buildSummaryHeader, groupSummaryItems } from './SecondOpinionSummary'
+import { buildSummaryHeader, deriveProviderLabel, groupSummaryItems } from './SecondOpinionSummary'
 
 const item = (kind: PeerReviewSummaryItem['kind'], title: string): PeerReviewSummaryItem => ({
   kind,
@@ -37,5 +37,23 @@ describe('groupSummaryItems', () => {
     const grouped = groupSummaryItems([item('update', 'a'), item('add', 'b'), item('update', 'c')])
     expect(grouped.updates.map((i) => i.findingTitle)).toEqual(['a', 'c'])
     expect(grouped.additions.map((i) => i.findingTitle)).toEqual(['b'])
+  })
+})
+
+describe('deriveProviderLabel', () => {
+  test('returns Codex when message mentions codex case-insensitively', () => {
+    expect(deriveProviderLabel('Codex second opinion applied 3 finding changes.')).toBe('Codex')
+    expect(deriveProviderLabel('codex second opinion applied 3 finding changes.')).toBe('Codex')
+  })
+
+  test('returns Claude Code when message mentions claude case-insensitively', () => {
+    expect(deriveProviderLabel('Claude Code second opinion applied 1 finding change.')).toBe(
+      'Claude Code',
+    )
+  })
+
+  test('falls back to generic label when message mentions no known provider', () => {
+    expect(deriveProviderLabel('Second opinion produced no changes.')).toBe('Second opinion')
+    expect(deriveProviderLabel('')).toBe('Second opinion')
   })
 })
