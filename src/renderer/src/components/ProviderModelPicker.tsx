@@ -2,7 +2,6 @@ import { ChevronDown } from 'lucide-react'
 import { useMemo } from 'react'
 import type { EffortLevel } from '../../../shared/types'
 import {
-  clampEffortForModel,
   defaultModelForProvider,
   providerForModel,
   type ProviderId,
@@ -34,7 +33,48 @@ const EFFORT_LABELS: Record<EffortLevel, string> = {
 const DEFAULT_EFFORTS: EffortLevel[] = ['low', 'medium', 'high']
 
 function modelEfforts(model: string, models: ProviderModelEntry[]): EffortLevel[] {
-  return models.find((entry) => entry.id === model)?.supportsEffort ?? DEFAULT_EFFORTS
+  const efforts = models.find((entry) => entry.id === model)?.supportsEffort
+  return efforts?.length ? efforts : DEFAULT_EFFORTS
+}
+
+function clampEffortToOptions(effort: EffortLevel, options: EffortLevel[]): EffortLevel {
+  if (options.includes(effort)) return effort
+  if (options.includes('high')) return 'high'
+  return options[0] ?? 'high'
+}
+
+export function resolveProviderModelPickerState({
+  models,
+  provider,
+  model,
+  effort,
+  disabled = false,
+}: {
+  models: ProviderModelEntry[]
+  provider: ProviderId
+  model: string
+  effort: EffortLevel
+  disabled?: boolean
+}) {
+  const providerModels = models.filter((entry) => entry.provider === provider)
+  const defaultModel = defaultModelForProvider(provider, models)
+  const selectedModel =
+    providerModels.find((entry) => entry.id === model)?.id ??
+    providerModels.find((entry) => entry.id === defaultModel)?.id ??
+    providerModels[0]?.id ??
+    ''
+  const effortOptions = selectedModel ? modelEfforts(selectedModel, models) : DEFAULT_EFFORTS
+  const selectedEffort = clampEffortToOptions(effort, effortOptions)
+  const hasModelOptions = providerModels.length > 0
+
+  return {
+    providerModels,
+    selectedModel,
+    effortOptions,
+    selectedEffort,
+    modelSelectDisabled: disabled || !hasModelOptions,
+    effortSelectDisabled: disabled || !hasModelOptions,
+  }
 }
 
 export function ProviderModelPicker({
@@ -45,30 +85,44 @@ export function ProviderModelPicker({
   onSelectionChange,
   disabled = false,
 }: ProviderModelPickerProps) {
-  const providerModels = useMemo(
-    () => models.filter((entry) => entry.provider === provider),
-    [models, provider],
+  const pickerState = useMemo(
+    () => resolveProviderModelPickerState({ models, provider, model, effort, disabled }),
+    [disabled, effort, model, models, provider],
   )
-  const selectedModel =
-    providerModels.find((entry) => entry.id === model)?.id ??
-    defaultModelForProvider(provider, models)
-  const effortOptions = modelEfforts(selectedModel, models)
-  const selectedEffort = clampEffortForModel(selectedModel, effort, models)
+  const {
+    providerModels,
+    selectedModel,
+    effortOptions,
+    selectedEffort,
+    modelSelectDisabled,
+    effortSelectDisabled,
+  } = pickerState
 
   function selectProvider(nextProvider: ProviderId) {
-    const nextModel = defaultModelForProvider(nextProvider, models)
-    const nextEffort = clampEffortForModel(nextModel, effort, models)
+    const nextProviderModels = models.filter((entry) => entry.provider === nextProvider)
+    if (nextProviderModels.length === 0) return
+    const defaultModel = defaultModelForProvider(nextProvider, models)
+    const nextModel =
+      nextProviderModels.find((entry) => entry.id === defaultModel)?.id ?? nextProviderModels[0]?.id
+    if (!nextModel) return
+    const nextEffort = clampEffortToOptions(effort, modelEfforts(nextModel, models))
     onSelectionChange(nextProvider, nextModel, nextEffort)
   }
 
   function selectModel(nextModel: string) {
+    if (!nextModel) return
     const nextProvider = providerForModel(nextModel, models) ?? provider
-    const nextEffort = clampEffortForModel(nextModel, effort, models)
+    const nextEffort = clampEffortToOptions(effort, modelEfforts(nextModel, models))
     onSelectionChange(nextProvider, nextModel, nextEffort)
   }
 
   function selectEffort(nextEffort: EffortLevel) {
-    onSelectionChange(provider, selectedModel, clampEffortForModel(selectedModel, nextEffort, models))
+    if (!selectedModel) return
+    onSelectionChange(
+      provider,
+      selectedModel,
+      clampEffortToOptions(nextEffort, modelEfforts(selectedModel, models)),
+    )
   }
 
   return (
@@ -100,10 +154,15 @@ export function ProviderModelPicker({
         <select
           value={selectedModel}
           onChange={(event) => selectModel(event.target.value)}
-          disabled={disabled}
+          disabled={modelSelectDisabled}
           className="h-full w-full appearance-none truncate rounded-md border border-base-border/70 bg-base-bg pr-6 pl-2 text-base-text-secondary text-xs transition-colors hover:border-base-border hover:text-base-text focus:border-accent-text focus:outline-none disabled:opacity-50"
           title="AST agent model"
         >
+          {providerModels.length === 0 && (
+            <option value="" disabled>
+              No models
+            </option>
+          )}
           {providerModels.map((entry) => (
             <option key={entry.id} value={entry.id}>
               {entry.label}
@@ -121,7 +180,7 @@ export function ProviderModelPicker({
         <select
           value={selectedEffort}
           onChange={(event) => selectEffort(event.target.value as EffortLevel)}
-          disabled={disabled}
+          disabled={effortSelectDisabled}
           className="h-full w-full appearance-none rounded-md border border-base-border/70 bg-base-bg pr-6 pl-2 text-base-text-secondary text-xs transition-colors hover:border-base-border hover:text-base-text focus:border-accent-text focus:outline-none disabled:opacity-50"
           title="AST agent effort"
         >

@@ -31,6 +31,7 @@ type AstStore = {
   agentProvider: ProviderId
   agentModel: string
   agentEffort: EffortLevel
+  agentSelectionRevision: number
   zoom: number
   panX: number
   panY: number
@@ -80,6 +81,7 @@ const initialState = {
   agentProvider: 'claude' as ProviderId,
   agentModel: 'claude-opus-4-7',
   agentEffort: 'high' as EffortLevel,
+  agentSelectionRevision: 0,
   zoom: 1,
   panX: 0,
   panY: 0,
@@ -155,7 +157,12 @@ export const useAstStore = create<AstStore>((set) => ({
   setChatLoading: (chatLoading) => set({ chatLoading }),
 
   setAgentSelection: (agentProvider, agentModel, agentEffort) =>
-    set({ agentProvider, agentModel, agentEffort }),
+    set((s) => ({
+      agentProvider,
+      agentModel,
+      agentEffort,
+      agentSelectionRevision: s.agentSelectionRevision + 1,
+    })),
 
   setZoom: (zoom) => set({ zoom }),
 
@@ -177,9 +184,10 @@ export const useAstStore = create<AstStore>((set) => ({
     }),
 
   reset: () =>
-    set({
+    set((s) => ({
       ...initialState,
       activeOverlays: new Set<AstOverlay>(),
       expandedClusters: new Set<string>(),
-    }),
+      agentSelectionRevision: s.agentSelectionRevision + 1,
+    })),
 }))

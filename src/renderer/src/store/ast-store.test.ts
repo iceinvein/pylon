@@ -83,6 +83,7 @@ describe('ast-store', () => {
       expect(s.agentProvider).toBe('claude')
       expect(s.agentModel).toBe('claude-opus-4-7')
       expect(s.agentEffort).toBe('high')
+      expect(s.agentSelectionRevision).toBeNumber()
       expect(s.zoom).toBe(1)
       expect(s.panX).toBe(0)
       expect(s.panY).toBe(0)
@@ -270,12 +271,27 @@ describe('ast-store', () => {
 
   describe('setAgentSelection', () => {
     test('sets provider, model, and effort together', () => {
+      const initialRevision = useAstStore.getState().agentSelectionRevision
       useAstStore.getState().setAgentSelection('codex', 'gpt-5.5', 'max')
 
       const s = useAstStore.getState()
       expect(s.agentProvider).toBe('codex')
       expect(s.agentModel).toBe('gpt-5.5')
       expect(s.agentEffort).toBe('max')
+      expect(s.agentSelectionRevision).toBe(initialRevision + 1)
+    })
+
+    test('increments revision when reset restores defaults', () => {
+      const initialRevision = useAstStore.getState().agentSelectionRevision
+      useAstStore.getState().setAgentSelection('codex', 'gpt-5.5', 'max')
+
+      useAstStore.getState().reset()
+
+      const s = useAstStore.getState()
+      expect(s.agentProvider).toBe('claude')
+      expect(s.agentModel).toBe('claude-opus-4-7')
+      expect(s.agentEffort).toBe('high')
+      expect(s.agentSelectionRevision).toBe(initialRevision + 2)
     })
   })
 
@@ -331,6 +347,7 @@ describe('ast-store', () => {
 
   describe('reset', () => {
     test('restores all state to initial values', () => {
+      const initialRevision = useAstStore.getState().agentSelectionRevision
       // Dirty the store
       useAstStore.getState().setScope('/some/path')
       useAstStore.getState().setRepoGraph({ files: [], edges: [] })
@@ -358,6 +375,7 @@ describe('ast-store', () => {
       expect(s.agentProvider).toBe('claude')
       expect(s.agentModel).toBe('claude-opus-4-7')
       expect(s.agentEffort).toBe('high')
+      expect(s.agentSelectionRevision).toBe(initialRevision + 1)
       expect(s.searchQuery).toBe('')
       expect(s.searchMatches).toEqual([])
     })
