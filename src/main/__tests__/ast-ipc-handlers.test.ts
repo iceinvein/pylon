@@ -41,11 +41,15 @@ mock.module('../../shared/logger', () => ({
   },
 }))
 
+let cachedAnalysisRow:
+  | { repo_graph: string; arch_analysis: string | null; analyzed_at: number }
+  | undefined
+
 mock.module('../db', () => ({
   getDb: () => ({
     prepare: () => ({
       run: mock(() => {}),
-      get: mock(() => undefined),
+      get: mock(() => cachedAnalysisRow),
     }),
   }),
 }))
@@ -125,7 +129,43 @@ describe('registerAstIpcHandlers AST analysis status', () => {
     providerAvailable = false
     analysisResult = null
     providerTextQueryOptions = null
+    cachedAnalysisRow = undefined
     registerAstIpcHandlers()
+  })
+
+  test('ignores graph-only cache entries so provider analysis can rerun', async () => {
+    cachedAnalysisRow = {
+      repo_graph: JSON.stringify(graph),
+      arch_analysis: null,
+      analyzed_at: 123,
+    }
+    const handler = handlers.get(IPC.AST_GET_CACHED)
+    expect(handler).toBeDefined()
+
+    await expect(handler?.(null, { scope: '/repo' })).resolves.toBeNull()
+  })
+
+  test('returns completed cache entries with architecture analysis intact', async () => {
+    const archAnalysis = {
+      layers: [],
+      clusters: [],
+      annotations: { 'src/main.ts': 'Entry point' },
+      callEdges: [],
+      dataFlows: [],
+    }
+    cachedAnalysisRow = {
+      repo_graph: JSON.stringify(graph),
+      arch_analysis: JSON.stringify(archAnalysis),
+      analyzed_at: 456,
+    }
+    const handler = handlers.get(IPC.AST_GET_CACHED)
+    expect(handler).toBeDefined()
+
+    await expect(handler?.(null, { scope: '/repo' })).resolves.toEqual({
+      repoGraph: graph,
+      archAnalysis,
+      analyzedAt: 456,
+    })
   })
 
   test('reports error instead of ready when the AST model has no provider', async () => {

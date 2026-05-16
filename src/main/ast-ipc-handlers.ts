@@ -88,9 +88,10 @@ function loadCachedAnalysis(
     | { repo_graph: string; arch_analysis: string | null; analyzed_at: number }
     | undefined
   if (!row) return null
+  if (!row.arch_analysis) return null
   return {
     repoGraph: JSON.parse(row.repo_graph),
-    archAnalysis: row.arch_analysis ? JSON.parse(row.arch_analysis) : null,
+    archAnalysis: JSON.parse(row.arch_analysis),
     analyzedAt: row.analyzed_at,
   }
 }
