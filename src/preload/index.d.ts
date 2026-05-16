@@ -284,13 +284,18 @@ type Api = {
     context: string,
     agentModel?: string,
     agentEffort?: import('../shared/types').EffortLevel,
+    scope?: string,
   ) => Promise<{ text: string; done: boolean }>
   sendAstChat: (
     message: string,
     scope: string,
     agentModel?: string,
     agentEffort?: import('../shared/types').EffortLevel,
-  ) => Promise<{ text: string; done: boolean }>
+  ) => Promise<{
+    text: string
+    highlights: Array<{ filePath: string; symbolName: string }>
+    done: boolean
+  }>
   onAstAnalysisProgress: (callback: (data: unknown) => void) => () => void
   onAstRepoGraph: (callback: (data: unknown) => void) => () => void
   onAstArchAnalysis: (callback: (data: unknown) => void) => () => void

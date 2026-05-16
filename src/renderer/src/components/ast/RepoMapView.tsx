@@ -193,6 +193,7 @@ export function RepoMapView({ repoGraph, archAnalysis }: RepoMapViewProps) {
   const zoom = useAstStore((s) => s.zoom)
   const panX = useAstStore((s) => s.panX)
   const panY = useAstStore((s) => s.panY)
+  const scope = useAstStore((s) => s.scope)
 
   const [contextMenu, setContextMenu] = useState<ContextMenuState>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -370,8 +371,8 @@ export function RepoMapView({ repoGraph, archAnalysis }: RepoMapViewProps) {
 
   const handleExplain = useCallback((nodeId: string, nodeName: string, filePath: string) => {
     useAstStore.getState().setExplain(null, true)
-    window.api.explainAstNode(nodeId, filePath, nodeName)
-  }, [])
+    window.api.explainAstNode(nodeId, filePath, nodeName, undefined, undefined, scope)
+  }, [scope])
 
   /** Single-click selects a visible node without changing graph layout. */
   const handleNodeClick = useCallback(

@@ -325,7 +325,16 @@ const api = {
     context: string,
     agentModel?: string,
     agentEffort?: EffortLevel,
-  ) => ipcRenderer.invoke(IPC.AST_EXPLAIN, { nodeId, filePath, context, agentModel, agentEffort }),
+    scope?: string,
+  ) =>
+    ipcRenderer.invoke(IPC.AST_EXPLAIN, {
+      nodeId,
+      filePath,
+      context,
+      agentModel,
+      agentEffort,
+      scope,
+    }),
   sendAstChat: (message: string, scope: string, agentModel?: string, agentEffort?: EffortLevel) =>
     ipcRenderer.invoke(IPC.AST_CHAT, { message, scope, agentModel, agentEffort }),
   onAstAnalysisProgress: (callback: (data: unknown) => void) => {

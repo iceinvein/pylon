@@ -153,7 +153,21 @@ export function registerAstIpcHandlers(): void {
         saveAnalysis(args.scope, graph, analysis, graph.files.length)
       }
     } else {
-      logger.warn(`No provider found for AST model ${agent.model} - skipping architecture analysis`)
+      const message = `No AI provider found for AST model "${agent.model}". Choose a supported AST model.`
+      logger.warn(message)
+      win.webContents.send(IPC.AST_ANALYSIS_PROGRESS, {
+        status: 'error',
+        message,
+      })
+      return
+    }
+
+    if (!analysis) {
+      win.webContents.send(IPC.AST_ANALYSIS_PROGRESS, {
+        status: 'error',
+        message: 'AI architecture analysis failed. Try again or choose another AST model.',
+      })
+      return
     }
 
     win.webContents.send(IPC.AST_ANALYSIS_PROGRESS, {
@@ -210,6 +224,7 @@ export function registerAstIpcHandlers(): void {
       if (!agent.provider) {
         const result = {
           text: `No provider found for model "${agent.model}". Choose another AST model in settings.`,
+          highlights: [],
           done: true,
         }
         if (win) win.webContents.send(IPC.AST_CHAT_RESULT, result)
