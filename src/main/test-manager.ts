@@ -1,9 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { resolve, sep } from 'node:path'
-import { createSdkMcpServer, query } from '@anthropic-ai/claude-agent-sdk'
 import { app, type BrowserWindow } from 'electron'
-import { z } from 'zod'
 import { IPC } from '../shared/ipc-channels'
 import { log } from '../shared/logger'
 import type {
@@ -17,29 +15,31 @@ import type {
   TestExploration,
   TestFinding,
 } from '../shared/types'
-import { getClaudeCodeSdkRuntimeOptions } from './claude-code-executable'
 import { getDb } from './db'
 import { resolveE2eOutputPath } from './e2e-path-resolver'
 import { checkPortInUse, scanProject as runProjectScan } from './project-scanner'
+import { getProviderForModel, type AgentProvider, type NormalizedEvent } from './providers'
 import { serverManager } from './server-manager'
 import {
-  createReportFindingTool,
-  createReportGoalsTool,
-  createSavePlaywrightTestTool,
-} from './test-tools'
+  buildTestingMcpServers,
+  testingToolCallbackServer,
+} from './test-mcp-bridge'
 
 const logger = log.child('test-manager')
 const STREAM_THROTTLE_MS = 300
 const GOAL_SUGGESTION_TIMEOUT_MS = 60_000 // 60s max for goal suggestion
+const DEFAULT_TEST_AGENT_MODEL = 'claude-opus-4-7'
+const DEFAULT_TEST_AGENT_EFFORT: EffortLevel = 'high'
 
 type AgentSettings = {
   agentModel?: string
   agentEffort?: EffortLevel
 }
 
-type AgentQueryOptions = {
-  model?: string
-  effort?: EffortLevel
+type ResolvedAgentSettings = {
+  model: string
+  effort: EffortLevel
+  provider: AgentProvider
 }
 
 class TestManager {
@@ -85,10 +85,30 @@ class TestManager {
     return scan
   }
 
-  private getAgentQueryOptions(settings: AgentSettings): AgentQueryOptions {
+  private resolveAgentSettings(settings: AgentSettings): ResolvedAgentSettings {
+    const requestedModel = settings.agentModel?.trim() || DEFAULT_TEST_AGENT_MODEL
+    const requestedEffort = settings.agentEffort ?? DEFAULT_TEST_AGENT_EFFORT
+    const provider = getProviderForModel(requestedModel)
+    if (provider) {
+      return {
+        model: requestedModel,
+        effort: requestedEffort,
+        provider,
+      }
+    }
+
+    const defaultProvider = getProviderForModel(DEFAULT_TEST_AGENT_MODEL)
+    if (!defaultProvider) {
+      throw new Error(`No provider found for testing model: ${requestedModel}`)
+    }
+
+    logger.warn(
+      `Unknown testing model "${requestedModel}", falling back to ${DEFAULT_TEST_AGENT_MODEL}`,
+    )
     return {
-      ...(settings.agentModel ? { model: settings.agentModel } : {}),
-      ...(settings.agentEffort ? { effort: settings.agentEffort } : {}),
+      model: DEFAULT_TEST_AGENT_MODEL,
+      effort: DEFAULT_TEST_AGENT_EFFORT,
+      provider: defaultProvider,
     }
   }
 
@@ -109,48 +129,38 @@ class TestManager {
     } satisfies GoalSuggestionUpdate)
 
     let goalToolCalled = false
+    const callbackToken = randomUUID()
 
     try {
       const scan = runProjectScan(cwd)
+      const prompt = this.buildGoalSuggestionPrompt(cwd, scan)
+      const agent = this.resolveAgentSettings({ agentModel, agentEffort })
+      const { port } = await testingToolCallbackServer.start()
 
-      const goalToolCtx = { cwd, window: this.window }
-      const reportGoalsTool = createReportGoalsTool(goalToolCtx)
-
-      // Wrap the tool to track if it was called
-      const wrappedExecute = async (args: Record<string, unknown>) => {
-        goalToolCalled = true
-        return reportGoalsTool.execute(args)
-      }
-
-      const toolsServer = createSdkMcpServer({
-        name: 'pylon-goal-analysis',
-        tools: [
-          {
-            name: reportGoalsTool.name,
-            description: reportGoalsTool.description,
-            inputSchema: {
-              goals: z.array(
-                z.object({
-                  id: z.string().describe('Unique ID for this goal'),
-                  title: z.string().describe('Short title (e.g. "Authentication flow")'),
-                  description: z
-                    .string()
-                    .describe(
-                      'What to test (e.g. "Login, signup, password reset, session handling")',
-                    ),
-                  area: z
-                    .string()
-                    .optional()
-                    .describe('Category (e.g. "auth", "dashboard", "api")'),
-                }),
-              ),
-            },
-            handler: (args: Record<string, unknown>) => wrappedExecute(args),
-          },
-        ],
+      testingToolCallbackServer.registerExploration({
+        callbackToken,
+        explorationId: `goal-suggestion-${callbackToken}`,
+        cwd,
+        e2eOutputPath: '',
+        window: this.window,
       })
 
-      const prompt = this.buildGoalSuggestionPrompt(cwd, scan)
+      const session = agent.provider.createSession({
+        cwd,
+        model: agent.model,
+        effort: agent.effort,
+        permissionMode: 'auto-approve',
+        abortController,
+        onPermissionRequest: async () => ({ behavior: 'allow' as const }),
+        onQuestionRequest: async () => ({}),
+        mcpServers: buildTestingMcpServers({
+          callbackPort: port,
+          callbackToken,
+          explorationId: `goal-suggestion-${callbackToken}`,
+          cwd,
+          e2eOutputPath: '',
+        }),
+      })
 
       // Race against a timeout to prevent indefinite hangs
       const timeoutId = setTimeout(() => {
@@ -159,21 +169,11 @@ class TestManager {
       }, GOAL_SUGGESTION_TIMEOUT_MS)
 
       try {
-        for await (const _message of query({
-          prompt,
-          options: {
-            maxTurns: 5,
-            permissionMode: 'bypassPermissions',
-            allowDangerouslySkipPermissions: true,
-            abortController,
-            ...getClaudeCodeSdkRuntimeOptions(),
-            ...this.getAgentQueryOptions({ agentModel, agentEffort }),
-            mcpServers: {
-              'pylon-goal-analysis': toolsServer,
-            },
-          },
-        })) {
-          // Just consume messages — the report_goals tool call sends goals via IPC
+        for await (const event of session.send(prompt)) {
+          if (event.type === 'error') throw new Error(event.message)
+          if (this.isReportGoalsToolUse(event)) {
+            goalToolCalled = true
+          }
         }
       } finally {
         clearTimeout(timeoutId)
@@ -206,6 +206,7 @@ class TestManager {
         } satisfies GoalSuggestionUpdate)
       }
     } finally {
+      testingToolCallbackServer.unregisterExploration(callbackToken)
       if (this.goalSuggestionAbort === abortController) {
         this.goalSuggestionAbort = null
       }
@@ -473,50 +474,11 @@ class TestManager {
     },
   ): Promise<void> {
     const abortController = new AbortController()
+    const callbackToken = randomUUID()
     this.activeExplorations.set(explorationId, {
       id: explorationId,
       abortController,
       streamedText: '',
-    })
-
-    const toolContext = {
-      explorationId,
-      cwd: config.cwd,
-      e2eOutputPath: config.e2eOutputPath,
-      window: this.window,
-    }
-
-    // Create tool definitions and wrap them for the SDK MCP server
-    const reportFindingTool = createReportFindingTool(toolContext)
-    const savePlaywrightTestTool = createSavePlaywrightTestTool(toolContext)
-
-    const toolsServer = createSdkMcpServer({
-      name: 'pylon-testing',
-      tools: [
-        {
-          name: reportFindingTool.name,
-          description: reportFindingTool.description,
-          inputSchema: {
-            title: z.string().describe('Short descriptive title'),
-            description: z.string().describe('Detailed description'),
-            severity: z
-              .enum(['critical', 'high', 'medium', 'low', 'info'])
-              .describe('Severity level'),
-            url: z.string().describe('URL where found'),
-            reproduction_steps: z.array(z.string()).describe('Steps to reproduce'),
-          },
-          handler: (args: Record<string, unknown>) => reportFindingTool.execute(args),
-        },
-        {
-          name: savePlaywrightTestTool.name,
-          description: savePlaywrightTestTool.description,
-          inputSchema: {
-            filename: z.string().describe('Test file name (must end with .spec.ts)'),
-            content: z.string().describe('Full Playwright test file content'),
-          },
-          handler: (args: Record<string, unknown>) => savePlaywrightTestTool.execute(args),
-        },
-      ],
     })
 
     const prompt = this.buildPrompt({
@@ -528,6 +490,7 @@ class TestManager {
     let outputTokens = 0
     let lastSendTime = 0
     let accumulatedMessages: ExplorationAgentMessage[] = []
+    let hasUsageUpdate = false
     const active = this.activeExplorations.get(explorationId)
     if (!active) return
 
@@ -549,73 +512,53 @@ class TestManager {
     }
 
     try {
-      for await (const message of query({
-        prompt,
-        options: {
-          maxTurns: 100,
-          permissionMode: 'bypassPermissions',
-          allowDangerouslySkipPermissions: true,
-          abortController,
-          ...getClaudeCodeSdkRuntimeOptions(),
-          ...this.getAgentQueryOptions(config),
-          mcpServers: {
-            playwright: {
-              command: 'bunx',
-              args: ['@playwright/mcp@latest', '--headless'],
-            },
-            'pylon-testing': toolsServer,
-          },
-        },
-      })) {
-        // Track token usage
-        const msg = message as Record<string, unknown>
-        const usage = msg.usage as { input_tokens?: number; output_tokens?: number } | undefined
-        if (usage) {
-          if (usage.input_tokens) inputTokens += usage.input_tokens
-          if (usage.output_tokens) outputTokens += usage.output_tokens
-        }
+      const agent = this.resolveAgentSettings(config)
+      const { port } = await testingToolCallbackServer.start()
 
-        // Extract structured messages from assistant turns
-        if (msg.role === 'assistant' && Array.isArray(msg.content)) {
-          for (const block of msg.content as Array<Record<string, unknown>>) {
-            if (block.type === 'text' && typeof block.text === 'string') {
-              active.streamedText += `${block.text}\n`
-              accumulatedMessages.push({ type: 'text', text: block.text as string })
-            }
-            if (block.type === 'thinking' && typeof block.thinking === 'string') {
-              accumulatedMessages.push({ type: 'thinking', text: block.thinking as string })
-            }
-            if (block.type === 'tool_use' && typeof block.name === 'string') {
-              accumulatedMessages.push({
-                type: 'tool_use',
-                id: (block.id as string) ?? '',
-                name: block.name as string,
-                input: (block.input as Record<string, unknown>) ?? {},
-              })
-            }
-          }
-        }
+      testingToolCallbackServer.registerExploration({
+        callbackToken,
+        explorationId,
+        cwd: config.cwd,
+        e2eOutputPath: config.e2eOutputPath,
+        window: this.window,
+      })
 
-        // Extract tool results from user messages
-        if (msg.role === 'user' && Array.isArray(msg.content)) {
-          for (const block of msg.content as Array<Record<string, unknown>>) {
-            if (block.type === 'tool_result' && typeof block.tool_use_id === 'string') {
-              const text =
-                typeof block.content === 'string'
-                  ? block.content
-                  : Array.isArray(block.content)
-                    ? (block.content as Array<{ type: string; text?: string }>)
-                        .filter((b) => b.type === 'text')
-                        .map((b) => b.text ?? '')
-                        .join('\n')
-                    : ''
-              accumulatedMessages.push({
-                type: 'tool_result',
-                toolUseId: block.tool_use_id as string,
-                content: text.slice(0, 2000),
-              })
-            }
+      const session = agent.provider.createSession({
+        cwd: config.cwd,
+        model: agent.model,
+        effort: agent.effort,
+        permissionMode: 'auto-approve',
+        abortController,
+        onPermissionRequest: async () => ({ behavior: 'allow' as const }),
+        onQuestionRequest: async () => ({}),
+        mcpServers: buildTestingMcpServers({
+          callbackPort: port,
+          callbackToken,
+          explorationId,
+          cwd: config.cwd,
+          e2eOutputPath: config.e2eOutputPath,
+        }),
+      })
+
+      for await (const event of session.send(prompt)) {
+        if (event.type === 'error') throw new Error(event.message)
+
+        if (event.type === 'usage_update') {
+          hasUsageUpdate = true
+          inputTokens += event.inputTokens
+          outputTokens += event.outputTokens
+        } else if (event.type === 'turn_complete') {
+          if (hasUsageUpdate) {
+            inputTokens = Math.max(inputTokens, event.inputTokens)
+            outputTokens = Math.max(outputTokens, event.outputTokens)
+          } else {
+            inputTokens += event.inputTokens
+            outputTokens += event.outputTokens
           }
+        } else {
+          this.appendExplorationAgentEvent(event, active, (message) => {
+            accumulatedMessages.push(message)
+          })
         }
 
         // Throttled IPC update — accumulates messages between sends
@@ -639,8 +582,94 @@ class TestManager {
         flushMessages('error', { error: errMsg })
       }
     } finally {
+      testingToolCallbackServer.unregisterExploration(callbackToken)
       this.activeExplorations.delete(explorationId)
     }
+  }
+
+  private appendExplorationAgentEvent(
+    event: NormalizedEvent,
+    active: { streamedText: string },
+    pushMessage: (message: ExplorationAgentMessage) => void,
+  ): void {
+    switch (event.type) {
+      case 'text_delta':
+        active.streamedText += event.text
+        pushMessage({ type: 'text', text: event.text })
+        break
+      case 'thinking_delta':
+        pushMessage({ type: 'thinking', text: event.text })
+        break
+      case 'tool_use':
+        pushMessage({
+          type: 'tool_use',
+          id: event.toolId,
+          name: event.toolName,
+          input: this.toRecord(event.input),
+        })
+        break
+      case 'tool_result':
+        pushMessage({
+          type: 'tool_result',
+          toolUseId: event.toolId,
+          content: event.output.slice(0, 2000),
+        })
+        break
+      case 'message_complete':
+        this.appendCompleteMessage(event, active, pushMessage)
+        break
+    }
+  }
+
+  private appendCompleteMessage(
+    event: Extract<NormalizedEvent, { type: 'message_complete' }>,
+    active: { streamedText: string },
+    pushMessage: (message: ExplorationAgentMessage) => void,
+  ): void {
+    for (const block of event.content) {
+      if (block.type === 'text' && event.role === 'assistant') {
+        if (!active.streamedText.includes(block.text)) {
+          active.streamedText += `${block.text}\n`
+          pushMessage({ type: 'text', text: block.text })
+        }
+      }
+      if (block.type === 'thinking' && event.role === 'assistant') {
+        pushMessage({ type: 'thinking', text: block.text })
+      }
+      if (block.type === 'tool_use' && event.role === 'assistant') {
+        pushMessage({
+          type: 'tool_use',
+          id: block.toolId,
+          name: block.toolName,
+          input: this.toRecord(block.input),
+        })
+      }
+      if (block.type === 'tool_result' && event.role === 'user') {
+        pushMessage({
+          type: 'tool_result',
+          toolUseId: block.toolId,
+          content: block.output.slice(0, 2000),
+        })
+      }
+    }
+  }
+
+  private toRecord(value: unknown): Record<string, unknown> {
+    return value && typeof value === 'object' && !Array.isArray(value)
+      ? (value as Record<string, unknown>)
+      : {}
+  }
+
+  private isReportGoalsToolUse(event: NormalizedEvent): boolean {
+    if (event.type === 'tool_use') {
+      return event.toolName === 'report_goals' || event.toolName.endsWith('__report_goals')
+    }
+    if (event.type !== 'message_complete') return false
+    return event.content.some(
+      (block) =>
+        block.type === 'tool_use' &&
+        (block.toolName === 'report_goals' || block.toolName.endsWith('__report_goals')),
+    )
   }
 
   private buildGoalSuggestionPrompt(cwd: string, scan: ProjectScan): string {
