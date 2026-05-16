@@ -188,13 +188,21 @@ describe('applyPeerReviewChanges', () => {
       ],
     )
 
-    expect(result).toHaveLength(1)
-    expect(result[0].id).toBe('f1')
-    expect(result[0].line).toBe(10)
-    expect(result[0].title).toBe('Write uses stale state')
-    expect(result[0].description).toBe(base.description)
-    expect(result[0].mergedFrom).toEqual([
+    expect(result.findings).toHaveLength(1)
+    expect(result.findings[0].id).toBe('f1')
+    expect(result.findings[0].line).toBe(10)
+    expect(result.findings[0].title).toBe('Write uses stale state')
+    expect(result.findings[0].description).toBe(base.description)
+    expect(result.findings[0].mergedFrom).toEqual([
       { domain: 'peer-review', title: 'anchor should point to the write' },
+    ])
+    expect(result.summary).toEqual([
+      {
+        kind: 'update',
+        findingId: 'f1',
+        findingTitle: 'Write uses stale state',
+        reason: 'anchor should point to the write',
+      },
     ])
   })
 
@@ -223,8 +231,8 @@ describe('applyPeerReviewChanges', () => {
       ],
     )
 
-    expect(result).toHaveLength(2)
-    expect(result[1]).toMatchObject({
+    expect(result.findings).toHaveLength(2)
+    expect(result.findings[1]).toMatchObject({
       file: 'src/app.ts',
       line: 11,
       severity: 'high',
@@ -233,5 +241,59 @@ describe('applyPeerReviewChanges', () => {
       mergedFrom: [{ domain: 'peer-review', title: 'adjacent missed issue' }],
       statusInRun: 'new',
     })
+    expect(result.summary).toHaveLength(1)
+    expect(result.summary[0]).toMatchObject({
+      kind: 'add',
+      findingTitle: 'Missing await',
+      reason: 'adjacent missed issue',
+    })
+  })
+
+  test('returns summary items for updates and additions, updates first', () => {
+    const base = finding({ id: 'f1', severity: 'medium', title: 'Original title' })
+    const result = applyPeerReviewChanges(
+      [base],
+      [
+        {
+          type: 'add',
+          reason: 'newly spotted issue',
+          finding: {
+            file: 'src/app.ts',
+            line: 50,
+            severity: 'high',
+            risk: {
+              impact: 'high',
+              likelihood: 'possible',
+              confidence: 'high',
+              action: 'should-fix',
+            },
+            domain: 'bugs',
+            title: 'New bug',
+            description: 'Observation: noticed during second pass.',
+          },
+        },
+        {
+          type: 'update',
+          id: 'f1',
+          reason: 'severity should be higher',
+          fields: { severity: 'high', title: 'Updated title' },
+        },
+      ],
+    )
+
+    expect(result.findings).toHaveLength(2)
+    expect(result.summary).toHaveLength(2)
+    expect(result.summary[0]).toEqual({
+      kind: 'update',
+      findingId: 'f1',
+      findingTitle: 'Updated title',
+      reason: 'severity should be higher',
+    })
+    expect(result.summary[1]).toMatchObject({
+      kind: 'add',
+      findingTitle: 'New bug',
+      reason: 'newly spotted issue',
+    })
+    expect(result.summary[1].findingId).toMatch(/^[0-9a-f-]{36}$/i)
   })
 })

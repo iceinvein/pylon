@@ -1601,9 +1601,9 @@ class PrReviewManager {
         return findings
       }
 
-      const updated = applyPeerReviewChanges(findings, changes)
+      const { findings: updatedFindings } = applyPeerReviewChanges(findings, changes)
       logger.info(
-        `Peer-review pass for review ${reviewId}: ${peerAgent.provider} applied ${changes.length} finding changes (${updated.length - findings.length} net additions)`,
+        `Peer-review pass for review ${reviewId}: ${peerAgent.provider} applied ${changes.length} finding changes (${updatedFindings.length - findings.length} net additions)`,
       )
       this.send(IPC.GH_REVIEW_UPDATE, {
         reviewId,
@@ -1615,7 +1615,7 @@ class PrReviewManager {
           message: `${peerName} second opinion applied ${changes.length} finding change${changes.length === 1 ? '' : 's'}.`,
         },
       })
-      return deduplicateFindings(updated)
+      return deduplicateFindings(updatedFindings)
     } catch (err) {
       const message = `${peerName} second opinion unavailable: ${err instanceof Error ? err.message : String(err)}. Original findings were kept.`
       logger.warn(

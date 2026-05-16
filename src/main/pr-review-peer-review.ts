@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import type {
+  PeerReviewSummaryItem,
   ReviewFinding,
   ReviewFindingRisk,
   ReviewFindingSeverity,
@@ -386,12 +387,20 @@ export function parsePeerReviewChanges(
   return changes
 }
 
+export type PeerReviewApplyResult = {
+  findings: ReviewFinding[]
+  summary: PeerReviewSummaryItem[]
+}
+
 export function applyPeerReviewChanges(
   findings: ReviewFinding[],
   changes: PeerReviewChange[],
-): ReviewFinding[] {
-  if (changes.length === 0) return findings
+): PeerReviewApplyResult {
+  if (changes.length === 0) return { findings, summary: [] }
+
+  const summary: PeerReviewSummaryItem[] = []
   const byId = new Map(findings.map((finding) => [finding.id, finding]))
+
   const updated = findings.map((finding) => {
     const patches = changes.filter((change): change is PeerReviewUpdate => {
       return change.type === 'update' && change.id === finding.id
@@ -414,11 +423,17 @@ export function applyPeerReviewChanges(
       if (fields.suggestion === null) delete next.suggestion
       else if (fields.suggestion) next.suggestion = fields.suggestion
       next.mergedFrom = [...(next.mergedFrom ?? []), { domain: 'peer-review', title: patch.reason }]
+      summary.push({
+        kind: 'update',
+        findingId: next.id,
+        findingTitle: next.title,
+        reason: patch.reason,
+      })
     }
     return next
   })
 
-  const additions = changes
+  const additionChanges = changes
     .filter((change): change is PeerReviewAddition => change.type === 'add')
     .filter((change) => {
       return !Array.from(byId.values()).some(
@@ -428,26 +443,34 @@ export function applyPeerReviewChanges(
           finding.title.toLowerCase().trim() === change.finding.title.toLowerCase().trim(),
       )
     })
-    .map(
-      (change): ReviewFinding => ({
-        id: randomUUID(),
-        file: change.finding.file,
-        line: change.finding.line,
-        severity: change.finding.severity,
-        risk: change.finding.risk,
-        title: change.finding.title,
-        description: change.finding.description,
-        domain: change.finding.domain ?? null,
-        posted: false,
-        postUrl: null,
-        threadId: null,
-        statusInRun: 'new',
-        carriedForward: false,
-        sourceReviewId: null,
-        suggestion: change.finding.suggestion,
-        mergedFrom: [{ domain: 'peer-review', title: change.reason }],
-      }),
-    )
 
-  return [...updated, ...additions]
+  const additions = additionChanges.map((change): ReviewFinding => {
+    const id = randomUUID()
+    summary.push({
+      kind: 'add',
+      findingId: id,
+      findingTitle: change.finding.title,
+      reason: change.reason,
+    })
+    return {
+      id,
+      file: change.finding.file,
+      line: change.finding.line,
+      severity: change.finding.severity,
+      risk: change.finding.risk,
+      title: change.finding.title,
+      description: change.finding.description,
+      domain: change.finding.domain ?? null,
+      posted: false,
+      postUrl: null,
+      threadId: null,
+      statusInRun: 'new',
+      carriedForward: false,
+      sourceReviewId: null,
+      suggestion: change.finding.suggestion,
+      mergedFrom: [{ domain: 'peer-review', title: change.reason }],
+    }
+  })
+
+  return { findings: [...updated, ...additions], summary }
 }
