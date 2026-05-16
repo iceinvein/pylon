@@ -391,6 +391,13 @@ export type ReviewFinding = {
   mergedFrom?: { domain: string; title: string }[]
 }
 
+export type PeerReviewSummaryItem = {
+  kind: 'update' | 'add'
+  findingId: string
+  findingTitle: string
+  reason: string
+}
+
 export type ReviewRunFile = {
   filePath: string
   status: string
