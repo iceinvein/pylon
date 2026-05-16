@@ -38,6 +38,11 @@ type ExplorationConfig = {
   projectScan?: ProjectScan
 }
 
+type GoalSuggestionAgentSelection = {
+  model: string
+  effort: EffortLevel
+}
+
 type TestStore = {
   // Project context
   selectedProject: string | null
@@ -94,7 +99,7 @@ type TestStore = {
   loadProjects: () => Promise<void>
   selectProject: (cwd: string) => void
   scanProject: (cwd: string) => Promise<void>
-  suggestGoals: (cwd: string) => Promise<void>
+  suggestGoals: (cwd: string, selection?: GoalSuggestionAgentSelection) => Promise<void>
   toggleGoal: (goalId: string) => void
   addCustomGoal: (goal: string) => void
   removeCustomGoal: (index: number) => void
@@ -181,7 +186,6 @@ export const useTestStore = create<TestStore>((set, get) => ({
     })
     // Trigger async operations
     get().scanProject(cwd)
-    get().suggestGoals(cwd)
     get().loadExplorations(cwd)
   },
 
@@ -201,11 +205,15 @@ export const useTestStore = create<TestStore>((set, get) => ({
     }
   },
 
-  suggestGoals: async (cwd) => {
+  suggestGoals: async (cwd, selection) => {
     set({ goalsLoading: true })
     try {
       const { agentModel, agentEffort } = get()
-      await window.api.suggestGoals(cwd, agentModel, agentEffort)
+      await window.api.suggestGoals(
+        cwd,
+        selection?.model ?? agentModel,
+        selection?.effort ?? agentEffort,
+      )
       // Results arrive via handleGoalSuggestion
     } catch (err) {
       console.error('suggestGoals failed:', err)

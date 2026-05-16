@@ -579,6 +579,7 @@ export function SetupWizard() {
   const setSetupStep = useTestStore((s) => s.setSetupStep)
   const setAgentSelection = useTestStore((s) => s.setAgentSelection)
   const startBatch = useTestStore((s) => s.startBatch)
+  const requestGoalSuggestions = useTestStore((s) => s.suggestGoals)
   const resolveE2ePath = useTestStore((s) => s.resolveE2ePath)
   const loadProjects = useTestStore((s) => s.loadProjects)
 
@@ -658,6 +659,13 @@ export function SetupWizard() {
     if (canApplySelection) {
       setAgentSelection(selection.provider, selection.model, selection.effort)
       agentSelectionBaseRevisionRef.current = useTestStore.getState().agentSelectionRevision
+      return selection
+    }
+
+    return {
+      provider: currentState.agentProvider,
+      model: currentState.agentModel,
+      effort: currentState.agentEffort,
     }
   }, [setAgentSelection])
 
@@ -677,9 +685,24 @@ export function SetupWizard() {
     }
   }, [selectedProject, resolveE2ePath])
 
-  function handleProjectSelect(cwd: string) {
+  async function handleProjectSelect(cwd: string) {
     selectProject(cwd)
     setSetupStep(2)
+    const selection = await loadAgentSelection().catch((err) => {
+      console.error('loadTestingAgentSelection failed:', err)
+      const currentState = useTestStore.getState()
+      return {
+        provider: currentState.agentProvider,
+        model: currentState.agentModel,
+        effort: currentState.agentEffort,
+      }
+    })
+    if (useTestStore.getState().selectedProject === cwd) {
+      void requestGoalSuggestions(cwd, {
+        model: selection.model,
+        effort: selection.effort,
+      })
+    }
   }
 
   function handleLaunch() {
@@ -707,10 +730,19 @@ export function SetupWizard() {
   const handleAgentSelectionChange = useCallback(
     (provider: ProviderId, model: string, effort: EffortLevel) => {
       setAgentSelection(provider, model, effort)
-      void Promise.all([
+      const persistSelection = Promise.all([
         window.api.updateSettings('testingAgentModel', model),
         window.api.updateSettings('testingAgentEffort', effort),
       ])
+      void persistSelection
+        .then((results) => {
+          if (results.some((saved) => !saved)) {
+            console.error('persistTestingAgentSelection failed: settings update returned false')
+          }
+        })
+        .catch((err) => {
+          console.error('persistTestingAgentSelection failed:', err)
+        })
     },
     [setAgentSelection],
   )

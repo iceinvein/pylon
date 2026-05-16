@@ -68,6 +68,41 @@ describe('test-store agent settings', () => {
     expect(calls[0]).toEqual(['/repo', 'gpt-5.5', 'xhigh'])
   })
 
+  test('passes explicit agent model and effort into goal suggestions', async () => {
+    const calls: unknown[] = []
+    globalThis.window = {
+      api: {
+        suggestGoals: async (...args: unknown[]) => {
+          calls.push(args)
+        },
+      },
+    } as unknown as Window & typeof globalThis
+
+    await useTestStore.getState().suggestGoals('/repo', {
+      model: 'claude-sonnet-4-6',
+      effort: 'medium',
+    })
+
+    expect(calls[0]).toEqual(['/repo', 'claude-sonnet-4-6', 'medium'])
+  })
+
+  test('does not start goal suggestions during project selection', () => {
+    const calls: unknown[] = []
+    globalThis.window = {
+      api: {
+        scanProject: async () => null,
+        listExplorations: async () => [],
+        suggestGoals: async (...args: unknown[]) => {
+          calls.push(args)
+        },
+      },
+    } as unknown as Window & typeof globalThis
+
+    useTestStore.getState().selectProject('/repo')
+
+    expect(calls).toEqual([])
+  })
+
   test('passes selected agent model and effort into exploration starts', async () => {
     const calls: unknown[] = []
     globalThis.window = {
