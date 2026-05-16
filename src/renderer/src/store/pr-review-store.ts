@@ -6,6 +6,7 @@ import type {
   GhPrStateFilter,
   GhPullRequest,
   GhRepo,
+  PeerReviewSummaryItem,
   PrContextMode,
   PrContextUpdate,
   PrReview,
@@ -203,7 +204,14 @@ type PrReviewStore = {
   activeFindings: ReviewFinding[]
   reviewStreamingText: string
   reviewError: string | null
-  secondOpinionNotice: string | null
+  secondOpinionSummary: {
+    message: string
+    details?: {
+      updates: number
+      additions: number
+      items: PeerReviewSummaryItem[]
+    }
+  } | null
   selectedFindingIds: Set<string>
   postingFindingIds: Set<string>
   postingBatch: 'selected' | 'all' | null
@@ -276,6 +284,11 @@ type PrReviewStore = {
       provider?: string
       message?: string
       changes?: number
+      details?: {
+        updates: number
+        additions: number
+        items: PeerReviewSummaryItem[]
+      }
     }
   }) => void
   setUnseenCount: (count: number) => void
@@ -312,7 +325,7 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
   activeFindings: [],
   reviewStreamingText: '',
   reviewError: null,
-  secondOpinionNotice: null,
+  secondOpinionSummary: null,
   selectedFindingIds: new Set(),
   postingFindingIds: new Set(),
   postingBatch: null,
@@ -366,7 +379,7 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
               activeFindings: [],
               reviewStreamingText: '',
               reviewError: null,
-              secondOpinionNotice: null,
+              secondOpinionSummary: null,
               reviews: [],
               agentProgress: [],
             }
@@ -392,7 +405,7 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
       activeFindings: [],
       reviewStreamingText: '',
       reviewError: null,
-      secondOpinionNotice: null,
+      secondOpinionSummary: null,
       reviews: [],
       agentProgress: [],
       contextPhase: undefined,
@@ -419,7 +432,7 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
       activeFindings: [],
       reviewStreamingText: '',
       reviewError: null,
-      secondOpinionNotice: null,
+      secondOpinionSummary: null,
       reviews: [],
       agentProgress: [],
       contextPhase: undefined,
@@ -489,7 +502,7 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
       activeRunFiles: [],
       reviewStreamingText: '',
       reviewError: null,
-      secondOpinionNotice: null,
+      secondOpinionSummary: null,
       selectedFindingIds: new Set(),
       agentProgress: [],
       _selectPrSeq: seq,
@@ -590,7 +603,7 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
         activeFindings: [],
         reviewStreamingText: '',
         reviewError: null,
-        secondOpinionNotice: null,
+        secondOpinionSummary: null,
         selectedFindingIds: new Set(),
         agentProgress: [],
         contextPhase: undefined,
@@ -614,7 +627,7 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
           s.activeReview?.id === reviewId ? { ...s.activeReview, status: 'error' } : s.activeReview,
         reviewStreamingText: '',
         reviewError: 'Review stopped by user',
-        secondOpinionNotice: null,
+        secondOpinionSummary: null,
         agentProgress: [],
         contextPhase: undefined,
         contextMode: undefined,
@@ -647,7 +660,7 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
         activeFindings: findings,
         reviewStreamingText: rawOutput,
         reviewError: null,
-        secondOpinionNotice: null,
+        secondOpinionSummary: null,
         resultsMode: 'latest-run',
         selectedFindingIds: new Set(),
         agentProgress: [],
@@ -671,7 +684,7 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
         activeFindings: s.activeReview?.id === reviewId ? [] : s.activeFindings,
         reviewStreamingText: s.activeReview?.id === reviewId ? '' : s.reviewStreamingText,
         reviewError: s.activeReview?.id === reviewId ? null : s.reviewError,
-        secondOpinionNotice: s.activeReview?.id === reviewId ? null : s.secondOpinionNotice,
+        secondOpinionSummary: s.activeReview?.id === reviewId ? null : s.secondOpinionSummary,
       }))
     } catch (err) {
       logger.error('deleteReview failed:', err)
@@ -884,7 +897,10 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
       }
 
       if (data.secondOpinion !== undefined) {
-        updates.secondOpinionNotice = data.secondOpinion.message ?? null
+        const message = data.secondOpinion.message ?? null
+        updates.secondOpinionSummary = message
+          ? { message, details: data.secondOpinion.details }
+          : null
       }
 
       // Update agent progress if present

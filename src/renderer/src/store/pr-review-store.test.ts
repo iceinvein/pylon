@@ -189,7 +189,7 @@ describe('pr-review-store cumulative views', () => {
     expect(postable.map((f) => f.id)).toEqual(['d'])
   })
 
-  test('handleReviewUpdate stores second opinion notices for completed reviews', () => {
+  test('handleReviewUpdate stores second opinion summary for completed reviews', () => {
     usePrReviewStore.setState({ activeReview: makeReview() })
 
     usePrReviewStore.getState().handleReviewUpdate({
@@ -203,8 +203,50 @@ describe('pr-review-store cumulative views', () => {
       },
     })
 
-    expect(usePrReviewStore.getState().secondOpinionNotice).toBe(
-      'Codex second opinion unavailable: no credits. Original findings were kept.',
-    )
+    const summary = usePrReviewStore.getState().secondOpinionSummary
+    expect(summary).toEqual({
+      message: 'Codex second opinion unavailable: no credits. Original findings were kept.',
+      details: undefined,
+    })
+  })
+
+  test('handleReviewUpdate stores structured details when peer review applied changes', () => {
+    usePrReviewStore.setState({ activeReview: makeReview() })
+
+    usePrReviewStore.getState().handleReviewUpdate({
+      reviewId: 'review-1',
+      status: 'running',
+      secondOpinion: {
+        status: 'completed',
+        provider: 'codex',
+        changes: 2,
+        message: 'Codex second opinion applied 2 finding changes.',
+        details: {
+          updates: 1,
+          additions: 1,
+          items: [
+            {
+              kind: 'update',
+              findingId: 'f1',
+              findingTitle: 'Race condition',
+              reason: 'severity should be blocker',
+            },
+            {
+              kind: 'add',
+              findingId: 'f-new',
+              findingTitle: 'Missing await',
+              reason: 'adjacent issue spotted',
+            },
+          ],
+        },
+      },
+    })
+
+    const summary = usePrReviewStore.getState().secondOpinionSummary
+    expect(summary?.message).toBe('Codex second opinion applied 2 finding changes.')
+    expect(summary?.details?.updates).toBe(1)
+    expect(summary?.details?.additions).toBe(1)
+    expect(summary?.details?.items).toHaveLength(2)
+    expect(summary?.details?.items[0]).toMatchObject({ kind: 'update', findingId: 'f1' })
   })
 })
