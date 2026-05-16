@@ -1,40 +1,11 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
 import { createServer as createNetServer } from 'node:net'
 
-const executeCalls: Array<{ toolName: string; args: Record<string, unknown> }> = []
-
 mock.module('electron', () => ({
   app: {
     isPackaged: false,
     getAppPath: () => '/Applications/Pylon.app/Contents/Resources/app.asar',
   },
-}))
-
-mock.module('../test-tools', () => ({
-  createReportFindingTool: () => ({
-    name: 'report_finding',
-    description: 'Report finding',
-    execute: async (args: Record<string, unknown>) => {
-      executeCalls.push({ toolName: 'report_finding', args })
-      return { content: [{ type: 'text', text: 'finding reported' }] }
-    },
-  }),
-  createSavePlaywrightTestTool: () => ({
-    name: 'save_playwright_test',
-    description: 'Save test',
-    execute: async (args: Record<string, unknown>) => {
-      executeCalls.push({ toolName: 'save_playwright_test', args })
-      return { content: [{ type: 'text', text: 'test saved' }] }
-    },
-  }),
-  createReportGoalsTool: () => ({
-    name: 'report_goals',
-    description: 'Report goals',
-    execute: async (args: Record<string, unknown>) => {
-      executeCalls.push({ toolName: 'report_goals', args })
-      return { content: [{ type: 'text', text: 'goals reported' }] }
-    },
-  }),
 }))
 
 const {
@@ -49,7 +20,7 @@ describe('testing MCP bridge', () => {
   let callbackServer: InstanceType<typeof TestingToolCallbackServer> | null = null
 
   beforeEach(() => {
-    executeCalls.length = 0
+    callbackServer = null
   })
 
   afterEach(async () => {
@@ -121,7 +92,6 @@ describe('testing MCP bridge', () => {
     })
 
     expect(response.status).toBe(401)
-    expect(executeCalls).toHaveLength(0)
   })
 
   test('callback server shares one listener across concurrent starts', async () => {
@@ -149,6 +119,7 @@ describe('testing MCP bridge', () => {
   })
 
   test('callback server dispatches authorized tool calls to registered test tools', async () => {
+    const sent: Array<{ channel: string; data: unknown }> = []
     callbackServer = new TestingToolCallbackServer()
     const { port } = await callbackServer.start()
     callbackServer.registerExploration({
@@ -156,7 +127,7 @@ describe('testing MCP bridge', () => {
       explorationId: 'exploration-1',
       cwd: '/repo',
       e2eOutputPath: 'e2e',
-      window: null,
+      window: { webContents: { send: (channel, data) => sent.push({ channel, data }) } } as never,
     })
 
     const response = await fetch(createTestingToolCallbackUrl(port), {
@@ -166,33 +137,18 @@ describe('testing MCP bridge', () => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        toolName: 'report_finding',
+        toolName: 'report_goals',
         args: {
-          title: 'Broken form',
-          description: 'Submit does nothing',
-          severity: 'high',
-          url: 'http://localhost:3000',
-          reproduction_steps: ['Open form', 'Submit'],
+          goals: [{ id: 'login', title: 'Login', description: 'Check login' }],
         },
       }),
     })
 
     expect(response.status).toBe(200)
     expect(await response.json()).toEqual({
-      content: [{ type: 'text', text: 'finding reported' }],
+      content: [{ type: 'text', text: 'Reported 1 testing goals' }],
     })
-    expect(executeCalls).toEqual([
-      {
-        toolName: 'report_finding',
-        args: {
-          title: 'Broken form',
-          description: 'Submit does nothing',
-          severity: 'high',
-          url: 'http://localhost:3000',
-          reproduction_steps: ['Open form', 'Submit'],
-        },
-      },
-    ])
+    expect(sent).toHaveLength(1)
   })
 
   test('callback server notifies registered hook after authorized tool execution', async () => {

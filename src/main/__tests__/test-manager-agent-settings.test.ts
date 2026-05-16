@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, mock, test } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
 import { IPC } from '../../shared/ipc-channels'
 import type { EffortLevel, ExplorationUpdate } from '../../shared/types'
 import type {
@@ -10,17 +10,6 @@ import type {
 
 const createSessionCalls: ProviderSessionConfig[] = []
 const sessionStopCalls: AgentSession[] = []
-const registeredExplorations = new Map<
-  string,
-  {
-    callbackToken: string
-    explorationId: string
-    cwd: string
-    e2eOutputPath: string
-    window: { webContents?: { send?: (channel: string, data: unknown) => void } } | null
-    onToolExecute?: (toolName: string, args: Record<string, unknown>) => void
-  }
->()
 let nextSessionEvents: ((config: ProviderSessionConfig) => AsyncIterable<NormalizedEvent>) | null =
   null
 
@@ -87,38 +76,6 @@ mock.module('../providers', () => ({
     model === 'gpt-5.5' || model === 'claude-opus-4-7' ? fakeProvider : undefined,
 }))
 
-mock.module('../test-mcp-bridge', () => ({
-  buildTestingMcpServers: () => ({
-    playwright: {
-      command: 'bunx',
-      args: ['@playwright/mcp@latest', '--headless'],
-    },
-    'pylon-testing': {
-      command: process.execPath,
-      args: ['/tmp/test-mcp-stdio-server.js'],
-      env: {},
-    },
-  }),
-  testingToolCallbackServer: {
-    start: mock(() => Promise.resolve({ port: 49152, callbackUrl: 'http://127.0.0.1:49152/tool' })),
-    registerExploration: mock(
-      (exploration: {
-        callbackToken: string
-        explorationId: string
-        cwd: string
-        e2eOutputPath: string
-        window: { webContents?: { send?: (channel: string, data: unknown) => void } } | null
-        onToolExecute?: (toolName: string, args: Record<string, unknown>) => void
-      }) => {
-        registeredExplorations.set(exploration.callbackToken, exploration)
-      },
-    ),
-    unregisterExploration: mock((callbackToken: string) => {
-      registeredExplorations.delete(callbackToken)
-    }),
-  },
-}))
-
 mock.module('../db', () => ({
   getDb: () => ({
     prepare: () => ({
@@ -129,14 +86,7 @@ mock.module('../db', () => ({
   }),
 }))
 
-mock.module('../server-manager', () => ({
-  serverManager: {
-    acquire: mock(() => Promise.resolve({ url: 'http://localhost:3000' })),
-    release: mock(() => {}),
-    killAll: mock(() => {}),
-  },
-}))
-
+const { testingToolCallbackServer } = await import('../test-mcp-bridge')
 const { testManager } = await import('../test-manager')
 
 async function waitForCreateSessionCall(index = 0): Promise<ProviderSessionConfig> {
@@ -172,12 +122,39 @@ function expectProviderAgentOptions(
   expect(call.effort).toBe(effort)
 }
 
+async function postTestingToolCall(
+  config: ProviderSessionConfig,
+  toolName: string,
+  args: Record<string, unknown>,
+): Promise<void> {
+  const server = config.mcpServers?.['pylon-testing']
+  const env = server?.env ?? {}
+  const callbackUrl = env.PYLON_TESTING_TOOL_CALLBACK_URL
+  const callbackToken = env.PYLON_TESTING_TOOL_CALLBACK_TOKEN
+  if (!callbackUrl || !callbackToken) {
+    throw new Error('testing MCP callback env was not configured')
+  }
+
+  const response = await fetch(callbackUrl, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${callbackToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ toolName, args }),
+  })
+  expect(response.status).toBe(200)
+}
+
 describe('TestManager agent settings', () => {
   beforeEach(() => {
     createSessionCalls.length = 0
     sessionStopCalls.length = 0
-    registeredExplorations.clear()
     nextSessionEvents = null
+  })
+
+  afterEach(async () => {
+    await testingToolCallbackServer.stop()
   })
 
   test('passes selected agent model and effort into goal suggestion provider session', async () => {
@@ -222,15 +199,9 @@ describe('TestManager agent settings', () => {
         send: (channel: string, data: unknown) => sent.push({ channel, data }),
       },
     } as never)
-    nextSessionEvents = () =>
+    nextSessionEvents = (config) =>
       (async function* () {
-        const exploration = [...registeredExplorations.values()][0]
-        exploration?.window?.webContents?.send?.(IPC.TEST_GOAL_SUGGESTION, {
-          cwd: '/repo',
-          goals: [{ id: 'login', title: 'Login', description: 'Check login' }],
-          status: 'done',
-        })
-        exploration?.onToolExecute?.('report_goals', {
+        await postTestingToolCall(config, 'report_goals', {
           goals: [{ id: 'login', title: 'Login', description: 'Check login' }],
         })
         yield { type: 'raw_passthrough', message: { type: 'mcp_call_begin' }, persist: false }
