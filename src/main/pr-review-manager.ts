@@ -1605,10 +1605,13 @@ class PrReviewManager {
         findings,
         changes,
       )
-      const updates = summaryItems.filter((item) => item.kind === 'update').length
-      const additions = summaryItems.filter((item) => item.kind === 'add').length
+      const deduped = deduplicateFindings(updatedFindings)
+      const survivingIds = new Set(deduped.map((finding) => finding.id))
+      const survivingSummary = summaryItems.filter((item) => survivingIds.has(item.findingId))
+      const updates = survivingSummary.filter((item) => item.kind === 'update').length
+      const additions = survivingSummary.filter((item) => item.kind === 'add').length
       logger.info(
-        `Peer-review pass for review ${reviewId}: ${peerAgent.provider} applied ${changes.length} finding changes (${updatedFindings.length - findings.length} net additions)`,
+        `Peer-review pass for review ${reviewId}: ${peerAgent.provider} applied ${changes.length} finding changes (${deduped.length - findings.length} net additions)`,
       )
       this.send(IPC.GH_REVIEW_UPDATE, {
         reviewId,
@@ -1621,11 +1624,11 @@ class PrReviewManager {
           details: {
             updates,
             additions,
-            items: summaryItems,
+            items: survivingSummary,
           },
         },
       })
-      return deduplicateFindings(updatedFindings)
+      return deduped
     } catch (err) {
       const message = `${peerName} second opinion unavailable: ${err instanceof Error ? err.message : String(err)}. Original findings were kept.`
       logger.warn(
