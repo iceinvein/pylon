@@ -80,6 +80,7 @@ export function SecondOpinionSummary({ summary, onJumpToFinding }: Props) {
     <div className="border-base-border-subtle border-t text-[11px] text-base-text-secondary">
       <button
         type="button"
+        aria-expanded={expanded}
         onClick={() => setExpanded((prev) => !prev)}
         title={summary.message}
         className="flex w-full items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-base-raised"

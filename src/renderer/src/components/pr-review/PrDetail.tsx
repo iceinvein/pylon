@@ -30,6 +30,7 @@ import { PrFilesChanged } from './PrFilesChanged'
 import { ReviewHistory } from './ReviewHistory'
 import { ReviewModal } from './ReviewModal'
 import { ReviewProgress } from './ReviewProgress'
+import { SecondOpinionSummary } from './SecondOpinionSummary'
 import { TimelinePanel } from './TimelinePanel'
 
 const COLLAPSED_HEIGHT = 96 // ~6 lines of text
@@ -154,11 +155,12 @@ export function PrDetail() {
     activeThreads,
     activeTimeline,
     reviewError,
-    secondOpinionNotice,
+    secondOpinionSummary,
     resultsMode,
     selectedFindingIds,
     findingsViewMode,
     navigateToFindingId,
+    navigateToFinding,
     clearNavigateToFinding,
     startReview,
     stopReview,
@@ -452,10 +454,11 @@ export function PrDetail() {
             <div className="px-3 py-1.5">
               <ReviewHistory />
             </div>
-            {secondOpinionNotice && (
-              <div className="border-base-border-subtle border-t px-3 py-2 text-[11px] text-base-text-secondary">
-                {secondOpinionNotice}
-              </div>
+            {secondOpinionSummary && (
+              <SecondOpinionSummary
+                summary={secondOpinionSummary}
+                onJumpToFinding={navigateToFinding}
+              />
             )}
             {(activeThreads.length > 0 || activeTimeline.length > 0 || activeSeries) && (
               <div className="flex items-center gap-1 px-3 pb-2">

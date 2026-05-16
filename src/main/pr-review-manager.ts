@@ -1601,8 +1601,10 @@ class PrReviewManager {
         return findings
       }
 
-      const { findings: updatedFindings, summary: summaryItems } =
-        applyPeerReviewChanges(findings, changes)
+      const { findings: updatedFindings, summary: summaryItems } = applyPeerReviewChanges(
+        findings,
+        changes,
+      )
       const updates = summaryItems.filter((item) => item.kind === 'update').length
       const additions = summaryItems.filter((item) => item.kind === 'add').length
       logger.info(

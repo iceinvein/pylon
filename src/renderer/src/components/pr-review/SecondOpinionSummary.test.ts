@@ -1,9 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import type { PeerReviewSummaryItem } from '../../../../shared/types'
-import {
-  buildSummaryHeader,
-  groupSummaryItems,
-} from './SecondOpinionSummary'
+import { buildSummaryHeader, groupSummaryItems } from './SecondOpinionSummary'
 
 const item = (kind: PeerReviewSummaryItem['kind'], title: string): PeerReviewSummaryItem => ({
   kind,
@@ -37,11 +34,7 @@ describe('buildSummaryHeader', () => {
 
 describe('groupSummaryItems', () => {
   test('splits items by kind preserving order', () => {
-    const grouped = groupSummaryItems([
-      item('update', 'a'),
-      item('add', 'b'),
-      item('update', 'c'),
-    ])
+    const grouped = groupSummaryItems([item('update', 'a'), item('add', 'b'), item('update', 'c')])
     expect(grouped.updates.map((i) => i.findingTitle)).toEqual(['a', 'c'])
     expect(grouped.additions.map((i) => i.findingTitle)).toEqual(['b'])
   })
