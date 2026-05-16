@@ -267,6 +267,27 @@ describe('TestManager agent settings', () => {
     ])
   })
 
+  test('sends fallback empty goals when report_goals is only observed as provider activity', async () => {
+    const sent: Array<{ channel: string; data: unknown }> = []
+    testManager.setWindow({
+      webContents: {
+        send: (channel: string, data: unknown) => sent.push({ channel, data }),
+      },
+    } as never)
+    nextSessionEvents = () =>
+      (async function* () {
+        yield { type: 'tool_use', toolId: 'tool-1', toolName: 'report_goals', input: {} }
+      })()
+
+    await testManager.suggestGoals('/repo', 'gpt-5.5', 'xhigh')
+
+    const goalUpdates = sent.filter((entry) => entry.channel === IPC.TEST_GOAL_SUGGESTION)
+    expect(goalUpdates.map((entry) => entry.data)).toEqual([
+      { cwd: '/repo', goals: [], status: 'loading' },
+      { cwd: '/repo', goals: [], status: 'done' },
+    ])
+  })
+
   test('stopExploration stops the provider session as well as aborting it', async () => {
     nextSessionEvents = (config) => stopOnAbortEvents(config)
 
@@ -318,6 +339,48 @@ describe('TestManager agent settings', () => {
     const done = await waitForExplorationStatus(sent, 'done')
     expect(done.streamingText).toBe('prefix hello suffixhello\n')
     expect(done.agentMessages).toContainEqual({ type: 'text', text: 'hello' })
+  })
+
+  test('complete text mapping surfaces distinct complete messages with identical text', async () => {
+    const sent: Array<{ channel: string; data: unknown }> = []
+    testManager.setWindow({
+      webContents: {
+        send: (channel: string, data: unknown) => sent.push({ channel, data }),
+      },
+    } as never)
+    nextSessionEvents = () =>
+      (async function* () {
+        yield {
+          type: 'message_complete',
+          role: 'assistant',
+          content: [{ type: 'text', text: 'repeat' }],
+          raw: {},
+        }
+        yield {
+          type: 'message_complete',
+          role: 'assistant',
+          content: [{ type: 'text', text: 'repeat' }],
+          raw: {},
+        }
+      })()
+
+    await testManager.startExploration({
+      cwd: '/repo',
+      url: 'http://localhost:3000',
+      goal: 'Login',
+      mode: 'manual',
+      e2eOutputPath: 'e2e',
+      agentModel: 'gpt-5.5',
+      agentEffort: 'xhigh',
+    })
+
+    const done = await waitForExplorationStatus(sent, 'done')
+    expect(done.streamingText).toBe('repeat\nrepeat\n')
+    const textMessages = sent
+      .filter((entry) => entry.channel === IPC.TEST_EXPLORATION_UPDATE)
+      .flatMap((entry) => (entry.data as ExplorationUpdate).agentMessages ?? [])
+      .filter((message) => message.type === 'text' && message.text === 'repeat')
+    expect(textMessages).toHaveLength(2)
   })
 
   test('complete message mapping does not repeat tool uses already emitted by id', async () => {

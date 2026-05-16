@@ -53,7 +53,6 @@ class TestManager {
       session?: AgentSession
       streamedText: string
       pendingTextDelta: string
-      completedTextBlocks: Set<string>
       emittedToolUseIds: Set<string>
       emittedToolResultIds: Set<string>
     }
@@ -135,7 +134,7 @@ class TestManager {
       status: 'loading',
     } satisfies GoalSuggestionUpdate)
 
-    let goalToolCalled = false
+    let goalToolCallbackExecuted = false
     const callbackToken = randomUUID()
 
     try {
@@ -152,7 +151,7 @@ class TestManager {
         window: this.window,
         onToolExecute: (toolName) => {
           if (this.isReportGoalsToolName(toolName)) {
-            goalToolCalled = true
+            goalToolCallbackExecuted = true
           }
         },
       })
@@ -183,16 +182,13 @@ class TestManager {
       try {
         for await (const event of session.send(prompt)) {
           if (event.type === 'error') throw new Error(event.message)
-          if (this.isReportGoalsToolUse(event)) {
-            goalToolCalled = true
-          }
         }
       } finally {
         clearTimeout(timeoutId)
       }
 
-      // If the tool wasn't called, send done with empty goals
-      if (!abortController.signal.aborted && !goalToolCalled) {
+      // If the callback did not complete, send done with empty goals.
+      if (!abortController.signal.aborted && !goalToolCallbackExecuted) {
         this.send(IPC.TEST_GOAL_SUGGESTION, {
           cwd,
           goals: [],
@@ -492,7 +488,6 @@ class TestManager {
       abortController,
       streamedText: '',
       pendingTextDelta: '',
-      completedTextBlocks: new Set(),
       emittedToolUseIds: new Set(),
       emittedToolResultIds: new Set(),
     })
@@ -615,7 +610,6 @@ class TestManager {
       pendingTextDelta: string
       emittedToolUseIds: Set<string>
       emittedToolResultIds: Set<string>
-      completedTextBlocks: Set<string>
     },
     pushMessage: (message: ExplorationAgentMessage) => void,
   ): void {
@@ -658,7 +652,6 @@ class TestManager {
     active: {
       streamedText: string
       pendingTextDelta: string
-      completedTextBlocks: Set<string>
       emittedToolUseIds: Set<string>
       emittedToolResultIds: Set<string>
     },
@@ -668,13 +661,10 @@ class TestManager {
       if (block.type === 'text' && event.role === 'assistant') {
         if (active.pendingTextDelta.startsWith(block.text)) {
           active.pendingTextDelta = active.pendingTextDelta.slice(block.text.length)
-          active.completedTextBlocks.add(block.text)
           continue
         }
-        if (active.completedTextBlocks.has(block.text)) continue
 
         active.streamedText += `${block.text}\n`
-        active.completedTextBlocks.add(block.text)
         pushMessage({ type: 'text', text: block.text })
       }
       if (block.type === 'thinking' && event.role === 'assistant') {
@@ -710,16 +700,6 @@ class TestManager {
     return value && typeof value === 'object' && !Array.isArray(value)
       ? (value as Record<string, unknown>)
       : {}
-  }
-
-  private isReportGoalsToolUse(event: NormalizedEvent): boolean {
-    if (event.type === 'tool_use') {
-      return this.isReportGoalsToolName(event.toolName)
-    }
-    if (event.type !== 'message_complete') return false
-    return event.content.some(
-      (block) => block.type === 'tool_use' && this.isReportGoalsToolName(block.toolName),
-    )
   }
 
   private isReportGoalsToolName(toolName: string): boolean {
