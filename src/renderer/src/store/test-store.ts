@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type {
   E2ePathResolution,
+  EffortLevel,
   ExplorationAgentMessage,
   ExplorationMode,
   ExplorationUpdate,
@@ -54,6 +55,10 @@ type TestStore = {
   customUrl: string | null
   launchLoading: boolean
   launchError: string | null
+
+  // Agent settings
+  agentModel: string
+  agentEffort: EffortLevel
 
   // Concurrency
   agentCount: number
@@ -127,6 +132,8 @@ export const useTestStore = create<TestStore>((set, get) => ({
   customUrl: null,
   launchLoading: false,
   launchError: null,
+  agentModel: 'claude-opus-4-7',
+  agentEffort: 'high',
   agentCount: 1,
   autoStartServer: true,
   selectedExplorationId: null,
@@ -191,7 +198,8 @@ export const useTestStore = create<TestStore>((set, get) => ({
   suggestGoals: async (cwd) => {
     set({ goalsLoading: true })
     try {
-      await window.api.suggestGoals(cwd)
+      const { agentModel, agentEffort } = get()
+      await window.api.suggestGoals(cwd, agentModel, agentEffort)
       // Results arrive via handleGoalSuggestion
     } catch (err) {
       console.error('suggestGoals failed:', err)
@@ -239,6 +247,8 @@ export const useTestStore = create<TestStore>((set, get) => ({
         customUrl: config.customUrl,
         autoStartServer: config.autoStartServer,
         projectScan: config.projectScan,
+        agentModel: get().agentModel,
+        agentEffort: get().agentEffort,
       })
 
       set((s) => {
@@ -280,7 +290,13 @@ export const useTestStore = create<TestStore>((set, get) => ({
 
   startExploration: async (cwd, config) => {
     try {
-      const exploration = await window.api.startExploration({ cwd, ...config })
+      const { agentModel, agentEffort } = get()
+      const exploration = await window.api.startExploration({
+        cwd,
+        ...config,
+        agentModel,
+        agentEffort,
+      })
       set((s) => ({
         explorations: [exploration, ...s.explorations],
         selectedExplorationId: exploration.id,

@@ -16,6 +16,8 @@ export function registerTestIpcHandlers(): void {
         e2eOutputPath: string
         e2ePathReason?: string
         projectScan?: import('../shared/types').ProjectScan
+        agentModel?: string
+        agentEffort?: import('../shared/types').EffortLevel
       },
     ) => {
       return testManager.startExploration({ ...args, mode: args.mode as 'manual' | 'requirements' })
@@ -37,6 +39,8 @@ export function registerTestIpcHandlers(): void {
         customUrl?: string
         autoStartServer: boolean
         projectScan?: import('../shared/types').ProjectScan
+        agentModel?: string
+        agentEffort?: import('../shared/types').EffortLevel
       },
     ) => {
       return testManager.startBatch({
@@ -79,10 +83,25 @@ export function registerTestIpcHandlers(): void {
     return testManager.scanProject(args.cwd)
   })
 
-  ipcMain.handle(IPC.TEST_SUGGEST_GOALS, async (_e, args: { cwd: string }) => {
-    testManager.suggestGoals(args.cwd).catch((err) => {
-      console.error('suggestGoals failed:', err)
-    })
-    return true
-  })
+  ipcMain.handle(
+    IPC.TEST_SUGGEST_GOALS,
+    async (
+      _e,
+      args: {
+        cwd: string
+        agentModel?: string
+        agentEffort?: import('../shared/types').EffortLevel
+      },
+    ) => {
+      const suggestGoals = testManager.suggestGoals as (
+        cwd: string,
+        agentModel?: string,
+        agentEffort?: import('../shared/types').EffortLevel,
+      ) => Promise<void>
+      suggestGoals(args.cwd, args.agentModel, args.agentEffort).catch((err) => {
+        console.error('suggestGoals failed:', err)
+      })
+      return true
+    },
+  )
 }

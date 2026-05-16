@@ -232,6 +232,9 @@ const api = {
     requirements?: string
     e2eOutputPath: string
     e2ePathReason?: string
+    projectScan?: unknown
+    agentModel?: string
+    agentEffort?: string
   }) => ipcRenderer.invoke(IPC.TEST_START_EXPLORATION, args),
   startBatch: (args: {
     cwd: string
@@ -244,6 +247,8 @@ const api = {
     customUrl?: string
     autoStartServer: boolean
     projectScan?: unknown
+    agentModel?: string
+    agentEffort?: string
   }) => ipcRenderer.invoke(IPC.TEST_START_BATCH, args),
   stopExploration: (explorationId: string) =>
     ipcRenderer.invoke(IPC.TEST_STOP_EXPLORATION, { explorationId }),
@@ -261,7 +266,8 @@ const api = {
     return () => ipcRenderer.removeListener(IPC.TEST_EXPLORATION_UPDATE, handler)
   },
   scanProject: (cwd: string) => ipcRenderer.invoke(IPC.TEST_SCAN_PROJECT, { cwd }),
-  suggestGoals: (cwd: string) => ipcRenderer.invoke(IPC.TEST_SUGGEST_GOALS, { cwd }),
+  suggestGoals: (cwd: string, agentModel?: string, agentEffort?: string) =>
+    ipcRenderer.invoke(IPC.TEST_SUGGEST_GOALS, { cwd, agentModel, agentEffort }),
   onGoalSuggestion: (callback: (data: unknown) => void) => {
     const handler = (_event: unknown, data: unknown) => callback(data)
     ipcRenderer.on(IPC.TEST_GOAL_SUGGESTION, handler)
@@ -310,12 +316,18 @@ const api = {
 
   // AST Visualizer
   getCachedAnalysis: (scope: string) => ipcRenderer.invoke(IPC.AST_GET_CACHED, { scope }),
-  analyzeScope: (scope: string) => ipcRenderer.invoke(IPC.AST_ANALYZE_SCOPE, { scope }),
+  analyzeScope: (scope: string, agentModel?: string, agentEffort?: string) =>
+    ipcRenderer.invoke(IPC.AST_ANALYZE_SCOPE, { scope, agentModel, agentEffort }),
   getFileAst: (filePath: string) => ipcRenderer.invoke(IPC.AST_FILE_AST, { filePath }),
-  explainAstNode: (nodeId: string, filePath: string, context: string) =>
-    ipcRenderer.invoke(IPC.AST_EXPLAIN, { nodeId, filePath, context }),
-  sendAstChat: (message: string, scope: string) =>
-    ipcRenderer.invoke(IPC.AST_CHAT, { message, scope }),
+  explainAstNode: (
+    nodeId: string,
+    filePath: string,
+    context: string,
+    agentModel?: string,
+    agentEffort?: string,
+  ) => ipcRenderer.invoke(IPC.AST_EXPLAIN, { nodeId, filePath, context, agentModel, agentEffort }),
+  sendAstChat: (message: string, scope: string, agentModel?: string, agentEffort?: string) =>
+    ipcRenderer.invoke(IPC.AST_CHAT, { message, scope, agentModel, agentEffort }),
   onAstAnalysisProgress: (callback: (data: unknown) => void) => {
     const handler = (_event: unknown, data: unknown) => callback(data)
     ipcRenderer.on(IPC.AST_ANALYSIS_PROGRESS, handler)

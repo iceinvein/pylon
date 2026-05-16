@@ -26,6 +26,10 @@ const DEFAULT_SETTINGS: AppSettings = {
   defaultModel: 'claude-opus-4-7',
   defaultPermissionMode: 'default',
   defaultEffort: 'high',
+  testingAgentModel: 'claude-opus-4-7',
+  testingAgentEffort: 'high',
+  astAgentModel: 'claude-opus-4-7',
+  astAgentEffort: 'high',
   theme: 'dark',
 }
 
@@ -44,6 +48,11 @@ function getSettings(): AppSettings {
     defaultPermissionMode:
       (stored.defaultPermissionMode as PermissionMode) ?? DEFAULT_SETTINGS.defaultPermissionMode,
     defaultEffort: (stored.defaultEffort as EffortLevel) ?? DEFAULT_SETTINGS.defaultEffort,
+    testingAgentModel: stored.testingAgentModel ?? DEFAULT_SETTINGS.testingAgentModel,
+    testingAgentEffort:
+      (stored.testingAgentEffort as EffortLevel) ?? DEFAULT_SETTINGS.testingAgentEffort,
+    astAgentModel: stored.astAgentModel ?? DEFAULT_SETTINGS.astAgentModel,
+    astAgentEffort: (stored.astAgentEffort as EffortLevel) ?? DEFAULT_SETTINGS.astAgentEffort,
     theme: 'dark',
   }
 }

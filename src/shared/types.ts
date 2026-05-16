@@ -155,6 +155,10 @@ export type AppSettings = {
   defaultModel: string
   defaultPermissionMode: PermissionMode
   defaultEffort: EffortLevel
+  testingAgentModel: string
+  testingAgentEffort: EffortLevel
+  astAgentModel: string
+  astAgentEffort: EffortLevel
   theme: 'dark'
 }
 
