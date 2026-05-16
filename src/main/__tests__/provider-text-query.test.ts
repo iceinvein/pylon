@@ -3,15 +3,18 @@ import type { AgentProvider, AgentSession, NormalizedEvent } from '../providers'
 import { runProviderTextQuery } from '../provider-text-query'
 
 function fakeProvider(events: NormalizedEvent[]): AgentProvider {
+  let sessionConfigAssertions: Promise<void> | null = null
+
   const session: AgentSession = {
     nativeSessionId: null,
     async *send() {},
     async *sendTextOnly(prompt: string) {
+      await sessionConfigAssertions
       expect(prompt).toContain('System text')
       expect(prompt).toContain('User text')
       for (const event of events) yield event
     },
-    abort() {},
+    stop() {},
   }
 
   return {
@@ -41,6 +44,10 @@ function fakeProvider(events: NormalizedEvent[]): AgentProvider {
       expect(config.effort).toBe('high')
       expect(config.permissionMode).toBe('auto-approve')
       if (config.mcpServers) expect(config.mcpServers.playwright?.command).toBe('bunx')
+      sessionConfigAssertions = Promise.all([
+        expect(config.onPermissionRequest('tool', {}, [])).resolves.toEqual({ behavior: 'allow' }),
+        expect(config.onQuestionRequest({})).resolves.toEqual({}),
+      ]).then(() => undefined)
       return session
     },
   }
