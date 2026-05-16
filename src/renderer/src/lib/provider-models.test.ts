@@ -82,6 +82,14 @@ describe('provider model utilities', () => {
     ).toBe(FALLBACK_PROVIDER_MODELS)
   })
 
+  test('falls back to bundled models when normalized payload is null', () => {
+    expect(normalizeProviderModels(null)).toBe(FALLBACK_PROVIDER_MODELS)
+  })
+
+  test('falls back to bundled models when normalized payload is an object', () => {
+    expect(normalizeProviderModels({})).toBe(FALLBACK_PROVIDER_MODELS)
+  })
+
   test('uses app default model when persisted model and provider are invalid', () => {
     expect(
       resolveFeatureAgentSelection({

@@ -123,7 +123,9 @@ export function clampEffortForModel(
   return 'high'
 }
 
-export function normalizeProviderModels(models: unknown[]): ProviderModelEntry[] {
+export function normalizeProviderModels(models: unknown): ProviderModelEntry[] {
+  if (!Array.isArray(models)) return FALLBACK_PROVIDER_MODELS
+
   const normalized = models.flatMap((raw): ProviderModelEntry[] => {
     if (!raw || typeof raw !== 'object') return []
 
