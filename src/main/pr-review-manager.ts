@@ -1601,7 +1601,10 @@ class PrReviewManager {
         return findings
       }
 
-      const { findings: updatedFindings } = applyPeerReviewChanges(findings, changes)
+      const { findings: updatedFindings, summary: summaryItems } =
+        applyPeerReviewChanges(findings, changes)
+      const updates = summaryItems.filter((item) => item.kind === 'update').length
+      const additions = summaryItems.filter((item) => item.kind === 'add').length
       logger.info(
         `Peer-review pass for review ${reviewId}: ${peerAgent.provider} applied ${changes.length} finding changes (${updatedFindings.length - findings.length} net additions)`,
       )
@@ -1613,6 +1616,11 @@ class PrReviewManager {
           provider: peerAgent.provider,
           changes: changes.length,
           message: `${peerName} second opinion applied ${changes.length} finding change${changes.length === 1 ? '' : 's'}.`,
+          details: {
+            updates,
+            additions,
+            items: summaryItems,
+          },
         },
       })
       return deduplicateFindings(updatedFindings)
