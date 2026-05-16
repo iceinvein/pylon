@@ -22,6 +22,7 @@ import { log } from '../../shared/logger'
 import { resolveContextWindow, resolveMaxOutputTokens } from '../../shared/model-context'
 import type { Attachment, EffortLevel } from '../../shared/types'
 import { getClaudeCodeSdkRuntimeOptions } from '../claude-code-executable'
+import { buildClaudeMcpServerConfigs } from './mcp-config'
 import type {
   AgentProvider,
   AgentSession,
@@ -514,12 +515,7 @@ class ClaudeSession implements AgentSession {
       // `tool_search` never sees `mcp__code-intelligence__*` and reports
       // `attempts=0`. We attach these servers deliberately, so they must
       // appear in the turn-1 tool list.
-      base.mcpServers = Object.fromEntries(
-        Object.entries(config.mcpServers).map(([name, server]) => [
-          name,
-          { type: 'stdio' as const, ...server, alwaysLoad: true },
-        ]),
-      )
+      base.mcpServers = buildClaudeMcpServerConfigs(config.mcpServers) as SdkOptions['mcpServers']
     }
 
     return base

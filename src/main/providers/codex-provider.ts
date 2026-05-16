@@ -118,11 +118,23 @@ export function buildCodexConfigOverrides(
   return {
     mcp_servers: Object.fromEntries(
       Object.entries(mcpServers).map(([name, config]) => {
-        const serverConfig: Record<string, string | string[] | Record<string, string>> = {
-          command: config.command,
+        const serverConfig: Record<string, string | string[] | Record<string, string>> =
+          'url' in config
+            ? { url: config.url }
+            : {
+                command: config.command,
+              }
+
+        if ('url' in config) {
+          if (config.bearerTokenEnvVar) {
+            serverConfig.bearer_token_env_var = config.bearerTokenEnvVar
+          }
+          if (config.headers) serverConfig.http_headers = config.headers
+          if (config.envHttpHeaders) serverConfig.env_http_headers = config.envHttpHeaders
+        } else {
+          if (config.args) serverConfig.args = config.args
+          if (config.env) serverConfig.env = config.env
         }
-        if (config.args) serverConfig.args = config.args
-        if (config.env) serverConfig.env = config.env
         return [name, serverConfig]
       }),
     ),

@@ -47,6 +47,7 @@ import {
 import { deduplicateFindings } from './pr-review-dedupe'
 import {
   type McpStdioConfig,
+  normalizeMcpConfig,
   resolveCodeIntelligenceMcpConfig as resolveMcpConfig,
 } from './pr-review-mcp-config'
 import { appendReviewOutputText, extractReviewOutputText } from './pr-review-output'
@@ -517,7 +518,7 @@ function readDbMcpOverride(): McpStdioConfig | null {
   if (!row?.value) return null
   try {
     const parsed = JSON.parse(row.value) as Partial<McpStdioConfig>
-    return parsed.command ? { command: parsed.command, args: parsed.args, env: parsed.env } : null
+    return normalizeMcpConfig(parsed)
   } catch {
     return null
   }
@@ -1672,7 +1673,7 @@ class PrReviewManager {
     skippedFiles: string[],
     focus: ReviewFocus,
     active: ActiveReviewSession,
-    mcpConfig: { command: string; args?: string[]; env?: Record<string, string> } | null,
+    mcpConfig: McpStdioConfig | null,
     reviewAgent: { model: string; provider: ProviderId; effort: EffortLevel },
   ): Promise<ReviewFinding[]> {
     const sessionId = await sessionManager.createSession(
@@ -2355,11 +2356,9 @@ class PrReviewManager {
     this.send(IPC.GH_REVIEW_UPDATE, { reviewId, status: 'error', error: 'Review stopped by user' })
   }
 
-  private resolveCodeIntelligenceMcpConfig(...candidateCwds: Array<string | undefined>): {
-    command: string
-    args?: string[]
-    env?: Record<string, string>
-  } | null {
+  private resolveCodeIntelligenceMcpConfig(
+    ...candidateCwds: Array<string | undefined>
+  ): McpStdioConfig | null {
     return resolveMcpConfig(readDbMcpOverride(), candidateCwds)
   }
 

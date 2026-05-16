@@ -1,14 +1,13 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
+import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js'
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
 import { log } from '../../shared/logger'
+import type { McpServerConfig } from '../providers/types'
 
 const logger = log.child('mcp-client')
 
-export type McpStdioConfig = {
-  command: string
-  args?: string[]
-  env?: Record<string, string>
-}
+export type McpStdioConfig = McpServerConfig
 
 export function isTimeoutError(err: unknown): boolean {
   return Boolean(err && typeof err === 'object' && (err as { timedOut?: boolean }).timedOut)
@@ -23,11 +22,19 @@ export class CodeIntelligenceMcpClient {
   async connect(timeoutMs: number = 5000): Promise<void> {
     if (this.connected) return
 
-    const transport = new StdioClientTransport({
-      command: this.config.command,
-      args: this.config.args ?? [],
-      env: this.config.env,
-    })
+    const transport =
+      'url' in this.config
+        ? this.config.type === 'sse'
+          ? new SSEClientTransport(new URL(this.config.url), buildRequestOptions(this.config))
+          : new StreamableHTTPClientTransport(
+              new URL(this.config.url),
+              buildRequestOptions(this.config),
+            )
+        : new StdioClientTransport({
+            command: this.config.command,
+            args: this.config.args ?? [],
+            env: this.config.env,
+          })
 
     const client = new Client({ name: 'pylon-pr-context', version: '1.0.0' }, { capabilities: {} })
 
@@ -93,6 +100,25 @@ export class CodeIntelligenceMcpClient {
     }
     this.client = null
     this.connected = false
+  }
+}
+
+function buildRequestOptions(config: Extract<McpServerConfig, { url: string }>): {
+  requestInit?: RequestInit
+  eventSourceInit?: EventSourceInit
+} {
+  const headers: Record<string, string> = { ...(config.headers ?? {}) }
+  if (config.bearerTokenEnvVar) {
+    const token = process.env[config.bearerTokenEnvVar]
+    if (token) headers.Authorization = `Bearer ${token}`
+  }
+
+  if (Object.keys(headers).length === 0) return {}
+  return {
+    requestInit: { headers },
+    eventSourceInit: {
+      fetch: (_input: unknown, init: RequestInit) => fetch(config.url, { ...init, headers }),
+    } as unknown as EventSourceInit,
   }
 }
 

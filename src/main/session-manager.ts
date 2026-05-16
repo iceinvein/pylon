@@ -24,7 +24,7 @@ import {
   type NormalizedEvent,
   type ProviderId,
 } from './providers'
-import type { McpServerStdioConfig } from './providers/types'
+import type { McpServerConfig } from './providers/types'
 import { worktreeRecipeService } from './worktree-recipe-service'
 
 const logger = log.child('session-manager')
@@ -96,7 +96,7 @@ type ActiveSession = {
       resolve: (result: { approved: boolean }) => void
     }
   >
-  mcpServers: Record<string, McpServerStdioConfig> | null
+  mcpServers: Record<string, McpServerConfig> | null
 }
 
 type IpcAttachment =
@@ -239,7 +239,7 @@ export class SessionManager {
     model?: string,
     useWorktree?: boolean,
     source: string = 'user',
-    options?: { mcpServers?: Record<string, McpServerStdioConfig> },
+    options?: { mcpServers?: Record<string, McpServerConfig> },
   ): Promise<string> {
     const id = randomUUID()
     const now = Date.now()

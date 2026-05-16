@@ -1,8 +1,9 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
+import type { McpServerConfig } from './providers/types'
 
-export type McpStdioConfig = { command: string; args?: string[]; env?: Record<string, string> }
+export type McpStdioConfig = McpServerConfig
 
 export function readMcpFromFile(path: string): McpStdioConfig | null {
   if (!existsSync(path)) return null
@@ -36,10 +37,10 @@ export function resolveCodeIntelligenceMcpConfig(
 function readJsonMcp(contents: string): McpStdioConfig | null {
   try {
     const json = JSON.parse(contents) as {
-      mcpServers?: Record<string, Partial<McpStdioConfig>>
+      mcpServers?: Record<string, Partial<McpServerConfig>>
     }
     const entry = json.mcpServers?.['code-intelligence']
-    return entry?.command ? normalizeConfig(entry) : null
+    return entry ? normalizeMcpConfig(entry) : null
   } catch {
     return null
   }
@@ -50,11 +51,24 @@ function readCodexTomlMcp(contents: string): McpStdioConfig | null {
   if (!section) return null
 
   const command = readTomlString(section, 'command')
-  if (!command) return null
+  const url = readTomlString(section, 'url')
+  if (!command && !url) return null
 
-  const args = readTomlStringArray(section, 'args')
-  const env = readTomlInlineStringTable(section, 'env')
-  return normalizeConfig({ command, args, env })
+  if (url) {
+    return normalizeMcpConfig({
+      type: 'http',
+      url,
+      bearerTokenEnvVar: readTomlString(section, 'bearer_token_env_var'),
+      headers: readTomlInlineStringTable(section, 'http_headers'),
+      envHttpHeaders: readTomlInlineStringTable(section, 'env_http_headers'),
+    })
+  }
+
+  return normalizeMcpConfig({
+    command,
+    args: readTomlStringArray(section, 'args'),
+    env: readTomlInlineStringTable(section, 'env'),
+  })
 }
 
 function extractTomlSection(contents: string, sectionName: string): string | null {
@@ -100,9 +114,23 @@ function readTomlInlineStringTable(
   return Object.keys(env).length > 0 ? env : undefined
 }
 
-function normalizeConfig(config: Partial<McpStdioConfig>): McpStdioConfig | null {
-  if (!config.command) return null
+export function normalizeMcpConfig(config: Partial<McpServerConfig>): McpStdioConfig | null {
+  if ('url' in config && typeof config.url === 'string' && config.url.length > 0) {
+    return {
+      type: config.type === 'sse' ? 'sse' : 'http',
+      url: config.url,
+      headers:
+        config.headers && Object.keys(config.headers).length > 0 ? config.headers : undefined,
+      bearerTokenEnvVar: config.bearerTokenEnvVar,
+      envHttpHeaders:
+        config.envHttpHeaders && Object.keys(config.envHttpHeaders).length > 0
+          ? config.envHttpHeaders
+          : undefined,
+    }
+  }
+  if (!('command' in config) || !config.command) return null
   return {
+    type: config.type === 'stdio' ? 'stdio' : undefined,
     command: config.command,
     args: Array.isArray(config.args) ? config.args : undefined,
     env: config.env && Object.keys(config.env).length > 0 ? config.env : undefined,
