@@ -1,16 +1,14 @@
 /**
- * Claude integration for AST Visualizer.
+ * Provider-neutral AI prompt helpers for the AST visualizer.
  *
- * Uses the `claude` CLI with `--print` for one-shot queries rather than
- * managing full Agent SDK sessions. Each function accepts a generic `queryFn`
- * so callers can swap in a different backend if needed.
+ * Callers provide a text query function; this module owns only prompts,
+ * response cleanup, and fallback behavior.
  */
 import { readFileSync } from 'node:fs'
 import { log } from '../shared/logger'
 import type { ArchAnalysis, RepoGraph } from '../shared/types'
-import { resolveClaudeCodeExecutablePath } from './claude-code-executable'
 
-const logger = log.child('ast-claude')
+const logger = log.child('ast-ai')
 
 export type QueryFn = (system: string, prompt: string) => Promise<string>
 
@@ -25,7 +23,7 @@ function buildGraphSummary(graph: RepoGraph): string {
   for (const file of graph.files.slice(0, 80)) {
     const decls = file.declarations.map((d) => `${d.type}:${d.name}`).join(', ')
     const shortPath = file.filePath.replace(/^.*?\/src\//, 'src/')
-    lines.push(`${shortPath} (${file.size}B) — ${decls || 'no declarations'}`)
+    lines.push(`${shortPath} (${file.size}B) - ${decls || 'no declarations'}`)
   }
 
   if (graph.files.length > 80) {
@@ -47,9 +45,24 @@ function buildGraphSummary(graph: RepoGraph): string {
   return lines.join('\n')
 }
 
-// ── 1. Analyze repo with Claude ──
+function parseJsonFromProviderText<T>(raw: string): T {
+  const trimmed = raw.trim()
+  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/)
+  if (fenced) return JSON.parse(fenced[1]) as T
 
-export async function analyzeRepoWithClaude(
+  try {
+    return JSON.parse(trimmed) as T
+  } catch {
+    const start = trimmed.indexOf('{')
+    const end = trimmed.lastIndexOf('}')
+    if (start === -1 || end <= start) throw new Error('No JSON object found in provider response')
+    return JSON.parse(trimmed.slice(start, end + 1)) as T
+  }
+}
+
+// ── 1. Analyze repo with AI ──
+
+export async function analyzeRepoWithAi(
   graph: RepoGraph,
   queryFn: QueryFn,
 ): Promise<ArchAnalysis | null> {
@@ -80,12 +93,9 @@ Rules:
 
   try {
     const raw = await queryFn(system, prompt)
-    // Strip markdown fences if present
-    const cleaned = raw.replace(/^```(?:json)?\s*\n?/m, '').replace(/\n?```\s*$/m, '')
-    const parsed = JSON.parse(cleaned) as ArchAnalysis
-    return parsed
+    return parseJsonFromProviderText<ArchAnalysis>(raw)
   } catch (err) {
-    logger.error('Failed to parse Claude arch analysis:', err)
+    logger.error('Failed to parse AI architecture analysis:', err)
     return null
   }
 }
@@ -105,7 +115,7 @@ export async function explainNode(
     source = '(file not readable)'
   }
 
-  // Truncate large files to first 500 lines to stay within limits
+  // Truncate large files to first 500 lines to stay within limits.
   const lines = source.split('\n')
   const truncated =
     lines.length > 500 ? `${lines.slice(0, 500).join('\n')}\n... (truncated)` : source
@@ -117,7 +127,7 @@ export async function explainNode(
   try {
     return await queryFn(system, prompt)
   } catch (err) {
-    logger.error('Failed to get Claude explanation:', err)
+    logger.error('Failed to get AI explanation:', err)
     return 'Unable to generate explanation at this time.'
   }
 }
@@ -145,7 +155,7 @@ Rules:
   try {
     const raw = await queryFn(system, prompt)
 
-    // Parse out highlights
+    // Parse out highlights.
     const highlightMatch = raw.match(/<!--\s*highlights:\s*(\[.*?\])\s*-->/)
     let highlights: Array<{ filePath: string; symbolName: string }> = []
     let text = raw
@@ -154,55 +164,14 @@ Rules:
       try {
         highlights = JSON.parse(highlightMatch[1])
       } catch {
-        // ignore malformed highlights
+        // Ignore malformed highlights.
       }
       text = raw.replace(/<!--\s*highlights:\s*\[.*?\]\s*-->/, '').trim()
     }
 
     return { text, highlights }
   } catch (err) {
-    logger.error('Failed to get Claude chat response:', err)
+    logger.error('Failed to get AI chat response:', err)
     return { text: 'Unable to generate a response at this time.', highlights: [] }
   }
-}
-
-// ── Query function factory ──
-
-/**
- * Creates a queryFn that shells out to the `claude` CLI with `--print`.
- * This avoids the complexity of managing Agent SDK sessions for one-shot queries.
- */
-export function createCliQueryFn(claudePath: string): QueryFn {
-  const { execFile } = require('node:child_process')
-  const { promisify } = require('node:util')
-  const execFileAsync = promisify(execFile)
-
-  return async (system: string, prompt: string): Promise<string> => {
-    try {
-      const { stdout } = await execFileAsync(
-        claudePath,
-        ['--print', '--output-format', 'text', '-p', prompt],
-        {
-          timeout: 120_000,
-          maxBuffer: 1024 * 1024 * 5,
-          env: {
-            ...process.env,
-            CLAUDE_SYSTEM_PROMPT: system,
-          },
-        },
-      )
-      return (stdout as string).trim()
-    } catch (err) {
-      logger.error('Claude CLI query failed:', err)
-      throw err
-    }
-  }
-}
-
-/**
- * Resolves the path to the `claude` CLI binary.
- * Checks common locations and the system PATH.
- */
-export function resolveClaudePath(): string | null {
-  return resolveClaudeCodeExecutablePath()
 }
