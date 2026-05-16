@@ -27,6 +27,7 @@ import type {
   ReviewStatus,
   ReviewThread,
   ReviewTimelineEntry,
+  SecondOpinionSummary,
   StartPrReviewOptions,
 } from '../shared/types'
 import { getDb } from './db'
@@ -555,6 +556,14 @@ class PrReviewManager {
     const db = getDb()
     db.prepare('UPDATE pr_reviews SET summary_json = ? WHERE id = ?').run(
       JSON.stringify(summary),
+      reviewId,
+    )
+  }
+
+  private updateReviewSecondOpinion(reviewId: string, summary: SecondOpinionSummary | null): void {
+    const db = getDb()
+    db.prepare('UPDATE pr_reviews SET second_opinion_summary_json = ? WHERE id = ?').run(
+      summary === null ? null : JSON.stringify(summary),
       reviewId,
     )
   }
@@ -1610,6 +1619,12 @@ class PrReviewManager {
       const survivingSummary = summaryItems.filter((item) => survivingIds.has(item.findingId))
       const updates = survivingSummary.filter((item) => item.kind === 'update').length
       const additions = survivingSummary.filter((item) => item.kind === 'add').length
+      const completedMessage = `${peerName} second opinion applied ${changes.length} finding change${changes.length === 1 ? '' : 's'}.`
+      const persistedSummary: SecondOpinionSummary = {
+        message: completedMessage,
+        details: { updates, additions, items: survivingSummary },
+      }
+      this.updateReviewSecondOpinion(reviewId, persistedSummary)
       logger.info(
         `Peer-review pass for review ${reviewId}: ${peerAgent.provider} applied ${changes.length} finding changes (${deduped.length - findings.length} net additions)`,
       )
@@ -1620,12 +1635,8 @@ class PrReviewManager {
           status: 'completed',
           provider: peerAgent.provider,
           changes: changes.length,
-          message: `${peerName} second opinion applied ${changes.length} finding change${changes.length === 1 ? '' : 's'}.`,
-          details: {
-            updates,
-            additions,
-            items: survivingSummary,
-          },
+          message: completedMessage,
+          details: persistedSummary.details,
         },
       })
       return deduped
@@ -2782,6 +2793,14 @@ class PrReviewManager {
         summary = EMPTY_REVIEW_SUMMARY
       }
     }
+    let secondOpinionSummary: SecondOpinionSummary | null = null
+    if (typeof row.second_opinion_summary_json === 'string') {
+      try {
+        secondOpinionSummary = JSON.parse(row.second_opinion_summary_json) as SecondOpinionSummary
+      } catch {
+        secondOpinionSummary = null
+      }
+    }
     return {
       id: row.id as string,
       seriesId: (row.series_id as string) ?? null,
@@ -2808,6 +2827,7 @@ class PrReviewManager {
       completedAt: row.completed_at as number | null,
       createdAt: row.created_at as number,
       costUsd: (row.cost_usd as number) ?? 0,
+      secondOpinionSummary,
     }
   }
 }

@@ -398,6 +398,15 @@ export type PeerReviewSummaryItem = {
   reason: string
 }
 
+export type SecondOpinionSummary = {
+  message: string
+  details?: {
+    updates: number
+    additions: number
+    items: PeerReviewSummaryItem[]
+  }
+}
+
 export type ReviewRunFile = {
   filePath: string
   status: string
@@ -479,6 +488,7 @@ export type PrReview = {
   completedAt: number | null
   createdAt: number
   costUsd: number
+  secondOpinionSummary?: SecondOpinionSummary | null
 }
 
 export type PrReviewSeries = {

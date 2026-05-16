@@ -18,6 +18,7 @@ import type {
   ReviewRunFile,
   ReviewThread,
   ReviewTimelineEntry,
+  SecondOpinionSummary,
 } from '../../../shared/types'
 import { log } from '../lib/logger'
 import { isPostableFinding } from '../lib/pr-review-findings'
@@ -204,14 +205,7 @@ type PrReviewStore = {
   activeFindings: ReviewFinding[]
   reviewStreamingText: string
   reviewError: string | null
-  secondOpinionSummary: {
-    message: string
-    details?: {
-      updates: number
-      additions: number
-      items: PeerReviewSummaryItem[]
-    }
-  } | null
+  secondOpinionSummary: SecondOpinionSummary | null
   selectedFindingIds: Set<string>
   postingFindingIds: Set<string>
   postingBatch: 'selected' | 'all' | null
@@ -660,7 +654,7 @@ export const usePrReviewStore = create<PrReviewStore>((set, get) => ({
         activeFindings: findings,
         reviewStreamingText: rawOutput,
         reviewError: null,
-        secondOpinionSummary: null,
+        secondOpinionSummary: review.secondOpinionSummary ?? null,
         resultsMode: 'latest-run',
         selectedFindingIds: new Set(),
         agentProgress: [],

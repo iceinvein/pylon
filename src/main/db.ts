@@ -266,6 +266,13 @@ const migrations: Array<{ version: number; description: string; sql: string }> =
       UPDATE pr_review_findings SET severity = 'low'     WHERE severity IN ('nitpick', 'info', 'note');
     `,
   },
+  {
+    version: 21,
+    description: 'Add second_opinion_summary_json to pr_reviews',
+    sql: `
+      ALTER TABLE pr_reviews ADD COLUMN second_opinion_summary_json TEXT;
+    `,
+  },
 ]
 
 /**
@@ -521,6 +528,7 @@ export function initDatabase(): SqliteDatabase {
       session_id TEXT,
       started_at INTEGER,
       completed_at INTEGER,
+      second_opinion_summary_json TEXT,
       created_at INTEGER NOT NULL
     );
 

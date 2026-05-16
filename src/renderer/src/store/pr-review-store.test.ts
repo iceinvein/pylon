@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, test } from 'bun:test'
+import { beforeEach, describe, expect, mock, test } from 'bun:test'
 import type {
   PrReview,
   PrReviewSeries,
@@ -248,5 +248,48 @@ describe('pr-review-store cumulative views', () => {
     expect(summary?.details?.additions).toBe(1)
     expect(summary?.details?.items).toHaveLength(2)
     expect(summary?.details?.items[0]).toMatchObject({ kind: 'update', findingId: 'f1' })
+  })
+
+  test('loadReview hydrates secondOpinionSummary from the loaded review', async () => {
+    const mockReview = {
+      ...makeReview(),
+      secondOpinionSummary: {
+        message: 'Codex second opinion applied 2 finding changes.',
+        details: {
+          updates: 1,
+          additions: 1,
+          items: [
+            {
+              kind: 'update' as const,
+              findingId: 'f1',
+              findingTitle: 'Race condition',
+              reason: 'severity should be blocker',
+            },
+            {
+              kind: 'add' as const,
+              findingId: 'f-new',
+              findingTitle: 'Missing await',
+              reason: 'adjacent issue spotted',
+            },
+          ],
+        },
+      },
+      findings: [],
+    }
+
+    const apiSpy = mock(async () => mockReview)
+    ;(window as unknown as { api: { getGhReview: typeof apiSpy } }).api = {
+      ...(window as unknown as { api: Record<string, unknown> }).api,
+      getGhReview: apiSpy,
+      saveGhFindings: mock(async () => {}),
+    } as unknown as typeof window.api
+
+    await usePrReviewStore.getState().loadReview('review-1')
+
+    const summary = usePrReviewStore.getState().secondOpinionSummary
+    expect(summary?.message).toBe('Codex second opinion applied 2 finding changes.')
+    expect(summary?.details?.updates).toBe(1)
+    expect(summary?.details?.additions).toBe(1)
+    expect(summary?.details?.items).toHaveLength(2)
   })
 })
