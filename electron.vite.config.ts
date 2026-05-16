@@ -7,6 +7,14 @@ export default defineConfig({
   main: {
     build: {
       rollupOptions: {
+        input: {
+          index: resolve(__dirname, 'src/main/index.ts'),
+          'test-mcp-stdio-server': resolve(__dirname, 'src/main/test-mcp-stdio-server.ts')
+        },
+        output: {
+          format: 'cjs',
+          entryFileNames: '[name].js'
+        },
         external: ['electron', 'node:sqlite', '@anthropic-ai/claude-agent-sdk', 'web-tree-sitter']
       }
     }
