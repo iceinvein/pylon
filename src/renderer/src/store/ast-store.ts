@@ -4,9 +4,11 @@ import type {
   AstChatMessage,
   AstNode,
   AstOverlay,
+  EffortLevel,
   FileNode,
   RepoGraph,
 } from '../../../shared/types'
+import type { ProviderId } from '../lib/provider-models'
 
 type AnalysisStatus = 'idle' | 'parsing' | 'analyzing' | 'ready' | 'error'
 
@@ -26,6 +28,9 @@ type AstStore = {
   explainText: string | null
   explainLoading: boolean
   chatLoading: boolean
+  agentProvider: ProviderId
+  agentModel: string
+  agentEffort: EffortLevel
   zoom: number
   panX: number
   panY: number
@@ -47,6 +52,7 @@ type AstStore = {
   setAnalysisStatus: (status: AnalysisStatus, progress?: string) => void
   setExplain: (text: string | null, loading: boolean) => void
   setChatLoading: (loading: boolean) => void
+  setAgentSelection: (provider: ProviderId, model: string, effort: EffortLevel) => void
   setZoom: (zoom: number) => void
   setPan: (panX: number, panY: number) => void
   toggleCluster: (clusterId: string) => void
@@ -71,6 +77,9 @@ const initialState = {
   explainText: null,
   explainLoading: false,
   chatLoading: false,
+  agentProvider: 'claude' as ProviderId,
+  agentModel: 'claude-opus-4-7',
+  agentEffort: 'high' as EffortLevel,
   zoom: 1,
   panX: 0,
   panY: 0,
@@ -144,6 +153,9 @@ export const useAstStore = create<AstStore>((set) => ({
   setExplain: (explainText, explainLoading) => set({ explainText, explainLoading }),
 
   setChatLoading: (chatLoading) => set({ chatLoading }),
+
+  setAgentSelection: (agentProvider, agentModel, agentEffort) =>
+    set({ agentProvider, agentModel, agentEffort }),
 
   setZoom: (zoom) => set({ zoom }),
 

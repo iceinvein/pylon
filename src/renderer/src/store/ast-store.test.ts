@@ -80,6 +80,9 @@ describe('ast-store', () => {
       expect(s.explainText).toBeNull()
       expect(s.explainLoading).toBe(false)
       expect(s.chatLoading).toBe(false)
+      expect(s.agentProvider).toBe('claude')
+      expect(s.agentModel).toBe('claude-opus-4-7')
+      expect(s.agentEffort).toBe('high')
       expect(s.zoom).toBe(1)
       expect(s.panX).toBe(0)
       expect(s.panY).toBe(0)
@@ -265,6 +268,17 @@ describe('ast-store', () => {
     })
   })
 
+  describe('setAgentSelection', () => {
+    test('sets provider, model, and effort together', () => {
+      useAstStore.getState().setAgentSelection('codex', 'gpt-5.5', 'max')
+
+      const s = useAstStore.getState()
+      expect(s.agentProvider).toBe('codex')
+      expect(s.agentModel).toBe('gpt-5.5')
+      expect(s.agentEffort).toBe('max')
+    })
+  })
+
   describe('setZoom', () => {
     test('sets zoom level', () => {
       useAstStore.getState().setZoom(1.5)
@@ -341,6 +355,9 @@ describe('ast-store', () => {
       expect(s.chatMessages).toEqual([])
       expect(s.analysisStatus).toBe('idle')
       expect(s.analysisProgress).toBe('')
+      expect(s.agentProvider).toBe('claude')
+      expect(s.agentModel).toBe('claude-opus-4-7')
+      expect(s.agentEffort).toBe('high')
       expect(s.searchQuery).toBe('')
       expect(s.searchMatches).toEqual([])
     })

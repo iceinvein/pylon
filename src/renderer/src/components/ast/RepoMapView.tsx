@@ -194,6 +194,8 @@ export function RepoMapView({ repoGraph, archAnalysis }: RepoMapViewProps) {
   const panX = useAstStore((s) => s.panX)
   const panY = useAstStore((s) => s.panY)
   const scope = useAstStore((s) => s.scope)
+  const agentModel = useAstStore((s) => s.agentModel)
+  const agentEffort = useAstStore((s) => s.agentEffort)
 
   const [contextMenu, setContextMenu] = useState<ContextMenuState>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -371,8 +373,8 @@ export function RepoMapView({ repoGraph, archAnalysis }: RepoMapViewProps) {
 
   const handleExplain = useCallback((nodeId: string, nodeName: string, filePath: string) => {
     useAstStore.getState().setExplain(null, true)
-    window.api.explainAstNode(nodeId, filePath, nodeName, undefined, undefined, scope)
-  }, [scope])
+    window.api.explainAstNode(nodeId, filePath, nodeName, agentModel, agentEffort, scope)
+  }, [agentEffort, agentModel, scope])
 
   /** Single-click selects a visible node without changing graph layout. */
   const handleNodeClick = useCallback(
@@ -860,7 +862,7 @@ export function RepoMapView({ repoGraph, archAnalysis }: RepoMapViewProps) {
               )
             })}
 
-          {/* Call edges (from Claude analysis) */}
+          {/* Call edges (from AI analysis) */}
           {showCalls &&
             archAnalysis?.callEdges?.map((edge, i) => {
               const sourceNode = resolveVisibleNode(edge.caller.filePath)
@@ -885,7 +887,7 @@ export function RepoMapView({ repoGraph, archAnalysis }: RepoMapViewProps) {
               )
             })}
 
-          {/* Data flow paths (from Claude analysis) */}
+          {/* Data flow paths (from AI analysis) */}
           {showDataflow &&
             archAnalysis?.dataFlows?.map((flow) =>
               flow.steps.map((step, i) => {

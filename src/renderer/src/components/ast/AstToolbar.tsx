@@ -1,7 +1,9 @@
 import { Boxes, ChevronDown, GitBranch, RefreshCw, Search, Workflow, X } from 'lucide-react'
 import { useCallback, useRef, useState } from 'react'
-import type { ArchAnalysis, AstOverlay, RepoGraph } from '../../../../shared/types'
+import type { ArchAnalysis, AstOverlay, EffortLevel, RepoGraph } from '../../../../shared/types'
+import type { ProviderId, ProviderModelEntry } from '../../lib/provider-models'
 import { useAstStore } from '../../store/ast-store'
+import { ProviderModelPicker } from '../ProviderModelPicker'
 import { ProjectsPopover } from '../ProjectsPopover'
 
 type AstToolbarProps = {
@@ -9,6 +11,11 @@ type AstToolbarProps = {
   repoGraph: RepoGraph | null
   archAnalysis: ArchAnalysis | null
   analysisStatus: string
+  providerModels: ProviderModelEntry[]
+  agentProvider: ProviderId
+  agentModel: string
+  agentEffort: EffortLevel
+  onAgentSelectionChange: (provider: ProviderId, model: string, effort: EffortLevel) => void
   onReanalyze: () => void
   onSwitchProject: (path: string) => void
   onBrowse: () => void
@@ -31,6 +38,11 @@ export function AstToolbar({
   repoGraph,
   archAnalysis,
   analysisStatus,
+  providerModels,
+  agentProvider,
+  agentModel,
+  agentEffort,
+  onAgentSelectionChange,
   onReanalyze,
   onSwitchProject,
   onBrowse,
@@ -167,6 +179,15 @@ export function AstToolbar({
           {repoGraph.files.length} file{repoGraph.files.length !== 1 ? 's' : ''}
         </span>
       )}
+
+      <ProviderModelPicker
+        models={providerModels}
+        provider={agentProvider}
+        model={agentModel}
+        effort={agentEffort}
+        onSelectionChange={onAgentSelectionChange}
+        disabled={isAnalyzing}
+      />
 
       {/* Re-analyze button */}
       <button

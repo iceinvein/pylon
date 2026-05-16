@@ -29,6 +29,8 @@ export function FileAstView({ fileAst, fileName }: FileAstViewProps) {
   const hoveredNode = useAstStore((s) => s.hoveredNode)
   const setHoveredNode = useAstStore((s) => s.setHoveredNode)
   const scope = useAstStore((s) => s.scope)
+  const agentModel = useAstStore((s) => s.agentModel)
+  const agentEffort = useAstStore((s) => s.agentEffort)
 
   const [contextMenu, setContextMenu] = useState<ContextMenuState>(null)
 
@@ -45,8 +47,8 @@ export function FileAstView({ fileAst, fileName }: FileAstViewProps) {
 
   const handleExplain = useCallback((nodeId: string, nodeName: string, filePath: string) => {
     useAstStore.getState().setExplain(null, true)
-    window.api.explainAstNode(nodeId, filePath, nodeName, undefined, undefined, scope)
-  }, [scope])
+    window.api.explainAstNode(nodeId, filePath, nodeName, agentModel, agentEffort, scope)
+  }, [agentEffort, agentModel, scope])
 
   return (
     <div className="flex h-full flex-col">
