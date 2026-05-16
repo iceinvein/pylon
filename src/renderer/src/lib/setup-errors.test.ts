@@ -26,6 +26,36 @@ describe('provider setup errors', () => {
     })
   })
 
+  test('returns Codex setup metadata for wrapped 401 authentication failures', () => {
+    expect(
+      getProviderSetupError(
+        'Codex auth failed: 401 Unauthorized: Missing bearer or basic authentication',
+      )?.provider,
+    ).toBe('codex')
+  })
+
+  test('returns Codex setup metadata for OpenAI 401 authentication failures', () => {
+    expect(
+      getProviderSetupError(
+        'OpenAI request failed: 401 Unauthorized: Missing bearer or basic authentication',
+      )?.provider,
+    ).toBe('codex')
+  })
+
+  test('returns Codex setup metadata for local provider auth wrapping', () => {
+    expect(getProviderSetupError('Codex auth failed')?.provider).toBe('codex')
+  })
+
+  test('does not classify unrelated command-not-found errors under Codex context', () => {
+    expect(getProviderSetupError('Codex auth failed: gh: command not found')).toBeNull()
+  })
+
+  test('does not classify generic 401 errors without Codex or OpenAI context', () => {
+    expect(
+      getProviderSetupError('401 Unauthorized: Missing bearer or basic authentication'),
+    ).toBeNull()
+  })
+
   test('returns null for non-setup errors', () => {
     expect(getProviderSetupError('Codex credit exhausted')).toBeNull()
     expect(getProviderSetupError(null)).toBeNull()

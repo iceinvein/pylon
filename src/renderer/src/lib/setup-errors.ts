@@ -33,10 +33,26 @@ export function getProviderSetupError(message?: string | null): ProviderSetupErr
   const normalized = message.toLowerCase()
   if (normalized.includes('claude code cli not found')) return CLAUDE_SETUP_ERROR
 
+  const hasCodexContext = normalized.includes('codex') || normalized.includes('openai')
+  const mentionsCodexExecutableMissing =
+    /\bcodex(?:\s+(?:command|cli))?\s+(?:not found|is not found)\b/.test(normalized) ||
+    /\bcodex:\s*command not found\b/.test(normalized) ||
+    /\bcommand not found:\s*codex\b/.test(normalized)
+  const mentionsUnauthorizedFailure =
+    normalized.includes('401 unauthorized') ||
+    normalized.includes('missing bearer') ||
+    normalized.includes('basic authentication')
+  const mentionsAuthOrLoginFailure =
+    normalized.includes('not authenticated') ||
+    normalized.includes('authentication failed') ||
+    normalized.includes('auth failed') ||
+    normalized.includes('login required')
+  const mentionsAuthFailure =
+    mentionsUnauthorizedFailure ||
+    (mentionsAuthOrLoginFailure && !normalized.includes('command not found'))
+
   const mentionsCodexSetup =
-    normalized.includes('codex command not found') ||
-    normalized.includes('codex cli not found') ||
-    (normalized.includes('codex auth failed') && normalized.includes('command not found'))
+    mentionsCodexExecutableMissing || (hasCodexContext && mentionsAuthFailure)
 
   if (mentionsCodexSetup) return CODEX_SETUP_ERROR
 

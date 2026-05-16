@@ -120,7 +120,7 @@ function ReviewErrorState({ error, onRetry }: { error: string | null; onRetry: (
             ? 'Pylon requires Claude Code to run PR review. Install Claude Code on this machine and make sure the `claude` command is available on your PATH.'
             : (setupError?.description ?? 'The review could not be completed.')}
         </p>
-        {error && (
+        {error && !setupError && (
           <div className="rounded-lg border border-base-border-subtle bg-base-surface/50 px-3 py-2 font-mono text-[11px] text-base-text-muted">
             {error}
           </div>
