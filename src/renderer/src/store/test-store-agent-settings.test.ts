@@ -4,11 +4,28 @@ import { useTestStore } from './test-store'
 describe('test-store agent settings', () => {
   beforeEach(() => {
     useTestStore.setState({
+      agentProvider: 'codex',
       agentModel: 'gpt-5.5',
       agentEffort: 'xhigh',
       launchLoading: false,
       launchError: null,
     })
+  })
+
+  test('defaults to Claude Opus with high effort', () => {
+    const state = useTestStore.getInitialState()
+    expect(state.agentProvider).toBe('claude')
+    expect(state.agentModel).toBe('claude-opus-4-7')
+    expect(state.agentEffort).toBe('high')
+  })
+
+  test('sets selected agent provider, model, and effort together', () => {
+    useTestStore.getState().setAgentSelection('claude', 'claude-sonnet-4-6', 'medium')
+
+    const state = useTestStore.getState()
+    expect(state.agentProvider).toBe('claude')
+    expect(state.agentModel).toBe('claude-sonnet-4-6')
+    expect(state.agentEffort).toBe('medium')
   })
 
   test('passes selected agent model and effort into batch starts', async () => {

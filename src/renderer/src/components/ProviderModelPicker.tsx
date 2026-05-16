@@ -15,6 +15,7 @@ type ProviderModelPickerProps = {
   effort: EffortLevel
   onSelectionChange: (provider: ProviderId, model: string, effort: EffortLevel) => void
   disabled?: boolean
+  labelPrefix?: string
 }
 
 const PROVIDERS: Array<{ id: ProviderId; label: string }> = [
@@ -84,6 +85,7 @@ export function ProviderModelPicker({
   effort,
   onSelectionChange,
   disabled = false,
+  labelPrefix = 'AST agent',
 }: ProviderModelPickerProps) {
   const pickerState = useMemo(
     () => resolveProviderModelPickerState({ models, provider, model, effort, disabled }),
@@ -150,13 +152,13 @@ export function ProviderModelPicker({
       </div>
 
       <label className="relative h-7 w-[9.5rem] shrink-0">
-        <span className="sr-only">AST agent model</span>
+        <span className="sr-only">{labelPrefix} model</span>
         <select
           value={selectedModel}
           onChange={(event) => selectModel(event.target.value)}
           disabled={modelSelectDisabled}
           className="h-full w-full appearance-none truncate rounded-md border border-base-border/70 bg-base-bg pr-6 pl-2 text-base-text-secondary text-xs transition-colors hover:border-base-border hover:text-base-text focus:border-accent-text focus:outline-none disabled:opacity-50"
-          title="AST agent model"
+          title={`${labelPrefix} model`}
         >
           {providerModels.length === 0 && (
             <option value="" disabled>
@@ -176,13 +178,13 @@ export function ProviderModelPicker({
       </label>
 
       <label className="relative h-7 w-20 shrink-0">
-        <span className="sr-only">AST agent effort</span>
+        <span className="sr-only">{labelPrefix} effort</span>
         <select
           value={selectedEffort}
           onChange={(event) => selectEffort(event.target.value as EffortLevel)}
           disabled={effortSelectDisabled}
           className="h-full w-full appearance-none rounded-md border border-base-border/70 bg-base-bg pr-6 pl-2 text-base-text-secondary text-xs transition-colors hover:border-base-border hover:text-base-text focus:border-accent-text focus:outline-none disabled:opacity-50"
-          title="AST agent effort"
+          title={`${labelPrefix} effort`}
         >
           {effortOptions.map((entry) => (
             <option key={entry} value={entry}>
