@@ -1,20 +1,14 @@
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { useState } from 'react'
-import type { PeerReviewSummaryItem } from '../../../../shared/types'
+import type {
+  PeerReviewSummaryItem,
+  SecondOpinionSummary as SecondOpinionSummaryData,
+} from '../../../../shared/types'
 
-type Details = {
-  updates: number
-  additions: number
-  items: PeerReviewSummaryItem[]
-}
-
-type Summary = {
-  message: string
-  details?: Details
-}
+type Details = NonNullable<SecondOpinionSummaryData['details']>
 
 type Props = {
-  summary: Summary
+  summary: SecondOpinionSummaryData
   onJumpToFinding: (findingId: string) => void
 }
 

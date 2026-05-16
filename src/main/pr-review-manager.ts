@@ -1624,7 +1624,6 @@ class PrReviewManager {
         message: completedMessage,
         details: { updates, additions, items: survivingSummary },
       }
-      this.updateReviewSecondOpinion(reviewId, persistedSummary)
       logger.info(
         `Peer-review pass for review ${reviewId}: ${peerAgent.provider} applied ${changes.length} finding changes (${deduped.length - findings.length} net additions)`,
       )
@@ -1639,6 +1638,13 @@ class PrReviewManager {
           details: persistedSummary.details,
         },
       })
+      try {
+        this.updateReviewSecondOpinion(reviewId, persistedSummary)
+      } catch (err) {
+        logger.warn(
+          `Failed to persist second-opinion summary for review ${reviewId}: ${String(err)}`,
+        )
+      }
       return deduped
     } catch (err) {
       const message = `${peerName} second opinion unavailable: ${err instanceof Error ? err.message : String(err)}. Original findings were kept.`
