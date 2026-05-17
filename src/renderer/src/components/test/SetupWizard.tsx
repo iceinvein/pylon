@@ -22,6 +22,7 @@ import {
   FALLBACK_PROVIDER_MODELS,
   type ProviderId,
   type ProviderModelEntry,
+  providerForModelId,
 } from '../../lib/provider-models'
 import { timeAgo } from '../../lib/utils'
 import { useTestStore } from '../../store/test-store'
@@ -562,7 +563,6 @@ export function SetupWizard() {
   const suggestedGoals = useTestStore((s) => s.suggestedGoals)
   const goalsLoading = useTestStore((s) => s.goalsLoading)
   const customGoals = useTestStore((s) => s.customGoals)
-  const agentProvider = useTestStore((s) => s.agentProvider)
   const agentModel = useTestStore((s) => s.agentModel)
   const agentEffort = useTestStore((s) => s.agentEffort)
   const agentCount = useTestStore((s) => s.agentCount)
@@ -615,7 +615,7 @@ export function SetupWizard() {
   useEffect(() => {
     loadAgentSelection().catch(() => {
       setProviderModels(FALLBACK_PROVIDER_MODELS)
-      setAgentSelection('claude', 'claude-opus-4-7', 'high')
+      setAgentSelection('claude-opus-4-7', 'high')
     })
   }, [loadAgentSelection, setAgentSelection, setProviderModels])
 
@@ -635,7 +635,7 @@ export function SetupWizard() {
       console.error('loadTestingAgentSelection failed:', err)
       const currentState = useTestStore.getState()
       return {
-        provider: currentState.agentProvider,
+        provider: providerForModelId(currentState.agentModel, providerModels) ?? 'claude',
         model: currentState.agentModel,
         effort: currentState.agentEffort,
       }
@@ -671,8 +671,8 @@ export function SetupWizard() {
   }
 
   const handleAgentSelectionChange = useCallback(
-    (provider: ProviderId, model: string, effort: EffortLevel) => {
-      setAgentSelection(provider, model, effort)
+    (_provider: ProviderId, model: string, effort: EffortLevel) => {
+      setAgentSelection(model, effort)
       const persistSelection = Promise.all([
         window.api.updateSettings('testingAgentModel', model),
         window.api.updateSettings('testingAgentEffort', effort),
@@ -694,6 +694,7 @@ export function SetupWizard() {
   const normalizedCustomUrl = customUrl ? normalizeUrlInput(customUrl) : null
   const hasInvalidCustomUrl = !autoStartServer && !!customUrl && !normalizedCustomUrl
   const canLaunch = selectedGoalCount > 0 && !!selectedProject && !!e2ePath && !hasInvalidCustomUrl
+  const agentProvider = providerForModelId(agentModel, providerModels) ?? 'claude'
 
   const steps = [1, 2, 3] as const
 

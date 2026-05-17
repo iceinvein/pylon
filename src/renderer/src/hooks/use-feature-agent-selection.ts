@@ -38,7 +38,7 @@ export function useFeatureAgentSelection({
 }: {
   settings: FeatureAgentSettings
   getSnapshot: () => StoreSnapshot
-  applySelection: (provider: ProviderId, model: string, effort: EffortLevel) => void
+  applySelection: (model: string, effort: EffortLevel) => void
 }) {
   const [providerModels, setProviderModels] =
     useState<ProviderModelEntry[]>(FALLBACK_PROVIDER_MODELS)
@@ -86,7 +86,7 @@ export function useFeatureAgentSelection({
 
     setProviderModels(models)
     if (canApplySelection) {
-      applySelection(selection.provider, selection.model, selection.effort)
+      applySelection(selection.model, selection.effort)
       baseRevisionRef.current = getSnapshot().agentSelectionRevision
       return selection
     }

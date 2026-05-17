@@ -12,7 +12,6 @@ import type {
   TestExploration,
   TestFinding,
 } from '../../../shared/types'
-import type { ProviderId } from '../lib/provider-models'
 
 type BatchConfig = {
   goals: string[]
@@ -63,7 +62,6 @@ type TestStore = {
   launchError: string | null
 
   // Agent settings
-  agentProvider: ProviderId
   agentModel: string
   agentEffort: EffortLevel
   agentSelectionRevision: number
@@ -106,7 +104,7 @@ type TestStore = {
   setCustomUrl: (url: string | null) => void
   clearLaunchError: () => void
   setAgentCount: (count: number) => void
-  setAgentSelection: (provider: ProviderId, model: string, effort: EffortLevel) => void
+  setAgentSelection: (model: string, effort: EffortLevel) => void
   setAutoStartServer: (enabled: boolean) => void
   startBatch: (cwd: string, config: BatchConfig) => Promise<void>
   startExploration: (cwd: string, config: ExplorationConfig) => Promise<void>
@@ -141,7 +139,6 @@ export const useTestStore = create<TestStore>((set, get) => ({
   customUrl: null,
   launchLoading: false,
   launchError: null,
-  agentProvider: 'claude' as ProviderId,
   agentModel: 'claude-opus-4-7',
   agentEffort: 'high',
   agentSelectionRevision: 0,
@@ -245,9 +242,8 @@ export const useTestStore = create<TestStore>((set, get) => ({
 
   setAgentCount: (count) => set({ agentCount: Math.max(1, Math.min(5, count)) }),
 
-  setAgentSelection: (agentProvider, agentModel, agentEffort) =>
+  setAgentSelection: (agentModel, agentEffort) =>
     set((s) => ({
-      agentProvider,
       agentModel,
       agentEffort,
       agentSelectionRevision: s.agentSelectionRevision + 1,

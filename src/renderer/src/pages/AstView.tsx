@@ -9,7 +9,11 @@ import { FileAstView } from '../components/ast/FileAstView'
 import { RepoMapView } from '../components/ast/RepoMapView'
 import { useAstBridge } from '../hooks/use-ast-bridge'
 import { useFeatureAgentSelection } from '../hooks/use-feature-agent-selection'
-import { FALLBACK_PROVIDER_MODELS, type ProviderId } from '../lib/provider-models'
+import {
+  FALLBACK_PROVIDER_MODELS,
+  type ProviderId,
+  providerForModelId,
+} from '../lib/provider-models'
 import { useAstStore } from '../store/ast-store'
 
 function formatTimeAgo(timestamp: number): string {
@@ -46,7 +50,6 @@ export function AstView() {
   const selectedNode = useAstStore((s) => s.selectedNode)
   const analysisStatus = useAstStore((s) => s.analysisStatus)
   const analysisProgress = useAstStore((s) => s.analysisProgress)
-  const agentProvider = useAstStore((s) => s.agentProvider)
   const agentModel = useAstStore((s) => s.agentModel)
   const agentEffort = useAstStore((s) => s.agentEffort)
   const setScope = useAstStore((s) => s.setScope)
@@ -62,7 +65,7 @@ export function AstView() {
   useEffect(() => {
     loadAgentSelection().catch(() => {
       setProviderModels(FALLBACK_PROVIDER_MODELS)
-      setAgentSelection('claude', 'claude-opus-4-7', 'high')
+      setAgentSelection('claude-opus-4-7', 'high')
     })
   }, [loadAgentSelection, setAgentSelection, setProviderModels])
 
@@ -141,8 +144,8 @@ export function AstView() {
   }, [scope, agentModel, agentEffort])
 
   const handleAgentSelectionChange = useCallback(
-    (provider: ProviderId, model: string, effort: EffortLevel) => {
-      setAgentSelection(provider, model, effort)
+    (_provider: ProviderId, model: string, effort: EffortLevel) => {
+      setAgentSelection(model, effort)
       void Promise.all([
         window.api.updateSettings('astAgentModel', model),
         window.api.updateSettings('astAgentEffort', effort),
@@ -176,6 +179,7 @@ export function AstView() {
   }
 
   const isLoading = analysisStatus === 'parsing' || analysisStatus === 'analyzing'
+  const agentProvider = providerForModelId(agentModel, providerModels) ?? 'claude'
 
   // Derive filename from drilledFile (for the AST tree view heading)
   const fileName = drilledFile ? (drilledFile.split('/').pop() ?? drilledFile) : ''
