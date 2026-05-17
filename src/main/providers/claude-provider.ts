@@ -220,9 +220,11 @@ class ClaudeSession implements AgentSession {
       permissionMode: 'default' as const,
       ...getClaudeCodeSdkRuntimeOptions(),
     }
+    if (input.system.trim()) {
+      options.systemPrompt = input.system
+    }
 
-    const prompt = `${input.system}\n\n${input.prompt}`
-    const q = query({ prompt, options })
+    const q = query({ prompt: input.prompt, options })
     let responseText = ''
 
     for await (const message of q) {

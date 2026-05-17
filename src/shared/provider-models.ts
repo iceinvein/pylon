@@ -72,6 +72,9 @@ export const PROVIDER_DEFAULT_MODELS: Record<ProviderId, string> = {
   codex: 'gpt-5.5',
 }
 
+export const DEFAULT_FEATURE_AGENT_MODEL = PROVIDER_DEFAULT_MODELS.claude
+export const DEFAULT_FEATURE_AGENT_EFFORT: EffortLevel = 'high'
+
 export { isEffortLevel }
 
 export function isProviderId(value: unknown): value is ProviderId {
@@ -95,6 +98,17 @@ export function providerForModelId(
 ): ProviderId | undefined {
   const normalized = modelId?.trim()
   return normalized ? providerForModel(normalized, models) : undefined
+}
+
+export function providerForFeatureAgentModel(
+  modelId: string | undefined,
+  models: ProviderModelEntry[] = FALLBACK_PROVIDER_MODELS,
+): ProviderId {
+  return (
+    providerForModelId(modelId, models) ??
+    providerForModelId(DEFAULT_FEATURE_AGENT_MODEL, models) ??
+    'claude'
+  )
 }
 
 export function defaultModelForProvider(
@@ -159,7 +173,6 @@ export function normalizeProviderModels(models: unknown): ProviderModelEntry[] {
 
 export function resolveFeatureAgentSelection(input: {
   persistedModel?: string
-  persistedProvider?: unknown
   persistedEffort?: unknown
   appDefaultModel?: string
   appDefaultEffort?: unknown
@@ -171,27 +184,25 @@ export function resolveFeatureAgentSelection(input: {
   const appDefaultModelExists = input.appDefaultModel
     ? input.models.some((model) => model.id === input.appDefaultModel)
     : false
-  const persistedProvider = isProviderId(input.persistedProvider)
-    ? input.persistedProvider
-    : undefined
   const provider =
     (modelExists && input.persistedModel
       ? providerForModel(input.persistedModel, input.models)
       : undefined) ??
-    persistedProvider ??
-    (input.appDefaultModel ? providerForModel(input.appDefaultModel, input.models) : undefined) ??
-    'claude'
+    (appDefaultModelExists && input.appDefaultModel
+      ? providerForModel(input.appDefaultModel, input.models)
+      : undefined) ??
+    providerForFeatureAgentModel(DEFAULT_FEATURE_AGENT_MODEL, input.models)
   const model =
     modelExists && input.persistedModel
       ? input.persistedModel
-      : !persistedProvider && appDefaultModelExists && input.appDefaultModel
+      : appDefaultModelExists && input.appDefaultModel
         ? input.appDefaultModel
         : defaultModelForProvider(provider, input.models)
   const requestedEffort = isEffortLevel(input.persistedEffort)
     ? input.persistedEffort
     : isEffortLevel(input.appDefaultEffort)
       ? input.appDefaultEffort
-      : 'high'
+      : DEFAULT_FEATURE_AGENT_EFFORT
 
   return { provider, model, effort: clampEffortForModel(model, requestedEffort, input.models) }
 }

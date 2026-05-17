@@ -37,17 +37,16 @@ describe('shared provider model utilities', () => {
     expect(normalizeProviderModels(null)).toBe(FALLBACK_PROVIDER_MODELS)
   })
 
-  test('resolves stale persisted model to provider default', () => {
+  test('resolves stale persisted model to app default', () => {
     expect(
       resolveFeatureAgentSelection({
         persistedModel: 'missing-model',
-        persistedProvider: 'codex',
         persistedEffort: 'max',
         appDefaultModel: 'claude-opus-4-7',
         appDefaultEffort: 'high',
         models: FALLBACK_PROVIDER_MODELS,
       }),
-    ).toEqual({ provider: 'codex', model: 'gpt-5.5', effort: 'max' })
+    ).toEqual({ provider: 'claude', model: 'claude-opus-4-7', effort: 'max' })
   })
 
   test('clamps unsupported effort to the strongest supported level', () => {

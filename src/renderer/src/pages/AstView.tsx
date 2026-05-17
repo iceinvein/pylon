@@ -9,11 +9,7 @@ import { FileAstView } from '../components/ast/FileAstView'
 import { RepoMapView } from '../components/ast/RepoMapView'
 import { useAstBridge } from '../hooks/use-ast-bridge'
 import { useFeatureAgentSelection } from '../hooks/use-feature-agent-selection'
-import {
-  FALLBACK_PROVIDER_MODELS,
-  type ProviderId,
-  providerForModelId,
-} from '../lib/provider-models'
+import type { ProviderId } from '../lib/provider-models'
 import { useAstStore } from '../store/ast-store'
 
 function formatTimeAgo(timestamp: number): string {
@@ -55,7 +51,7 @@ export function AstView() {
   const setScope = useAstStore((s) => s.setScope)
   const setFileAst = useAstStore((s) => s.setFileAst)
   const setAgentSelection = useAstStore((s) => s.setAgentSelection)
-  const { providerModels, setProviderModels, loadAgentSelection, markExternalReset } =
+  const { providerModels, agentProvider, loadAgentSelection, markExternalReset } =
     useFeatureAgentSelection({
       settings: { modelKey: 'astAgentModel', effortKey: 'astAgentEffort' },
       getSnapshot: getAstAgentSnapshot,
@@ -63,11 +59,8 @@ export function AstView() {
     })
 
   useEffect(() => {
-    loadAgentSelection().catch(() => {
-      setProviderModels(FALLBACK_PROVIDER_MODELS)
-      setAgentSelection('claude-opus-4-7', 'high')
-    })
-  }, [loadAgentSelection, setAgentSelection, setProviderModels])
+    void loadAgentSelection()
+  }, [loadAgentSelection])
 
   // When drilledFile changes, request file AST for the tree view
   useEffect(() => {
@@ -179,7 +172,6 @@ export function AstView() {
   }
 
   const isLoading = analysisStatus === 'parsing' || analysisStatus === 'analyzing'
-  const agentProvider = providerForModelId(agentModel, providerModels) ?? 'claude'
 
   // Derive filename from drilledFile (for the AST tree view heading)
   const fileName = drilledFile ? (drilledFile.split('/').pop() ?? drilledFile) : ''

@@ -53,7 +53,7 @@ import type {
   ProviderSessionConfig,
   TextOnlyPrompt,
 } from './types'
-import { mapEffortToNative } from './types'
+import { flattenTextOnlyPrompt, mapEffortToNative } from './types'
 
 const logger = log.child('codex-provider')
 
@@ -253,8 +253,7 @@ class CodexSession implements AgentSession {
     const thread = codex.startThread(threadOptions)
 
     try {
-      const prompt = `${input.system}\n\n${input.prompt}`
-      const turn = await thread.run(prompt, {
+      const turn = await thread.run(flattenTextOnlyPrompt(input), {
         signal: this.config.abortController.signal,
       })
 

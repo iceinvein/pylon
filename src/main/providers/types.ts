@@ -268,8 +268,15 @@ export type AgentSession = {
 }
 
 export type TextOnlyPrompt = {
+  /** Provider-level instructions. Providers should use a native system channel when their SDK exposes one. */
   system: string
+  /** The user turn for the text-only query. */
   prompt: string
+}
+
+export function flattenTextOnlyPrompt(input: TextOnlyPrompt): string {
+  const system = input.system.trim()
+  return system ? `${system}\n\n${input.prompt}` : input.prompt
 }
 
 // ── Effort Mapping ───────────────────────────────

@@ -40,24 +40,22 @@ describe('provider model utilities', () => {
     expect(clampEffortForModel('gpt-5.5', 'xhigh', FALLBACK_PROVIDER_MODELS)).toBe('xhigh')
   })
 
-  test('resolves stale persisted model to same provider default', () => {
+  test('resolves stale persisted model to app default', () => {
     expect(
       resolveFeatureAgentSelection({
         persistedModel: 'missing-codex-model',
-        persistedProvider: 'codex',
         persistedEffort: 'max',
         appDefaultModel: 'claude-opus-4-7',
         appDefaultEffort: 'high',
         models: FALLBACK_PROVIDER_MODELS,
       }),
-    ).toEqual({ provider: 'codex', model: 'gpt-5.5', effort: 'max' })
+    ).toEqual({ provider: 'claude', model: 'claude-opus-4-7', effort: 'max' })
   })
 
-  test('ignores invalid persisted provider and uses valid app default provider', () => {
+  test('uses valid app default provider when persisted model is stale', () => {
     expect(
       resolveFeatureAgentSelection({
         persistedModel: 'missing-model',
-        persistedProvider: 'stale-provider',
         persistedEffort: 'high',
         appDefaultModel: 'gpt-5.5',
         appDefaultEffort: 'medium',
@@ -106,11 +104,10 @@ describe('provider model utilities', () => {
     expect(normalizeProviderModels({})).toBe(FALLBACK_PROVIDER_MODELS)
   })
 
-  test('uses app default model when persisted model and provider are invalid', () => {
+  test('uses app default model when persisted model is stale', () => {
     expect(
       resolveFeatureAgentSelection({
         persistedModel: 'missing-model',
-        persistedProvider: 'legacy-provider',
         persistedEffort: 'unknown',
         appDefaultModel: 'claude-haiku-4-5',
         appDefaultEffort: 'medium',

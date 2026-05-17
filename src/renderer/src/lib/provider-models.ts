@@ -6,6 +6,7 @@ export {
   isEffortLevel,
   isProviderId,
   normalizeProviderModels,
+  providerForFeatureAgentModel,
   providerForModel,
   providerForModelId,
   providerLabel,

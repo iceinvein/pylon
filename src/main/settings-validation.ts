@@ -7,11 +7,11 @@ const MODEL_SETTING_KEYS = new Set(['defaultModel', 'testingAgentModel', 'astAge
 export function isValidSettingValue(
   key: string,
   value: unknown,
-  models: Pick<ProviderModel, 'id'>[],
+  _models: Pick<ProviderModel, 'id'>[],
 ): boolean {
   if (EFFORT_SETTING_KEYS.has(key)) return isEffortLevel(value)
   if (MODEL_SETTING_KEYS.has(key)) {
-    return typeof value === 'string' && models.some((model) => model.id === value)
+    return typeof value === 'string' && value.trim().length > 0
   }
   return true
 }

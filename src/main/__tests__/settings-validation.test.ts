@@ -25,9 +25,9 @@ describe('settings validation', () => {
     expect(isValidSettingValue('astAgentModel', 'claude-opus-4-7', providerModels)).toBe(true)
   })
 
-  test('rejects unknown model settings', () => {
-    expect(isValidSettingValue('defaultModel', 'missing-model', providerModels)).toBe(false)
-    expect(isValidSettingValue('testingAgentModel', 'unknown-model', providerModels)).toBe(false)
+  test('accepts non-empty model settings for discovered or custom models', () => {
+    expect(isValidSettingValue('defaultModel', 'missing-model', providerModels)).toBe(true)
+    expect(isValidSettingValue('testingAgentModel', 'unknown-model', providerModels)).toBe(true)
     expect(isValidSettingValue('astAgentModel', '', providerModels)).toBe(false)
   })
 

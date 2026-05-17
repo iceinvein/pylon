@@ -36,13 +36,15 @@ export function resolveAstExplainCwd(args: { scope?: string; filePath: string })
 export function resolveAstAgent(args: AstAgentArgs): {
   model: string
   effort: EffortLevel
-  provider: AgentProvider
+  provider?: AgentProvider
   label: string
 } {
   return resolveFeatureAgent({
-    feature: 'ast',
     requestedModel: args.agentModel,
     requestedEffort: args.agentEffort,
+    fallbackUnknownModel: false,
+    requireProvider: false,
+    featureName: 'AST',
   })
 }
 

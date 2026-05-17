@@ -18,12 +18,7 @@ import type {
   SuggestedGoal,
 } from '../../../../shared/types'
 import { useFeatureAgentSelection } from '../../hooks/use-feature-agent-selection'
-import {
-  FALLBACK_PROVIDER_MODELS,
-  type ProviderId,
-  type ProviderModelEntry,
-  providerForModelId,
-} from '../../lib/provider-models'
+import type { ProviderId, ProviderModelEntry } from '../../lib/provider-models'
 import { timeAgo } from '../../lib/utils'
 import { useTestStore } from '../../store/test-store'
 import { ProviderModelPicker } from '../ProviderModelPicker'
@@ -589,7 +584,7 @@ export function SetupWizard() {
   const [e2ePath, setE2ePath] = useState('')
   const [mode, setMode] = useState<ExplorationMode>('manual')
   const [requirements, setRequirements] = useState('')
-  const { providerModels, setProviderModels, loadAgentSelection } = useFeatureAgentSelection({
+  const { providerModels, agentProvider, loadAgentSelection } = useFeatureAgentSelection({
     settings: { modelKey: 'testingAgentModel', effortKey: 'testingAgentEffort' },
     getSnapshot: getTestAgentSnapshot,
     applySelection: setAgentSelection,
@@ -613,11 +608,8 @@ export function SetupWizard() {
   }, [loadProjects])
 
   useEffect(() => {
-    loadAgentSelection().catch(() => {
-      setProviderModels(FALLBACK_PROVIDER_MODELS)
-      setAgentSelection('claude-opus-4-7', 'high')
-    })
-  }, [loadAgentSelection, setAgentSelection, setProviderModels])
+    void loadAgentSelection()
+  }, [loadAgentSelection])
 
   // Resolve e2e path when project is selected
   useEffect(() => {
@@ -631,15 +623,7 @@ export function SetupWizard() {
   async function handleProjectSelect(cwd: string) {
     selectProject(cwd)
     setSetupStep(2)
-    const selection = await loadAgentSelection().catch((err) => {
-      console.error('loadTestingAgentSelection failed:', err)
-      const currentState = useTestStore.getState()
-      return {
-        provider: providerForModelId(currentState.agentModel, providerModels) ?? 'claude',
-        model: currentState.agentModel,
-        effort: currentState.agentEffort,
-      }
-    })
+    const selection = await loadAgentSelection()
     if (useTestStore.getState().selectedProject === cwd) {
       void requestGoalSuggestions(cwd, {
         model: selection.model,
@@ -694,7 +678,6 @@ export function SetupWizard() {
   const normalizedCustomUrl = customUrl ? normalizeUrlInput(customUrl) : null
   const hasInvalidCustomUrl = !autoStartServer && !!customUrl && !normalizedCustomUrl
   const canLaunch = selectedGoalCount > 0 && !!selectedProject && !!e2ePath && !hasInvalidCustomUrl
-  const agentProvider = providerForModelId(agentModel, providerModels) ?? 'claude'
 
   const steps = [1, 2, 3] as const
 

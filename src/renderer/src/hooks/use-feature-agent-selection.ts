@@ -4,6 +4,7 @@ import {
   normalizeProviderModels,
   type ProviderId,
   type ProviderModelEntry,
+  providerForFeatureAgentModel,
   providerForModelId,
   resolveFeatureAgentSelection,
 } from '../../../shared/provider-models'
@@ -73,6 +74,17 @@ export function useFeatureAgentSelection({
         })
         return { models, selection }
       })
+      .catch((err) => {
+        console.error('loadFeatureAgentSelection failed:', err)
+        const current = getSnapshot()
+        const models = FALLBACK_PROVIDER_MODELS
+        const selection = resolveFeatureAgentSelection({
+          persistedModel: current.agentModel,
+          persistedEffort: current.agentEffort,
+          models,
+        })
+        return { models, selection }
+      })
       .finally(() => {
         loadRef.current = null
       })
@@ -102,5 +114,8 @@ export function useFeatureAgentSelection({
     baseRevisionRef.current = getSnapshot().agentSelectionRevision
   }, [getSnapshot])
 
-  return { providerModels, setProviderModels, loadAgentSelection, markExternalReset }
+  const current = getSnapshot()
+  const agentProvider = providerForFeatureAgentModel(current.agentModel, providerModels)
+
+  return { providerModels, agentProvider, loadAgentSelection, markExternalReset }
 }

@@ -97,9 +97,9 @@ class TestManager {
       const scan = runProjectScan(cwd)
       const prompt = this.buildGoalSuggestionPrompt(cwd, scan)
       const agent = resolveFeatureAgent({
-        feature: 'testing',
         requestedModel: agentModel,
         requestedEffort: agentEffort,
+        featureName: 'testing',
       })
       const { port } = await testingToolCallbackServer.start()
 
@@ -480,9 +480,9 @@ class TestManager {
 
     try {
       const agent = resolveFeatureAgent({
-        feature: 'testing',
         requestedModel: config.agentModel,
         requestedEffort: config.agentEffort,
+        featureName: 'testing',
       })
       const { port } = await testingToolCallbackServer.start()
 
