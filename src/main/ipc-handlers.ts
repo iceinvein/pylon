@@ -6,7 +6,6 @@ import { IPC } from '../shared/ipc-channels'
 import { log } from '../shared/logger'
 import type {
   AppSettings,
-  EffortLevel,
   InstalledPlugin,
   IpcAttachment,
   PermissionMode,
@@ -15,6 +14,7 @@ import type {
   PluginMarketplace,
   QuestionResponse,
 } from '../shared/types'
+import { isEffortLevel } from '../shared/types'
 import { getDb } from './db'
 import { getAllModels } from './providers'
 import { sessionManager } from './session-manager'
@@ -26,6 +26,10 @@ const DEFAULT_SETTINGS: AppSettings = {
   defaultModel: 'claude-opus-4-7',
   defaultPermissionMode: 'default',
   defaultEffort: 'high',
+  testingAgentModel: 'claude-opus-4-7',
+  testingAgentEffort: 'high',
+  astAgentModel: 'claude-opus-4-7',
+  astAgentEffort: 'high',
   theme: 'dark',
 }
 
@@ -43,14 +47,28 @@ function getSettings(): AppSettings {
     defaultModel: stored.defaultModel ?? DEFAULT_SETTINGS.defaultModel,
     defaultPermissionMode:
       (stored.defaultPermissionMode as PermissionMode) ?? DEFAULT_SETTINGS.defaultPermissionMode,
-    defaultEffort: (stored.defaultEffort as EffortLevel) ?? DEFAULT_SETTINGS.defaultEffort,
+    defaultEffort: isEffortLevel(stored.defaultEffort)
+      ? stored.defaultEffort
+      : DEFAULT_SETTINGS.defaultEffort,
+    testingAgentModel: stored.testingAgentModel ?? DEFAULT_SETTINGS.testingAgentModel,
+    testingAgentEffort: isEffortLevel(stored.testingAgentEffort)
+      ? stored.testingAgentEffort
+      : DEFAULT_SETTINGS.testingAgentEffort,
+    astAgentModel: stored.astAgentModel ?? DEFAULT_SETTINGS.astAgentModel,
+    astAgentEffort: isEffortLevel(stored.astAgentEffort)
+      ? stored.astAgentEffort
+      : DEFAULT_SETTINGS.astAgentEffort,
     theme: 'dark',
   }
 }
 
-function updateSetting(key: string, value: unknown): void {
+const EFFORT_SETTING_KEYS = new Set(['defaultEffort', 'testingAgentEffort', 'astAgentEffort'])
+
+function updateSetting(key: string, value: unknown): boolean {
+  if (EFFORT_SETTING_KEYS.has(key) && !isEffortLevel(value)) return false
   const db = getDb()
   db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run(key, String(value))
+  return true
 }
 
 // ── Plugin Management ──
@@ -329,8 +347,7 @@ export function registerIpcHandlers(): void {
   })
 
   ipcMain.handle(IPC.SETTINGS_UPDATE, async (_e, args: { key: string; value: unknown }) => {
-    updateSetting(args.key, args.value)
-    return true
+    return updateSetting(args.key, args.value)
   })
 
   ipcMain.handle(IPC.TABS_GET, async () => {

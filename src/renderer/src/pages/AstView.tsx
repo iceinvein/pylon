@@ -1,5 +1,6 @@
 import { Clock, FolderOpen, Loader2 } from 'lucide-react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import type { AppSettings, EffortLevel } from '../../../shared/types'
 import { AstChatPanel } from '../components/ast/AstChatPanel'
 import { AstSplitPanel } from '../components/ast/AstSplitPanel'
 import { AstToolbar } from '../components/ast/AstToolbar'
@@ -7,6 +8,13 @@ import { CodePanel } from '../components/ast/CodePanel'
 import { FileAstView } from '../components/ast/FileAstView'
 import { RepoMapView } from '../components/ast/RepoMapView'
 import { useAstBridge } from '../hooks/use-ast-bridge'
+import {
+  FALLBACK_PROVIDER_MODELS,
+  normalizeProviderModels,
+  type ProviderId,
+  type ProviderModelEntry,
+  resolveFeatureAgentSelection,
+} from '../lib/provider-models'
 import { useAstStore } from '../store/ast-store'
 
 function formatTimeAgo(timestamp: number): string {
@@ -26,6 +34,17 @@ function getProjectName(projectPath: string): string {
   return projectPath.split('/').pop() ?? projectPath
 }
 
+type AgentSelection = {
+  provider: ProviderId
+  model: string
+  effort: EffortLevel
+}
+
+type LoadedAgentSelection = {
+  models: ProviderModelEntry[]
+  selection: AgentSelection
+}
+
 export function AstView() {
   useAstBridge()
 
@@ -38,8 +57,76 @@ export function AstView() {
   const selectedNode = useAstStore((s) => s.selectedNode)
   const analysisStatus = useAstStore((s) => s.analysisStatus)
   const analysisProgress = useAstStore((s) => s.analysisProgress)
+  const agentProvider = useAstStore((s) => s.agentProvider)
+  const agentModel = useAstStore((s) => s.agentModel)
+  const agentEffort = useAstStore((s) => s.agentEffort)
   const setScope = useAstStore((s) => s.setScope)
   const setFileAst = useAstStore((s) => s.setFileAst)
+  const setAgentSelection = useAstStore((s) => s.setAgentSelection)
+  const [providerModels, setProviderModels] =
+    useState<ProviderModelEntry[]>(FALLBACK_PROVIDER_MODELS)
+  const agentSelectionRequestRef = useRef(0)
+  const agentSelectionBaseRevisionRef = useRef(useAstStore.getState().agentSelectionRevision)
+  const agentSelectionLoadRef = useRef<Promise<LoadedAgentSelection> | null>(null)
+
+  const loadAgentSelection = useCallback(async () => {
+    const requestId = agentSelectionRequestRef.current + 1
+    agentSelectionRequestRef.current = requestId
+    const startRevision = useAstStore.getState().agentSelectionRevision
+
+    agentSelectionLoadRef.current ??= Promise.allSettled([
+      window.api.getProviderModels(),
+      window.api.getSettings(),
+    ])
+      .then(([modelsResult, settingsResult]) => {
+        const models =
+          modelsResult.status === 'fulfilled'
+            ? normalizeProviderModels(modelsResult.value)
+            : FALLBACK_PROVIDER_MODELS
+        const settings =
+          settingsResult.status === 'fulfilled' && settingsResult.value
+            ? (settingsResult.value as Partial<AppSettings>)
+            : {}
+        const selection = resolveFeatureAgentSelection({
+          persistedModel: settings.astAgentModel,
+          persistedEffort: settings.astAgentEffort,
+          appDefaultModel: settings.defaultModel,
+          appDefaultEffort: settings.defaultEffort,
+          models,
+        })
+        return { models, selection }
+      })
+      .finally(() => {
+        agentSelectionLoadRef.current = null
+      })
+
+    const { models, selection } = await agentSelectionLoadRef.current
+    const currentState = useAstStore.getState()
+    const canApplySelection =
+      agentSelectionRequestRef.current === requestId &&
+      currentState.agentSelectionRevision === startRevision &&
+      startRevision === agentSelectionBaseRevisionRef.current
+
+    setProviderModels(models)
+    if (canApplySelection) {
+      setAgentSelection(selection.provider, selection.model, selection.effort)
+      agentSelectionBaseRevisionRef.current = useAstStore.getState().agentSelectionRevision
+      return selection
+    }
+
+    return {
+      provider: currentState.agentProvider,
+      model: currentState.agentModel,
+      effort: currentState.agentEffort,
+    }
+  }, [setAgentSelection])
+
+  useEffect(() => {
+    loadAgentSelection().catch(() => {
+      setProviderModels(FALLBACK_PROVIDER_MODELS)
+      setAgentSelection('claude', 'claude-opus-4-7', 'high')
+    })
+  }, [loadAgentSelection, setAgentSelection])
 
   // When drilledFile changes, request file AST for the tree view
   useEffect(() => {
@@ -71,6 +158,7 @@ export function AstView() {
   const openScope = useCallback(
     async (scopePath: string) => {
       setScope(scopePath)
+      const selection = await loadAgentSelection()
 
       // Check for cached analysis first
       const cached = await window.api.getCachedAnalysis(scopePath)
@@ -78,18 +166,22 @@ export function AstView() {
         setRepoGraph(cached.repoGraph as import('../../../shared/types').RepoGraph)
         if (cached.archAnalysis) {
           setArchAnalysis(cached.archAnalysis as import('../../../shared/types').ArchAnalysis)
+          setAnalysisStatus(
+            'ready',
+            `Loaded from cache (${new Date(cached.analyzedAt).toLocaleString()})`,
+          )
+          return
         }
-        setAnalysisStatus(
-          'ready',
-          `Loaded from cache (${new Date(cached.analyzedAt).toLocaleString()})`,
-        )
+
+        setAnalysisStatus('analyzing', 'Loaded graph from cache; refreshing architecture analysis')
+        await window.api.analyzeScope(scopePath, selection.model, selection.effort)
         return
       }
 
       // No cache — run full analysis
-      await window.api.analyzeScope(scopePath)
+      await window.api.analyzeScope(scopePath, selection.model, selection.effort)
     },
-    [setScope, setRepoGraph, setArchAnalysis, setAnalysisStatus],
+    [setScope, loadAgentSelection, setRepoGraph, setArchAnalysis, setAnalysisStatus],
   )
 
   const handleBrowse = useCallback(async () => {
@@ -106,15 +198,27 @@ export function AstView() {
 
   const handleReanalyze = useCallback(async () => {
     if (scope) {
-      await window.api.analyzeScope(scope)
+      await window.api.analyzeScope(scope, agentModel, agentEffort)
     }
-  }, [scope])
+  }, [scope, agentModel, agentEffort])
+
+  const handleAgentSelectionChange = useCallback(
+    (provider: ProviderId, model: string, effort: EffortLevel) => {
+      setAgentSelection(provider, model, effort)
+      void Promise.all([
+        window.api.updateSettings('astAgentModel', model),
+        window.api.updateSettings('astAgentEffort', effort),
+      ])
+    },
+    [setAgentSelection],
+  )
 
   const reset = useAstStore((s) => s.reset)
 
   const handleSwitchProject = useCallback(
     async (path: string) => {
       reset()
+      agentSelectionBaseRevisionRef.current = useAstStore.getState().agentSelectionRevision
       await openScope(path)
     },
     [reset, openScope],
@@ -124,6 +228,7 @@ export function AstView() {
     const path = await window.api.openFolder()
     if (path) {
       reset()
+      agentSelectionBaseRevisionRef.current = useAstStore.getState().agentSelectionRevision
       await openScope(path)
     }
   }, [reset, openScope])
@@ -144,6 +249,11 @@ export function AstView() {
         repoGraph={repoGraph}
         archAnalysis={archAnalysis}
         analysisStatus={analysisStatus}
+        providerModels={providerModels}
+        agentProvider={agentProvider}
+        agentModel={agentModel}
+        agentEffort={agentEffort}
+        onAgentSelectionChange={handleAgentSelectionChange}
         onReanalyze={handleReanalyze}
         onSwitchProject={handleSwitchProject}
         onBrowse={handleBrowseFromToolbar}

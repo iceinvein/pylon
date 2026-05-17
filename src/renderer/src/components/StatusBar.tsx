@@ -59,7 +59,7 @@ function SessionInfo() {
   return (
     <span className="flex items-center gap-2.5 text-base-text-faint text-xs">
       {mode === 'plan' && (
-        <Tooltip content="Plan mode active — Claude will plan, not execute" side="top">
+        <Tooltip content="Plan mode active - the agent will plan before execution" side="top">
           <span className="flex cursor-default items-center gap-1 rounded-full bg-violet-900/40 px-2 py-0.5 text-[10px] text-violet-300">
             <ClipboardList size={10} />
             Plan

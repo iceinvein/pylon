@@ -8,6 +8,8 @@ export function AstChatPanel() {
   const addChatMessage = useAstStore((s) => s.addChatMessage)
   const setChatLoading = useAstStore((s) => s.setChatLoading)
   const scope = useAstStore((s) => s.scope)
+  const agentModel = useAstStore((s) => s.agentModel)
+  const agentEffort = useAstStore((s) => s.agentEffort)
 
   const [input, setInput] = useState('')
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -26,10 +28,10 @@ export function AstChatPanel() {
     addChatMessage({ role: 'user', content: text })
     setChatLoading(true)
     setInput('')
-    window.api.sendAstChat(text, scope).catch(() => {
+    window.api.sendAstChat(text, scope, agentModel, agentEffort).catch(() => {
       setChatLoading(false)
     })
-  }, [input, chatLoading, addChatMessage, setChatLoading, scope])
+  }, [input, chatLoading, addChatMessage, setChatLoading, scope, agentModel, agentEffort])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {

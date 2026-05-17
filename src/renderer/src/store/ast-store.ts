@@ -4,9 +4,11 @@ import type {
   AstChatMessage,
   AstNode,
   AstOverlay,
+  EffortLevel,
   FileNode,
   RepoGraph,
 } from '../../../shared/types'
+import type { ProviderId } from '../lib/provider-models'
 
 type AnalysisStatus = 'idle' | 'parsing' | 'analyzing' | 'ready' | 'error'
 
@@ -26,6 +28,10 @@ type AstStore = {
   explainText: string | null
   explainLoading: boolean
   chatLoading: boolean
+  agentProvider: ProviderId
+  agentModel: string
+  agentEffort: EffortLevel
+  agentSelectionRevision: number
   zoom: number
   panX: number
   panY: number
@@ -47,6 +53,7 @@ type AstStore = {
   setAnalysisStatus: (status: AnalysisStatus, progress?: string) => void
   setExplain: (text: string | null, loading: boolean) => void
   setChatLoading: (loading: boolean) => void
+  setAgentSelection: (provider: ProviderId, model: string, effort: EffortLevel) => void
   setZoom: (zoom: number) => void
   setPan: (panX: number, panY: number) => void
   toggleCluster: (clusterId: string) => void
@@ -71,6 +78,10 @@ const initialState = {
   explainText: null,
   explainLoading: false,
   chatLoading: false,
+  agentProvider: 'claude' as ProviderId,
+  agentModel: 'claude-opus-4-7',
+  agentEffort: 'high' as EffortLevel,
+  agentSelectionRevision: 0,
   zoom: 1,
   panX: 0,
   panY: 0,
@@ -145,6 +156,14 @@ export const useAstStore = create<AstStore>((set) => ({
 
   setChatLoading: (chatLoading) => set({ chatLoading }),
 
+  setAgentSelection: (agentProvider, agentModel, agentEffort) =>
+    set((s) => ({
+      agentProvider,
+      agentModel,
+      agentEffort,
+      agentSelectionRevision: s.agentSelectionRevision + 1,
+    })),
+
   setZoom: (zoom) => set({ zoom }),
 
   setPan: (panX, panY) => set({ panX, panY }),
@@ -165,9 +184,10 @@ export const useAstStore = create<AstStore>((set) => ({
     }),
 
   reset: () =>
-    set({
+    set((s) => ({
       ...initialState,
       activeOverlays: new Set<AstOverlay>(),
       expandedClusters: new Set<string>(),
-    }),
+      agentSelectionRevision: s.agentSelectionRevision + 1,
+    })),
 }))

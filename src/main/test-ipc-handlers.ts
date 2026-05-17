@@ -1,6 +1,11 @@
 import { ipcMain } from 'electron'
 import { IPC } from '../shared/ipc-channels'
+import { type EffortLevel, isEffortLevel, type ProjectScan } from '../shared/types'
 import { testManager } from './test-manager'
+
+function validAgentEffort(effort: unknown): EffortLevel | undefined {
+  return isEffortLevel(effort) ? effort : undefined
+}
 
 export function registerTestIpcHandlers(): void {
   ipcMain.handle(
@@ -15,10 +20,16 @@ export function registerTestIpcHandlers(): void {
         requirements?: string
         e2eOutputPath: string
         e2ePathReason?: string
-        projectScan?: import('../shared/types').ProjectScan
+        projectScan?: ProjectScan
+        agentModel?: string
+        agentEffort?: EffortLevel
       },
     ) => {
-      return testManager.startExploration({ ...args, mode: args.mode as 'manual' | 'requirements' })
+      return testManager.startExploration({
+        ...args,
+        mode: args.mode as 'manual' | 'requirements',
+        agentEffort: validAgentEffort(args.agentEffort),
+      })
     },
   )
 
@@ -36,12 +47,15 @@ export function registerTestIpcHandlers(): void {
         e2ePathReason?: string
         customUrl?: string
         autoStartServer: boolean
-        projectScan?: import('../shared/types').ProjectScan
+        projectScan?: ProjectScan
+        agentModel?: string
+        agentEffort?: EffortLevel
       },
     ) => {
       return testManager.startBatch({
         ...args,
         mode: args.mode as 'manual' | 'requirements',
+        agentEffort: validAgentEffort(args.agentEffort),
       })
     },
   )
@@ -79,10 +93,22 @@ export function registerTestIpcHandlers(): void {
     return testManager.scanProject(args.cwd)
   })
 
-  ipcMain.handle(IPC.TEST_SUGGEST_GOALS, async (_e, args: { cwd: string }) => {
-    testManager.suggestGoals(args.cwd).catch((err) => {
-      console.error('suggestGoals failed:', err)
-    })
-    return true
-  })
+  ipcMain.handle(
+    IPC.TEST_SUGGEST_GOALS,
+    async (
+      _e,
+      args: {
+        cwd: string
+        agentModel?: string
+        agentEffort?: EffortLevel
+      },
+    ) => {
+      testManager
+        .suggestGoals(args.cwd, args.agentModel, validAgentEffort(args.agentEffort))
+        .catch((err) => {
+          console.error('suggestGoals failed:', err)
+        })
+      return true
+    },
+  )
 }

@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type {
   E2ePathResolution,
+  EffortLevel,
   ExplorationAgentMessage,
   ExplorationMode,
   ExplorationUpdate,
@@ -11,6 +12,7 @@ import type {
   TestExploration,
   TestFinding,
 } from '../../../shared/types'
+import type { ProviderId } from '../lib/provider-models'
 
 type BatchConfig = {
   goals: string[]
@@ -36,6 +38,11 @@ type ExplorationConfig = {
   projectScan?: ProjectScan
 }
 
+type GoalSuggestionAgentSelection = {
+  model: string
+  effort: EffortLevel
+}
+
 type TestStore = {
   // Project context
   selectedProject: string | null
@@ -54,6 +61,12 @@ type TestStore = {
   customUrl: string | null
   launchLoading: boolean
   launchError: string | null
+
+  // Agent settings
+  agentProvider: ProviderId
+  agentModel: string
+  agentEffort: EffortLevel
+  agentSelectionRevision: number
 
   // Concurrency
   agentCount: number
@@ -86,13 +99,14 @@ type TestStore = {
   loadProjects: () => Promise<void>
   selectProject: (cwd: string) => void
   scanProject: (cwd: string) => Promise<void>
-  suggestGoals: (cwd: string) => Promise<void>
+  suggestGoals: (cwd: string, selection?: GoalSuggestionAgentSelection) => Promise<void>
   toggleGoal: (goalId: string) => void
   addCustomGoal: (goal: string) => void
   removeCustomGoal: (index: number) => void
   setCustomUrl: (url: string | null) => void
   clearLaunchError: () => void
   setAgentCount: (count: number) => void
+  setAgentSelection: (provider: ProviderId, model: string, effort: EffortLevel) => void
   setAutoStartServer: (enabled: boolean) => void
   startBatch: (cwd: string, config: BatchConfig) => Promise<void>
   startExploration: (cwd: string, config: ExplorationConfig) => Promise<void>
@@ -127,6 +141,10 @@ export const useTestStore = create<TestStore>((set, get) => ({
   customUrl: null,
   launchLoading: false,
   launchError: null,
+  agentProvider: 'claude' as ProviderId,
+  agentModel: 'claude-opus-4-7',
+  agentEffort: 'high',
+  agentSelectionRevision: 0,
   agentCount: 1,
   autoStartServer: true,
   selectedExplorationId: null,
@@ -168,7 +186,6 @@ export const useTestStore = create<TestStore>((set, get) => ({
     })
     // Trigger async operations
     get().scanProject(cwd)
-    get().suggestGoals(cwd)
     get().loadExplorations(cwd)
   },
 
@@ -188,10 +205,15 @@ export const useTestStore = create<TestStore>((set, get) => ({
     }
   },
 
-  suggestGoals: async (cwd) => {
+  suggestGoals: async (cwd, selection) => {
     set({ goalsLoading: true })
     try {
-      await window.api.suggestGoals(cwd)
+      const { agentModel, agentEffort } = get()
+      await window.api.suggestGoals(
+        cwd,
+        selection?.model ?? agentModel,
+        selection?.effort ?? agentEffort,
+      )
       // Results arrive via handleGoalSuggestion
     } catch (err) {
       console.error('suggestGoals failed:', err)
@@ -223,6 +245,14 @@ export const useTestStore = create<TestStore>((set, get) => ({
 
   setAgentCount: (count) => set({ agentCount: Math.max(1, Math.min(5, count)) }),
 
+  setAgentSelection: (agentProvider, agentModel, agentEffort) =>
+    set((s) => ({
+      agentProvider,
+      agentModel,
+      agentEffort,
+      agentSelectionRevision: s.agentSelectionRevision + 1,
+    })),
+
   setAutoStartServer: (enabled) => set({ autoStartServer: enabled, launchError: null }),
 
   startBatch: async (cwd, config) => {
@@ -239,6 +269,8 @@ export const useTestStore = create<TestStore>((set, get) => ({
         customUrl: config.customUrl,
         autoStartServer: config.autoStartServer,
         projectScan: config.projectScan,
+        agentModel: get().agentModel,
+        agentEffort: get().agentEffort,
       })
 
       set((s) => {
@@ -280,7 +312,13 @@ export const useTestStore = create<TestStore>((set, get) => ({
 
   startExploration: async (cwd, config) => {
     try {
-      const exploration = await window.api.startExploration({ cwd, ...config })
+      const { agentModel, agentEffort } = get()
+      const exploration = await window.api.startExploration({
+        cwd,
+        ...config,
+        agentModel,
+        agentEffort,
+      })
       set((s) => ({
         explorations: [exploration, ...s.explorations],
         selectedExplorationId: exploration.id,

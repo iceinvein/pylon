@@ -2,6 +2,14 @@ import * as path from 'node:path'
 import { app, BrowserWindow, ipcMain } from 'electron'
 import { IPC } from '../shared/ipc-channels'
 import { log } from '../shared/logger'
+import {
+  type AstAgentArgs,
+  type CachedAstAnalysisRow,
+  createProviderQueryFn,
+  normalizeCachedAnalysisRow,
+  resolveAstAgent,
+  resolveAstExplainCwd,
+} from './ast-ipc-utils'
 import { getDb } from './db'
 
 const logger = log.child('ast-ipc')
@@ -33,15 +41,8 @@ function loadCachedAnalysis(
   const db = getDb()
   const row = db
     .prepare('SELECT repo_graph, arch_analysis, analyzed_at FROM ast_analyses WHERE scope = ?')
-    .get(scope) as
-    | { repo_graph: string; arch_analysis: string | null; analyzed_at: number }
-    | undefined
-  if (!row) return null
-  return {
-    repoGraph: JSON.parse(row.repo_graph),
-    archAnalysis: row.arch_analysis ? JSON.parse(row.arch_analysis) : null,
-    analyzedAt: row.analyzed_at,
-  }
+    .get(scope) as CachedAstAnalysisRow | undefined
+  return normalizeCachedAnalysisRow(row)
 }
 
 // ── IPC Handlers ──
@@ -62,7 +63,7 @@ export function registerAstIpcHandlers(): void {
     return loadCachedAnalysis(args.scope)
   })
 
-  ipcMain.handle(IPC.AST_ANALYZE_SCOPE, async (_e, args: { scope: string }) => {
+  ipcMain.handle(IPC.AST_ANALYZE_SCOPE, async (_e, args: { scope: string } & AstAgentArgs) => {
     const { analyzeScope } = await import('./ast-analyzer')
     const win = BrowserWindow.getFocusedWindow()
     if (!win) return
@@ -78,25 +79,45 @@ export function registerAstIpcHandlers(): void {
 
     win.webContents.send(IPC.AST_ANALYSIS_PROGRESS, {
       status: 'analyzing',
-      message: `Parsed ${graph.files.length} files. Analyzing with Claude Code...`,
+      message: `Parsed ${graph.files.length} files. Preparing AI analysis...`,
     })
 
-    // Stage 2: Claude architecture analysis
-    const { analyzeRepoWithClaude, resolveClaudePath, createCliQueryFn } = await import(
-      './ast-claude'
-    )
-    const claudePath = resolveClaudePath()
+    // Stage 2: provider-backed architecture analysis
+    const { analyzeRepoWithAi } = await import('./ast-ai')
+    const agent = resolveAstAgent(args)
     let analysis: unknown = null
-    if (claudePath) {
-      const queryFn = createCliQueryFn(claudePath)
-      analysis = await analyzeRepoWithClaude(graph, queryFn)
+    if (agent.provider) {
+      win.webContents.send(IPC.AST_ANALYSIS_PROGRESS, {
+        status: 'analyzing',
+        message: `Parsed ${graph.files.length} files. Analyzing with ${agent.label}...`,
+      })
+      const queryFn = createProviderQueryFn(args.scope, {
+        model: agent.model,
+        effort: agent.effort,
+        provider: agent.provider,
+      })
+      analysis = await analyzeRepoWithAi(graph, queryFn)
       if (analysis) {
         win.webContents.send(IPC.AST_ARCH_ANALYSIS, analysis)
         // Persist Stage 2 result
         saveAnalysis(args.scope, graph, analysis, graph.files.length)
       }
     } else {
-      logger.warn('Claude CLI not found — skipping architecture analysis')
+      const message = `No AI provider found for AST model "${agent.model}". Choose a supported AST model.`
+      logger.warn(message)
+      win.webContents.send(IPC.AST_ANALYSIS_PROGRESS, {
+        status: 'error',
+        message,
+      })
+      return
+    }
+
+    if (!analysis) {
+      win.webContents.send(IPC.AST_ANALYSIS_PROGRESS, {
+        status: 'error',
+        message: 'AI architecture analysis failed. Try again or choose another AST model.',
+      })
+      return
     }
 
     win.webContents.send(IPC.AST_ANALYSIS_PROGRESS, {
@@ -112,19 +133,27 @@ export function registerAstIpcHandlers(): void {
 
   ipcMain.handle(
     IPC.AST_EXPLAIN,
-    async (_e, args: { nodeId: string; filePath: string; context: string }) => {
+    async (
+      _e,
+      args: { nodeId: string; filePath: string; context: string; scope?: string } & AstAgentArgs,
+    ) => {
       const win = BrowserWindow.getFocusedWindow()
-      const { explainNode, resolveClaudePath, createCliQueryFn } = await import('./ast-claude')
-      const claudePath = resolveClaudePath()
-      if (!claudePath) {
+      const { explainNode } = await import('./ast-ai')
+      const agent = resolveAstAgent(args)
+      if (!agent.provider) {
         const result = {
-          text: 'Claude Code CLI not found. Install Claude Code to use this feature.',
+          text: `No provider found for model "${agent.model}". Choose another AST model in settings.`,
           done: true,
         }
         if (win) win.webContents.send(IPC.AST_EXPLAIN_RESULT, result)
         return result
       }
-      const queryFn = createCliQueryFn(claudePath)
+      const cwd = resolveAstExplainCwd(args)
+      const queryFn = createProviderQueryFn(cwd, {
+        model: agent.model,
+        effort: agent.effort,
+        provider: agent.provider,
+      })
       const nodeName = args.nodeId.replace(
         /^(function|class|type|variable)-\d+$/,
         args.context || args.nodeId,
@@ -136,55 +165,67 @@ export function registerAstIpcHandlers(): void {
     },
   )
 
-  ipcMain.handle(IPC.AST_CHAT, async (_e, args: { message: string; scope: string }) => {
-    const win = BrowserWindow.getFocusedWindow()
-    const { chatAboutCode, resolveClaudePath, createCliQueryFn } = await import('./ast-claude')
-    const claudePath = resolveClaudePath()
-    if (!claudePath) {
-      const result = {
-        text: 'Claude Code CLI not found. Install Claude Code to use this feature.',
-        done: true,
+  ipcMain.handle(
+    IPC.AST_CHAT,
+    async (_e, args: { message: string; scope: string } & AstAgentArgs) => {
+      const win = BrowserWindow.getFocusedWindow()
+      const { chatAboutCode } = await import('./ast-ai')
+      const agent = resolveAstAgent(args)
+      if (!agent.provider) {
+        const result = {
+          text: `No provider found for model "${agent.model}". Choose another AST model in settings.`,
+          highlights: [],
+          done: true,
+        }
+        if (win) win.webContents.send(IPC.AST_CHAT_RESULT, result)
+        return result
       }
-      if (win) win.webContents.send(IPC.AST_CHAT_RESULT, result)
-      return result
-    }
-    const queryFn = createCliQueryFn(claudePath)
+      const queryFn = createProviderQueryFn(args.scope, {
+        model: agent.model,
+        effort: agent.effort,
+        provider: agent.provider,
+      })
 
-    // Use cached graph summary if available
-    let graphSummary = `Scope: ${args.scope}`
-    const cached = loadCachedAnalysis(args.scope)
-    if (cached) {
-      const graph = cached.repoGraph as {
-        files: Array<{ filePath: string; declarations: Array<{ type: string; name: string }> }>
-        edges: unknown[]
-      }
-      const lines: string[] = [`Files: ${graph.files.length}`, '']
-      for (const file of graph.files.slice(0, 50)) {
-        const decls = file.declarations.map((d) => `${d.type}:${d.name}`).join(', ')
-        const shortPath = file.filePath.replace(/^.*?\/src\//, 'src/')
-        lines.push(`${shortPath} — ${decls || 'no declarations'}`)
-      }
-      graphSummary = lines.join('\n')
-    } else {
-      // Fallback: re-analyze (slower)
-      try {
-        const { analyzeScope } = await import('./ast-analyzer')
-        const graph = await analyzeScope(args.scope)
-        const lines: string[] = [`Files: ${graph.files.length}`, `Edges: ${graph.edges.length}`, '']
+      // Use cached graph summary if available
+      let graphSummary = `Scope: ${args.scope}`
+      const cached = loadCachedAnalysis(args.scope)
+      if (cached) {
+        const graph = cached.repoGraph as {
+          files: Array<{ filePath: string; declarations: Array<{ type: string; name: string }> }>
+          edges: unknown[]
+        }
+        const lines: string[] = [`Files: ${graph.files.length}`, '']
         for (const file of graph.files.slice(0, 50)) {
           const decls = file.declarations.map((d) => `${d.type}:${d.name}`).join(', ')
           const shortPath = file.filePath.replace(/^.*?\/src\//, 'src/')
           lines.push(`${shortPath} — ${decls || 'no declarations'}`)
         }
         graphSummary = lines.join('\n')
-      } catch {
-        // Use minimal summary on error
+      } else {
+        // Fallback: re-analyze (slower)
+        try {
+          const { analyzeScope } = await import('./ast-analyzer')
+          const graph = await analyzeScope(args.scope)
+          const lines: string[] = [
+            `Files: ${graph.files.length}`,
+            `Edges: ${graph.edges.length}`,
+            '',
+          ]
+          for (const file of graph.files.slice(0, 50)) {
+            const decls = file.declarations.map((d) => `${d.type}:${d.name}`).join(', ')
+            const shortPath = file.filePath.replace(/^.*?\/src\//, 'src/')
+            lines.push(`${shortPath} — ${decls || 'no declarations'}`)
+          }
+          graphSummary = lines.join('\n')
+        } catch {
+          // Use minimal summary on error
+        }
       }
-    }
 
-    const { text, highlights } = await chatAboutCode(args.message, graphSummary, queryFn)
-    const result = { text, highlights, done: true }
-    if (win) win.webContents.send(IPC.AST_CHAT_RESULT, result)
-    return result
-  })
+      const { text, highlights } = await chatAboutCode(args.message, graphSummary, queryFn)
+      const result = { text, highlights, done: true }
+      if (win) win.webContents.send(IPC.AST_CHAT_RESULT, result)
+      return result
+    },
+  )
 }

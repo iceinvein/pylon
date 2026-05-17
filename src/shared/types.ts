@@ -141,7 +141,12 @@ export type PermissionMode =
   | 'on-failure'
   | 'untrusted'
 
-export type EffortLevel = 'low' | 'medium' | 'high' | 'xhigh' | 'max'
+export const EFFORT_LEVELS = ['low', 'medium', 'high', 'xhigh', 'max'] as const
+export type EffortLevel = (typeof EFFORT_LEVELS)[number]
+
+export function isEffortLevel(value: unknown): value is EffortLevel {
+  return typeof value === 'string' && (EFFORT_LEVELS as readonly string[]).includes(value)
+}
 
 export type SessionMode = 'normal' | 'plan'
 
@@ -155,6 +160,10 @@ export type AppSettings = {
   defaultModel: string
   defaultPermissionMode: PermissionMode
   defaultEffort: EffortLevel
+  testingAgentModel: string
+  testingAgentEffort: EffortLevel
+  astAgentModel: string
+  astAgentEffort: EffortLevel
   theme: 'dark'
 }
 

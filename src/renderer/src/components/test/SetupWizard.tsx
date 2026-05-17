@@ -10,10 +10,24 @@ import {
   X,
 } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
-import { useEffect, useRef, useState } from 'react'
-import type { ExplorationMode, ProjectScan, SuggestedGoal } from '../../../../shared/types'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import type {
+  AppSettings,
+  EffortLevel,
+  ExplorationMode,
+  ProjectScan,
+  SuggestedGoal,
+} from '../../../../shared/types'
+import {
+  FALLBACK_PROVIDER_MODELS,
+  normalizeProviderModels,
+  type ProviderId,
+  type ProviderModelEntry,
+  resolveFeatureAgentSelection,
+} from '../../lib/provider-models'
 import { timeAgo } from '../../lib/utils'
 import { useTestStore } from '../../store/test-store'
+import { ProviderModelPicker } from '../ProviderModelPicker'
 
 /* -------------------------------------------------------------------------- */
 /*  Step 1 — Project Selection                                                */
@@ -291,6 +305,10 @@ function Step2Goals({
 function Step3Config({
   projectScan,
   scanLoading,
+  providerModels,
+  agentProvider,
+  agentModel,
+  agentEffort,
   agentCount,
   autoStartServer,
   customUrl,
@@ -301,6 +319,7 @@ function Step3Config({
   launchLoading,
   launchError,
   canLaunch,
+  onAgentSelectionChange,
   onSetAgentCount,
   onSetAutoStart,
   onSetCustomUrl,
@@ -312,6 +331,10 @@ function Step3Config({
 }: {
   projectScan: ProjectScan | null
   scanLoading: boolean
+  providerModels: ProviderModelEntry[]
+  agentProvider: ProviderId
+  agentModel: string
+  agentEffort: EffortLevel
   agentCount: number
   autoStartServer: boolean
   customUrl: string | null
@@ -322,6 +345,7 @@ function Step3Config({
   launchLoading: boolean
   launchError: string | null
   canLaunch: boolean
+  onAgentSelectionChange: (provider: ProviderId, model: string, effort: EffortLevel) => void
   onSetAgentCount: (n: number) => void
   onSetAutoStart: (enabled: boolean) => void
   onSetCustomUrl: (url: string | null) => void
@@ -395,6 +419,19 @@ function Step3Config({
               )}
             </div>
           )}
+        </section>
+
+        {/* Agent model */}
+        <section>
+          <h3 className="mb-2 font-medium text-base-text text-sm">Model</h3>
+          <ProviderModelPicker
+            models={providerModels}
+            provider={agentProvider}
+            model={agentModel}
+            effort={agentEffort}
+            onSelectionChange={onAgentSelectionChange}
+            labelPrefix="Testing agent"
+          />
         </section>
 
         {/* Agent count */}
@@ -522,6 +559,9 @@ export function SetupWizard() {
   const suggestedGoals = useTestStore((s) => s.suggestedGoals)
   const goalsLoading = useTestStore((s) => s.goalsLoading)
   const customGoals = useTestStore((s) => s.customGoals)
+  const agentProvider = useTestStore((s) => s.agentProvider)
+  const agentModel = useTestStore((s) => s.agentModel)
+  const agentEffort = useTestStore((s) => s.agentEffort)
   const agentCount = useTestStore((s) => s.agentCount)
   const autoStartServer = useTestStore((s) => s.autoStartServer)
   const customUrl = useTestStore((s) => s.customUrl)
@@ -537,13 +577,29 @@ export function SetupWizard() {
   const setAutoStartServer = useTestStore((s) => s.setAutoStartServer)
   const setCustomUrl = useTestStore((s) => s.setCustomUrl)
   const setSetupStep = useTestStore((s) => s.setSetupStep)
+  const setAgentSelection = useTestStore((s) => s.setAgentSelection)
   const startBatch = useTestStore((s) => s.startBatch)
+  const requestGoalSuggestions = useTestStore((s) => s.suggestGoals)
   const resolveE2ePath = useTestStore((s) => s.resolveE2ePath)
   const loadProjects = useTestStore((s) => s.loadProjects)
 
   const [e2ePath, setE2ePath] = useState('')
   const [mode, setMode] = useState<ExplorationMode>('manual')
   const [requirements, setRequirements] = useState('')
+  const [providerModels, setProviderModels] =
+    useState<ProviderModelEntry[]>(FALLBACK_PROVIDER_MODELS)
+  const agentSelectionRequestRef = useRef(0)
+  const agentSelectionBaseRevisionRef = useRef(useTestStore.getState().agentSelectionRevision)
+  const agentSelectionLoadRef = useRef<Promise<{
+    models: ProviderModelEntry[]
+    selection: AgentSelection
+  }> | null>(null)
+
+  type AgentSelection = {
+    provider: ProviderId
+    model: string
+    effort: EffortLevel
+  }
 
   function normalizeUrlInput(value: string): string | null {
     const trimmed = value.trim()
@@ -562,6 +618,65 @@ export function SetupWizard() {
     loadProjects()
   }, [loadProjects])
 
+  const loadAgentSelection = useCallback(async () => {
+    const requestId = agentSelectionRequestRef.current + 1
+    agentSelectionRequestRef.current = requestId
+    const startRevision = useTestStore.getState().agentSelectionRevision
+
+    agentSelectionLoadRef.current ??= Promise.allSettled([
+      window.api.getProviderModels(),
+      window.api.getSettings(),
+    ])
+      .then(([modelsResult, settingsResult]) => {
+        const models =
+          modelsResult.status === 'fulfilled'
+            ? normalizeProviderModels(modelsResult.value)
+            : FALLBACK_PROVIDER_MODELS
+        const settings =
+          settingsResult.status === 'fulfilled' && settingsResult.value
+            ? (settingsResult.value as Partial<AppSettings>)
+            : {}
+        const selection = resolveFeatureAgentSelection({
+          persistedModel: settings.testingAgentModel,
+          persistedEffort: settings.testingAgentEffort,
+          appDefaultModel: settings.defaultModel,
+          appDefaultEffort: settings.defaultEffort,
+          models,
+        })
+        return { models, selection }
+      })
+      .finally(() => {
+        agentSelectionLoadRef.current = null
+      })
+
+    const { models, selection } = await agentSelectionLoadRef.current
+    const currentState = useTestStore.getState()
+    const canApplySelection =
+      agentSelectionRequestRef.current === requestId &&
+      currentState.agentSelectionRevision === startRevision &&
+      startRevision === agentSelectionBaseRevisionRef.current
+
+    setProviderModels(models)
+    if (canApplySelection) {
+      setAgentSelection(selection.provider, selection.model, selection.effort)
+      agentSelectionBaseRevisionRef.current = useTestStore.getState().agentSelectionRevision
+      return selection
+    }
+
+    return {
+      provider: currentState.agentProvider,
+      model: currentState.agentModel,
+      effort: currentState.agentEffort,
+    }
+  }, [setAgentSelection])
+
+  useEffect(() => {
+    loadAgentSelection().catch(() => {
+      setProviderModels(FALLBACK_PROVIDER_MODELS)
+      setAgentSelection('claude', 'claude-opus-4-7', 'high')
+    })
+  }, [loadAgentSelection, setAgentSelection])
+
   // Resolve e2e path when project is selected
   useEffect(() => {
     if (selectedProject) {
@@ -571,9 +686,24 @@ export function SetupWizard() {
     }
   }, [selectedProject, resolveE2ePath])
 
-  function handleProjectSelect(cwd: string) {
+  async function handleProjectSelect(cwd: string) {
     selectProject(cwd)
     setSetupStep(2)
+    const selection = await loadAgentSelection().catch((err) => {
+      console.error('loadTestingAgentSelection failed:', err)
+      const currentState = useTestStore.getState()
+      return {
+        provider: currentState.agentProvider,
+        model: currentState.agentModel,
+        effort: currentState.agentEffort,
+      }
+    })
+    if (useTestStore.getState().selectedProject === cwd) {
+      void requestGoalSuggestions(cwd, {
+        model: selection.model,
+        effort: selection.effort,
+      })
+    }
   }
 
   function handleLaunch() {
@@ -597,6 +727,26 @@ export function SetupWizard() {
       projectScan: projectScan ?? undefined,
     })
   }
+
+  const handleAgentSelectionChange = useCallback(
+    (provider: ProviderId, model: string, effort: EffortLevel) => {
+      setAgentSelection(provider, model, effort)
+      const persistSelection = Promise.all([
+        window.api.updateSettings('testingAgentModel', model),
+        window.api.updateSettings('testingAgentEffort', effort),
+      ])
+      void persistSelection
+        .then((results) => {
+          if (results.some((saved) => !saved)) {
+            console.error('persistTestingAgentSelection failed: settings update returned false')
+          }
+        })
+        .catch((err) => {
+          console.error('persistTestingAgentSelection failed:', err)
+        })
+    },
+    [setAgentSelection],
+  )
 
   const selectedGoalCount = suggestedGoals.filter((g) => g.selected).length + customGoals.length
   const normalizedCustomUrl = customUrl ? normalizeUrlInput(customUrl) : null
@@ -682,6 +832,10 @@ export function SetupWizard() {
             <Step3Config
               projectScan={projectScan}
               scanLoading={scanLoading}
+              providerModels={providerModels}
+              agentProvider={agentProvider}
+              agentModel={agentModel}
+              agentEffort={agentEffort}
               agentCount={agentCount}
               autoStartServer={autoStartServer}
               customUrl={customUrl}
@@ -694,6 +848,7 @@ export function SetupWizard() {
                 hasInvalidCustomUrl ? 'Enter a valid http:// or https:// URL.' : launchError
               }
               canLaunch={canLaunch}
+              onAgentSelectionChange={handleAgentSelectionChange}
               onSetAgentCount={setAgentCount}
               onSetAutoStart={setAutoStartServer}
               onSetCustomUrl={setCustomUrl}
