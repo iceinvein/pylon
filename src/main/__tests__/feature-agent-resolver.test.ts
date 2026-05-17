@@ -1,14 +1,17 @@
 import { describe, expect, mock, test } from 'bun:test'
-import type { AgentProvider } from '../providers'
+import type { AgentProvider } from '../providers/types'
 
 const codexProvider = { id: 'codex' } as AgentProvider
 const claudeProvider = { id: 'claude' } as AgentProvider
+const providerRegistry = await import('../providers/registry')
+const getActualProviderForModel = providerRegistry.getProviderForModel
 
-mock.module('../providers', () => ({
+mock.module('../providers/registry', () => ({
+  ...providerRegistry,
   getProviderForModel: (model: string) => {
     if (model === 'gpt-5.5') return codexProvider
     if (model === 'claude-opus-4-7') return claudeProvider
-    return undefined
+    return getActualProviderForModel(model)
   },
 }))
 

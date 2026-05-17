@@ -1,6 +1,6 @@
 import { providerLabel } from '../shared/provider-models'
 import { type EffortLevel, isEffortLevel } from '../shared/types'
-import { getProviderForModel } from './providers'
+import { getProviderForModel } from './providers/registry'
 import type { AgentProvider } from './providers/types'
 
 const FEATURE_DEFAULTS = {

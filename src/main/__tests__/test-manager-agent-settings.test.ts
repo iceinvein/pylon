@@ -71,9 +71,15 @@ mock.module('electron', () => ({
   BrowserWindow: class {},
 }))
 
-mock.module('../providers', () => ({
+const providerRegistry = await import('../providers/registry')
+const getActualProviderForModel = providerRegistry.getProviderForModel
+
+mock.module('../providers/registry', () => ({
+  ...providerRegistry,
   getProviderForModel: (model: string) =>
-    model === 'gpt-5.5' || model === 'claude-opus-4-7' ? fakeProvider : undefined,
+    model === 'gpt-5.5' || model === 'claude-opus-4-7'
+      ? fakeProvider
+      : getActualProviderForModel(model),
 }))
 
 mock.module('../db', () => ({
