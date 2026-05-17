@@ -181,14 +181,18 @@ export function AstToolbar({
           </span>
         )}
 
-        <ProviderModelPicker
-          models={providerModels}
-          provider={agentProvider}
-          model={agentModel}
-          effort={agentEffort}
-          onSelectionChange={onAgentSelectionChange}
-          disabled={isAnalyzing}
-        />
+        <div className="flex shrink-0 items-center gap-2 rounded-md border border-base-border/70 bg-base-surface/50 px-2 py-1">
+          <span className="font-medium text-[10px] text-base-text-muted uppercase">Agent</span>
+          <ProviderModelPicker
+            models={providerModels}
+            provider={agentProvider}
+            model={agentModel}
+            effort={agentEffort}
+            onSelectionChange={onAgentSelectionChange}
+            disabled={isAnalyzing}
+            labelPrefix="Code agent"
+          />
+        </div>
 
         {/* Re-analyze button */}
         <button
