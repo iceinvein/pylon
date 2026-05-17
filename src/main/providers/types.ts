@@ -10,16 +10,14 @@
  * rendering when the renderer needs full fidelity.
  */
 
+import type { ProviderId, ProviderModelEntry } from '../../shared/provider-models'
 import type { Attachment, EffortLevel, PermissionMode, SessionInitInfo } from '../../shared/types'
 
 // ── Provider Identity ────────────────────────────
 
-export type ProviderId = 'claude' | 'codex'
+export type { ProviderId } from '../../shared/provider-models'
 
-export type ProviderModel = {
-  id: string
-  label: string
-  provider: ProviderId
+export type ProviderModel = ProviderModelEntry & {
   contextWindow: number
   /** Which effort levels are valid for this model */
   supportsEffort: EffortLevel[]

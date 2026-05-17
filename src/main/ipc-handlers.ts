@@ -18,6 +18,7 @@ import { isEffortLevel } from '../shared/types'
 import { getDb } from './db'
 import { getAllModels } from './providers'
 import { sessionManager } from './session-manager'
+import { isValidSettingValue } from './settings-validation'
 import { worktreeRecipeService } from './worktree-recipe-service'
 
 const logger = log.child('ipc')
@@ -62,10 +63,8 @@ function getSettings(): AppSettings {
   }
 }
 
-const EFFORT_SETTING_KEYS = new Set(['defaultEffort', 'testingAgentEffort', 'astAgentEffort'])
-
 function updateSetting(key: string, value: unknown): boolean {
-  if (EFFORT_SETTING_KEYS.has(key) && !isEffortLevel(value)) return false
+  if (!isValidSettingValue(key, value, getAllModels())) return false
   const db = getDb()
   db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run(key, String(value))
   return true
