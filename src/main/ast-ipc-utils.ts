@@ -1,7 +1,7 @@
 import * as path from 'node:path'
-import { type EffortLevel, isEffortLevel } from '../shared/types'
+import type { EffortLevel } from '../shared/types'
+import { resolveFeatureAgent } from './feature-agent-resolver'
 import { runProviderTextQuery } from './provider-text-query'
-import { getProviderForModel } from './providers/registry'
 import type { AgentProvider } from './providers/types'
 
 export const DEFAULT_AST_AGENT_MODEL = 'claude-opus-4-7'
@@ -33,29 +33,19 @@ export function resolveAstExplainCwd(args: { scope?: string; filePath: string })
   return args.scope || path.dirname(args.filePath)
 }
 
-function validAgentEffort(effort: unknown): EffortLevel {
-  return isEffortLevel(effort) ? effort : DEFAULT_AST_AGENT_EFFORT
-}
-
-function providerLabel(provider: AgentProvider): string {
-  return provider.id === 'codex' ? 'Codex' : 'Claude Code'
-}
-
 export function resolveAstAgent(args: AstAgentArgs): {
   model: string
   effort: EffortLevel
-  provider: AgentProvider | undefined
+  provider?: AgentProvider
   label: string
 } {
-  const model = args.agentModel || DEFAULT_AST_AGENT_MODEL
-  const effort = validAgentEffort(args.agentEffort)
-  const provider = getProviderForModel(model)
-  return {
-    model,
-    effort,
-    provider,
-    label: provider ? providerLabel(provider) : `model ${model}`,
-  }
+  return resolveFeatureAgent({
+    requestedModel: args.agentModel,
+    requestedEffort: args.agentEffort,
+    fallbackUnknownModel: false,
+    requireProvider: false,
+    featureName: 'AST',
+  })
 }
 
 export function createProviderQueryFn(

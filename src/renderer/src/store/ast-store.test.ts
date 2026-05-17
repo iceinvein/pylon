@@ -80,7 +80,6 @@ describe('ast-store', () => {
       expect(s.explainText).toBeNull()
       expect(s.explainLoading).toBe(false)
       expect(s.chatLoading).toBe(false)
-      expect(s.agentProvider).toBe('claude')
       expect(s.agentModel).toBe('claude-opus-4-7')
       expect(s.agentEffort).toBe('high')
       expect(s.agentSelectionRevision).toBeNumber()
@@ -270,12 +269,11 @@ describe('ast-store', () => {
   })
 
   describe('setAgentSelection', () => {
-    test('sets provider, model, and effort together', () => {
+    test('sets model and effort together', () => {
       const initialRevision = useAstStore.getState().agentSelectionRevision
-      useAstStore.getState().setAgentSelection('codex', 'gpt-5.5', 'max')
+      useAstStore.getState().setAgentSelection('gpt-5.5', 'max')
 
       const s = useAstStore.getState()
-      expect(s.agentProvider).toBe('codex')
       expect(s.agentModel).toBe('gpt-5.5')
       expect(s.agentEffort).toBe('max')
       expect(s.agentSelectionRevision).toBe(initialRevision + 1)
@@ -283,12 +281,11 @@ describe('ast-store', () => {
 
     test('increments revision when reset restores defaults', () => {
       const initialRevision = useAstStore.getState().agentSelectionRevision
-      useAstStore.getState().setAgentSelection('codex', 'gpt-5.5', 'max')
+      useAstStore.getState().setAgentSelection('gpt-5.5', 'max')
 
       useAstStore.getState().reset()
 
       const s = useAstStore.getState()
-      expect(s.agentProvider).toBe('claude')
       expect(s.agentModel).toBe('claude-opus-4-7')
       expect(s.agentEffort).toBe('high')
       expect(s.agentSelectionRevision).toBe(initialRevision + 2)
@@ -372,7 +369,6 @@ describe('ast-store', () => {
       expect(s.chatMessages).toEqual([])
       expect(s.analysisStatus).toBe('idle')
       expect(s.analysisProgress).toBe('')
-      expect(s.agentProvider).toBe('claude')
       expect(s.agentModel).toBe('claude-opus-4-7')
       expect(s.agentEffort).toBe('high')
       expect(s.agentSelectionRevision).toBe(initialRevision + 1)

@@ -1,37 +1,17 @@
-export type ProviderSetupError = {
-  provider: 'claude' | 'codex'
-  title: string
-  description: string
-  actionLabel: string
-  actionUrl: string
-  command: string
-}
+import {
+  PROVIDER_SETUP_ERRORS,
+  type ProviderSetupError,
+} from '../../../shared/provider-setup-errors'
 
-const CLAUDE_SETUP_ERROR: ProviderSetupError = {
-  provider: 'claude',
-  title: 'Claude Code Required',
-  description:
-    'This action requires Claude Code to be installed on your machine. Make sure the `claude` command works in Terminal, then retry.',
-  actionLabel: 'Install Claude Code',
-  actionUrl: 'https://code.claude.com/docs',
-  command: 'claude',
-}
-
-const CODEX_SETUP_ERROR: ProviderSetupError = {
-  provider: 'codex',
-  title: 'Codex Required',
-  description:
-    'This action requires Codex to be installed and authenticated on your machine. Make sure the `codex` command works in Terminal, then retry.',
-  actionLabel: 'Install Codex',
-  actionUrl: 'https://developers.openai.com/codex/cli',
-  command: 'codex',
-}
+export type { ProviderSetupError } from '../../../shared/provider-setup-errors'
 
 export function getProviderSetupError(message?: string | null): ProviderSetupError | null {
   if (!message) return null
 
   const normalized = message.toLowerCase()
-  if (normalized.includes('claude code cli not found')) return CLAUDE_SETUP_ERROR
+  if (normalized.includes('claude code cli not found')) {
+    return PROVIDER_SETUP_ERRORS['claude-cli-missing']
+  }
 
   const hasCodexContext = normalized.includes('codex') || normalized.includes('openai')
   const mentionsCodexExecutableMissing =
@@ -51,10 +31,11 @@ export function getProviderSetupError(message?: string | null): ProviderSetupErr
     mentionsUnauthorizedFailure ||
     (mentionsAuthOrLoginFailure && !normalized.includes('command not found'))
 
-  const mentionsCodexSetup =
-    mentionsCodexExecutableMissing || (hasCodexContext && mentionsAuthFailure)
+  if (mentionsCodexExecutableMissing) return PROVIDER_SETUP_ERRORS['codex-cli-missing']
 
-  if (mentionsCodexSetup) return CODEX_SETUP_ERROR
+  if (hasCodexContext && mentionsAuthFailure) {
+    return PROVIDER_SETUP_ERRORS['codex-auth-missing']
+  }
 
   return null
 }

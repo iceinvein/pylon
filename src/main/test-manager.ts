@@ -17,32 +17,17 @@ import type {
 } from '../shared/types'
 import { getDb } from './db'
 import { resolveE2eOutputPath } from './e2e-path-resolver'
+import { resolveFeatureAgent } from './feature-agent-resolver'
 import { checkPortInUse, scanProject as runProjectScan } from './project-scanner'
-import {
-  type AgentProvider,
-  type AgentSession,
-  getProviderForModel,
-  type NormalizedEvent,
-} from './providers'
+import type { AgentSession } from './providers'
 import { serverManager } from './server-manager'
+import { TestAgentEventAccumulator } from './test-agent-event-accumulator'
+import { createGoalSuggestionContext, isReportGoalsToolName } from './test-goal-session'
 import { buildTestingMcpServers, testingToolCallbackServer } from './test-mcp-bridge'
 
 const logger = log.child('test-manager')
 const STREAM_THROTTLE_MS = 300
 const GOAL_SUGGESTION_TIMEOUT_MS = 60_000 // 60s max for goal suggestion
-const DEFAULT_TEST_AGENT_MODEL = 'claude-opus-4-7'
-const DEFAULT_TEST_AGENT_EFFORT: EffortLevel = 'high'
-
-type AgentSettings = {
-  agentModel?: string
-  agentEffort?: EffortLevel
-}
-
-type ResolvedAgentSettings = {
-  model: string
-  effort: EffortLevel
-  provider: AgentProvider
-}
 
 class TestManager {
   private activeExplorations = new Map<
@@ -51,10 +36,7 @@ class TestManager {
       id: string
       abortController: AbortController
       session?: AgentSession
-      streamedText: string
-      pendingTextDelta: string
-      emittedToolUseIds: Set<string>
-      emittedToolResultIds: Set<string>
+      accumulator: TestAgentEventAccumulator
     }
   >()
   private goalSuggestionAbort: AbortController | null = null
@@ -91,33 +73,6 @@ class TestManager {
     return scan
   }
 
-  private resolveAgentSettings(settings: AgentSettings): ResolvedAgentSettings {
-    const requestedModel = settings.agentModel?.trim() || DEFAULT_TEST_AGENT_MODEL
-    const requestedEffort = settings.agentEffort ?? DEFAULT_TEST_AGENT_EFFORT
-    const provider = getProviderForModel(requestedModel)
-    if (provider) {
-      return {
-        model: requestedModel,
-        effort: requestedEffort,
-        provider,
-      }
-    }
-
-    const defaultProvider = getProviderForModel(DEFAULT_TEST_AGENT_MODEL)
-    if (!defaultProvider) {
-      throw new Error(`No provider found for testing model: ${requestedModel}`)
-    }
-
-    logger.warn(
-      `Unknown testing model "${requestedModel}", falling back to ${DEFAULT_TEST_AGENT_MODEL}`,
-    )
-    return {
-      model: DEFAULT_TEST_AGENT_MODEL,
-      effort: DEFAULT_TEST_AGENT_EFFORT,
-      provider: defaultProvider,
-    }
-  }
-
   async suggestGoals(cwd: string, agentModel?: string, agentEffort?: EffortLevel): Promise<void> {
     // Abort any in-flight suggestion
     if (this.goalSuggestionAbort) {
@@ -136,21 +91,26 @@ class TestManager {
 
     let goalToolCallbackExecuted = false
     const callbackToken = randomUUID()
+    const goalContext = createGoalSuggestionContext(callbackToken)
 
     try {
       const scan = runProjectScan(cwd)
       const prompt = this.buildGoalSuggestionPrompt(cwd, scan)
-      const agent = this.resolveAgentSettings({ agentModel, agentEffort })
+      const agent = resolveFeatureAgent({
+        requestedModel: agentModel,
+        requestedEffort: agentEffort,
+        featureName: 'testing',
+      })
       const { port } = await testingToolCallbackServer.start()
 
       testingToolCallbackServer.registerExploration({
-        callbackToken,
-        explorationId: `goal-suggestion-${callbackToken}`,
+        callbackToken: goalContext.callbackToken,
+        explorationId: goalContext.explorationId,
         cwd,
         e2eOutputPath: '',
         window: this.window,
         onToolExecute: (toolName) => {
-          if (this.isReportGoalsToolName(toolName)) {
+          if (isReportGoalsToolName(toolName)) {
             goalToolCallbackExecuted = true
           }
         },
@@ -166,8 +126,8 @@ class TestManager {
         onQuestionRequest: async () => ({}),
         mcpServers: buildTestingMcpServers({
           callbackPort: port,
-          callbackToken,
-          explorationId: `goal-suggestion-${callbackToken}`,
+          callbackToken: goalContext.callbackToken,
+          explorationId: goalContext.explorationId,
           cwd,
           e2eOutputPath: '',
         }),
@@ -214,7 +174,7 @@ class TestManager {
         } satisfies GoalSuggestionUpdate)
       }
     } finally {
-      testingToolCallbackServer.unregisterExploration(callbackToken)
+      testingToolCallbackServer.unregisterExploration(goalContext.callbackToken)
       if (this.goalSuggestionAbort === abortController) {
         this.goalSuggestionAbort = null
       }
@@ -486,10 +446,7 @@ class TestManager {
     this.activeExplorations.set(explorationId, {
       id: explorationId,
       abortController,
-      streamedText: '',
-      pendingTextDelta: '',
-      emittedToolUseIds: new Set(),
-      emittedToolResultIds: new Set(),
+      accumulator: new TestAgentEventAccumulator(),
     })
 
     const prompt = this.buildPrompt({
@@ -501,7 +458,6 @@ class TestManager {
     let outputTokens = 0
     let lastSendTime = 0
     let accumulatedMessages: ExplorationAgentMessage[] = []
-    let hasUsageUpdate = false
     const active = this.activeExplorations.get(explorationId)
     if (!active) return
 
@@ -512,7 +468,7 @@ class TestManager {
       const update: ExplorationUpdate = {
         explorationId,
         status,
-        streamingText: active.streamedText,
+        streamingText: active.accumulator.streamingText(),
         agentMessages: accumulatedMessages.length > 0 ? accumulatedMessages : undefined,
         inputTokens,
         outputTokens,
@@ -523,7 +479,11 @@ class TestManager {
     }
 
     try {
-      const agent = this.resolveAgentSettings(config)
+      const agent = resolveFeatureAgent({
+        requestedModel: config.agentModel,
+        requestedEffort: config.agentEffort,
+        featureName: 'testing',
+      })
       const { port } = await testingToolCallbackServer.start()
 
       testingToolCallbackServer.registerExploration({
@@ -559,22 +519,13 @@ class TestManager {
       for await (const event of session.send(prompt)) {
         if (event.type === 'error') throw new Error(event.message)
 
-        if (event.type === 'usage_update') {
-          hasUsageUpdate = true
-          inputTokens += event.inputTokens
-          outputTokens += event.outputTokens
-        } else if (event.type === 'turn_complete') {
-          if (hasUsageUpdate) {
-            inputTokens = Math.max(inputTokens, event.inputTokens)
-            outputTokens = Math.max(outputTokens, event.outputTokens)
-          } else {
-            inputTokens += event.inputTokens
-            outputTokens += event.outputTokens
-          }
+        if (event.type === 'usage_update' || event.type === 'turn_complete') {
+          active.accumulator.recordUsage(event)
+          const usage = active.accumulator.usage()
+          inputTokens = usage.inputTokens
+          outputTokens = usage.outputTokens
         } else {
-          this.appendExplorationAgentEvent(event, active, (message) => {
-            accumulatedMessages.push(message)
-          })
+          accumulatedMessages.push(...active.accumulator.append(event))
         }
 
         // Throttled IPC update — accumulates messages between sends
@@ -601,109 +552,6 @@ class TestManager {
       testingToolCallbackServer.unregisterExploration(callbackToken)
       this.activeExplorations.delete(explorationId)
     }
-  }
-
-  private appendExplorationAgentEvent(
-    event: NormalizedEvent,
-    active: {
-      streamedText: string
-      pendingTextDelta: string
-      emittedToolUseIds: Set<string>
-      emittedToolResultIds: Set<string>
-    },
-    pushMessage: (message: ExplorationAgentMessage) => void,
-  ): void {
-    switch (event.type) {
-      case 'text_delta':
-        active.streamedText += event.text
-        active.pendingTextDelta += event.text
-        pushMessage({ type: 'text', text: event.text })
-        break
-      case 'thinking_delta':
-        pushMessage({ type: 'thinking', text: event.text })
-        break
-      case 'tool_use':
-        if (active.emittedToolUseIds.has(event.toolId)) break
-        active.emittedToolUseIds.add(event.toolId)
-        pushMessage({
-          type: 'tool_use',
-          id: event.toolId,
-          name: event.toolName,
-          input: this.toRecord(event.input),
-        })
-        break
-      case 'tool_result':
-        if (active.emittedToolResultIds.has(event.toolId)) break
-        active.emittedToolResultIds.add(event.toolId)
-        pushMessage({
-          type: 'tool_result',
-          toolUseId: event.toolId,
-          content: event.output.slice(0, 2000),
-        })
-        break
-      case 'message_complete':
-        this.appendCompleteMessage(event, active, pushMessage)
-        break
-    }
-  }
-
-  private appendCompleteMessage(
-    event: Extract<NormalizedEvent, { type: 'message_complete' }>,
-    active: {
-      streamedText: string
-      pendingTextDelta: string
-      emittedToolUseIds: Set<string>
-      emittedToolResultIds: Set<string>
-    },
-    pushMessage: (message: ExplorationAgentMessage) => void,
-  ): void {
-    for (const block of event.content) {
-      if (block.type === 'text' && event.role === 'assistant') {
-        if (active.pendingTextDelta.startsWith(block.text)) {
-          active.pendingTextDelta = active.pendingTextDelta.slice(block.text.length)
-          continue
-        }
-
-        active.streamedText += `${block.text}\n`
-        pushMessage({ type: 'text', text: block.text })
-      }
-      if (block.type === 'thinking' && event.role === 'assistant') {
-        pushMessage({ type: 'thinking', text: block.text })
-      }
-      if (block.type === 'tool_use' && event.role === 'assistant') {
-        if (active.emittedToolUseIds.has(block.toolId)) continue
-        active.emittedToolUseIds.add(block.toolId)
-        pushMessage({
-          type: 'tool_use',
-          id: block.toolId,
-          name: block.toolName,
-          input: this.toRecord(block.input),
-        })
-      }
-      if (block.type === 'tool_result' && event.role === 'user') {
-        if (active.emittedToolResultIds.has(block.toolId)) continue
-        active.emittedToolResultIds.add(block.toolId)
-        pushMessage({
-          type: 'tool_result',
-          toolUseId: block.toolId,
-          content: block.output.slice(0, 2000),
-        })
-      }
-    }
-
-    if (event.role === 'assistant') {
-      active.pendingTextDelta = ''
-    }
-  }
-
-  private toRecord(value: unknown): Record<string, unknown> {
-    return value && typeof value === 'object' && !Array.isArray(value)
-      ? (value as Record<string, unknown>)
-      : {}
-  }
-
-  private isReportGoalsToolName(toolName: string): boolean {
-    return toolName === 'report_goals' || toolName.endsWith('__report_goals')
   }
 
   private buildGoalSuggestionPrompt(cwd: string, scan: ProjectScan): string {

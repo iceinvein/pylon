@@ -20,7 +20,7 @@ import remarkGfm from 'remark-gfm'
 import type { EffortLevel, ReviewFocus } from '../../../../shared/types'
 import { getProviderSetupError } from '../../lib/setup-errors'
 import { usePrReviewStore } from '../../store/pr-review-store'
-import { ClaudeCodeSetupCard } from '../setup/ClaudeCodeSetupCard'
+import { ProviderSetupCard } from '../setup/ProviderSetupCard'
 import { ActiveIssuesPanel } from './ActiveIssuesPanel'
 import { AllFindingsPanel } from './AllFindingsPanel'
 import { DiffFileTree } from './DiffFileTree'
@@ -125,7 +125,7 @@ function ReviewErrorState({ error, onRetry }: { error: string | null; onRetry: (
         )}
       </div>
 
-      {setupError && <ClaudeCodeSetupCard errorMessage={error} setup={setupError} />}
+      {setupError && <ProviderSetupCard errorMessage={error} setup={setupError} />}
 
       <button
         type="button"

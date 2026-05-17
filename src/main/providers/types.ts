@@ -10,16 +10,14 @@
  * rendering when the renderer needs full fidelity.
  */
 
+import type { ProviderId, ProviderModelEntry } from '../../shared/provider-models'
 import type { Attachment, EffortLevel, PermissionMode, SessionInitInfo } from '../../shared/types'
 
 // ── Provider Identity ────────────────────────────
 
-export type ProviderId = 'claude' | 'codex'
+export type { ProviderId } from '../../shared/provider-models'
 
-export type ProviderModel = {
-  id: string
-  label: string
-  provider: ProviderId
+export type ProviderModel = ProviderModelEntry & {
   contextWindow: number
   /** Which effort levels are valid for this model */
   supportsEffort: EffortLevel[]
@@ -260,13 +258,25 @@ export type AgentSession = {
   send(prompt: string, attachments?: Attachment[]): AsyncIterable<NormalizedEvent>
 
   /** Send a text-only query with no tools (for git AI, summaries, etc.) */
-  sendTextOnly(prompt: string): AsyncIterable<NormalizedEvent>
+  sendTextOnly(input: TextOnlyPrompt): AsyncIterable<NormalizedEvent>
 
   /** Abort the current turn */
   stop(): void
 
   /** SDK-native session/thread ID (available after first session_init event) */
   readonly nativeSessionId: string | null
+}
+
+export type TextOnlyPrompt = {
+  /** Provider-level instructions. Providers should use a native system channel when their SDK exposes one. */
+  system: string
+  /** The user turn for the text-only query. */
+  prompt: string
+}
+
+export function flattenTextOnlyPrompt(input: TextOnlyPrompt): string {
+  const system = input.system.trim()
+  return system ? `${system}\n\n${input.prompt}` : input.prompt
 }
 
 // ── Effort Mapping ───────────────────────────────

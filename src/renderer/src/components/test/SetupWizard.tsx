@@ -12,19 +12,13 @@ import {
 import { AnimatePresence, motion } from 'motion/react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type {
-  AppSettings,
   EffortLevel,
   ExplorationMode,
   ProjectScan,
   SuggestedGoal,
 } from '../../../../shared/types'
-import {
-  FALLBACK_PROVIDER_MODELS,
-  normalizeProviderModels,
-  type ProviderId,
-  type ProviderModelEntry,
-  resolveFeatureAgentSelection,
-} from '../../lib/provider-models'
+import { useFeatureAgentSelection } from '../../hooks/use-feature-agent-selection'
+import type { ProviderId, ProviderModelEntry } from '../../lib/provider-models'
 import { timeAgo } from '../../lib/utils'
 import { useTestStore } from '../../store/test-store'
 import { ProviderModelPicker } from '../ProviderModelPicker'
@@ -551,6 +545,11 @@ function Step3Config({
 /*  SetupWizard — main component                                              */
 /* -------------------------------------------------------------------------- */
 
+function getTestAgentSnapshot() {
+  const { agentModel, agentEffort, agentSelectionRevision } = useTestStore.getState()
+  return { agentModel, agentEffort, agentSelectionRevision }
+}
+
 export function SetupWizard() {
   const projects = useTestStore((s) => s.projects)
   const selectedProject = useTestStore((s) => s.selectedProject)
@@ -559,7 +558,6 @@ export function SetupWizard() {
   const suggestedGoals = useTestStore((s) => s.suggestedGoals)
   const goalsLoading = useTestStore((s) => s.goalsLoading)
   const customGoals = useTestStore((s) => s.customGoals)
-  const agentProvider = useTestStore((s) => s.agentProvider)
   const agentModel = useTestStore((s) => s.agentModel)
   const agentEffort = useTestStore((s) => s.agentEffort)
   const agentCount = useTestStore((s) => s.agentCount)
@@ -586,20 +584,11 @@ export function SetupWizard() {
   const [e2ePath, setE2ePath] = useState('')
   const [mode, setMode] = useState<ExplorationMode>('manual')
   const [requirements, setRequirements] = useState('')
-  const [providerModels, setProviderModels] =
-    useState<ProviderModelEntry[]>(FALLBACK_PROVIDER_MODELS)
-  const agentSelectionRequestRef = useRef(0)
-  const agentSelectionBaseRevisionRef = useRef(useTestStore.getState().agentSelectionRevision)
-  const agentSelectionLoadRef = useRef<Promise<{
-    models: ProviderModelEntry[]
-    selection: AgentSelection
-  }> | null>(null)
-
-  type AgentSelection = {
-    provider: ProviderId
-    model: string
-    effort: EffortLevel
-  }
+  const { providerModels, agentProvider, loadAgentSelection } = useFeatureAgentSelection({
+    settings: { modelKey: 'testingAgentModel', effortKey: 'testingAgentEffort' },
+    getSnapshot: getTestAgentSnapshot,
+    applySelection: setAgentSelection,
+  })
 
   function normalizeUrlInput(value: string): string | null {
     const trimmed = value.trim()
@@ -618,64 +607,9 @@ export function SetupWizard() {
     loadProjects()
   }, [loadProjects])
 
-  const loadAgentSelection = useCallback(async () => {
-    const requestId = agentSelectionRequestRef.current + 1
-    agentSelectionRequestRef.current = requestId
-    const startRevision = useTestStore.getState().agentSelectionRevision
-
-    agentSelectionLoadRef.current ??= Promise.allSettled([
-      window.api.getProviderModels(),
-      window.api.getSettings(),
-    ])
-      .then(([modelsResult, settingsResult]) => {
-        const models =
-          modelsResult.status === 'fulfilled'
-            ? normalizeProviderModels(modelsResult.value)
-            : FALLBACK_PROVIDER_MODELS
-        const settings =
-          settingsResult.status === 'fulfilled' && settingsResult.value
-            ? (settingsResult.value as Partial<AppSettings>)
-            : {}
-        const selection = resolveFeatureAgentSelection({
-          persistedModel: settings.testingAgentModel,
-          persistedEffort: settings.testingAgentEffort,
-          appDefaultModel: settings.defaultModel,
-          appDefaultEffort: settings.defaultEffort,
-          models,
-        })
-        return { models, selection }
-      })
-      .finally(() => {
-        agentSelectionLoadRef.current = null
-      })
-
-    const { models, selection } = await agentSelectionLoadRef.current
-    const currentState = useTestStore.getState()
-    const canApplySelection =
-      agentSelectionRequestRef.current === requestId &&
-      currentState.agentSelectionRevision === startRevision &&
-      startRevision === agentSelectionBaseRevisionRef.current
-
-    setProviderModels(models)
-    if (canApplySelection) {
-      setAgentSelection(selection.provider, selection.model, selection.effort)
-      agentSelectionBaseRevisionRef.current = useTestStore.getState().agentSelectionRevision
-      return selection
-    }
-
-    return {
-      provider: currentState.agentProvider,
-      model: currentState.agentModel,
-      effort: currentState.agentEffort,
-    }
-  }, [setAgentSelection])
-
   useEffect(() => {
-    loadAgentSelection().catch(() => {
-      setProviderModels(FALLBACK_PROVIDER_MODELS)
-      setAgentSelection('claude', 'claude-opus-4-7', 'high')
-    })
-  }, [loadAgentSelection, setAgentSelection])
+    void loadAgentSelection()
+  }, [loadAgentSelection])
 
   // Resolve e2e path when project is selected
   useEffect(() => {
@@ -689,15 +623,7 @@ export function SetupWizard() {
   async function handleProjectSelect(cwd: string) {
     selectProject(cwd)
     setSetupStep(2)
-    const selection = await loadAgentSelection().catch((err) => {
-      console.error('loadTestingAgentSelection failed:', err)
-      const currentState = useTestStore.getState()
-      return {
-        provider: currentState.agentProvider,
-        model: currentState.agentModel,
-        effort: currentState.agentEffort,
-      }
-    })
+    const selection = await loadAgentSelection()
     if (useTestStore.getState().selectedProject === cwd) {
       void requestGoalSuggestions(cwd, {
         model: selection.model,
@@ -729,8 +655,8 @@ export function SetupWizard() {
   }
 
   const handleAgentSelectionChange = useCallback(
-    (provider: ProviderId, model: string, effort: EffortLevel) => {
-      setAgentSelection(provider, model, effort)
+    (_provider: ProviderId, model: string, effort: EffortLevel) => {
+      setAgentSelection(model, effort)
       const persistSelection = Promise.all([
         window.api.updateSettings('testingAgentModel', model),
         window.api.updateSettings('testingAgentEffort', effort),

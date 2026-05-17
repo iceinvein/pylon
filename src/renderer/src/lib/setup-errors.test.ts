@@ -4,6 +4,7 @@ import { getProviderSetupError, isClaudeSetupError } from './setup-errors'
 describe('provider setup errors', () => {
   test('returns Claude setup metadata for existing Claude Code setup errors', () => {
     expect(getProviderSetupError('Claude Code CLI not found. Install Claude Code.')).toEqual({
+      code: 'claude-cli-missing',
       provider: 'claude',
       title: 'Claude Code Required',
       description:
@@ -14,12 +15,13 @@ describe('provider setup errors', () => {
     })
   })
 
-  test('returns Codex setup metadata for Codex CLI auth errors', () => {
+  test('returns Codex setup metadata for Codex CLI missing errors', () => {
     expect(getProviderSetupError('Codex auth failed: codex command not found')).toEqual({
+      code: 'codex-cli-missing',
       provider: 'codex',
       title: 'Codex Required',
       description:
-        'This action requires Codex to be installed and authenticated on your machine. Make sure the `codex` command works in Terminal, then retry.',
+        'This action requires Codex to be installed on your machine. Make sure the `codex` command works in Terminal, then retry.',
       actionLabel: 'Install Codex',
       actionUrl: 'https://developers.openai.com/codex/cli',
       command: 'codex',
@@ -44,6 +46,7 @@ describe('provider setup errors', () => {
 
   test('returns Codex setup metadata for local provider auth wrapping', () => {
     expect(getProviderSetupError('Codex auth failed')?.provider).toBe('codex')
+    expect(getProviderSetupError('Codex auth failed')?.code).toBe('codex-auth-missing')
   })
 
   test('does not classify unrelated command-not-found errors under Codex context', () => {

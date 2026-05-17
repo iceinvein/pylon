@@ -316,10 +316,8 @@ Rules:
 
 Respond with a valid JSON array. If the project needs no special setup beyond dependency installation, return a minimal array with just the install step.`
 
-    const combinedPrompt = `${systemPrompt}\n\n${context}`
-
     let responseText = ''
-    for await (const event of textSession.sendTextOnly(combinedPrompt)) {
+    for await (const event of textSession.sendTextOnly({ system: systemPrompt, prompt: context })) {
       if (event.type === 'message_complete' && event.role === 'assistant') {
         const textBlock = event.content.find((b) => b.type === 'text')
         if (textBlock && textBlock.type === 'text') {
