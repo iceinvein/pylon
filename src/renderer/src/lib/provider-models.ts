@@ -98,6 +98,14 @@ export function providerForModel(
   return models.find((model) => model.id === modelId)?.provider
 }
 
+export function providerForModelId(
+  modelId: string | undefined,
+  models: ProviderModelEntry[] = FALLBACK_PROVIDER_MODELS,
+): ProviderId | undefined {
+  const normalized = modelId?.trim()
+  return normalized ? providerForModel(normalized, models) : undefined
+}
+
 export function defaultModelForProvider(
   provider: ProviderId,
   models: ProviderModelEntry[],

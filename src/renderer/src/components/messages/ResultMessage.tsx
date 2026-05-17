@@ -1,5 +1,6 @@
 import { CheckCircle, XCircle } from 'lucide-react'
 import { motion } from 'motion/react'
+import { providerForModelId } from '../../lib/provider-models'
 import { getProviderSetupError } from '../../lib/setup-errors'
 import { formatCost, formatTokens } from '../../lib/utils'
 import { ClaudeCodeSetupCard } from '../setup/ClaudeCodeSetupCard'
@@ -16,10 +17,7 @@ type ResultMessageProps = {
 }
 
 function getProviderForResult(model?: string): 'Claude' | 'Codex' {
-  const normalized = model?.trim().toLowerCase() ?? ''
-  return normalized.startsWith('gpt-') || normalized.startsWith('o') || normalized.includes('codex')
-    ? 'Codex'
-    : 'Claude'
+  return providerForModelId(model) === 'codex' ? 'Codex' : 'Claude'
 }
 
 const ENTRANCE = {

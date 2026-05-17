@@ -4,6 +4,7 @@ import {
   defaultModelForProvider,
   FALLBACK_PROVIDER_MODELS,
   normalizeProviderModels,
+  providerForModelId,
   providerLabel,
   resolveFeatureAgentSelection,
 } from './provider-models'
@@ -12,6 +13,21 @@ describe('provider model utilities', () => {
   test('labels known providers', () => {
     expect(providerLabel('claude')).toBe('Claude Code')
     expect(providerLabel('codex')).toBe('Codex')
+  })
+
+  test('resolves providers from model catalog entries without prefix heuristics', () => {
+    expect(providerForModelId('gpt-5.5')).toBe('codex')
+    expect(providerForModelId(' claude-opus-4-7 ')).toBe('claude')
+    expect(
+      providerForModelId('o4-mini', [
+        {
+          id: 'o4-mini',
+          label: 'O4 Mini',
+          provider: 'codex',
+        },
+      ]),
+    ).toBe('codex')
+    expect(providerForModelId('opus-local')).toBeUndefined()
   })
 
   test('returns provider defaults from available models', () => {
