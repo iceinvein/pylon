@@ -3,7 +3,7 @@ import { motion } from 'motion/react'
 import { providerForModelId } from '../../lib/provider-models'
 import { getProviderSetupError } from '../../lib/setup-errors'
 import { formatCost, formatTokens } from '../../lib/utils'
-import { ClaudeCodeSetupCard } from '../setup/ClaudeCodeSetupCard'
+import { ProviderSetupCard } from '../setup/ProviderSetupCard'
 
 type ResultMessageProps = {
   isError: boolean
@@ -54,7 +54,7 @@ export function ResultMessage({
           }}
         />
         {setupError ? (
-          <ClaudeCodeSetupCard errorMessage={errorMessage} setup={setupError} compact />
+          <ProviderSetupCard errorMessage={errorMessage} setup={setupError} compact />
         ) : (
           <div className="flex items-center gap-2">
             <span className="rounded-full bg-error/15 px-2 py-0.5 text-error text-xs">
