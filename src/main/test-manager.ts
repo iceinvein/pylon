@@ -22,6 +22,7 @@ import { checkPortInUse, scanProject as runProjectScan } from './project-scanner
 import type { AgentSession } from './providers'
 import { serverManager } from './server-manager'
 import { TestAgentEventAccumulator } from './test-agent-event-accumulator'
+import { createGoalSuggestionContext, isReportGoalsToolName } from './test-goal-session'
 import { buildTestingMcpServers, testingToolCallbackServer } from './test-mcp-bridge'
 
 const logger = log.child('test-manager')
@@ -90,6 +91,7 @@ class TestManager {
 
     let goalToolCallbackExecuted = false
     const callbackToken = randomUUID()
+    const goalContext = createGoalSuggestionContext(callbackToken)
 
     try {
       const scan = runProjectScan(cwd)
@@ -102,13 +104,13 @@ class TestManager {
       const { port } = await testingToolCallbackServer.start()
 
       testingToolCallbackServer.registerExploration({
-        callbackToken,
-        explorationId: `goal-suggestion-${callbackToken}`,
+        callbackToken: goalContext.callbackToken,
+        explorationId: goalContext.explorationId,
         cwd,
         e2eOutputPath: '',
         window: this.window,
         onToolExecute: (toolName) => {
-          if (this.isReportGoalsToolName(toolName)) {
+          if (isReportGoalsToolName(toolName)) {
             goalToolCallbackExecuted = true
           }
         },
@@ -124,8 +126,8 @@ class TestManager {
         onQuestionRequest: async () => ({}),
         mcpServers: buildTestingMcpServers({
           callbackPort: port,
-          callbackToken,
-          explorationId: `goal-suggestion-${callbackToken}`,
+          callbackToken: goalContext.callbackToken,
+          explorationId: goalContext.explorationId,
           cwd,
           e2eOutputPath: '',
         }),
@@ -172,7 +174,7 @@ class TestManager {
         } satisfies GoalSuggestionUpdate)
       }
     } finally {
-      testingToolCallbackServer.unregisterExploration(callbackToken)
+      testingToolCallbackServer.unregisterExploration(goalContext.callbackToken)
       if (this.goalSuggestionAbort === abortController) {
         this.goalSuggestionAbort = null
       }
@@ -550,10 +552,6 @@ class TestManager {
       testingToolCallbackServer.unregisterExploration(callbackToken)
       this.activeExplorations.delete(explorationId)
     }
-  }
-
-  private isReportGoalsToolName(toolName: string): boolean {
-    return toolName === 'report_goals' || toolName.endsWith('__report_goals')
   }
 
   private buildGoalSuggestionPrompt(cwd: string, scan: ProjectScan): string {
