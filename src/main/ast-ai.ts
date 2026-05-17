@@ -12,6 +12,57 @@ const logger = log.child('ast-ai')
 
 export type QueryFn = (system: string, prompt: string) => Promise<string>
 
+function extractJsonObject(text: string): string {
+  const trimmed = text.trim()
+  if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+    return trimmed
+  }
+
+  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/)
+  if (fenced) {
+    return fenced[1].trim()
+  }
+
+  let start = -1
+  let depth = 0
+  let inString = false
+  let escaped = false
+
+  for (let i = 0; i < trimmed.length; i++) {
+    const char = trimmed[i]
+
+    if (inString) {
+      if (escaped) {
+        escaped = false
+      } else if (char === '\\') {
+        escaped = true
+      } else if (char === '"') {
+        inString = false
+      }
+      continue
+    }
+
+    if (char === '"') {
+      inString = true
+      continue
+    }
+
+    if (char === '{') {
+      if (depth === 0) {
+        start = i
+      }
+      depth++
+    } else if (char === '}' && depth > 0) {
+      depth--
+      if (depth === 0 && start !== -1) {
+        return trimmed.slice(start, i + 1)
+      }
+    }
+  }
+
+  return trimmed
+}
+
 // ── Graph summary builder ──
 
 function buildGraphSummary(graph: RepoGraph): string {
@@ -48,16 +99,24 @@ function buildGraphSummary(graph: RepoGraph): string {
 function parseJsonFromProviderText<T>(raw: string): T {
   const trimmed = raw.trim()
   const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/)
-  const candidate = fenced ? fenced[1].trim() : trimmed
+  const candidates = fenced ? [fenced[1].trim(), trimmed] : [trimmed]
 
-  try {
-    return JSON.parse(candidate) as T
-  } catch {
-    const start = candidate.indexOf('{')
-    const end = candidate.lastIndexOf('}')
-    if (start === -1 || end <= start) throw new Error('No JSON object found in provider response')
-    return JSON.parse(candidate.slice(start, end + 1)) as T
+  for (const candidate of candidates) {
+    try {
+      return JSON.parse(candidate) as T
+    } catch {
+      const extracted = extractJsonObject(candidate)
+      if (extracted !== candidate) {
+        try {
+          return JSON.parse(extracted) as T
+        } catch {
+          // Try the next candidate before reporting failure.
+        }
+      }
+    }
   }
+
+  throw new Error('No JSON object found in provider response')
 }
 
 // ── 1. Analyze repo with AI ──

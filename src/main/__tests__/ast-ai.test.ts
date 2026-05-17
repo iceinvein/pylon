@@ -65,6 +65,33 @@ ${JSON.stringify(expected)}
     await expect(analyzeRepoWithAi(graph, queryFn)).resolves.toEqual(expected)
   })
 
+  test('analyzeRepoWithAi parses architecture JSON from a markdown response', async () => {
+    const expected: ArchAnalysis = {
+      layers: [{ id: 'main', name: 'Main', color: '#336699', pattern: 'electron' }],
+      clusters: [
+        {
+          id: 'main-process',
+          name: 'Main Process',
+          description: 'Electron main process files',
+          files: ['src/main/index.ts'],
+          layerId: 'main',
+        },
+      ],
+      annotations: { 'src/main/index.ts': 'Application bootstrap' },
+      callEdges: [],
+      dataFlows: [],
+    }
+    const queryFn: QueryFn = async () => `## Architecture Analysis
+
+Here is the requested architecture JSON:
+
+\`\`\`json
+${JSON.stringify(expected)}
+\`\`\``
+
+    await expect(analyzeRepoWithAi(graph, queryFn)).resolves.toEqual(expected)
+  })
+
   test('chatAboutCode strips highlights comment and parses highlights', async () => {
     const queryFn: QueryFn = async () =>
       'The entry point calls the runtime.\n<!-- highlights: [{"filePath":"src/main.ts","symbolName":"runApp"}] -->'
