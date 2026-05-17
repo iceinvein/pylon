@@ -17,32 +17,15 @@ import type {
 } from '../shared/types'
 import { getDb } from './db'
 import { resolveE2eOutputPath } from './e2e-path-resolver'
+import { resolveFeatureAgent } from './feature-agent-resolver'
 import { checkPortInUse, scanProject as runProjectScan } from './project-scanner'
-import {
-  type AgentProvider,
-  type AgentSession,
-  getProviderForModel,
-  type NormalizedEvent,
-} from './providers'
+import type { AgentSession, NormalizedEvent } from './providers'
 import { serverManager } from './server-manager'
 import { buildTestingMcpServers, testingToolCallbackServer } from './test-mcp-bridge'
 
 const logger = log.child('test-manager')
 const STREAM_THROTTLE_MS = 300
 const GOAL_SUGGESTION_TIMEOUT_MS = 60_000 // 60s max for goal suggestion
-const DEFAULT_TEST_AGENT_MODEL = 'claude-opus-4-7'
-const DEFAULT_TEST_AGENT_EFFORT: EffortLevel = 'high'
-
-type AgentSettings = {
-  agentModel?: string
-  agentEffort?: EffortLevel
-}
-
-type ResolvedAgentSettings = {
-  model: string
-  effort: EffortLevel
-  provider: AgentProvider
-}
 
 class TestManager {
   private activeExplorations = new Map<
@@ -91,33 +74,6 @@ class TestManager {
     return scan
   }
 
-  private resolveAgentSettings(settings: AgentSettings): ResolvedAgentSettings {
-    const requestedModel = settings.agentModel?.trim() || DEFAULT_TEST_AGENT_MODEL
-    const requestedEffort = settings.agentEffort ?? DEFAULT_TEST_AGENT_EFFORT
-    const provider = getProviderForModel(requestedModel)
-    if (provider) {
-      return {
-        model: requestedModel,
-        effort: requestedEffort,
-        provider,
-      }
-    }
-
-    const defaultProvider = getProviderForModel(DEFAULT_TEST_AGENT_MODEL)
-    if (!defaultProvider) {
-      throw new Error(`No provider found for testing model: ${requestedModel}`)
-    }
-
-    logger.warn(
-      `Unknown testing model "${requestedModel}", falling back to ${DEFAULT_TEST_AGENT_MODEL}`,
-    )
-    return {
-      model: DEFAULT_TEST_AGENT_MODEL,
-      effort: DEFAULT_TEST_AGENT_EFFORT,
-      provider: defaultProvider,
-    }
-  }
-
   async suggestGoals(cwd: string, agentModel?: string, agentEffort?: EffortLevel): Promise<void> {
     // Abort any in-flight suggestion
     if (this.goalSuggestionAbort) {
@@ -140,7 +96,11 @@ class TestManager {
     try {
       const scan = runProjectScan(cwd)
       const prompt = this.buildGoalSuggestionPrompt(cwd, scan)
-      const agent = this.resolveAgentSettings({ agentModel, agentEffort })
+      const agent = resolveFeatureAgent({
+        feature: 'testing',
+        requestedModel: agentModel,
+        requestedEffort: agentEffort,
+      })
       const { port } = await testingToolCallbackServer.start()
 
       testingToolCallbackServer.registerExploration({
@@ -523,7 +483,11 @@ class TestManager {
     }
 
     try {
-      const agent = this.resolveAgentSettings(config)
+      const agent = resolveFeatureAgent({
+        feature: 'testing',
+        requestedModel: config.agentModel,
+        requestedEffort: config.agentEffort,
+      })
       const { port } = await testingToolCallbackServer.start()
 
       testingToolCallbackServer.registerExploration({
