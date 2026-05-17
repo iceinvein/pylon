@@ -49,6 +49,22 @@ describe('ast-ai provider-neutral prompts', () => {
     await expect(analyzeRepoWithAi(graph, queryFn)).resolves.toEqual(expected)
   })
 
+  test('analyzeRepoWithAi falls back to embedded JSON when a fenced block has prose', async () => {
+    const expected: ArchAnalysis = {
+      layers: [],
+      clusters: [],
+      annotations: { 'src/main.ts': 'Starts the app' },
+      callEdges: [],
+      dataFlows: [],
+    }
+    const queryFn: QueryFn = async () => `\`\`\`json
+Here is the result:
+${JSON.stringify(expected)}
+\`\`\``
+
+    await expect(analyzeRepoWithAi(graph, queryFn)).resolves.toEqual(expected)
+  })
+
   test('chatAboutCode strips highlights comment and parses highlights', async () => {
     const queryFn: QueryFn = async () =>
       'The entry point calls the runtime.\n<!-- highlights: [{"filePath":"src/main.ts","symbolName":"runApp"}] -->'

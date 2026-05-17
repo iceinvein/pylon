@@ -232,7 +232,11 @@ class CodexSession implements AgentSession {
 
   async *sendTextOnly(prompt: string): AsyncIterable<NormalizedEvent> {
     const codex = await this.ensureCodex()
-    const threadOptions = this.buildThreadOptions()
+    const threadOptions: ThreadOptions = {
+      ...this.buildThreadOptions(),
+      approvalPolicy: 'never',
+      sandboxMode: 'read-only',
+    }
     const thread = codex.startThread(threadOptions)
 
     try {

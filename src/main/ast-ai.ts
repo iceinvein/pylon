@@ -48,15 +48,15 @@ function buildGraphSummary(graph: RepoGraph): string {
 function parseJsonFromProviderText<T>(raw: string): T {
   const trimmed = raw.trim()
   const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/)
-  if (fenced) return JSON.parse(fenced[1]) as T
+  const candidate = fenced ? fenced[1].trim() : trimmed
 
   try {
-    return JSON.parse(trimmed) as T
+    return JSON.parse(candidate) as T
   } catch {
-    const start = trimmed.indexOf('{')
-    const end = trimmed.lastIndexOf('}')
+    const start = candidate.indexOf('{')
+    const end = candidate.lastIndexOf('}')
     if (start === -1 || end <= start) throw new Error('No JSON object found in provider response')
-    return JSON.parse(trimmed.slice(start, end + 1)) as T
+    return JSON.parse(candidate.slice(start, end + 1)) as T
   }
 }
 

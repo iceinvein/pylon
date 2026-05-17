@@ -1,6 +1,6 @@
 import type { EffortLevel } from '../shared/types'
 import { getProviderForModel } from './providers/registry'
-import type { AgentProvider, McpServerStdioConfig } from './providers/types'
+import type { AgentProvider } from './providers/types'
 
 type ProviderTextQueryOptions = {
   cwd: string
@@ -8,7 +8,7 @@ type ProviderTextQueryOptions = {
   effort: EffortLevel
   systemPrompt: string
   prompt: string
-  mcpServers?: Record<string, McpServerStdioConfig>
+  abortController?: AbortController
   provider?: AgentProvider
 }
 
@@ -20,21 +20,29 @@ export async function runProviderTextQuery(options: ProviderTextQueryOptions): P
     cwd: options.cwd,
     model: options.model,
     effort: options.effort,
-    permissionMode: 'auto-approve',
-    abortController: new AbortController(),
-    onPermissionRequest: async () => ({ behavior: 'allow' as const }),
+    permissionMode: 'never',
+    abortController: options.abortController ?? new AbortController(),
+    onPermissionRequest: async () => ({
+      behavior: 'deny' as const,
+      message: 'Tool use is disabled for text-only provider queries.',
+    }),
     onQuestionRequest: async () => ({}),
-    mcpServers: options.mcpServers,
   })
 
   const combinedPrompt = `${options.systemPrompt}\n\n${options.prompt}`
   let responseText = ''
-  for await (const event of textSession.sendTextOnly(combinedPrompt)) {
-    if (event.type === 'error') throw new Error(event.message)
-    if (event.type === 'message_complete' && event.role === 'assistant') {
-      const textBlock = event.content.find((b) => b.type === 'text')
-      if (textBlock?.type === 'text') responseText = textBlock.text
+  try {
+    for await (const event of textSession.sendTextOnly(combinedPrompt)) {
+      if (event.type === 'error') throw new Error(event.message)
+      if (event.type === 'message_complete' && event.role === 'assistant') {
+        responseText += event.content
+          .filter((b) => b.type === 'text')
+          .map((b) => b.text)
+          .join('')
+      }
     }
+    return responseText
+  } finally {
+    textSession.stop()
   }
-  return responseText
 }

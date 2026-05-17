@@ -21,10 +21,10 @@ export type CachedAstAnalysisRow = {
 export function normalizeCachedAnalysisRow(
   row: CachedAstAnalysisRow | undefined,
 ): { repoGraph: unknown; archAnalysis: unknown | null; analyzedAt: number } | null {
-  if (!row?.arch_analysis) return null
+  if (!row) return null
   return {
     repoGraph: JSON.parse(row.repo_graph),
-    archAnalysis: JSON.parse(row.arch_analysis),
+    archAnalysis: row.arch_analysis ? JSON.parse(row.arch_analysis) : null,
     analyzedAt: row.analyzed_at,
   }
 }

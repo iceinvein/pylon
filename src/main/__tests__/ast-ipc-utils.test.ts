@@ -16,14 +16,18 @@ const graph = {
 }
 
 describe('AST IPC utilities', () => {
-  test('ignores graph-only cache entries so provider analysis can rerun', () => {
+  test('returns graph-only cache entries so the renderer can show the graph while AI reruns', () => {
     expect(
       normalizeCachedAnalysisRow({
         repo_graph: JSON.stringify(graph),
         arch_analysis: null,
         analyzed_at: 123,
       }),
-    ).toBeNull()
+    ).toEqual({
+      repoGraph: graph,
+      archAnalysis: null,
+      analyzedAt: 123,
+    })
   })
 
   test('returns completed cache entries with architecture analysis intact', () => {

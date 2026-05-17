@@ -166,11 +166,15 @@ export function AstView() {
         setRepoGraph(cached.repoGraph as import('../../../shared/types').RepoGraph)
         if (cached.archAnalysis) {
           setArchAnalysis(cached.archAnalysis as import('../../../shared/types').ArchAnalysis)
+          setAnalysisStatus(
+            'ready',
+            `Loaded from cache (${new Date(cached.analyzedAt).toLocaleString()})`,
+          )
+          return
         }
-        setAnalysisStatus(
-          'ready',
-          `Loaded from cache (${new Date(cached.analyzedAt).toLocaleString()})`,
-        )
+
+        setAnalysisStatus('analyzing', 'Loaded graph from cache; refreshing architecture analysis')
+        await window.api.analyzeScope(scopePath, selection.model, selection.effort)
         return
       }
 

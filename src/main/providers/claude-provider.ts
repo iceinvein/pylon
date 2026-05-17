@@ -213,9 +213,9 @@ class ClaudeSession implements AgentSession {
     const options: SdkOptions & Record<string, unknown> = {
       cwd: this.config.cwd,
       model: this.config.model,
-      abortController: new AbortController(),
+      abortController: this.config.abortController,
       tools: [],
-      permissionMode: 'acceptEdits' as const,
+      permissionMode: 'default' as const,
       ...getClaudeCodeSdkRuntimeOptions(),
     }
 
