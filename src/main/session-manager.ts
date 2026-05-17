@@ -739,9 +739,8 @@ export class SessionManager {
       onQuestionRequest: async () => ({}),
     })
 
-    const combinedPrompt = `${systemPrompt}\n\n${prompt}`
     let responseText = ''
-    for await (const event of textSession.sendTextOnly(combinedPrompt)) {
+    for await (const event of textSession.sendTextOnly({ system: systemPrompt, prompt })) {
       if (event.type === 'error') {
         throw new Error(event.message)
       }

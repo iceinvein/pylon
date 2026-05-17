@@ -258,13 +258,18 @@ export type AgentSession = {
   send(prompt: string, attachments?: Attachment[]): AsyncIterable<NormalizedEvent>
 
   /** Send a text-only query with no tools (for git AI, summaries, etc.) */
-  sendTextOnly(prompt: string): AsyncIterable<NormalizedEvent>
+  sendTextOnly(input: TextOnlyPrompt): AsyncIterable<NormalizedEvent>
 
   /** Abort the current turn */
   stop(): void
 
   /** SDK-native session/thread ID (available after first session_init event) */
   readonly nativeSessionId: string | null
+}
+
+export type TextOnlyPrompt = {
+  system: string
+  prompt: string
 }
 
 // ── Effort Mapping ───────────────────────────────

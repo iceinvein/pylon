@@ -51,6 +51,7 @@ import type {
   ProviderCapabilities,
   ProviderModel,
   ProviderSessionConfig,
+  TextOnlyPrompt,
 } from './types'
 import { mapEffortToNative } from './types'
 
@@ -242,7 +243,7 @@ class CodexSession implements AgentSession {
     }
   }
 
-  async *sendTextOnly(prompt: string): AsyncIterable<NormalizedEvent> {
+  async *sendTextOnly(input: TextOnlyPrompt): AsyncIterable<NormalizedEvent> {
     const codex = await this.ensureCodex()
     const threadOptions: ThreadOptions = {
       ...this.buildThreadOptions(),
@@ -252,6 +253,7 @@ class CodexSession implements AgentSession {
     const thread = codex.startThread(threadOptions)
 
     try {
+      const prompt = `${input.system}\n\n${input.prompt}`
       const turn = await thread.run(prompt, {
         signal: this.config.abortController.signal,
       })

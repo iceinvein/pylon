@@ -5,6 +5,7 @@ import type {
   AgentSession,
   NormalizedEvent,
   ProviderSessionConfig,
+  TextOnlyPrompt,
 } from '../providers'
 
 function fakeProvider(
@@ -17,10 +18,9 @@ function fakeProvider(
   const session: AgentSession = {
     nativeSessionId: null,
     async *send() {},
-    async *sendTextOnly(prompt: string) {
+    async *sendTextOnly(input: TextOnlyPrompt) {
       await sessionConfigAssertions
-      expect(prompt).toContain('System text')
-      expect(prompt).toContain('User text')
+      expect(input).toEqual({ system: 'System text', prompt: 'User text' })
       for (const event of events) yield event
     },
     stop() {

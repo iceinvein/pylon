@@ -25,4 +25,5 @@ export type {
   ProviderId,
   ProviderModel,
   ProviderSessionConfig,
+  TextOnlyPrompt,
 } from './types'

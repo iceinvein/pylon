@@ -30,6 +30,7 @@ import type {
   ProviderCapabilities,
   ProviderModel,
   ProviderSessionConfig,
+  TextOnlyPrompt,
 } from './types'
 
 const logger = log.child('claude-provider')
@@ -210,7 +211,7 @@ class ClaudeSession implements AgentSession {
     }
   }
 
-  async *sendTextOnly(prompt: string): AsyncIterable<NormalizedEvent> {
+  async *sendTextOnly(input: TextOnlyPrompt): AsyncIterable<NormalizedEvent> {
     const options: SdkOptions & Record<string, unknown> = {
       cwd: this.config.cwd,
       model: this.config.model,
@@ -220,6 +221,7 @@ class ClaudeSession implements AgentSession {
       ...getClaudeCodeSdkRuntimeOptions(),
     }
 
+    const prompt = `${input.system}\n\n${input.prompt}`
     const q = query({ prompt, options })
     let responseText = ''
 

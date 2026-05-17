@@ -29,10 +29,12 @@ export async function runProviderTextQuery(options: ProviderTextQueryOptions): P
     onQuestionRequest: async () => ({}),
   })
 
-  const combinedPrompt = `${options.systemPrompt}\n\n${options.prompt}`
   let responseText = ''
   try {
-    for await (const event of textSession.sendTextOnly(combinedPrompt)) {
+    for await (const event of textSession.sendTextOnly({
+      system: options.systemPrompt,
+      prompt: options.prompt,
+    })) {
       if (event.type === 'error') throw new Error(event.message)
       if (event.type === 'message_complete' && event.role === 'assistant') {
         responseText += event.content
