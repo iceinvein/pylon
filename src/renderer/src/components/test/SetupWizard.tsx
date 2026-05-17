@@ -12,18 +12,16 @@ import {
 import { AnimatePresence, motion } from 'motion/react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type {
-  AppSettings,
   EffortLevel,
   ExplorationMode,
   ProjectScan,
   SuggestedGoal,
 } from '../../../../shared/types'
+import { useFeatureAgentSelection } from '../../hooks/use-feature-agent-selection'
 import {
   FALLBACK_PROVIDER_MODELS,
-  normalizeProviderModels,
   type ProviderId,
   type ProviderModelEntry,
-  resolveFeatureAgentSelection,
 } from '../../lib/provider-models'
 import { timeAgo } from '../../lib/utils'
 import { useTestStore } from '../../store/test-store'
@@ -551,6 +549,11 @@ function Step3Config({
 /*  SetupWizard — main component                                              */
 /* -------------------------------------------------------------------------- */
 
+function getTestAgentSnapshot() {
+  const { agentModel, agentEffort, agentSelectionRevision } = useTestStore.getState()
+  return { agentModel, agentEffort, agentSelectionRevision }
+}
+
 export function SetupWizard() {
   const projects = useTestStore((s) => s.projects)
   const selectedProject = useTestStore((s) => s.selectedProject)
@@ -586,20 +589,11 @@ export function SetupWizard() {
   const [e2ePath, setE2ePath] = useState('')
   const [mode, setMode] = useState<ExplorationMode>('manual')
   const [requirements, setRequirements] = useState('')
-  const [providerModels, setProviderModels] =
-    useState<ProviderModelEntry[]>(FALLBACK_PROVIDER_MODELS)
-  const agentSelectionRequestRef = useRef(0)
-  const agentSelectionBaseRevisionRef = useRef(useTestStore.getState().agentSelectionRevision)
-  const agentSelectionLoadRef = useRef<Promise<{
-    models: ProviderModelEntry[]
-    selection: AgentSelection
-  }> | null>(null)
-
-  type AgentSelection = {
-    provider: ProviderId
-    model: string
-    effort: EffortLevel
-  }
+  const { providerModels, setProviderModels, loadAgentSelection } = useFeatureAgentSelection({
+    settings: { modelKey: 'testingAgentModel', effortKey: 'testingAgentEffort' },
+    getSnapshot: getTestAgentSnapshot,
+    applySelection: setAgentSelection,
+  })
 
   function normalizeUrlInput(value: string): string | null {
     const trimmed = value.trim()
@@ -618,64 +612,12 @@ export function SetupWizard() {
     loadProjects()
   }, [loadProjects])
 
-  const loadAgentSelection = useCallback(async () => {
-    const requestId = agentSelectionRequestRef.current + 1
-    agentSelectionRequestRef.current = requestId
-    const startRevision = useTestStore.getState().agentSelectionRevision
-
-    agentSelectionLoadRef.current ??= Promise.allSettled([
-      window.api.getProviderModels(),
-      window.api.getSettings(),
-    ])
-      .then(([modelsResult, settingsResult]) => {
-        const models =
-          modelsResult.status === 'fulfilled'
-            ? normalizeProviderModels(modelsResult.value)
-            : FALLBACK_PROVIDER_MODELS
-        const settings =
-          settingsResult.status === 'fulfilled' && settingsResult.value
-            ? (settingsResult.value as Partial<AppSettings>)
-            : {}
-        const selection = resolveFeatureAgentSelection({
-          persistedModel: settings.testingAgentModel,
-          persistedEffort: settings.testingAgentEffort,
-          appDefaultModel: settings.defaultModel,
-          appDefaultEffort: settings.defaultEffort,
-          models,
-        })
-        return { models, selection }
-      })
-      .finally(() => {
-        agentSelectionLoadRef.current = null
-      })
-
-    const { models, selection } = await agentSelectionLoadRef.current
-    const currentState = useTestStore.getState()
-    const canApplySelection =
-      agentSelectionRequestRef.current === requestId &&
-      currentState.agentSelectionRevision === startRevision &&
-      startRevision === agentSelectionBaseRevisionRef.current
-
-    setProviderModels(models)
-    if (canApplySelection) {
-      setAgentSelection(selection.provider, selection.model, selection.effort)
-      agentSelectionBaseRevisionRef.current = useTestStore.getState().agentSelectionRevision
-      return selection
-    }
-
-    return {
-      provider: currentState.agentProvider,
-      model: currentState.agentModel,
-      effort: currentState.agentEffort,
-    }
-  }, [setAgentSelection])
-
   useEffect(() => {
     loadAgentSelection().catch(() => {
       setProviderModels(FALLBACK_PROVIDER_MODELS)
       setAgentSelection('claude', 'claude-opus-4-7', 'high')
     })
-  }, [loadAgentSelection, setAgentSelection])
+  }, [loadAgentSelection, setAgentSelection, setProviderModels])
 
   // Resolve e2e path when project is selected
   useEffect(() => {
